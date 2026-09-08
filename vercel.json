@@ -1,4 +1,10 @@
 {
   "version": 2,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
 }
