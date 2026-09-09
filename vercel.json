@@ -1,5 +1,13 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "outputDirectory": "public"
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/public/index.html"
+    },
+    {
+      "source": "/ai_video_real_v8.js",
+      "destination": "/public/ai_video_real_v8.js"
+    }
+  ]
 }
