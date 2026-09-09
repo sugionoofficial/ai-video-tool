@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>GEN-Z.AI</title>
-
-  <style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>GEN-Z.AI</title>  <style>
     * {
       box-sizing: border-box;
     }
@@ -22,6 +17,13 @@
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
     }
 
     .app {
@@ -90,15 +92,14 @@
     }
 
     textarea {
-      min-height: 130px;
+      min-height: 150px;
       resize: vertical;
       line-height: 1.5;
     }
 
     .provider-grid {
       display: grid;
-      grid-template-columns:
-        repeat(3, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
       margin-bottom: 18px;
     }
@@ -111,7 +112,7 @@
       border-radius: 13px;
       cursor: pointer;
       text-align: center;
-      transition: 0.15s;
+      transition: .15s;
     }
 
     .provider:hover {
@@ -187,8 +188,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns:
-        repeat(3, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 12px;
     }
 
@@ -237,6 +237,10 @@
       cursor: pointer;
     }
 
+    button.generate:hover {
+      opacity: .92;
+    }
+
     button.generate:disabled {
       opacity: .5;
       cursor: not-allowed;
@@ -251,6 +255,7 @@
       border: 1px solid #292c34;
       color: #a8abb4;
       font-size: 13px;
+      line-height: 1.5;
     }
 
     #status.success {
@@ -317,6 +322,10 @@
       font-size: 11px;
     }
 
+    .small-button:hover {
+      border-color: #777;
+    }
+
     .footer {
       text-align: center;
       color: #555861;
@@ -324,10 +333,13 @@
       padding: 15px;
     }
 
+    .hidden {
+      display: none !important;
+    }
+
     @media(max-width:700px) {
       .provider-grid {
-        grid-template-columns:
-          repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr);
       }
 
       .grid {
@@ -351,471 +363,379 @@
       .logo {
         font-size: 30px;
       }
+
+      .provider {
+        padding: 12px 7px;
+      }
     }
-  </style>
-</head>
-
-<body>
-
-<main class="app">
-
-  <!-- HEADER -->
-
-  <header class="header">
-
-    <div class="logo">
-      GEN-Z.AI
-    </div>
-
-    <div class="subtitle">
-      Character Reference → AI Video
-    </div>
-
-  </header>
-
-
-  <!-- POLLINATIONS CONNECTION -->
-
-  <section class="card">
-
-    <div class="title">
-      Pollinations Connection
-    </div>
-
-    <div class="connection">
-
-      <div
-        id="connectionStatus"
-        class="connection-status"
-      >
-        Belum terhubung
-      </div>
-
-      <div class="connection-buttons">
-
-        <button
-          id="connectPolli"
-          class="small-button"
-          type="button"
-        >
-          Connect
-        </button>
-
-        <button
-          id="disconnectPolli"
-          class="small-button"
-          type="button"
-        >
-          Disconnect
-        </button>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- PROVIDER -->
-
-  <section class="card">
-
-    <div class="title">
-      AI Video Provider
-    </div>
-
-
-    <!-- SEMUA PROVIDER TERLIHAT -->
-
-    <div class="provider-grid">
-
-      <button
-        type="button"
-        class="provider"
-        data-provider="pollinations"
-      >
-        <div class="provider-name">
-          Pollinations
-        </div>
-
-        <div class="provider-type">
-          AI Video
-        </div>
-      </button>
-
-
-      <button
-        type="button"
-        class="provider"
-        data-provider="fal"
-      >
-        <div class="provider-name">
-          fal.ai
-        </div>
-
-        <div class="provider-type">
-          AI Models
-        </div>
-      </button>
-
-
-      <button
-        type="button"
-        class="provider"
-        data-provider="runway"
-      >
-        <div class="provider-name">
-          Runway
-        </div>
-
-        <div class="provider-type">
-          Gen Video
-        </div>
-      </button>
-
-
-      <button
-        type="button"
-        class="provider active"
-        data-provider="veo"
-      >
-        <div class="provider-name">
-          Google Veo
-        </div>
-
-        <div class="provider-type">
-          Veo 3.1
-        </div>
-      </button>
-
-
-      <button
-        type="button"
-        class="provider"
-        data-provider="luma"
-      >
-        <div class="provider-name">
-          Luma
-        </div>
-
-        <div class="provider-type">
-          Dream Machine
-        </div>
-      </button>
-
-
-      <button
-        type="button"
-        class="provider"
-        data-provider="minimax"
-      >
-        <div class="provider-name">
-          MiniMax
-        </div>
-
-        <div class="provider-type">
-          Hailuo
-        </div>
-      </button>
-
-    </div>
-
-
-    <!-- PROVIDER DETAIL -->
-
-    <div
-      id="providerPanel"
-      class="provider-panel"
-    >
-
-      <div class="provider-header">
-
-        <h3 id="providerName">
-          Google Veo
-        </h3>
-
-        <span
-          id="providerBadge"
-          class="badge"
-        >
-          Veo 3.1
-        </span>
-
-      </div>
-
-
-      <div
-        id="providerDescription"
-        class="provider-description"
-      >
-        Google Veo 3.1 untuk pembuatan video
-        dengan character reference.
-      </div>
-
-
-      <div class="field">
-
-        <label for="model">
-          Model
-        </label>
-
-        <select id="model">
-
-          <option value="veo-3.1-fast-generate-preview">
-            Veo 3.1 Fast
-          </option>
-
-          <option value="veo-3.1-generate-preview">
-            Veo 3.1
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="capabilities">
-
-        <span class="capability">
-          Character Reference
-        </span>
-
-        <span class="capability">
-          Image → Video
-        </span>
-
-        <span class="capability">
-          Native Audio
-        </span>
-
-        <span class="capability">
-          16:9
-        </span>
-
-        <span class="capability">
-          9:16
-        </span>
-
-        <span class="capability">
-          4K
-        </span>
-
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- CHARACTER -->
-
-  <section class="card">
-
-    <div class="title">
-      Character Reference
-    </div>
-
-    <div class="upload">
-
-      <label for="characterFile">
-        Upload Foto Karakter
-      </label>
-
-      <input
-        id="characterFile"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-      >
-
-      <img
-        id="characterPreview"
-        alt="Character Reference"
-      >
-
-      <div id="characterInfo"></div>
-
-    </div>
-
-  </section>
-
-
-  <!-- PROMPT -->
-
-  <section class="card">
-
-    <div class="title">
-      Video Prompt
-    </div>
-
-    <label for="prompt">
-      Deskripsi Video
-    </label>
-
-    <textarea
-      id="prompt"
-      maxlength="512"
-      placeholder="Contoh: karakter berjalan perlahan menuju kamera, ekspresi natural, rambut bergerak tertiup angin, cinematic realistic movement..."
-    ></textarea>
-
-    <div
-      id="promptCounter"
-      class="counter"
-    >
-      0/512
-    </div>
-
-  </section>
-
-
-  <!-- SETTINGS -->
-
-  <section class="card">
-
-    <div class="title">
-      Video Settings
-    </div>
-
-    <div class="grid">
-
-      <div>
-
-        <label for="duration">
-          Durasi
-        </label>
-
-        <select id="duration">
-
-          <option value="4">
-            4 detik
-          </option>
-
-          <option value="6">
-            6 detik
-          </option>
-
-          <option value="8">
-            8 detik
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div>
-
-        <label for="aspect">
-          Aspect Ratio
-        </label>
-
-        <select id="aspect">
-
-          <option value="16:9">
-            16:9
-          </option>
-
-          <option value="9:16">
-            9:16
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div>
-
-        <label for="resolution">
-          Resolusi
-        </label>
-
-        <select id="resolution">
-
-          <option value="720p">
-            720p
-          </option>
-
-          <option value="1080p">
-            1080p
-          </option>
-
-          <option value="4k">
-            4K
-          </option>
-
-        </select>
-
-      </div>
-
-    </div>
-
-
-    <div style="margin-top:12px;">
-
-      <label for="seed">
-        Seed
-      </label>
-
-      <input
-        id="seed"
-        type="number"
-        placeholder="Random"
-      >
-
-    </div>
-
-  </section>
-
-
-  <!-- GENERATE -->
-
-  <section class="card">
+  </style></head><body><main class="app">  <header class="header">
+    <div class="logo">GEN-Z.AI</div><div class="subtitle">
+  Character Reference → AI Video
+</div>
+
+  </header>  <!-- POLLINATIONS CONNECTION -->  <section class="card"><div class="title">
+  Pollinations Connection
+</div>
+
+<div class="connection">
+
+  <div
+    id="connectionStatus"
+    class="connection-status"
+  >
+    Belum terhubung
+  </div>
+
+  <div class="connection-buttons">
 
     <button
-      id="videoBtn"
-      class="generate"
+      id="connectPolli"
+      class="small-button"
       type="button"
     >
-      Generate Video
+      Connect
     </button>
 
-    <div id="status"></div>
-
-    <video
-      id="videoPreview"
-      controls
-      playsinline
-    ></video>
-
-    <a
-      id="download"
-      href="#"
-      download
+    <button
+      id="disconnectPolli"
+      class="small-button"
+      type="button"
     >
-      Download Video
-    </a>
+      Disconnect
+    </button>
 
-  </section>
+  </div>
+
+</div>
+
+  </section>  <!-- PROVIDER -->  <section class="card"><div class="title">
+  AI Video Provider
+</div>
+
+<div class="provider-grid">
+
+  <button
+    type="button"
+    class="provider"
+    data-provider="pollinations"
+  >
+    <div class="provider-name">
+      Pollinations
+    </div>
+
+    <div class="provider-type">
+      AI Video
+    </div>
+  </button>
 
 
-  <footer class="footer">
-    GEN-Z.AI • AI Video Generator
-  </footer>
+  <button
+    type="button"
+    class="provider"
+    data-provider="fal"
+  >
+    <div class="provider-name">
+      fal.ai
+    </div>
 
-</main>
+    <div class="provider-type">
+      AI Models
+    </div>
+  </button>
 
 
-<!-- JAVASCRIPT -->
+  <button
+    type="button"
+    class="provider"
+    data-provider="runway"
+  >
+    <div class="provider-name">
+      Runway
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <div class="provider-type">
+      Gen Video
+    </div>
+  </button>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+  <button
+    type="button"
+    class="provider active"
+    data-provider="veo"
+  >
+    <div class="provider-name">
+      Google Veo
+    </div>
 
-<script src="/js/account.js"></script>
+    <div class="provider-type">
+      Veo 3.1
+    </div>
+  </button>
 
-<script src="/js/app.js"></script>
 
-</body>
+  <button
+    type="button"
+    class="provider"
+    data-provider="luma"
+  >
+    <div class="provider-name">
+      Luma
+    </div>
+
+    <div class="provider-type">
+      Dream Machine
+    </div>
+  </button>
+
+
+  <button
+    type="button"
+    class="provider"
+    data-provider="minimax"
+  >
+    <div class="provider-name">
+      MiniMax
+    </div>
+
+    <div class="provider-type">
+      Hailuo
+    </div>
+  </button>
+
+</div>
+
+
+<div
+  id="providerPanel"
+  class="provider-panel"
+>
+
+  <div class="provider-header">
+
+    <h3 id="providerName">
+      Google Veo
+    </h3>
+
+    <span
+      id="providerBadge"
+      class="badge"
+    >
+      Veo 3.1
+    </span>
+
+  </div>
+
+
+  <div
+    id="providerDescription"
+    class="provider-description"
+  >
+    Google Veo 3.1 untuk pembuatan video
+    dengan character reference.
+  </div>
+
+
+  <div class="field">
+
+    <label for="model">
+      Model
+    </label>
+
+    <select id="model">
+
+      <option value="veo-3.1-fast-generate-preview">
+        Veo 3.1 Fast
+      </option>
+
+      <option value="veo-3.1-generate-preview">
+        Veo 3.1
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="capabilities">
+
+    <span class="capability">
+      Character Reference
+    </span>
+
+    <span class="capability">
+      Image → Video
+    </span>
+
+    <span class="capability">
+      Native Audio
+    </span>
+
+    <span class="capability">
+      16:9
+    </span>
+
+    <span class="capability">
+      9:16
+    </span>
+
+    <span class="capability">
+      4K
+    </span>
+
+  </div>
+
+</div>
+
+  </section>  <!-- CHARACTER -->  <section class="card"><div class="title">
+  Character Reference
+</div>
+
+<div class="upload">
+
+  <label for="characterFile">
+    Upload Foto Karakter
+  </label>
+
+  <input
+    id="characterFile"
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+  >
+
+  <img
+    id="characterPreview"
+    alt="Character Reference"
+  >
+
+  <div id="characterInfo"></div>
+
+</div>
+
+  </section>  <!-- PROMPT -->  <section class="card"><div class="title">
+  Video Prompt
+</div>
+
+<label for="prompt">
+  Deskripsi Video
+</label>
+
+<textarea
+  id="prompt"
+  maxlength="2000"
+  placeholder="Contoh: karakter berjalan perlahan menuju kamera, ekspresi natural, rambut bergerak tertiup angin, cinematic realistic movement..."
+></textarea>
+
+<div
+  id="promptCounter"
+  class="counter"
+>
+  0/2000
+</div>
+
+  </section>  <!-- SETTINGS -->  <section class="card"><div class="title">
+  Video Settings
+</div>
+
+<div class="grid">
+
+  <div>
+
+    <label for="duration">
+      Durasi
+    </label>
+
+    <select id="duration">
+
+      <option value="4">
+        4 detik
+      </option>
+
+      <option value="6">
+        6 detik
+      </option>
+
+      <option value="8">
+        8 detik
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div>
+
+    <label for="aspect">
+      Aspect Ratio
+    </label>
+
+    <select id="aspect">
+
+      <option value="16:9">
+        16:9
+      </option>
+
+      <option value="9:16">
+        9:16
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div>
+
+    <label for="resolution">
+      Resolusi
+    </label>
+
+    <select id="resolution">
+
+      <option value="720p">
+        720p
+      </option>
+
+      <option value="1080p">
+        1080p
+      </option>
+
+      <option value="4k">
+        4K
+      </option>
+
+    </select>
+
+  </div>
+
+</div>
+
+  </section>  <!-- GENERATE -->  <section class="card"><button
+  id="videoBtn"
+  class="generate"
+  type="button"
+>
+  Generate Video
+</button>
+
+<div id="status"></div>
+
+<video
+  id="videoPreview"
+  controls
+  playsinline
+></video>
+
+<a
+  id="download"
+  href="#"
+  download="gen-z-ai-video.mp4"
+>
+  Download Video
+</a>
+
+  </section>  <footer class="footer">
+    GEN-Z.AI · AI Video Generator
+  </footer></main><!-- SUPABASE --><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><!-- CONFIG --><script src="/js/config.js"></script><!-- POLLINATIONS AUTH --><script src="/js/auth.js"></script><!-- ACCOUNT AUTH + API KEYS --><script src="/js/account.js"></script><!-- VIDEO APPLICATION --><script src="/js/app.js"></script></body>
 </html>
