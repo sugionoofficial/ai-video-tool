@@ -20,7 +20,7 @@ a{display:block;text-align:center;color:#8ec5ff;margin-top:12px}.small{font-size
 </head>
 <body>
 <main>
-<h1>AI Video Generator</h1><p class="sub">Pollinations OAuth PKCE</p>
+<h1>AI Video Generator</h1><p class="sub">Pollinations OAuth PKCE - wan-fast</p>
 <div class="card">
 <button id="connect">Hubungkan Pollinations</button>
 <div id="status" class="status">Belum terhubung.</div>
@@ -35,7 +35,7 @@ a{display:block;text-align:center;color:#8ec5ff;margin-top:12px}.small{font-size
 <button id="generate" disabled>Buat Gambar AI</button>
 <button id="videoBtn" disabled>Jadikan Video</button>
 <img id="imagePreview" alt="Hasil gambar AI"><video id="videoPreview" controls></video>
-<a id="download" download="ai-video.mp4" style="display:none">Download Video</a>
+<a id="download" download="ai-video-wan-fast.mp4" style="display:none">Download Video</a>
 </div></main>
 <script>
 "use strict";
@@ -52,7 +52,7 @@ async function challenge(v){return base64Url(new Uint8Array(await crypto.subtle.
 async function startOAuth(){
  const verifier=randomString(48),state=randomString(24),cc=await challenge(verifier);
  sessionStorage.setItem("polli_pkce_verifier",verifier);sessionStorage.setItem("polli_oauth_state",state);
- const p=new URLSearchParams({response_type:"code",client_id:CLIENT_ID,redirect_uri:REDIRECT_URI,scope:"usage",state,code_challenge:cc,code_challenge_method:"S256",models:"flux,gptimage,seedream5,wan-pro",budget:"5",expiry:"7"});
+ const p=new URLSearchParams({response_type:"code",client_id:CLIENT_ID,redirect_uri:REDIRECT_URI,scope:"usage",state,code_challenge:cc,code_challenge_method:"S256",models:"flux,gptimage,seedream5,wan-fast",budget:"5",expiry:"7"});
  location.href=AUTH_URL+"?"+p;
 }
 async function callback(){
