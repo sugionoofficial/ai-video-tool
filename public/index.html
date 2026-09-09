@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Video Generator - Pollinations</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#111;color:#eee;font-family:Arial,sans-serif}
+main{max-width:760px;margin:auto;padding:20px}
+h1{margin:0 0 6px;font-size:25px}
+.sub{color:#aaa;margin:0 0 20px}
+.card{background:#1b1b1b;border:1px solid #333;border-radius:14px;padding:16px;margin:14px 0}
+label{display:block;margin:12px 0 6px;color:#ccc}
+textarea,select{width:100%;padding:11px;border-radius:9px;border:1px solid #444;background:#101010;color:#fff;font-size:15px}
+button{width:100%;padding:12px;border:0;border-radius:9px;margin-top:12px;font-weight:700;cursor:pointer}
+#connect{background:#fff;color:#111}
+#generate{background:#2d8cff;color:#fff}
+#videoBtn{background:#444;color:#fff}
+#checkModels{background:#555;color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:10px;border-radius:8px;background:#101010;color:#bbb;white-space:pre-wrap}
+img,video{width:100%;border-radius:10px;margin-top:12px;background:#000;display:none}
+a{display:block;text-align:center;color:#8ec5ff;margin-top:12px}
+.small{font-size:12px;color:#888;line-height:1.5}
+.ok{color:#7ee787}
+.err{color:#ff7b72}
+</style>
+</head>
+<body>
+<main>
+<h1>AI Video Generator</h1>
+<p class="sub">Pollinations OAuth PKCE</p>
+
+<div class="card">
+<button id="connect">Hubungkan Pollinations</button>
+<div id="status" class="status">Belum terhubung.</div>
+<p class="small">Token OAuth hanya disimpan di session browser.</p>
+</div>
+
+<div class="card">
+<label for="prompt">Prompt</label>
+<textarea id="prompt" rows="4">seekor kucing oren nyata berjalan di taman hijau pada pagi hari, photorealistic</textarea>
+
+<label for="duration">Durasi</label>
+<select id="duration">
+<option value="5">5 detik</option>
+<option value="10">10 detik</option>
+</select>
+
+<label for="aspect">Aspect Ratio</label>
+<select id="aspect">
+<option value="16:9">16:9</option>
+<option value="9:16">9:16</option>
+<option value="1:1">1:1</option>
+</select>
+
+<label for="model">Model Gambar</label>
+<select id="model">
+<option value="black-forest-labs/flux.1-schnell">Flux Schnell</option>
+<option value="openai/gpt-image-1-mini">GPT Image 1 Mini</option>
+</select>
+
+<button id="generate" disabled>Buat Gambar AI</button>
+<button id="videoBtn" disabled>Jadikan Video</button>
+
+<div id="videoAvailability" class="small" style="margin-top:10px">
+Model video belum diperiksa.
+</div>
+
+<img id="imagePreview" alt="Hasil gambar AI">
+<video id="videoPreview" controls></video>
+<a id="download" download="ai-video.mp4" style="display:none">Download Video</a>
+</div>
+
+<div class="card">
+<button id="checkModels" type="button">Cek Model Pollinations</button>
+<div id="modelStatus" class="status">Belum diperiksa.</div>
+<div id="modelList" class="small" style="margin-top:10px;white-space:pre-wrap"></div>
+</div>
+</main>
+
+<script>
+"use strict";
+
+const CLIENT_ID="pk_TbW0TG3A2MmE7rOM";
+const REDIRECT_URI="https://ai-video-tool-ten.vercel.app/";
+const AUTH_URL="https://enter.pollinations.ai/authorize";
+const TOKEN_URL="https://enter.pollinations.ai/api/oauth/token";
+
+const connectBtn=document.getElementById("connect");
+const generateBtn=document.getElementById("generate");
+const videoBtn=document.getElementById("videoBtn");
+const statusEl=document.getElementById("status");
+const imageEl=document.getElementById("imagePreview");
+const videoEl=document.getElementById("videoPreview");
+const downloadEl=document.getElementById("download");
+const videoAvailabilityEl=document.getElementById("videoAvailability");
+
+let accessToken=null;
+let imageObjectUrl=null;
+let detectedVideoModels=[];
+window.detectedVideoModels = [];
+
+function setStatus(t,c=""){
+  statusEl.textContent=t;
+  statusEl.className="status "+c;
+}
+
+function randomString(n=32){
+  const a=new Uint8Array(n);
+  crypto.getRandomValues(a);
+  return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function base64Url(b){
+  let s="";
+  for(let i=0;i<b.length;i+=0x8000){
+    s+=String.fromCharCode(...b.subarray(i,i+0x8000));
+  }
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+
+async function challenge(v){
+  return base64Url(
+    new Uint8Array(
+      await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v))
+    )
+  );
+}
+
+async function startOAuth(){
+  const verifier=randomString(48);
+  const state=randomString(24);
+  const cc=await challenge(verifier);
+
+  sessionStorage.setItem("polli_pkce_verifier",verifier);
+  sessionStorage.setItem("polli_oauth_state",state);
+
+  /*
+   * Tidak ada parameter models.
+   * OAuth tidak dibatasi ke daftar model tertentu.
+   */
+  const p=new URLSearchParams({
+    response_type:"code",
+    client_id:CLIENT_ID,
+    redirect_uri:REDIRECT_URI,
+    scope:"usage",
+    state,
+    code_challenge:cc,
+    code_challenge_method:"S256",
+    budget:"5",
+    expiry:"7"
+  });
+
+  location.href=AUTH_URL+"?"+p.toString();
+}
+
+async function callback(){
+  const u=new URL(location.href);
+  const code=u.searchParams.get("code");
+  const err=u.searchParams.get("error");
+
+  if(err){
+    setStatus("OAuth gagal/dibatalkan: "+err,"err");
+    return;
+  }
+
+  if(!code)return;
+
+  const state=u.searchParams.get("state");
+  const saved=sessionStorage.getItem("polli_oauth_state");
+  const verifier=sessionStorage.getItem("polli_pkce_verifier");
+
+  if(!saved||!verifier||state!==saved){
+    setStatus("Validasi OAuth gagal: state/verifier tidak cocok.","err");
+    return;
+  }
+
+  setStatus("Menghubungkan ke Pollinations...");
+
+  try{
+    const body=new URLSearchParams({
+      grant_type:"authorization_code",
+      code,
+      client_id:CLIENT_ID,
+      redirect_uri:REDIRECT_URI,
+      code_verifier:verifier
+    });
+
+    const r=await fetch(TOKEN_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body
+    });
+
+    const d=await r.json().catch(()=>({}));
+
+    if(!r.ok||!d.access_token){
+      throw Error(d.error_description||d.error||("HTTP "+r.status));
+    }
+
+    accessToken=d.access_token;
+    sessionStorage.setItem("polli_access_token",accessToken);
+    sessionStorage.removeItem("polli_pkce_verifier");
+    sessionStorage.removeItem("polli_oauth_state");
+
+    history.replaceState({},document.title,REDIRECT_URI);
+
+    setStatus("Pollinations terhubung. Silakan cek model terlebih dahulu.","ok");
+    generateBtn.disabled=false;
+
+    await checkModels(true);
+  }catch(e){
+    setStatus("Gagal OAuth: "+e.message,"err");
+  }
+}
+
+function loadSession(){
+  const x=sessionStorage.getItem("polli_access_token");
+
+  if(x){
+    accessToken=x;
+    generateBtn.disabled=false;
+    setStatus("Pollinations sudah terhubung pada sesi browser ini.","ok");
+  }
+}
+
+function dims(a){
+  if(a==="9:16")return[768,1365];
+  if(a==="1:1")return[1024,1024];
+  return[1365,768];
+}
+
+async function generateImage(){
+  if(!accessToken){
+    setStatus("Hubungkan Pollinations terlebih dahulu.","err");
+    return;
+  }
+
+  const prompt=document.getElementById("prompt").value.trim();
+  const selectedModel=document.getElementById("model").value;
+
+  /*
+   * Model ID dikunci ke ID canonical Pollinations.
+   * Alias lama seperti flux.1-schnell tidak pernah dikirim ke API.
+   */
+  const modelMap={
+    "flux.1-schnell":"black-forest-labs/flux.1-schnell",
+    "black-forest-labs/flux.1-schnell":"black-forest-labs/flux.1-schnell",
+    "gpt-image-1-mini":"openai/gpt-image-1-mini",
+    "openai/gpt-image-1-mini":"openai/gpt-image-1-mini"
+  };
+
+  const model=modelMap[selectedModel]||"black-forest-labs/flux.1-schnell";
+  const [w,h]=dims(document.getElementById("aspect").value);
+
+  if(!prompt){
+    setStatus("Prompt belum diisi.","err");
+    return;
+  }
+
+  generateBtn.disabled=true;
+  videoBtn.disabled=true;
+  setStatus("Membuat gambar AI dengan model: "+model+"...");
+
+  try{
+    const q=encodeURIComponent(
+      prompt+
+      ", photorealistic, real animal photography, realistic fur, realistic eyes, natural lighting, high detail, no text, no watermark"
+    );
+
+    const url=
+      "https://gen.pollinations.ai/image/"+
+      q+
+      "?model="+encodeURIComponent(model)+
+      "&width="+w+
+      "&height="+h;
+
+    const r=await fetch(url,{
+      headers:{Authorization:"Bearer "+accessToken}
+    });
+
+    if(!r.ok){
+      if(r.status===401){
+        sessionStorage.removeItem("polli_access_token");
+        accessToken=null;
+      }
+
+      const txt=await r.text().catch(()=>"");
+      throw Error("HTTP "+r.status+(txt?" - "+txt.slice(0,250):""));
+    }
+
+    const blob=await r.blob();
+
+    if(imageObjectUrl)URL.revokeObjectURL(imageObjectUrl);
+
+    imageObjectUrl=URL.createObjectURL(blob);
+    imageEl.src=imageObjectUrl;
+    imageEl.style.display="block";
+
+    videoBtn.disabled=detectedVideoModels.length===0;
+
+    setStatus(
+      detectedVideoModels.length
+        ? "Gambar berhasil dibuat. Model video tersedia: "+detectedVideoModels.join(", ")
+        : "Gambar berhasil dibuat, tetapi tidak ada model video yang tersedia untuk token ini.",
+      detectedVideoModels.length ? "ok" : ""
+    );
+  }catch(e){
+    setStatus("Gagal membuat gambar: "+e.message,"err");
+  }finally{
+    generateBtn.disabled=!accessToken;
+  }
+}
+async function checkModels(silent=false){
+  const btn=document.getElementById("checkModels");
+  const status=document.getElementById("modelStatus");
+  const list=document.getElementById("modelList");
+
+  if(!accessToken){
+    detectedVideoModels=[];
+    videoBtn.disabled=true;
+    videoAvailabilityEl.textContent="Model video tidak dapat diperiksa sebelum OAuth terhubung.";
+
+    if(!silent){
+      status.textContent="Token OAuth tidak ditemukan. Hubungkan Pollinations terlebih dahulu.";
+      status.className="status err";
+    }
+    return;
+  }
+
+  if(!silent){
+    btn.disabled=true;
+    status.textContent="Membaca daftar model Pollinations...";
+    status.className="status";
+  }
+
+  try{
+    const r=await fetch("https://gen.pollinations.ai/v1/models",{
+      headers:{Authorization:"Bearer "+accessToken}
+    });
+
+    const text=await r.text();
+
+    if(!r.ok){
+      throw new Error("HTTP "+r.status+": "+text.slice(0,400));
+    }
+
+    let data;
+    try{
+      data=JSON.parse(text);
+    }catch(_){
+      throw new Error("Respons bukan JSON.");
+    }
+
+    const models=Array.isArray(data)?data:
+      Array.isArray(data.data)?data.data:
+      Array.isArray(data.models)?data.models:[];
+
+    if(!models.length){
+      throw new Error("Daftar model kosong atau format tidak dikenali.");
+    }
+
+    const names=models
+      .map(x=>x.id||x.name||x.model)
+      .filter(Boolean);
+
+    /*
+     * Jangan hanya mencari substring "video".
+     * Gunakan kombinasi nama model video yang dikenal Pollinations
+     * agar model teks/gambar yang kebetulan bernama mirip tidak mengaktifkan tombol.
+     */
+    const videoPatterns=[
+      /^veo(?:$|-|\.|\/)/i,
+      /^wan(?:$|-|\.|\/)/i,
+      /seedance/i,
+      /grok-video/i,
+      /grok-imagine-video/i,
+      /nova-reel/i,
+      /happyhorse/i,
+      /^minimax-h3(?:$|-|\.|\/)/i,
+      /^p-video(?:$|-|\.|\/)/i
+    ];
+
+    detectedVideoModels=names.filter(name=>
+      videoPatterns.some(pattern=>pattern.test(name))
+    );
+
+    list.textContent=names.map((n,i)=>(i+1)+". "+n).join("\n");
+
+    if(detectedVideoModels.length){
+      videoAvailabilityEl.textContent=
+        "Model video tersedia: "+detectedVideoModels.join(", ")+
+        ". Tombol video akan aktif setelah gambar dibuat.";
+      videoAvailabilityEl.className="small ok";
+
+      if(!silent){
+        status.textContent=
+          "Model video ditemukan: "+
+          detectedVideoModels.join(", ");
+        status.className="status ok";
+      }
+    }else{
+      videoAvailabilityEl.textContent=
+        "Tidak ada model video yang tersedia untuk token OAuth ini. Tombol video tetap nonaktif.";
+      videoAvailabilityEl.className="small err";
+
+      videoBtn.disabled=true;
+
+      if(!silent){
+        status.textContent=
+          "Tidak ada model video yang terdeteksi. Tidak ada request video yang dilakukan.";
+        status.className="status";
+      }
+    }
+  }catch(e){
+    detectedVideoModels=[];
+    videoBtn.disabled=true;
+    videoAvailabilityEl.textContent=
+      "Gagal memeriksa model video. Tombol video tetap nonaktif.";
+    videoAvailabilityEl.className="small err";
+
+    if(!silent){
+      status.textContent="Gagal membaca model: "+(e.message||e);
+      status.className="status err";
+    }
+  }finally{
+    if(!silent)btn.disabled=false;
+  }
+}
+
+connectBtn.onclick=startOAuth;
+generateBtn.onclick=generateImage;
+document.getElementById("checkModels").onclick=()=>checkModels(false);
+
+callback().then(loadSession);
+</script>
+
+<!--
+  File video lama tetap dipanggil untuk menjaga kompatibilitas.
+  Tombol video dikunci oleh index ini jika tidak ada model video.
+-->
+<script src="ai_video_real_v8.js"></script>
+</body>
+</html>
