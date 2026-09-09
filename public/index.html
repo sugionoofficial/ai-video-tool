@@ -62,7 +62,8 @@
       outline: none;
     }
 
-    textarea:focus {
+    textarea:focus,
+    select:focus {
       border-color: #2563eb;
     }
 
@@ -151,6 +152,15 @@
       font-weight: bold;
       text-decoration: none;
     }
+
+    .audio-preview {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .section-space {
+      margin-top: 15px;
+    }
   </style>
 </head>
 
@@ -164,7 +174,10 @@
     AI Image → AI Video menggunakan Pollinations + Amazon Nova Reel
   </div>
 
-  <!-- KONEKSI POLLINATIONS -->
+
+  <!-- ==============================
+       POLLINATIONS
+       ============================== -->
 
   <div class="card">
 
@@ -182,24 +195,32 @@
         🔐 Hubungkan Pollinations
       </button>
 
-      <button id="disconnectPolli" class="danger">
+      <button
+        id="disconnectPolli"
+        class="danger"
+      >
         🔓 Putuskan Koneksi
       </button>
 
     </div>
 
-    <div class="small" style="margin-top:10px;">
+    <div class="small section-space">
       Hubungkan akun Pollinations sebelum membuat gambar AI.
     </div>
 
   </div>
 
 
-  <!-- PROMPT -->
+  <!-- ==============================
+       PROMPT
+       ============================== -->
 
   <div class="card">
 
-    <label class="title" for="prompt">
+    <label
+      class="title"
+      for="prompt"
+    >
       Prompt
     </label>
 
@@ -208,7 +229,10 @@
       placeholder="Masukkan prompt gambar atau video AI di sini..."
     ></textarea>
 
-    <div class="row" style="margin-top:15px;">
+
+    <div
+      class="row section-space"
+    >
 
       <div>
 
@@ -258,27 +282,37 @@
     </div>
 
 
-    <div class="row" style="margin-top:16px;">
+    <div
+      class="row section-space"
+    >
 
       <button id="generateImage">
         🎨 Buat Gambar AI
       </button>
 
-      <button id="videoBtn" disabled>
+      <button
+        id="videoBtn"
+        disabled
+      >
         🎬 Jadikan Video
       </button>
 
     </div>
 
 
-    <div id="status" class="status">
+    <div
+      id="status"
+      class="status"
+    >
       Siap digunakan.
     </div>
 
   </div>
 
 
-  <!-- IMAGE -->
+  <!-- ==============================
+       IMAGE
+       ============================== -->
 
   <div class="card">
 
@@ -295,7 +329,9 @@
   </div>
 
 
-  <!-- VIDEO -->
+  <!-- ==============================
+       VIDEO
+       ============================== -->
 
   <div class="card">
 
@@ -322,1344 +358,91 @@
 
   </div>
 
+
+  <!-- ==============================
+       AUDIO
+       ============================== -->
+
+  <div class="card">
+
+    <span class="title">
+      🔊 Audio AI
+    </span>
+
+    <textarea
+      id="audioText"
+      placeholder="Masukkan dialog atau narasi suara AI..."
+      style="min-height:90px"
+    ></textarea>
+
+    <div class="row section-space">
+
+      <div>
+
+        <div class="small">
+          Voice
+        </div>
+
+        <select id="voiceSelect">
+
+          <option value="nova">
+            Nova
+          </option>
+
+          <option value="alloy">
+            Alloy
+          </option>
+
+          <option value="echo">
+            Echo
+          </option>
+
+          <option value="shimmer">
+            Shimmer
+          </option>
+
+        </select>
+
+      </div>
+
+    </div>
+
+    <button
+      id="generateAudio"
+      class="section-space"
+    >
+      🔊 Buat Audio AI
+    </button>
+
+    <audio
+      id="audioPreview"
+      class="audio-preview"
+      controls
+      style="display:none"
+    ></audio>
+
+    <a
+      id="audioDownload"
+      class="download"
+      style="display:none"
+    >
+      ⬇️ Download Audio
+    </a>
+
+  </div>
+
 </div>
 
 
-<script>
-
-(function () {
-
-  /*
-   * ==========================================
-   * POLLINATIONS OAUTH CONFIGURATION
-   * ==========================================
-   */
-
-  const CLIENT_ID =
-    "pk_TbW0TG3A2MmE7rOM";
-
-
-  /*
-   * PENTING:
-   * Redirect URI dikunci ke domain Cloudflare
-   * production agar OAuth tidak berubah-ubah.
-   */
-
-  const REDIRECT_URI =
-    "https://ai-video-tool.sugionoofficial88.workers.dev/";
-
-
-  const TOKEN_KEY =
-    "polli_access_token";
-
-
-  const $ = function (id) {
-    return document.getElementById(id);
-  };
-
-
-  const polliStatus =
-    $("polliStatus");
-
-
-  const statusBox =
-    $("status");
-
-
-  /*
-   * ==========================================
-   * TOKEN
-   * ==========================================
-   */
-
-  function getToken() {
-
-    return (
-      localStorage.getItem(TOKEN_KEY) ||
-      sessionStorage.getItem(TOKEN_KEY) ||
-      sessionStorage.getItem("pollinations_access_token") ||
-      sessionStorage.getItem("access_token") ||
-      ""
-    );
-
-  }
-
-
-  function saveToken(token) {
-
-    if (!token) return;
-
-    localStorage.setItem(
-      TOKEN_KEY,
-      token
-    );
-
-    sessionStorage.setItem(
-      TOKEN_KEY,
-      token
-    );
-
-  }
-
-
-  /*
-   * ==========================================
-   * STATUS
-   * ==========================================
-   */
-
-  function updateConnectionStatus() {
-
-    if (getToken()) {
-
-      polliStatus.textContent =
-        "● Terhubung ke Pollinations";
-
-      polliStatus.classList.add(
-        "connected"
-      );
-
-    } else {
-
-      polliStatus.textContent =
-        "● Belum terhubung ke Pollinations";
-
-      polliStatus.classList.remove(
-        "connected"
-      );
-
-    }
-
-  }
-
-
-  function setStatus(
-    message,
-    type = ""
-  ) {
-
-    statusBox.textContent =
-      message;
-
-    statusBox.className =
-      "status " + type;
-
-  }
-
-
-  /*
-   * ==========================================
-   * CONNECT POLLINATIONS
-   * ==========================================
-   */
-
-  async function connectPollinations() {
-
-    try {
-
-      if (
-        !window.crypto ||
-        !crypto.subtle
-      ) {
-
-        throw new Error(
-          "Browser tidak mendukung Web Crypto."
-        );
-
-      }
-
-
-      const verifier =
-        crypto.randomUUID() +
-        crypto.randomUUID();
-
-
-      const hash =
-        await crypto.subtle.digest(
-          "SHA-256",
-          new TextEncoder().encode(
-            verifier
-          )
-        );
-
-
-      const challenge =
-        btoa(
-          String.fromCharCode(
-            ...new Uint8Array(hash)
-          )
-        )
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-
-
-      sessionStorage.setItem(
-        "polli_code_verifier",
-        verifier
-      );
-
-
-      const authURL =
-        new URL(
-          "https://enter.pollinations.ai/authorize"
-        );
-
-
-      authURL.searchParams.set(
-        "client_id",
-        CLIENT_ID
-      );
-
-
-      authURL.searchParams.set(
-        "redirect_uri",
-        REDIRECT_URI
-      );
-
-
-      authURL.searchParams.set(
-        "response_type",
-        "code"
-      );
-
-
-      authURL.searchParams.set(
-        "code_challenge",
-        challenge
-      );
-
-
-      authURL.searchParams.set(
-        "code_challenge_method",
-        "S256"
-      );
-
-
-      window.location.href =
-        authURL.toString();
-
-
-    } catch (error) {
-
-      setStatus(
-        "Gagal memulai koneksi Pollinations: " +
-        error.message,
-        "err"
-      );
-
-    }
-
-  }
-
-
-  /*
-   * ==========================================
-   * OAUTH CALLBACK
-   * ==========================================
-   */
-
-  async function handleOAuthCallback() {
-
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-
-    const error =
-      params.get("error");
-
-
-    if (error) {
-
-      const description =
-        params.get("error_description") ||
-        error;
-
-
-      setStatus(
-        "OAuth Pollinations ditolak: " +
-        description,
-        "err"
-      );
-
-      return;
-
-    }
-
-
-    const code =
-      params.get("code");
-
-
-    const verifier =
-      sessionStorage.getItem(
-        "polli_code_verifier"
-      );
-
-
-    if (!code) {
-      return;
-    }
-
-
-    if (!verifier) {
-
-      setStatus(
-        "Kode OAuth ditemukan tetapi code verifier tidak tersedia. Ulangi koneksi Pollinations.",
-        "err"
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      setStatus(
-        "Menghubungkan ke Pollinations..."
-      );
-
-
-      const response =
-        await fetch(
-          "https://enter.pollinations.ai/api/oauth/token",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-
-            body: JSON.stringify({
-
-              grant_type:
-                "authorization_code",
-
-              code:
-                code,
-
-              client_id:
-                CLIENT_ID,
-
-              redirect_uri:
-                REDIRECT_URI,
-
-              code_verifier:
-                verifier
-
-            })
-          }
-        );
-
-
-      const text =
-        await response.text();
-
-
-      let data = {};
-
-      try {
-
-        data =
-          JSON.parse(text);
-
-      } catch (_) {}
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          data.error ||
-          data.message ||
-          "Token Pollinations gagal diperoleh."
-        );
-
-      }
-
-
-      const accessToken =
-        data.access_token ||
-        data.token;
-
-
-      if (!accessToken) {
-
-        throw new Error(
-          "Access token tidak ditemukan."
-        );
-
-      }
-
-
-      saveToken(
-        accessToken
-      );
-
-
-      sessionStorage.removeItem(
-        "polli_code_verifier"
-      );
-
-
-      window.history.replaceState(
-        {},
-        document.title,
-        REDIRECT_URI
-      );
-
-
-      updateConnectionStatus();
-
-
-      setStatus(
-        "Pollinations berhasil terhubung.",
-        "ok"
-      );
-
-
-    } catch (error) {
-
-      setStatus(
-        "Gagal menghubungkan Pollinations: " +
-        error.message,
-        "err"
-      );
-
-    }
-
-  }
-
-
-  /*
-   * ==========================================
-   * DISCONNECT
-   * ==========================================
-   */
-
-  $("disconnectPolli").onclick =
-    function () {
-
-      localStorage.removeItem(
-        TOKEN_KEY
-      );
-
-
-      sessionStorage.removeItem(
-        TOKEN_KEY
-      );
-
-
-      sessionStorage.removeItem(
-        "pollinations_access_token"
-      );
-
-
-      sessionStorage.removeItem(
-        "access_token"
-      );
-
-
-      sessionStorage.removeItem(
-        "polli_code_verifier"
-      );
-
-
-      updateConnectionStatus();
-
-
-      setStatus(
-        "Koneksi Pollinations diputus."
-      );
-
-    };
-
-
-  $("connectPolli").onclick =
-    connectPollinations;
-
-
-  /*
-   * ==========================================
-   * GENERATE IMAGE
-   * ==========================================
-   */
-
-  $("generateImage").onclick =
-    async function () {
-
-      const prompt =
-        $("prompt").value.trim();
-
-
-      if (!prompt) {
-
-        setStatus(
-          "Masukkan prompt terlebih dahulu.",
-          "err"
-        );
-
-        return;
-
-      }
-
-
-      const accessToken =
-        getToken();
-
-
-      if (!accessToken) {
-
-        setStatus(
-          "Hubungkan Pollinations terlebih dahulu.",
-          "err"
-        );
-
-        return;
-
-      }
-
-
-      try {
-
-        $("generateImage").disabled =
-          true;
-
-
-        setStatus(
-          "Sedang membuat gambar AI..."
-        );
-
-
-        const aspect =
-          $("aspect").value;
-
-
-        let width =
-          1024;
-
-
-        let height =
-          1024;
-
-
-        if (aspect === "16:9") {
-
-          width =
-            1280;
-
-          height =
-            720;
-
-        }
-
-
-        if (aspect === "9:16") {
-
-          width =
-            720;
-
-          height =
-            1280;
-
-        }
-
-
-        const imageURL =
-          "https://gen.pollinations.ai/image/" +
-          encodeURIComponent(prompt) +
-          "?model=black-forest-labs/flux.1-schnell" +
-          "&width=" +
-          width +
-          "&height=" +
-          height +
-          "&nologo=true";
-
-
-        const response =
-          await fetch(
-            imageURL,
-            {
-              headers: {
-                Authorization:
-                  "Bearer " +
-                  accessToken
-              }
-            }
-          );
-
-
-        if (!response.ok) {
-
-          if (
-            response.status === 401
-          ) {
-
-            localStorage.removeItem(
-              TOKEN_KEY
-            );
-
-            sessionStorage.removeItem(
-              TOKEN_KEY
-            );
-
-          }
-
-
-          throw new Error(
-            "Gagal membuat gambar. HTTP " +
-            response.status
-          );
-
-        }
-
-
-        const blob =
-          await response.blob();
-
-
-        if (!blob.size) {
-
-          throw new Error(
-            "Gambar yang diterima kosong."
-          );
-
-        }
-
-
-        if (
-          window.__AI_VIDEO_IMAGE_URL
-        ) {
-
-          URL.revokeObjectURL(
-            window.__AI_VIDEO_IMAGE_URL
-          );
-
-        }
-
-
-        const localImageURL =
-          URL.createObjectURL(blob);
-
-
-        window.__AI_VIDEO_IMAGE_URL =
-          localImageURL;
-
-
-        $("imagePreview").src =
-          localImageURL;
-
-
-        $("imagePreview")
-          .classList
-          .remove("hidden");
-
-
-        /*
-         * DATA UNTUK ENGINE VIDEO V8
-         */
-
-        window.__AI_VIDEO_SOURCE =
-          localImageURL;
-
-
-        window.__AI_VIDEO_PROMPT =
-          prompt;
-
-
-        window.__AI_VIDEO_DURATION =
-          $("duration").value;
-
-
-        window.__AI_VIDEO_ASPECT =
-          aspect;
-
-
-        $("videoBtn").disabled =
-          false;
-
-
-        setStatus(
-          "Gambar berhasil dibuat. Siap dijadikan video.",
-          "ok"
-        );
-
-
-      } catch (error) {
-
-        setStatus(
-          "Gagal membuat gambar: " +
-          error.message,
-          "err"
-        );
-
-      } finally {
-
-        $("generateImage").disabled =
-          false;
-
-      }
-
-    };
-
-
-  /*
-   * ==========================================
-   * VIDEO
-   * ==========================================
-   */
-
-  $("videoBtn").onclick =
-    async function () {
-
-      if (
-        typeof window.generateVideoWithNovaReel !==
-        "function"
-      ) {
-
-        setStatus(
-          "Engine video V8 belum termuat. Refresh halaman dan coba lagi.",
-          "err"
-        );
-
-        return;
-
-      }
-
-
-      await window.generateVideoWithNovaReel();
-
-    };
-
-
-  /*
-   * ==========================================
-   * START
-   * ==========================================
-   */
-
-  updateConnectionStatus();
-
-  handleOAuthCallback();
-
-})();
-
-</script>
-
-
-<!-- ==========================================
-     ENGINE VIDEO V8
-     TERTANAM LANGSUNG DI INDEX.HTML
-     ========================================== -->
-
-<script>
-
-"use strict";
-
-(() => {
-
-  const MODEL =
-    "amazon/nova-reel-v1";
-
-
-  const KEY =
-    "polli_access_token";
-
-
-  const $ =
-    id =>
-      document.getElementById(id);
-
-
-  const status =
-    (text, cls = "") => {
-
-      const el =
-        $("status");
-
-
-      if (!el) return;
-
-
-      el.textContent =
-        text;
-
-
-      el.className =
-        "status " +
-        cls;
-
-    };
-
-
-  /*
-   * TOKEN
-   */
-
-  const getToken =
-    () => {
-
-      return (
-        localStorage.getItem(KEY) ||
-        sessionStorage.getItem(KEY) ||
-        sessionStorage.getItem(
-          "pollinations_access_token"
-        ) ||
-        sessionStorage.getItem(
-          "access_token"
-        ) ||
-        ""
-      );
-
-    };
-
-
-  /*
-   * DURASI
-   */
-
-  const getDuration =
-    () => {
-
-      return Number(
-        $("duration")?.value
-      ) === 10
-        ? 10
-        : 5;
-
-    };
-
-
-  /*
-   * ASPECT
-   */
-
-  const getAspect =
-    () => {
-
-      const value =
-        $("aspect")?.value;
-
-
-      return [
-        "16:9",
-        "9:16",
-        "1:1"
-      ].includes(value)
-        ? value
-        : "16:9";
-
-    };
-
-
-  /*
-   * PROMPT VIDEO
-   */
-
-  const getPrompt =
-    () => {
-
-      const base =
-        ($("prompt")?.value || "")
-          .trim();
-
-
-      return (
-
-        base +
-
-        ". Animate the reference image with clear continuous natural motion. " +
-
-        "Preserve the exact subject, identity, appearance, anatomy, colors, " +
-
-        "clothing or fur, background and environment. " +
-
-        "The subject must visibly move throughout the video. " +
-
-        "Natural realistic physical motion and consistent subject. " +
-
-        "Do not freeze, morph, warp, duplicate or replace the subject. " +
-
-        "No new subjects. No text, logo or watermark."
-
-      ).trim();
-
-    };
-
-
-  /*
-   * UPLOAD IMAGE
-   */
-
-  async function uploadImage(
-    blob,
-    token
-  ) {
-
-    const form =
-      new FormData();
-
-
-    form.append(
-      "file",
-      blob,
-      "reference-image.png"
-    );
-
-
-    const response =
-      await fetch(
-        "https://media.pollinations.ai/upload",
-        {
-          method:
-            "POST",
-
-          headers: {
-            Authorization:
-              "Bearer " +
-              token
-          },
-
-          body:
-            form
-        }
-      );
-
-
-    const text =
-      await response
-        .text()
-        .catch(() => "");
-
-
-    let data =
-      {};
-
-
-    try {
-
-      data =
-        JSON.parse(text);
-
-    } catch (_) {}
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        "Upload gambar gagal: HTTP " +
-        response.status +
-        (
-          text
-            ? " - " +
-              text.slice(0, 500)
-            : ""
-        )
-      );
-
-    }
-
-
-    const url =
-      data.url ||
-      data.publicUrl ||
-      data.imageUrl ||
-      data.data?.url ||
-      data.data?.publicUrl ||
-      data.data?.imageUrl;
-
-
-    if (
-      !url ||
-      !/^https?:\/\//i.test(url)
-    ) {
-
-      throw new Error(
-        "Upload berhasil, tetapi URL gambar publik HTTPS tidak ditemukan."
-      );
-
-    }
-
-
-    return url;
-
-  }
-
-
-  /*
-   * GENERATE VIDEO
-   */
-
-  async function generateVideo() {
-
-    const button =
-      $("videoBtn");
-
-
-    const image =
-      $("imagePreview");
-
-
-    const video =
-      $("videoPreview");
-
-
-    const download =
-      $("download");
-
-
-    status(
-      "Tombol video aktif. Menyiapkan proses..."
-    );
-
-
-    const token =
-      getToken();
-
-
-    if (!token) {
-
-      status(
-        "Token OAuth tidak ditemukan. Hubungkan Pollinations terlebih dahulu.",
-        "err"
-      );
-
-      return;
-
-    }
-
-
-    if (
-      !image ||
-      !image.src ||
-      !image.src.startsWith("blob:")
-    ) {
-
-      status(
-        "Buat gambar AI terlebih dahulu.",
-        "err"
-      );
-
-      return;
-
-    }
-
-
-    if (button) {
-
-      button.disabled =
-        true;
-
-    }
-
-
-    try {
-
-      /*
-       * BACA GAMBAR
-       */
-
-      status(
-        "Membaca gambar AI..."
-      );
-
-
-      const imageResponse =
-        await fetch(
-          image.src
-        );
-
-
-      if (!imageResponse.ok) {
-
-        throw new Error(
-          "Gagal membaca gambar AI: HTTP " +
-          imageResponse.status
-        );
-
-      }
-
-
-      const imageBlob =
-        await imageResponse.blob();
-
-
-      if (!imageBlob.size) {
-
-        throw new Error(
-          "Gambar AI kosong."
-        );
-
-      }
-
-
-      /*
-       * UPLOAD
-       */
-
-      status(
-        "Mengunggah gambar referensi ke Pollinations..."
-      );
-
-
-      const imageUrl =
-        await uploadImage(
-          imageBlob,
-          token
-        );
-
-
-      /*
-       * REQUEST NOVA REEL
-       */
-
-      const duration =
-        getDuration();
-
-
-      const aspect =
-        getAspect();
-
-
-      status(
-        "Meminta Amazon Nova Reel (" +
-        duration +
-        " detik, " +
-        aspect +
-        ")..."
-      );
-
-
-      const params =
-        new URLSearchParams({
-
-          model:
-            MODEL,
-
-          duration:
-            String(duration),
-
-          aspectRatio:
-            aspect,
-
-          image:
-            imageUrl
-
-        });
-
-
-      const response =
-        await fetch(
-
-          "https://gen.pollinations.ai/video/" +
-
-          encodeURIComponent(
-            getPrompt()
-          ) +
-
-          "?" +
-
-          params.toString(),
-
-          {
-            headers: {
-              Authorization:
-                "Bearer " +
-                token
-            }
-          }
-
-        );
-
-
-      if (!response.ok) {
-
-        const text =
-          await response
-            .text()
-            .catch(() => "");
-
-
-        if (
-          response.status === 401
-        ) {
-
-          localStorage.removeItem(
-            KEY
-          );
-
-          sessionStorage.removeItem(
-            KEY
-          );
-
-        }
-
-
-        throw new Error(
-
-          "Video gagal: HTTP " +
-
-          response.status +
-
-          (
-            text
-              ? " - " +
-                text.slice(0, 700)
-              : ""
-          )
-
-        );
-
-      }
-
-
-      /*
-       * VIDEO DITERIMA
-       */
-
-      status(
-        "Video diterima. Menyiapkan pemutar..."
-      );
-
-
-      const videoBlob =
-        await response.blob();
-
-
-      if (!videoBlob.size) {
-
-        throw new Error(
-          "Server mengembalikan video kosong."
-        );
-
-      }
-
-
-      if (
-        window.__novaVideoUrl
-      ) {
-
-        URL.revokeObjectURL(
-          window.__novaVideoUrl
-        );
-
-      }
-
-
-      window.__novaVideoUrl =
-        URL.createObjectURL(
-          videoBlob
-        );
-
-
-      /*
-       * PREVIEW
-       */
-
-      if (video) {
-
-        video.src =
-          window.__novaVideoUrl;
-
-
-        video.controls =
-          true;
-
-
-        video.playsInline =
-          true;
-
-
-        video.style.display =
-          "block";
-
-
-        video.load();
-
-      }
-
-
-      /*
-       * DOWNLOAD
-       */
-
-      if (download) {
-
-        download.href =
-          window.__novaVideoUrl;
-
-
-        download.download =
-          "ai-video-nova-reel.mp4";
-
-
-        download.style.display =
-          "inline-block";
-
-
-        download.textContent =
-          "⬇️ Download Video";
-
-      }
-
-
-      status(
-        "Video AI berhasil dibuat dengan Amazon Nova Reel.",
-        "ok"
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "NOVA REEL ERROR:",
-        error
-      );
-
-
-      status(
-        error?.message ||
-        String(error),
-        "err"
-      );
-
-
-    } finally {
-
-      if (button) {
-
-        button.disabled =
-          false;
-
-      }
-
-    }
-
-  }
-
-
-  /*
-   * DAFTARKAN ENGINE
-   */
-
-  window.generateVideoWithNovaReel =
-    generateVideo;
-
-
-  window.__NOVA_REEL_V8_LOADED =
-    true;
-
-
-  console.log(
-    "Amazon Nova Reel V8 Engine loaded."
-  );
-
-})();
-
-</script>
+<!-- ==============================
+     JAVASCRIPT CABANG
+     ============================== -->
+
+<script src="/js/config.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/image-engine.js"></script>
+<script src="/js/video-engine.js"></script>
+<script src="/js/audio-engine.js"></script>
 
 </body>
 </html>
