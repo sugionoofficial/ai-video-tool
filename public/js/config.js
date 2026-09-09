@@ -17,26 +17,17 @@ window.AIVideoConfig = {
   TOKEN_URL:
     "https://enter.pollinations.ai/api/oauth/token",
 
-  IMAGE_API:
-    "https://gen.pollinations.ai/image/",
-
   VIDEO_API:
     "https://gen.pollinations.ai/video/",
-
-  AUDIO_API:
-    "https://gen.pollinations.ai/audio/",
 
   UPLOAD_API:
     "https://media.pollinations.ai/upload",
 
   VIDEO_MODEL:
-    "amazon/nova-reel-v1",
-
-  IMAGE_MODEL:
-    "black-forest-labs/flux.1-schnell"
+    "seedance-2.5"
 
 };
 
 console.log(
-  "AI Video Tool configuration loaded."
+  "GEN-Z.AI multi-model configuration loaded."
 );
