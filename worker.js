@@ -27,17 +27,16 @@ export default {
         return json({
           success: true,
           worker: "ai-video-tool",
-          geminiConfigured: Boolean(
-  env.GEMINI_API_KEY || env.GEMINI_API_KEY1
-),
+          geminiPrimaryConfigured: Boolean(env.GEMINI_API_KEY),
+geminiBackupConfigured: Boolean(env.GEMINI_API_KEY1),
 
-minimaxConfigured: Boolean(
-  env.MINIMAX_API_KEY || env.MINIMAX_API_KEY1
-),
+minimaxPrimaryConfigured: Boolean(env.MINIMAX_API_KEY),
+minimaxBackupConfigured: Boolean(env.MINIMAX_API_KEY1),
 
-lumaConfigured: Boolean(
-  env.LUMA_API_KEY || env.LUMA_API_KEY1
-),
+lumaPrimaryConfigured: Boolean(env.LUMA_API_KEY),
+lumaBackupConfigured: Boolean(env.LUMA_API_KEY1),
+
+testBindingConfigured: Boolean(env.TEST_BINDING),
           timestamp: new Date().toISOString()
         });
       }
