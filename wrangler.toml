@@ -1,0 +1,14 @@
+name = "genz-ai-worker"
+
+main = "worker.js"
+
+compatibility_date = "2026-09-09"
+
+workers_dev = true
+
+[vars]
+ENVIRONMENT = "production"
+
+[[r2_buckets]]
+binding = "GENZ_MEDIA"
+bucket_name = "genz-ai-media"
