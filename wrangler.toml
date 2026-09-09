@@ -1,4 +1,4 @@
-name = "genz-ai-worker"
+name = "ai-video-tool"
 
 main = "worker.js"
 
