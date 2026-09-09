@@ -2,7 +2,10 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>GEN-Z.AI</title>
 
@@ -20,31 +23,31 @@
 
     .container {
       width: min(760px, 92%);
-      margin: 40px auto;
+      margin: 35px auto;
     }
 
     h1 {
       text-align: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .subtitle {
       text-align: center;
-      color: #aaa;
-      margin-bottom: 30px;
+      color: #999;
+      margin-bottom: 28px;
     }
 
     .card {
       background: #15151c;
       border: 1px solid #292936;
       border-radius: 18px;
-      padding: 22px;
-      margin-bottom: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
     }
 
-    .card h2 {
+    h2 {
+      font-size: 18px;
       margin-top: 0;
-      font-size: 19px;
     }
 
     label {
@@ -54,14 +57,16 @@
     }
 
     input[type="file"],
+    input[type="number"],
     textarea,
     select {
       width: 100%;
-      border: 1px solid #333341;
-      background: #0d0d12;
-      color: white;
-      border-radius: 12px;
       padding: 13px;
+      border-radius: 12px;
+      border: 1px solid #343440;
+      background: #0d0d12;
+      color: #fff;
+      outline: none;
     }
 
     textarea {
@@ -69,13 +74,20 @@
       resize: vertical;
     }
 
+    .counter {
+      text-align: right;
+      color: #888;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
     .preview {
       width: 100%;
-      max-height: 420px;
+      max-height: 430px;
       object-fit: contain;
-      margin-top: 15px;
       border-radius: 14px;
-      background: #08080b;
+      margin-top: 15px;
+      background: #050507;
       display: none;
     }
 
@@ -83,9 +95,10 @@
       color: #999;
       font-size: 13px;
       margin-top: 8px;
+      line-height: 1.5;
     }
 
-    .row {
+    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
@@ -93,47 +106,20 @@
 
     button {
       width: 100%;
-      border: 0;
-      border-radius: 13px;
       padding: 15px;
+      border: none;
+      border-radius: 13px;
       margin-top: 18px;
       background: #fff;
       color: #000;
-      font-weight: bold;
       font-size: 15px;
+      font-weight: bold;
       cursor: pointer;
     }
 
     button:disabled {
       opacity: .5;
       cursor: not-allowed;
-    }
-
-    .status {
-      padding: 14px;
-      border-radius: 12px;
-      background: #0d0d12;
-      color: #aaa;
-      min-height: 45px;
-    }
-
-    video {
-      width: 100%;
-      border-radius: 15px;
-      background: #000;
-      margin-top: 10px;
-    }
-
-    .download {
-      display: block;
-      text-align: center;
-      text-decoration: none;
-      background: #fff;
-      color: #000;
-      padding: 14px;
-      border-radius: 12px;
-      margin-top: 12px;
-      font-weight: bold;
     }
 
     .connection {
@@ -147,7 +133,45 @@
     .connection button {
       width: auto;
       margin: 0;
-      padding: 10px 16px;
+      padding: 10px 15px;
+    }
+
+    .status {
+      background: #0d0d12;
+      border-radius: 12px;
+      padding: 14px;
+      color: #aaa;
+      min-height: 45px;
+      line-height: 1.5;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 15px;
+      margin-top: 10px;
+      background: #000;
+      display: none;
+    }
+
+    .download {
+      display: none;
+      text-align: center;
+      text-decoration: none;
+      background: #fff;
+      color: #000;
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    .native-output {
+      padding: 12px;
+      border-radius: 12px;
+      background: #0d0d12;
+      color: #aaa;
+      font-size: 13px;
+      margin-top: 15px;
     }
 
     @media (max-width: 600px) {
@@ -155,7 +179,7 @@
         margin: 25px auto;
       }
 
-      .row {
+      .grid {
         grid-template-columns: 1fr;
       }
     }
@@ -173,26 +197,44 @@
   </div>
 
   <!-- CONNECTION -->
+
   <div class="card">
+
     <div class="connection">
+
       <div>
         <strong>Pollinations</strong>
-        <div id="connectionStatus" class="info">
+
+        <div
+          id="connectionStatus"
+          class="info"
+        >
           Belum terhubung
         </div>
       </div>
 
-      <button id="connectPolli" type="button">
+      <button
+        id="connectPolli"
+        type="button"
+      >
         Hubungkan
       </button>
 
-      <button id="disconnectPolli" type="button" style="display:none;">
+      <button
+        id="disconnectPolli"
+        type="button"
+        style="display:none;"
+      >
         Putuskan
       </button>
+
     </div>
+
   </div>
 
+
   <!-- CHARACTER -->
+
   <div class="card">
 
     <h2>1. Character Reference</h2>
@@ -207,89 +249,142 @@
       accept="image/jpeg,image/png,image/webp"
     >
 
-    <div id="characterInfo" class="info">
-      Pilih foto karakter sebagai referensi.
+    <div
+      id="characterInfo"
+      class="info"
+    >
+      JPG, PNG, atau WEBP. Maksimal 20 MB.
     </div>
 
     <img
       id="characterPreview"
       class="preview"
-      alt="Character Preview"
+      alt="Character Reference"
     >
 
   </div>
 
+
   <!-- PROMPT -->
+
   <div class="card">
 
     <h2>2. Video Prompt</h2>
 
-    <label for="prompt">
-      Deskripsi Video
-    </label>
-
     <textarea
       id="prompt"
-      placeholder="Contoh: Karakter berjalan perlahan menuju kamera sambil tersenyum natural. Kamera mengikuti gerakannya secara halus..."
+      maxlength="512"
+      placeholder="Contoh: Karakter berjalan perlahan menuju kamera sambil tersenyum tipis."
     ></textarea>
 
-    <div class="info">
-      Jelaskan gerakan karakter, ekspresi, kamera, lokasi, pencahayaan,
-      dan suasana video.
+    <div
+      id="promptCounter"
+      class="counter"
+    >
+      0 / 512
     </div>
 
   </div>
 
+
   <!-- SETTINGS -->
+
   <div class="card">
 
-    <h2>3. Pengaturan Video</h2>
+    <h2>3. Video Settings</h2>
 
-    <div class="row">
+    <div class="grid">
 
       <div>
+
         <label for="duration">
           Durasi
         </label>
 
         <select id="duration">
-          <option value="5">5 detik</option>
-          <option value="10">10 detik</option>
+
+          <option value="6">
+            6 detik
+          </option>
+
         </select>
+
       </div>
 
+
       <div>
+
         <label for="aspect">
           Aspect Ratio
         </label>
 
         <select id="aspect">
-          <option value="16:9">16:9</option>
-          <option value="9:16">9:16</option>
-          <option value="1:1">1:1</option>
+
+          <option value="16:9">
+            16:9 Native
+          </option>
+
+          <option value="9:16">
+            9:16 Portrait
+          </option>
+
+          <option value="1:1">
+            1:1 Square
+          </option>
+
         </select>
+
       </div>
 
     </div>
 
-    <button id="videoBtn" type="button">
+
+    <label for="seed">
+      Seed
+    </label>
+
+    <input
+      id="seed"
+      type="number"
+      min="0"
+      max="2147483646"
+      placeholder="Kosongkan untuk random"
+    >
+
+    <div class="native-output">
+      Nova Reel Native Output:
+      <strong>1280 × 720 • 24 FPS • 16:9</strong>
+    </div>
+
+
+    <button
+      id="videoBtn"
+      type="button"
+    >
       GENERATE VIDEO
     </button>
 
   </div>
 
+
   <!-- STATUS -->
+
   <div class="card">
 
     <h2>Status</h2>
 
-    <div id="status" class="status">
+    <div
+      id="status"
+      class="status"
+    >
       Siap digunakan.
     </div>
 
   </div>
 
+
   <!-- RESULT -->
+
   <div class="card">
 
     <h2>Hasil Video</h2>
@@ -298,13 +393,11 @@
       id="videoPreview"
       controls
       playsinline
-      style="display:none;"
     ></video>
 
     <a
       id="download"
       class="download"
-      style="display:none;"
       download="gen-z-ai-video.mp4"
     >
       Download Video
@@ -314,9 +407,35 @@
 
 </div>
 
+
 <script src="/js/config.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/video-engine.js"></script>
+
+<script>
+
+  const promptInput =
+    document.getElementById("prompt");
+
+  const promptCounter =
+    document.getElementById("promptCounter");
+
+  if (promptInput && promptCounter) {
+
+    promptInput.addEventListener(
+      "input",
+      function () {
+
+        promptCounter.textContent =
+          promptInput.value.length +
+          " / 512";
+
+      }
+    );
+
+  }
+
+</script>
 
 </body>
 </html>
