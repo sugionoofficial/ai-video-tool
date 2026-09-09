@@ -1,7 +1,7 @@
 "use strict";
 
 /* =========================================================
-   GEN-Z.AI APP
+   GEN-Z.AI
    Character Reference → AI Video
 ========================================================= */
 
@@ -9,12 +9,14 @@ const state = {
   provider: "veo",
   imageData: null,
   generating: false,
-  pollTimer: null
+  pollTimer: null,
+  pollAttempts: 0,
+  pollMaxAttempts: 120
 };
 
 
 /* =========================================================
-   PROVIDER DATABASE
+   PROVIDERS
 ========================================================= */
 
 const PROVIDERS = {
@@ -22,8 +24,7 @@ const PROVIDERS = {
   pollinations: {
     name: "Pollinations",
     badge: "AI Video",
-    description:
-      "Generate video melalui ekosistem Pollinations.",
+    description: "Pollinations video generation.",
     models: [
       {
         id: "seedance-2.5",
@@ -35,7 +36,8 @@ const PROVIDERS = {
     resolutions: [],
     imageToVideo: true,
     audio: false,
-    status: "Tersedia"
+    active: false,
+    status: "Backend belum diaktifkan"
   },
 
 
@@ -43,14 +45,15 @@ const PROVIDERS = {
     name: "fal.ai",
     badge: "AI Models",
     description:
-      "Platform inference dengan berbagai model video generatif.",
+      "Video generation melalui berbagai model fal.ai.",
     models: [],
     durations: [5, 10],
     aspects: ["16:9", "9:16"],
     resolutions: [],
     imageToVideo: true,
     audio: false,
-    status: "Konfigurasi model diperlukan"
+    active: false,
+    status: "Backend belum dikonfigurasi"
   },
 
 
@@ -58,14 +61,15 @@ const PROVIDERS = {
     name: "Runway",
     badge: "Gen Video",
     description:
-      "Video generation menggunakan model generatif Runway.",
+      "Video generation menggunakan model Runway.",
     models: [],
     durations: [5, 10],
     aspects: ["16:9", "9:16"],
     resolutions: [],
     imageToVideo: true,
     audio: false,
-    status: "Konfigurasi model diperlukan"
+    active: false,
+    status: "Backend belum dikonfigurasi"
   },
 
 
@@ -73,7 +77,8 @@ const PROVIDERS = {
     name: "Google Veo",
     badge: "Veo 3.1",
     description:
-      "Google Veo 3.1 untuk image-to-video dan video generatif dengan kualitas tinggi.",
+      "Google Veo 3.1 untuk text-to-video dan image-to-video.",
+
     models: [
       {
         id: "veo-3.1-fast-generate-preview",
@@ -88,15 +93,23 @@ const PROVIDERS = {
         name: "Veo 3.1 Lite"
       }
     ],
+
     durations: [4, 6, 8],
-    aspects: ["16:9", "9:16"],
+
+    aspects: [
+      "16:9",
+      "9:16"
+    ],
+
     resolutions: [
       "720p",
       "1080p",
       "4k"
     ],
+
     imageToVideo: true,
     audio: true,
+    active: true,
     status: "Siap"
   },
 
@@ -105,7 +118,8 @@ const PROVIDERS = {
     name: "Luma",
     badge: "Dream Machine",
     description:
-      "Luma Dream Machine untuk pembuatan video generatif.",
+      "Luma Dream Machine untuk text-to-video.",
+
     models: [
       {
         id: "ray-flash-2",
@@ -116,7 +130,9 @@ const PROVIDERS = {
         name: "Ray 2"
       }
     ],
+
     durations: [5, 9],
+
     aspects: [
       "16:9",
       "9:16",
@@ -124,9 +140,12 @@ const PROVIDERS = {
       "4:3",
       "3:4"
     ],
+
     resolutions: [],
+
     imageToVideo: false,
     audio: false,
+    active: true,
     status: "Text-to-video"
   },
 
@@ -135,7 +154,8 @@ const PROVIDERS = {
     name: "MiniMax",
     badge: "Hailuo",
     description:
-      "MiniMax Hailuo untuk image-to-video dengan karakter reference.",
+      "MiniMax Hailuo untuk text-to-video dan image-to-video.",
+
     models: [
       {
         id: "MiniMax-Hailuo-2.3",
@@ -150,14 +170,22 @@ const PROVIDERS = {
         name: "Hailuo 02"
       }
     ],
+
     durations: [6, 10],
-    aspects: ["16:9", "9:16"],
+
+    aspects: [
+      "16:9",
+      "9:16"
+    ],
+
     resolutions: [
       "768P",
       "1080P"
     ],
+
     imageToVideo: true,
     audio: false,
+    active: true,
     status: "Siap"
   }
 
@@ -273,11 +301,8 @@ document.addEventListener(
   () => {
 
     setupProviders();
-
     setupCharacter();
-
     setupPrompt();
-
     setupGenerate();
 
     selectProvider("veo");
@@ -292,23 +317,25 @@ document.addEventListener(
 
 function setupProviders() {
 
-  providerButtons.forEach(button => {
+  providerButtons.forEach(
+    button => {
 
-    button.addEventListener(
-      "click",
-      () => {
+      button.addEventListener(
+        "click",
+        () => {
 
-        const provider =
-          button.dataset.provider;
+          const provider =
+            button.dataset.provider;
 
-        selectProvider(
-          provider
-        );
+          selectProvider(
+            provider
+          );
 
-      }
-    );
+        }
+      );
 
-  });
+    }
+  );
 
 }
 
@@ -321,18 +348,18 @@ function selectProvider(
   provider
 ) {
 
-  if (!PROVIDERS[provider]) {
+  const config =
+    PROVIDERS[provider];
+
+  if (!config) {
     return;
   }
 
   state.provider =
     provider;
 
-  const config =
-    PROVIDERS[provider];
+  stopPolling();
 
-
-  /* Active button */
 
   providerButtons.forEach(
     button => {
@@ -346,8 +373,6 @@ function selectProvider(
     }
   );
 
-
-  /* Header */
 
   if (providerName) {
     providerName.textContent =
@@ -365,14 +390,9 @@ function selectProvider(
   }
 
 
-  /* Model */
-
   renderModels(
     config.models
   );
-
-
-  /* Duration */
 
   renderOptions(
     durationSelect,
@@ -381,9 +401,6 @@ function selectProvider(
       `${value} detik`
   );
 
-
-  /* Aspect */
-
   renderOptions(
     aspectSelect,
     config.aspects,
@@ -391,23 +408,21 @@ function selectProvider(
       value
   );
 
-
-  /* Resolution */
-
   renderResolutions(
     config.resolutions
   );
-
 
   renderCapabilities(
     config
   );
 
+  updateProviderControls();
+
 }
 
 
 /* =========================================================
-   MODELS
+   MODEL SELECT
 ========================================================= */
 
 function renderModels(
@@ -465,7 +480,7 @@ function renderModels(
 
 
 /* =========================================================
-   OPTIONS
+   GENERIC OPTIONS
 ========================================================= */
 
 function renderOptions(
@@ -505,7 +520,7 @@ function renderOptions(
 
 
 /* =========================================================
-   RESOLUTION
+   RESOLUTIONS
 ========================================================= */
 
 function renderResolutions(
@@ -563,7 +578,7 @@ function renderResolutions(
 
 
 /* =========================================================
-   CAPABILITIES
+   PROVIDER CAPABILITIES
 ========================================================= */
 
 function renderCapabilities(
@@ -611,15 +626,26 @@ function renderCapabilities(
     );
   }
 
+
   config.aspects.forEach(
     aspect => {
-      items.push(aspect);
+
+      items.push(
+        aspect
+      );
+
     }
   );
 
 
-  if (config.resolutions.includes("4k")) {
-    items.push("4K");
+  if (
+    config.resolutions.includes(
+      "4k"
+    )
+  ) {
+    items.push(
+      "4K"
+    );
   }
 
 
@@ -629,18 +655,119 @@ function renderCapabilities(
 
 
   capabilities.innerHTML =
-    items.map(
-      item =>
-        `<span class="capability">
-          ${escapeHtml(item)}
-        </span>`
-    ).join("");
+    items
+      .map(
+        item =>
+          `<span class="capability">${escapeHtml(item)}</span>`
+      )
+      .join("");
 
 }
 
 
 /* =========================================================
-   CHARACTER
+   MODEL-SPECIFIC CONTROLS
+========================================================= */
+
+function updateProviderControls() {
+
+  const provider =
+    state.provider;
+
+  const model =
+    modelSelect?.value || "";
+
+  if (
+    provider !== "veo"
+  ) {
+    return;
+  }
+
+
+  const duration =
+    durationSelect?.value || "8";
+
+  const resolution =
+    resolutionSelect?.value || "720p";
+
+
+  /*
+   * Veo:
+   *
+   * 720p:
+   * 4 / 6 / 8 sec
+   *
+   * 1080p:
+   * 8 sec
+   *
+   * 4K:
+   * 8 sec
+   *
+   * Character Reference:
+   * 8 sec
+   */
+
+
+  if (
+    resolution === "1080p" ||
+    resolution === "4k"
+  ) {
+
+    if (
+      durationSelect &&
+      duration !== "8"
+    ) {
+
+      durationSelect.value =
+        "8";
+
+    }
+
+  }
+
+
+  /*
+   * Veo Lite tidak mendukung 4K.
+   */
+
+  if (
+    model ===
+    "veo-3.1-lite-generate-preview"
+  ) {
+
+    if (
+      resolutionSelect &&
+      resolutionSelect.value === "4k"
+    ) {
+
+      resolutionSelect.value =
+        "1080p";
+
+    }
+
+  }
+
+
+  /*
+   * Jika Character Reference
+   * digunakan, durasi harus 8 detik.
+   */
+
+  if (
+    state.imageData &&
+    durationSelect
+  ) {
+
+    durationSelect.value =
+      "8";
+
+  }
+
+}
+
+
+/* =========================================================
+   CHARACTER UPLOAD
 ========================================================= */
 
 function setupCharacter() {
@@ -672,6 +799,9 @@ function setupCharacter() {
           "error"
         );
 
+        characterFile.value =
+          "";
+
         return;
       }
 
@@ -685,6 +815,9 @@ function setupCharacter() {
           "Ukuran gambar maksimal 10 MB.",
           "error"
         );
+
+        characterFile.value =
+          "";
 
         return;
       }
@@ -701,7 +834,9 @@ function setupCharacter() {
             event.target.result;
 
 
-          if (characterPreview) {
+          if (
+            characterPreview
+          ) {
 
             characterPreview.src =
               state.imageData;
@@ -712,12 +847,36 @@ function setupCharacter() {
           }
 
 
-          if (characterInfo) {
+          if (
+            characterInfo
+          ) {
 
             characterInfo.textContent =
               `${file.name} • ${formatBytes(file.size)}`;
 
           }
+
+
+          updateProviderControls();
+
+          setStatus(
+            "Character Reference siap.",
+            "success"
+          );
+
+        };
+
+
+      reader.onerror =
+        () => {
+
+          state.imageData =
+            null;
+
+          setStatus(
+            "Gagal membaca gambar.",
+            "error"
+          );
 
         };
 
@@ -728,6 +887,36 @@ function setupCharacter() {
 
     }
   );
+
+}
+
+
+/* =========================================================
+   CLEAR CHARACTER
+========================================================= */
+
+function clearCharacter() {
+
+  state.imageData =
+    null;
+
+  if (characterFile) {
+    characterFile.value =
+      "";
+  }
+
+  if (characterPreview) {
+    characterPreview.src =
+      "";
+
+    characterPreview.style.display =
+      "none";
+  }
+
+  if (characterInfo) {
+    characterInfo.textContent =
+      "Belum ada karakter.";
+  }
 
 }
 
@@ -748,7 +937,7 @@ function setupPrompt() {
       if (promptCounter) {
 
         promptCounter.textContent =
-          `${promptInput.value.length}/512`;
+          `${promptInput.value.length}/2000`;
 
       }
 
@@ -760,14 +949,45 @@ function setupPrompt() {
     update
   );
 
-
   update();
 
 }
 
 
 /* =========================================================
-   GENERATE
+   MODEL / DURATION / RESOLUTION EVENTS
+========================================================= */
+
+if (modelSelect) {
+
+  modelSelect.addEventListener(
+    "change",
+    updateProviderControls
+  );
+
+}
+
+if (durationSelect) {
+
+  durationSelect.addEventListener(
+    "change",
+    updateProviderControls
+  );
+
+}
+
+if (resolutionSelect) {
+
+  resolutionSelect.addEventListener(
+    "change",
+    updateProviderControls
+  );
+
+}
+
+
+/* =========================================================
+   GENERATE BUTTON
 ========================================================= */
 
 function setupGenerate() {
@@ -784,6 +1004,10 @@ function setupGenerate() {
 }
 
 
+/* =========================================================
+   GENERATE VIDEO
+========================================================= */
+
 async function generateVideo() {
 
   if (state.generating) {
@@ -791,8 +1015,27 @@ async function generateVideo() {
   }
 
 
+  const config =
+    PROVIDERS[state.provider];
+
+  if (!config) {
+    return;
+  }
+
+
+  if (!config.active) {
+
+    setStatus(
+      `${config.name} belum diaktifkan di backend.`,
+      "error"
+    );
+
+    return;
+  }
+
+
   const prompt =
-    promptInput?.value.trim();
+    promptInput?.value.trim() || "";
 
 
   if (!prompt) {
@@ -802,22 +1045,30 @@ async function generateVideo() {
       "error"
     );
 
+    promptInput?.focus();
+
     return;
   }
 
 
-  const config =
-    PROVIDERS[state.provider];
+  if (
+    prompt.length >
+    2000
+  ) {
 
+    setStatus(
+      "Prompt maksimal 2000 karakter.",
+      "error"
+    );
 
-  if (!config) {
     return;
   }
 
 
   /*
-   * Luma saat ini tidak menerima
-   * imageData lokal melalui jalur ini.
+   * Luma belum menerima
+   * local Data URL sebagai
+   * Character Reference.
    */
 
   if (
@@ -826,12 +1077,114 @@ async function generateVideo() {
   ) {
 
     setStatus(
-      "Luma image-to-video membutuhkan URL gambar publik. Tanpa storage/CDN publik, gunakan Veo atau MiniMax untuk Character Reference.",
+      "Luma saat ini digunakan untuk Text-to-Video. Untuk Character Reference gunakan Veo atau MiniMax.",
       "error"
     );
 
     return;
   }
+
+
+  updateProviderControls();
+
+
+  const duration =
+    Number(
+      durationSelect?.value ||
+      8
+    );
+
+  const aspectRatio =
+    aspectSelect?.value ||
+    "16:9";
+
+  const model =
+    modelSelect?.value ||
+    "";
+
+  const resolution =
+    resolutionSelect?.value ||
+    "";
+
+
+  /*
+   * VALIDASI VEO
+   */
+
+  if (
+    state.provider === "veo"
+  ) {
+
+    if (
+      ![4, 6, 8].includes(
+        duration
+      )
+    ) {
+
+      setStatus(
+        "Durasi Veo harus 4, 6, atau 8 detik.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    if (
+      state.imageData &&
+      duration !== 8
+    ) {
+
+      setStatus(
+        "Character Reference Veo membutuhkan 8 detik.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    if (
+      (
+        resolution === "1080p" ||
+        resolution === "4k"
+      ) &&
+      duration !== 8
+    ) {
+
+      setStatus(
+        `${resolution} pada Veo membutuhkan 8 detik.`,
+        "error"
+      );
+
+      return;
+    }
+
+
+    if (
+      model ===
+        "veo-3.1-lite-generate-preview" &&
+      resolution === "4k"
+    ) {
+
+      setStatus(
+        "Veo 3.1 Lite tidak mendukung 4K.",
+        "error"
+      );
+
+      return;
+    }
+
+  }
+
+
+  /*
+   * Bersihkan hasil sebelumnya.
+   */
+
+  stopPolling();
+
+  clearVideoResult();
 
 
   state.generating =
@@ -859,27 +1212,17 @@ async function generateVideo() {
       imageData:
         state.imageData,
 
-      duration:
-        Number(
-          durationSelect?.value ||
-          6
-        ),
+      duration,
 
-      aspectRatio:
-        aspectSelect?.value ||
-        "16:9",
+      aspectRatio,
 
       seed:
         seedInput?.value ||
         "",
 
-      model:
-        modelSelect?.value ||
-        "",
+      model,
 
-      resolution:
-        resolutionSelect?.value ||
-        ""
+      resolution
 
     };
 
@@ -896,13 +1239,17 @@ async function generateVideo() {
           },
 
           body:
-            JSON.stringify(body)
+            JSON.stringify(
+              body
+            )
         }
       );
 
 
     const data =
-      await response.json();
+      await parseJsonResponse(
+        response
+      );
 
 
     if (
@@ -912,66 +1259,77 @@ async function generateVideo() {
 
       throw new Error(
         data.error ||
-        "Generate gagal."
+        `Generate gagal (${response.status}).`
       );
 
     }
 
 
-    setStatus(
-      data.message ||
-      `${config.name} sedang membuat video...`,
-      "loading"
-    );
+    /*
+     * Beberapa backend
+     * mengembalikan:
+     *
+     * operationName
+     * id
+     * taskId
+     *
+     * Kita dukung semuanya.
+     */
 
-
-    const id =
+    const operationId =
       data.operationName ||
+      data.id ||
       data.taskId ||
-      data.generationId;
+      data.task_id;
 
 
     if (
-      data.status ===
-        "completed" &&
-      data.videoUrl
+      data.videoUrl ||
+      data.video_url
     ) {
 
-      showVideo(
-        data.videoUrl
+      showVideoResult(
+        data.videoUrl ||
+        data.video_url
       );
+
+      finishGeneration();
 
       return;
     }
 
 
-    if (!id) {
+    if (!operationId) {
 
       throw new Error(
-        "ID proses video tidak ditemukan."
+        "Server tidak mengembalikan ID proses video."
       );
 
     }
 
 
-    pollStatus(
-      state.provider,
-      id
-    );
+    state.pollAttempts =
+      0;
 
+    startPolling(
+      state.provider,
+      operationId
+    );
 
   } catch (error) {
 
-    state.generating =
-      false;
-
-    videoButton.disabled =
-      false;
+    console.error(
+      "GEN-Z.AI:",
+      error
+    );
 
     setStatus(
-      error.message,
+      error?.message ||
+        "Gagal membuat video.",
       "error"
     );
+
+    finishGeneration();
 
   }
 
@@ -982,146 +1340,271 @@ async function generateVideo() {
    POLLING
 ========================================================= */
 
-function pollStatus(
+function startPolling(
   provider,
-  id
+  operationId
 ) {
 
-  clearTimeout(
-    state.pollTimer
+  stopPolling();
+
+  state.pollAttempts =
+    0;
+
+
+  setStatus(
+    `Video sedang dibuat oleh ${PROVIDERS[provider]?.name || provider}...`,
+    "loading"
   );
 
 
-  let attempts = 0;
+  const poll =
+    async () => {
 
-  const maxAttempts = 180;
-
-
-  async function check() {
-
-    attempts++;
-
-
-    try {
-
-      const response =
-        await fetch(
-          `/api/generate?provider=${encodeURIComponent(provider)}&id=${encodeURIComponent(id)}`
-        );
-
-
-      const data =
-        await response.json();
+      state.pollAttempts++;
 
 
       if (
-        !response.ok ||
-        !data.success
+        state.pollAttempts >
+        state.pollMaxAttempts
       ) {
 
-        throw new Error(
-          data.error ||
-          "Gagal membaca status."
+        stopPolling();
+
+        setStatus(
+          "Proses video terlalu lama. Silakan coba lagi.",
+          "error"
         );
 
-      }
-
-
-      if (
-        data.status ===
-        "completed"
-      ) {
-
-        showVideo(
-          data.videoUrl
-        );
+        finishGeneration();
 
         return;
-
       }
 
 
-      if (
-        data.status ===
-        "failed"
-      ) {
+      try {
 
-        throw new Error(
-          data.error ||
-          "Video gagal dibuat."
+        const url =
+          `/api/generate?provider=${encodeURIComponent(
+            provider
+          )}&id=${encodeURIComponent(
+            operationId
+          )}&operationName=${encodeURIComponent(
+            operationId
+          )}&taskId=${encodeURIComponent(
+            operationId
+          )}`;
+
+
+        const response =
+          await fetch(
+            url,
+            {
+              method: "GET",
+              cache: "no-store"
+            }
+          );
+
+
+        const data =
+          await parseJsonResponse(
+            response
+          );
+
+
+        if (
+          !response.ok ||
+          data.success === false
+        ) {
+
+          throw new Error(
+            data.error ||
+            `Polling gagal (${response.status}).`
+          );
+
+        }
+
+
+        /*
+         * Selesai
+         */
+
+        if (
+          data.videoUrl ||
+          data.video_url
+        ) {
+
+          stopPolling();
+
+          showVideoResult(
+            data.videoUrl ||
+            data.video_url
+          );
+
+          setStatus(
+            "Video berhasil dibuat.",
+            "success"
+          );
+
+          finishGeneration();
+
+          return;
+        }
+
+
+        if (
+          data.status ===
+            "completed" ||
+          data.status ===
+            "success"
+        ) {
+
+          if (
+            data.url ||
+            data.video
+          ) {
+
+            stopPolling();
+
+            showVideoResult(
+              data.url ||
+              data.video
+            );
+
+            setStatus(
+              "Video berhasil dibuat.",
+              "success"
+            );
+
+            finishGeneration();
+
+            return;
+          }
+
+        }
+
+
+        /*
+         * Gagal
+         */
+
+        if (
+          data.status ===
+            "failed" ||
+          data.status ===
+            "error"
+        ) {
+
+          throw new Error(
+            data.error ||
+            "Provider gagal membuat video."
+          );
+
+        }
+
+
+        /*
+         * Masih proses.
+         */
+
+        const progressText =
+          data.message ||
+          data.status ||
+          "Processing";
+
+        setStatus(
+          `${progressText} • percobaan ${state.pollAttempts}/${state.pollMaxAttempts}`,
+          "loading"
         );
+
+
+        state.pollTimer =
+          setTimeout(
+            poll,
+            5000
+          );
+
+      } catch (error) {
+
+        console.error(
+          "Polling:",
+          error
+        );
+
+        stopPolling();
+
+        setStatus(
+          error?.message ||
+            "Gagal memeriksa status video.",
+          "error"
+        );
+
+        finishGeneration();
 
       }
 
-
-      setStatus(
-        `Membuat video... ${attempts}`,
-        "loading"
-      );
+    };
 
 
-      if (
-        attempts >= maxAttempts
-      ) {
-
-        throw new Error(
-          "Proses video terlalu lama."
-        );
-
-      }
-
-
-      state.pollTimer =
-        setTimeout(
-          check,
-          5000
-        );
-
-
-    } catch (error) {
-
-      state.generating =
-        false;
-
-      videoButton.disabled =
-        false;
-
-      setStatus(
-        error.message,
-        "error"
-      );
-
-    }
-
-  }
-
-
-  check();
+  poll();
 
 }
 
 
 /* =========================================================
-   SHOW VIDEO
+   STOP POLLING
 ========================================================= */
 
-function showVideo(
+function stopPolling() {
+
+  if (
+    state.pollTimer
+  ) {
+
+    clearTimeout(
+      state.pollTimer
+    );
+
+    state.pollTimer =
+      null;
+
+  }
+
+}
+
+
+/* =========================================================
+   VIDEO RESULT
+========================================================= */
+
+function showVideoResult(
   videoUrl
 ) {
 
   if (!videoUrl) {
-
-    throw new Error(
-      "URL video tidak ditemukan."
-    );
-
+    return;
   }
+
+
+  const absoluteUrl =
+    new URL(
+      videoUrl,
+      window.location.origin
+    ).href;
 
 
   if (videoElement) {
 
     videoElement.src =
-      videoUrl;
+      absoluteUrl;
+
+    videoElement.controls =
+      true;
+
+    videoElement.autoplay =
+      false;
+
+    videoElement.playsInline =
+      true;
 
     videoElement.style.display =
       "block";
@@ -1134,28 +1617,71 @@ function showVideo(
   if (downloadElement) {
 
     downloadElement.href =
-      videoUrl;
+      absoluteUrl;
 
     downloadElement.download =
-      `gen-z-ai-${Date.now()}.mp4`;
+      `genz-ai-${Date.now()}.mp4`;
 
     downloadElement.style.display =
-      "block";
+      "inline-flex";
+
+    downloadElement.textContent =
+      "Download Video";
+
+  }
+
+}
+
+
+/* =========================================================
+   CLEAR VIDEO
+========================================================= */
+
+function clearVideoResult() {
+
+  if (videoElement) {
+
+    videoElement.pause();
+
+    videoElement.removeAttribute(
+      "src"
+    );
+
+    videoElement.load();
+
+    videoElement.style.display =
+      "none";
 
   }
 
 
+  if (downloadElement) {
+
+    downloadElement.removeAttribute(
+      "href"
+    );
+
+    downloadElement.style.display =
+      "none";
+
+  }
+
+}
+
+
+/* =========================================================
+   FINISH GENERATION
+========================================================= */
+
+function finishGeneration() {
+
   state.generating =
     false;
 
-  videoButton.disabled =
-    false;
-
-
-  setStatus(
-    "Video berhasil dibuat.",
-    "success"
-  );
+  if (videoButton) {
+    videoButton.disabled =
+      false;
+  }
 
 }
 
@@ -1177,24 +1703,73 @@ function setStatus(
     message;
 
   statusElement.className =
-    type
-      ? `status ${type}`
-      : "status";
+    "status";
+
+  if (type) {
+
+    statusElement.classList.add(
+      type
+    );
+
+  }
 
 }
 
 
 /* =========================================================
-   HELPERS
+   JSON RESPONSE
+========================================================= */
+
+async function parseJsonResponse(
+  response
+) {
+
+  const text =
+    await response.text();
+
+
+  if (!text) {
+
+    return {
+      success:
+        response.ok
+    };
+
+  }
+
+
+  try {
+
+    return JSON.parse(
+      text
+    );
+
+  } catch {
+
+    throw new Error(
+      `Server mengembalikan response yang bukan JSON (${response.status}).`
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   FORMAT BYTES
 ========================================================= */
 
 function formatBytes(
   bytes
 ) {
 
-  if (!bytes) {
+  if (
+    !Number.isFinite(bytes) ||
+    bytes <= 0
+  ) {
     return "0 B";
   }
+
 
   const units = [
     "B",
@@ -1204,29 +1779,41 @@ function formatBytes(
   ];
 
   const index =
-    Math.floor(
-      Math.log(bytes) /
-      Math.log(1024)
+    Math.min(
+      Math.floor(
+        Math.log(bytes) /
+          Math.log(1024)
+      ),
+      units.length - 1
     );
 
-  return (
+
+  const value =
     bytes /
     Math.pow(
       1024,
       index
-    )
-  ).toFixed(1)
-    + " " +
-    units[index];
+    );
+
+
+  return `${value.toFixed(
+    index === 0 ? 0 : 2
+  )} ${units[index]}`;
 
 }
 
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
 
 function escapeHtml(
   value
 ) {
 
-  return String(value)
+  return String(
+    value
+  )
     .replaceAll(
       "&",
       "&amp;"
