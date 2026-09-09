@@ -1,446 +1,440 @@
-"use strict";
+(function () {
+  "use strict";
 
-(() => {
+  const C = window.AIVideoConfig || {};
 
-  const C =
-    window.AIVideoConfig;
-
-  const $ =
-    id => document.getElementById(id);
-
-
-  async function uploadImage(
-    blob,
-    token
-  ) {
-
-    const form =
-      new FormData();
-
-
-    form.append(
-      "file",
-      blob,
-      "reference-image.png"
-    );
-
-
-    const response =
-      await fetch(
-        C.UPLOAD_API,
-        {
-          method:
-            "POST",
-
-          headers: {
-            Authorization:
-              "Bearer " +
-              token
-          },
-
-          body:
-            form
-        }
-      );
-
-
-    const text =
-      await response.text()
-        .catch(() => "");
-
-
-    let data =
-      {};
-
-
-    try {
-      data =
-        JSON.parse(text);
-    } catch (_) {}
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        "Upload gambar gagal: HTTP " +
-        response.status +
-        (
-          text
-            ? " - " +
-              text.slice(0, 500)
-            : ""
-        )
-      );
-
+  function getToken() {
+    if (typeof window.getPollinationsToken === "function") {
+      return window.getPollinationsToken();
     }
-
-
-    const url =
-      data.url ||
-      data.publicUrl ||
-      data.imageUrl ||
-      data.data?.url ||
-      data.data?.publicUrl ||
-      data.data?.imageUrl;
-
-
-    if (
-      !url ||
-      !/^https?:\/\//i.test(url)
-    ) {
-
-      throw new Error(
-        "URL gambar publik HTTPS tidak ditemukan."
-      );
-
-    }
-
-
-    return url;
-
-  }
-
-
-  function getPrompt() {
-
-    const base =
-      ($("prompt")?.value || "")
-        .trim();
-
 
     return (
-
-      base +
-
-      ". Animate the reference image with clear continuous natural motion. " +
-
-      "Preserve the exact subject, identity, appearance, anatomy, colors, " +
-
-      "clothing or fur, background and environment. " +
-
-      "The subject must visibly move throughout the video. " +
-
-      "Natural realistic physical motion and consistent subject. " +
-
-      "Do not freeze, morph, warp, duplicate or replace the subject. " +
-
-      "No new subjects. No text, logo or watermark."
-
-    ).trim();
-
+      localStorage.getItem(C.TOKEN_KEY || "polli_access_token") ||
+      sessionStorage.getItem(C.TOKEN_KEY || "polli_access_token")
+    );
   }
 
+  function setStatus(message) {
+    const el = document.getElementById("status");
+
+    if (el) {
+      el.textContent = message;
+    }
+
+    if (typeof window.setAIStatus === "function") {
+      window.setAIStatus(message);
+    }
+  }
+
+  function getPrompt() {
+    return document.getElementById("prompt")?.value.trim() || "";
+  }
+
+  function getCharacterFile() {
+    return document.getElementById("characterFile")?.files?.[0] || null;
+  }
+
+  function validateImage(file) {
+    if (!file) {
+      throw new Error("Silakan upload foto karakter terlebih dahulu.");
+    }
+
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ];
+
+    if (!allowed.includes(file.type)) {
+      throw new Error(
+        "Format foto harus JPG, PNG, atau WEBP."
+      );
+    }
+
+    const maxSize = 20 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      throw new Error(
+        "Ukuran foto maksimal 20 MB."
+      );
+    }
+  }
+
+  async function uploadCharacter(file, token) {
+
+    setStatus("Mengunggah foto karakter...");
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      file,
+      file.name || "character-reference.jpg"
+    );
+
+    const response = await fetch(
+      C.UPLOAD_API,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token
+        },
+        body: formData
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+
+      throw new Error(
+        "Upload karakter gagal: HTTP " +
+        response.status +
+        " " +
+        text
+      );
+    }
+
+    const data = await response.json();
+
+    const imageURL =
+      data.url ||
+      data.imageUrl ||
+      data.image_url ||
+      data.location;
+
+    if (!imageURL) {
+      throw new Error(
+        "Server upload tidak mengembalikan URL gambar."
+      );
+    }
+
+    return imageURL;
+  }
+
+  function buildPrompt(userPrompt) {
+
+    return `
+Use the uploaded character reference image as the primary identity reference.
+
+Preserve the character's identity, facial structure, hairstyle,
+skin tone, body proportions, and overall appearance consistently
+throughout the entire video.
+
+Do not replace the character.
+Do not create another person.
+Do not duplicate the character.
+Do not morph the face.
+Do not change the identity.
+
+Animate the character naturally according to the user's video
+description.
+
+Natural human movement.
+Natural facial expressions.
+Realistic body motion.
+Consistent anatomy.
+Stable character appearance.
+
+User video description:
+${userPrompt}
+`.trim();
+  }
 
   async function generateVideo() {
 
-    const button =
-      $("videoBtn");
-
-    const image =
-      $("imagePreview");
-
-    const video =
-      $("videoPreview");
-
-    const download =
-      $("download");
-
-
-    const token =
-      window.getPollinationsToken();
-
-
-    if (!token) {
-
-      window.setAIStatus(
-        "Token OAuth tidak ditemukan. Hubungkan Pollinations terlebih dahulu.",
-        "err"
-      );
-
-      return;
-
-    }
-
-
-    if (
-      !image ||
-      !image.src ||
-      !image.src.startsWith("blob:")
-    ) {
-
-      window.setAIStatus(
-        "Buat gambar AI terlebih dahulu.",
-        "err"
-      );
-
-      return;
-
-    }
-
-
-    button.disabled =
-      true;
-
+    const button = document.getElementById("videoBtn");
+    const video = document.getElementById("videoPreview");
+    const download = document.getElementById("download");
 
     try {
 
-      window.setAIStatus(
-        "Membaca gambar AI..."
-      );
+      const token = getToken();
 
-
-      const imageResponse =
-        await fetch(
-          image.src
-        );
-
-
-      if (!imageResponse.ok) {
-
+      if (!token) {
         throw new Error(
-          "Gagal membaca gambar AI."
+          "Hubungkan akun Pollinations terlebih dahulu."
         );
-
       }
 
+      const file = getCharacterFile();
 
-      const imageBlob =
-        await imageResponse.blob();
+      validateImage(file);
 
+      const userPrompt = getPrompt();
 
-      window.setAIStatus(
-        "Mengunggah gambar referensi..."
-      );
-
-
-      const imageURL =
-        await uploadImage(
-          imageBlob,
-          token
+      if (!userPrompt) {
+        throw new Error(
+          "Masukkan prompt video terlebih dahulu."
         );
-
+      }
 
       const duration =
-        Number(
-          $("duration").value
-        ) === 10
-          ? 10
-          : 5;
-
+        document.getElementById("duration")?.value || "5";
 
       const aspect =
-        [
-          "16:9",
-          "9:16",
-          "1:1"
-        ].includes(
-          $("aspect").value
-        )
-          ? $("aspect").value
-          : "16:9";
+        document.getElementById("aspect")?.value || "16:9";
 
+      button.disabled = true;
 
-      window.setAIStatus(
-        "Meminta Amazon Nova Reel (" +
-        duration +
-        " detik, " +
-        aspect +
-        ")..."
+      if (video) {
+        video.style.display = "none";
+        video.removeAttribute("src");
+        video.load();
+      }
+
+      if (download) {
+        download.style.display = "none";
+        download.removeAttribute("href");
+      }
+
+      const imageURL =
+        await uploadCharacter(file, token);
+
+      setStatus(
+        "Membuat video dengan Nova Reel..."
       );
 
+      const finalPrompt =
+        buildPrompt(userPrompt);
 
-      const params =
-        new URLSearchParams({
+      const params = new URLSearchParams();
 
-          model:
-            C.VIDEO_MODEL,
+      params.set(
+        "model",
+        C.VIDEO_MODEL || "amazon/nova-reel-v1"
+      );
 
-          duration:
-            String(duration),
+      params.set(
+        "duration",
+        duration
+      );
 
-          aspectRatio:
-            aspect,
+      params.set(
+        "aspectRatio",
+        aspect
+      );
 
-          image:
-            imageURL
+      params.set(
+        "image",
+        imageURL
+      );
 
-        });
-
-
-      const endpoint =
+      const url =
         C.VIDEO_API +
-        encodeURIComponent(
-          getPrompt()
-        ) +
+        encodeURIComponent(finalPrompt) +
         "?" +
         params.toString();
 
-
-      const response =
-        await fetch(
-          endpoint,
-          {
-            headers: {
-              Authorization:
-                "Bearer " +
-                token,
-
-              Accept:
-                "video/mp4"
-            }
+      const response = await fetch(
+        url,
+        {
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+            Accept: "video/mp4"
           }
+        }
+      );
+
+      if (response.status === 401) {
+
+        localStorage.removeItem(
+          C.TOKEN_KEY || "polli_access_token"
         );
 
+        sessionStorage.removeItem(
+          C.TOKEN_KEY || "polli_access_token"
+        );
+
+        throw new Error(
+          "Token Pollinations sudah tidak valid. Hubungkan kembali."
+        );
+      }
+
+      if (response.status === 402) {
+        throw new Error(
+          "Saldo Pollinations tidak mencukupi untuk membuat video."
+        );
+      }
 
       if (!response.ok) {
 
         const text =
-          await response.text()
-            .catch(() => "");
-
-
-        if (
-          response.status === 401
-        ) {
-
-          localStorage.removeItem(
-            C.TOKEN_KEY
-          );
-
-          sessionStorage.removeItem(
-            C.TOKEN_KEY
-          );
-
-        }
-
+          await response.text();
 
         throw new Error(
-          "Video gagal: HTTP " +
+          "Generate video gagal: HTTP " +
           response.status +
-          (
-            text
-              ? " - " +
-                text.slice(0, 700)
-              : ""
-          )
+          " " +
+          text
         );
-
       }
 
-
-      window.setAIStatus(
-        "Video diterima. Menyiapkan pemutar..."
+      setStatus(
+        "Video berhasil dibuat. Menyiapkan hasil..."
       );
 
-
-      const videoBlob =
+      const blob =
         await response.blob();
 
-
-      if (!videoBlob.size) {
-
+      if (!blob.size) {
         throw new Error(
-          "Server mengembalikan video kosong."
+          "Video kosong atau tidak valid."
         );
-
       }
 
+      const videoURL =
+        URL.createObjectURL(blob);
 
-      if (
-        window.__novaVideoUrl
-      ) {
+      if (video) {
 
-        URL.revokeObjectURL(
-          window.__novaVideoUrl
-        );
+        video.src = videoURL;
+        video.style.display = "block";
+        video.controls = true;
 
+        video.load();
       }
 
+      if (download) {
 
-      window.__novaVideoUrl =
-        URL.createObjectURL(
-          videoBlob
-        );
+        download.href = videoURL;
+        download.download =
+          "gen-z-ai-video-" +
+          Date.now() +
+          ".mp4";
 
+        download.style.display =
+          "block";
+      }
 
-      video.src =
-        window.__novaVideoUrl;
-
-
-      video.controls =
-        true;
-
-      video.playsInline =
-        true;
-
-      video.style.display =
-        "block";
-
-      video.load();
-
-
-      download.href =
-        window.__novaVideoUrl;
-
-      download.download =
-        "ai-video-nova-reel.mp4";
-
-      download.style.display =
-        "inline-block";
-
-
-      window.__AI_VIDEO_RESULT =
-        videoBlob;
-
-
-      window.__AI_VIDEO_RESULT_URL =
-        window.__novaVideoUrl;
-
-
-      window.setAIStatus(
-        "Video AI berhasil dibuat dengan Amazon Nova Reel.",
-        "ok"
+      setStatus(
+        "Video berhasil dibuat."
       );
-
 
     } catch (error) {
 
       console.error(
-        "VIDEO ENGINE ERROR:",
+        "GEN-Z.AI VIDEO ERROR:",
         error
       );
 
-
-      window.setAIStatus(
-        error.message ||
-        String(error),
-        "err"
+      setStatus(
+        error?.message ||
+        "Terjadi kesalahan saat membuat video."
       );
 
     } finally {
 
-      button.disabled =
-        false;
+      button.disabled = false;
 
     }
-
   }
 
+  function setupCharacterPreview() {
+
+    const input =
+      document.getElementById("characterFile");
+
+    const preview =
+      document.getElementById("characterPreview");
+
+    const info =
+      document.getElementById("characterInfo");
+
+    if (!input) return;
+
+    input.addEventListener(
+      "change",
+      function () {
+
+        const file =
+          input.files?.[0];
+
+        if (!file) {
+
+          preview.style.display =
+            "none";
+
+          info.textContent =
+            "Pilih foto karakter sebagai referensi.";
+
+          return;
+        }
+
+        try {
+
+          validateImage(file);
+
+        } catch (error) {
+
+          input.value = "";
+
+          preview.style.display =
+            "none";
+
+          info.textContent =
+            error.message;
+
+          return;
+        }
+
+        const url =
+          URL.createObjectURL(file);
+
+        preview.src = url;
+        preview.style.display =
+          "block";
+
+        const sizeMB =
+          (file.size / 1024 / 1024)
+            .toFixed(2);
+
+        info.textContent =
+          file.name +
+          " • " +
+          sizeMB +
+          " MB";
+
+      }
+    );
+  }
+
+  function setup() {
+
+    setupCharacterPreview();
+
+    const button =
+      document.getElementById("videoBtn");
+
+    if (button) {
+
+      button.addEventListener(
+        "click",
+        generateVideo
+      );
+    }
+  }
 
   window.generateVideoWithNovaReel =
     generateVideo;
 
-
-  $("videoBtn").onclick =
-    generateVideo;
-
-
   window.__NOVA_REEL_V8_LOADED =
     true;
 
+  if (
+    document.readyState ===
+    "loading"
+  ) {
 
-  console.log(
-    "Video Engine V8 loaded."
-  );
+    document.addEventListener(
+      "DOMContentLoaded",
+      setup
+    );
+
+  } else {
+
+    setup();
+
+  }
 
 })();
