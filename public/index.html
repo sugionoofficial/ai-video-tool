@@ -57,8 +57,8 @@ a{display:block;text-align:center;color:#8ec5ff;margin-top:12px}
 
 <label for="model">Model Gambar</label>
 <select id="model">
-<option value="black-forest-labs/flux.1-schnell">flux.1-schnell</option>
-<option value="openai/gpt-image-1-mini">gpt-image-1-mini</option>
+<option value="black-forest-labs/flux.1-schnell">Flux Schnell</option>
+<option value="openai/gpt-image-1-mini">GPT Image 1 Mini</option>
 </select>
 
 <button id="generate" disabled>Buat Gambar AI</button>
@@ -239,7 +239,13 @@ async function generateImage(){
   }
 
   const prompt=document.getElementById("prompt").value.trim();
-  const model=document.getElementById("model").value;
+  let model=document.getElementById("model").value;
+  // Normalize legacy/short aliases to the exact IDs accepted by Pollinations.
+  if(model==="flux.1-schnell"){
+    model="black-forest-labs/flux.1-schnell";
+  }else if(model==="gpt-image-1-mini"){
+    model="openai/gpt-image-1-mini";
+  }
   const [w,h]=dims(document.getElementById("aspect").value);
 
   if(!prompt){
