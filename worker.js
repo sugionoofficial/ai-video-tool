@@ -27,9 +27,17 @@ export default {
         return json({
           success: true,
           worker: "ai-video-tool",
-          geminiConfigured: Boolean(env.GEMINI_API_KEY),
-          minimaxConfigured: Boolean(env.MINIMAX_API_KEY),
-          lumaConfigured: Boolean(env.LUMA_API_KEY),
+          geminiConfigured: Boolean(
+  env.GEMINI_API_KEY || env.GEMINI_API_KEY1
+),
+
+minimaxConfigured: Boolean(
+  env.MINIMAX_API_KEY || env.MINIMAX_API_KEY1
+),
+
+lumaConfigured: Boolean(
+  env.LUMA_API_KEY || env.LUMA_API_KEY1
+),
           timestamp: new Date().toISOString()
         });
       }
@@ -164,7 +172,9 @@ async function handleGenerate(request, env) {
 // =========================================================
 
 async function generateVeo(body, env) {
-  const apiKey = env.GEMINI_API_KEY;
+  const apiKey =
+  env.GEMINI_API_KEY ||
+  env.GEMINI_API_KEY1;
 
   if (!apiKey) {
     return json({
@@ -601,7 +611,8 @@ async function generateMiniMax(body, env) {
 
 async function generateLuma(body, env) {
   const apiKey =
-    env.LUMA_API_KEY;
+  env.LUMA_API_KEY ||
+  env.LUMA_API_KEY1;
 
   if (!apiKey) {
     return json({
@@ -848,7 +859,8 @@ async function statusVeo(
   env
 ) {
   const apiKey =
-    env.GEMINI_API_KEY;
+  env.GEMINI_API_KEY ||
+  env.GEMINI_API_KEY1;
 
   if (!apiKey) {
     return json({
@@ -964,7 +976,8 @@ async function statusMiniMax(
   env
 ) {
   const apiKey =
-    env.MINIMAX_API_KEY;
+  env.MINIMAX_API_KEY ||
+  env.MINIMAX_API_KEY1;
 
   if (!apiKey) {
     return json({
