@@ -843,6 +843,282 @@
 
 </script>
     <!-- ENGINE VIDEO V8 -->
-<script src="/ai_video_real_v8.js?v=10" defer></script>
+<script>
+"use strict";
+
+(() => {
+  const MODEL = "amazon/nova-reel-v1";
+  const KEY = "polli_access_token";
+
+  const $ = id => document.getElementById(id);
+
+  const status = (text, cls = "") => {
+    const el = $("status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "status " + cls;
+  };
+
+  const getToken = () =>
+    localStorage.getItem(KEY) ||
+    sessionStorage.getItem(KEY) ||
+    sessionStorage.getItem("pollinations_access_token") ||
+    sessionStorage.getItem("access_token") ||
+    "";
+
+  const getDuration = () =>
+    Number($("duration")?.value) === 10 ? 10 : 5;
+
+  const getAspect = () => {
+    const value = $("aspect")?.value;
+    return ["16:9", "9:16", "1:1"].includes(value)
+      ? value
+      : "16:9";
+  };
+
+  const getPrompt = () => {
+    const base = ($("prompt")?.value || "").trim();
+
+    return (
+      base +
+      ". Animate the reference image with clear continuous natural motion. " +
+      "Preserve the exact subject, identity, appearance, anatomy, colors, " +
+      "clothing or fur, background and environment. " +
+      "The subject must visibly move throughout the video. " +
+      "Natural realistic physical motion and consistent subject. " +
+      "Do not freeze, morph, warp, duplicate or replace the subject. " +
+      "No new subjects. No text, logo or watermark."
+    ).trim();
+  };
+
+  async function uploadImage(blob, token) {
+    const form = new FormData();
+
+    form.append(
+      "file",
+      blob,
+      "reference-image.png"
+    );
+
+    const response = await fetch(
+      "https://media.pollinations.ai/upload",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token
+        },
+        body: form
+      }
+    );
+
+    const text = await response.text().catch(() => "");
+    let data = {};
+
+    try {
+      data = JSON.parse(text);
+    } catch {}
+
+    if (!response.ok) {
+      throw new Error(
+        "Upload gambar gagal: HTTP " +
+        response.status +
+        (text ? " - " + text.slice(0, 500) : "")
+      );
+    }
+
+    const url =
+      data.url ||
+      data.publicUrl ||
+      data.imageUrl ||
+      data.data?.url ||
+      data.data?.publicUrl ||
+      data.data?.imageUrl;
+
+    if (!url || !/^https?:\/\//i.test(url)) {
+      throw new Error(
+        "Upload berhasil, tetapi URL gambar publik HTTPS tidak ditemukan."
+      );
+    }
+
+    return url;
+  }
+
+  async function generateVideo() {
+    const button = $("videoBtn");
+    const image = $("imagePreview");
+    const video = $("videoPreview");
+    const download = $("download");
+
+    status("Tombol video aktif. Menyiapkan proses...");
+
+    const token = getToken();
+
+    if (!token) {
+      status(
+        "Token OAuth tidak ditemukan. Hubungkan Pollinations terlebih dahulu.",
+        "err"
+      );
+      return;
+    }
+
+    if (!image || !image.src || !image.src.startsWith("blob:")) {
+      status(
+        "Buat gambar AI terlebih dahulu.",
+        "err"
+      );
+      return;
+    }
+
+    if (button) button.disabled = true;
+
+    try {
+      status("Membaca gambar AI...");
+
+      const imageResponse = await fetch(image.src);
+
+      if (!imageResponse.ok) {
+        throw new Error(
+          "Gagal membaca gambar AI: HTTP " +
+          imageResponse.status
+        );
+      }
+
+      const imageBlob = await imageResponse.blob();
+
+      if (!imageBlob.size) {
+        throw new Error("Gambar AI kosong.");
+      }
+
+      status(
+        "Mengunggah gambar referensi ke Pollinations..."
+      );
+
+      const imageUrl = await uploadImage(
+        imageBlob,
+        token
+      );
+
+      const duration = getDuration();
+      const aspect = getAspect();
+
+      status(
+        "Meminta Amazon Nova Reel (" +
+        duration +
+        " detik, " +
+        aspect +
+        ")..."
+      );
+
+      const params = new URLSearchParams({
+        model: MODEL,
+        duration: String(duration),
+        aspectRatio: aspect,
+        image: imageUrl
+      });
+
+      const response = await fetch(
+        "https://gen.pollinations.ai/video/" +
+          encodeURIComponent(getPrompt()) +
+          "?" +
+          params.toString(),
+        {
+          headers: {
+            Authorization: "Bearer " + token
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+
+        if (response.status === 401) {
+          localStorage.removeItem(KEY);
+          sessionStorage.removeItem(KEY);
+        }
+
+        throw new Error(
+          "Video gagal: HTTP " +
+          response.status +
+          (text ? " - " + text.slice(0, 700) : "")
+        );
+      }
+
+      status(
+        "Video diterima. Menyiapkan pemutar..."
+      );
+
+      const videoBlob = await response.blob();
+
+      if (!videoBlob.size) {
+        throw new Error(
+          "Server mengembalikan video kosong."
+        );
+      }
+
+      if (window.__novaVideoUrl) {
+        URL.revokeObjectURL(
+          window.__novaVideoUrl
+        );
+      }
+
+      window.__novaVideoUrl =
+        URL.createObjectURL(videoBlob);
+
+      if (video) {
+        video.src = window.__novaVideoUrl;
+        video.controls = true;
+        video.playsInline = true;
+        video.style.display = "block";
+        video.load();
+      }
+
+      if (download) {
+        download.href =
+          window.__novaVideoUrl;
+
+        download.download =
+          "ai-video-nova-reel.mp4";
+
+        download.style.display =
+          "inline-block";
+
+        download.textContent =
+          "⬇️ Download Video";
+      }
+
+      status(
+        "Video AI berhasil dibuat dengan Amazon Nova Reel.",
+        "ok"
+      );
+
+    } catch (error) {
+      console.error(
+        "NOVA REEL ERROR:",
+        error
+      );
+
+      status(
+        error?.message ||
+        String(error),
+        "err"
+      );
+
+    } finally {
+      if (button) {
+        button.disabled = false;
+      }
+    }
+  }
+
+  window.generateVideoWithNovaReel =
+    generateVideo;
+
+  window.__NOVA_REEL_V8_LOADED = true;
+
+  console.log(
+    "Amazon Nova Reel V8 Engine loaded."
+  );
+})();
+</script>
   </body>
 </html>
