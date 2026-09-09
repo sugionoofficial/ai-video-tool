@@ -1,5 +1,10 @@
 "use strict";
 
+/* =========================================================
+   GEN-Z.AI APP
+   Character Reference → AI Video
+========================================================= */
+
 const state = {
   provider: "veo",
   imageData: null,
@@ -7,9 +12,68 @@ const state = {
   pollTimer: null
 };
 
+
+/* =========================================================
+   PROVIDER DATABASE
+========================================================= */
+
 const PROVIDERS = {
+
+  pollinations: {
+    name: "Pollinations",
+    badge: "AI Video",
+    description:
+      "Generate video melalui ekosistem Pollinations.",
+    models: [
+      {
+        id: "seedance-2.5",
+        name: "Seedance 2.5"
+      }
+    ],
+    durations: [5, 10],
+    aspects: ["16:9", "9:16", "1:1"],
+    resolutions: [],
+    imageToVideo: true,
+    audio: false,
+    status: "Tersedia"
+  },
+
+
+  fal: {
+    name: "fal.ai",
+    badge: "AI Models",
+    description:
+      "Platform inference dengan berbagai model video generatif.",
+    models: [],
+    durations: [5, 10],
+    aspects: ["16:9", "9:16"],
+    resolutions: [],
+    imageToVideo: true,
+    audio: false,
+    status: "Konfigurasi model diperlukan"
+  },
+
+
+  runway: {
+    name: "Runway",
+    badge: "Gen Video",
+    description:
+      "Video generation menggunakan model generatif Runway.",
+    models: [],
+    durations: [5, 10],
+    aspects: ["16:9", "9:16"],
+    resolutions: [],
+    imageToVideo: true,
+    audio: false,
+    status: "Konfigurasi model diperlukan"
+  },
+
+
   veo: {
     name: "Google Veo",
+    badge: "Veo 3.1",
+    description:
+      "Google Veo 3.1 untuk image-to-video dan video generatif dengan kualitas tinggi.",
     models: [
       {
         id: "veo-3.1-fast-generate-preview",
@@ -18,15 +82,60 @@ const PROVIDERS = {
       {
         id: "veo-3.1-generate-preview",
         name: "Veo 3.1"
+      },
+      {
+        id: "veo-3.1-lite-generate-preview",
+        name: "Veo 3.1 Lite"
       }
     ],
     durations: [4, 6, 8],
-    aspectRatios: ["16:9", "9:16"],
-    resolutions: ["720p", "1080p", "4k"]
+    aspects: ["16:9", "9:16"],
+    resolutions: [
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    imageToVideo: true,
+    audio: true,
+    status: "Siap"
   },
 
+
+  luma: {
+    name: "Luma",
+    badge: "Dream Machine",
+    description:
+      "Luma Dream Machine untuk pembuatan video generatif.",
+    models: [
+      {
+        id: "ray-flash-2",
+        name: "Ray Flash 2"
+      },
+      {
+        id: "ray-2",
+        name: "Ray 2"
+      }
+    ],
+    durations: [5, 9],
+    aspects: [
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4"
+    ],
+    resolutions: [],
+    imageToVideo: false,
+    audio: false,
+    status: "Text-to-video"
+  },
+
+
   minimax: {
-    name: "MiniMax / Hailuo",
+    name: "MiniMax",
+    badge: "Hailuo",
+    description:
+      "MiniMax Hailuo untuk image-to-video dengan karakter reference.",
     models: [
       {
         id: "MiniMax-Hailuo-2.3",
@@ -42,321 +151,522 @@ const PROVIDERS = {
       }
     ],
     durations: [6, 10],
-    aspectRatios: ["16:9", "9:16"],
-    resolutions: ["768P", "1080P"]
-  },
-
-  luma: {
-    name: "Luma",
-    models: [
-      {
-        id: "ray-flash-2",
-        name: "Ray Flash 2"
-      },
-      {
-        id: "ray-2",
-        name: "Ray 2"
-      }
+    aspects: ["16:9", "9:16"],
+    resolutions: [
+      "768P",
+      "1080P"
     ],
-    durations: [5, 9],
-    aspectRatios: [
-      "16:9",
-      "9:16",
-      "1:1",
-      "4:3",
-      "3:4"
-    ],
-    resolutions: []
-  },
-
-  pollinations: {
-    name: "Pollinations",
-    models: [
-      {
-        id: "seedance-2.5",
-        name: "Seedance 2.5"
-      }
-    ],
-    durations: [5, 10],
-    aspectRatios: ["16:9", "9:16", "1:1"],
-    resolutions: []
-  },
-
-  fal: {
-    name: "fal.ai",
-    models: [],
-    durations: [5, 10],
-    aspectRatios: ["16:9", "9:16"],
-    resolutions: []
-  },
-
-  runway: {
-    name: "Runway",
-    models: [],
-    durations: [5, 10],
-    aspectRatios: ["16:9", "9:16"],
-    resolutions: []
+    imageToVideo: true,
+    audio: false,
+    status: "Siap"
   }
+
 };
+
 
 /* =========================================================
    DOM
 ========================================================= */
 
-const $ = id => document.getElementById(id);
+const providerButtons =
+  document.querySelectorAll(
+    ".provider[data-provider]"
+  );
 
-const providerSelect =
-  $("provider");
+const providerPanel =
+  document.getElementById(
+    "providerPanel"
+  );
 
-const providerSettings =
-  $("providerSettings");
+const providerName =
+  document.getElementById(
+    "providerName"
+  );
+
+const providerBadge =
+  document.getElementById(
+    "providerBadge"
+  );
+
+const providerDescription =
+  document.getElementById(
+    "providerDescription"
+  );
+
+const modelSelect =
+  document.getElementById(
+    "model"
+  );
+
+const durationSelect =
+  document.getElementById(
+    "duration"
+  );
+
+const aspectSelect =
+  document.getElementById(
+    "aspect"
+  );
+
+const resolutionSelect =
+  document.getElementById(
+    "resolution"
+  );
+
+const seedInput =
+  document.getElementById(
+    "seed"
+  );
 
 const characterFile =
-  $("characterFile");
+  document.getElementById(
+    "characterFile"
+  );
 
 const characterPreview =
-  $("characterPreview");
+  document.getElementById(
+    "characterPreview"
+  );
 
 const characterInfo =
-  $("characterInfo");
+  document.getElementById(
+    "characterInfo"
+  );
 
-const prompt =
-  $("prompt");
+const promptInput =
+  document.getElementById(
+    "prompt"
+  );
 
 const promptCounter =
-  $("promptCounter");
+  document.getElementById(
+    "promptCounter"
+  );
 
-const duration =
-  $("duration");
+const videoButton =
+  document.getElementById(
+    "videoBtn"
+  );
 
-const aspect =
-  $("aspect");
+const statusElement =
+  document.getElementById(
+    "status"
+  );
 
-const seed =
-  $("seed");
+const videoElement =
+  document.getElementById(
+    "videoPreview"
+  );
 
-const videoBtn =
-  $("videoBtn");
+const downloadElement =
+  document.getElementById(
+    "download"
+  );
 
-const status =
-  $("status");
-
-const videoPreview =
-  $("videoPreview");
-
-const download =
-  $("download");
 
 /* =========================================================
-   INIT
+   INITIALIZE
 ========================================================= */
 
 document.addEventListener(
   "DOMContentLoaded",
-  init
+  () => {
+
+    setupProviders();
+
+    setupCharacter();
+
+    setupPrompt();
+
+    setupGenerate();
+
+    selectProvider("veo");
+
+  }
 );
 
-function init() {
-  setupProviderSelector();
-  setupCharacterUpload();
-  setupPromptCounter();
-  setupGenerate();
-
-  renderProvider();
-}
 
 /* =========================================================
-   PROVIDER
+   PROVIDER BUTTONS
 ========================================================= */
 
-function setupProviderSelector() {
-  if (!providerSelect) return;
+function setupProviders() {
 
-  providerSelect.addEventListener(
-    "change",
-    () => {
-      state.provider =
-        providerSelect.value;
+  providerButtons.forEach(button => {
 
-      renderProvider();
-    }
-  );
+    button.addEventListener(
+      "click",
+      () => {
+
+        const provider =
+          button.dataset.provider;
+
+        selectProvider(
+          provider
+        );
+
+      }
+    );
+
+  });
+
 }
 
-function renderProvider() {
-  const provider =
-    PROVIDERS[state.provider];
 
-  if (!provider) return;
+/* =========================================================
+   SELECT PROVIDER
+========================================================= */
 
-  if (providerSettings) {
-    providerSettings.innerHTML = `
-      <div class="provider-box">
-        <strong>${escapeHtml(provider.name)}</strong>
-        <div class="provider-note">
-          API key disimpan di Cloudflare Worker.
-        </div>
-      </div>
-    `;
+function selectProvider(
+  provider
+) {
+
+  if (!PROVIDERS[provider]) {
+    return;
   }
 
-  renderSelect(
-    duration,
-    provider.durations,
+  state.provider =
+    provider;
+
+  const config =
+    PROVIDERS[provider];
+
+
+  /* Active button */
+
+  providerButtons.forEach(
+    button => {
+
+      button.classList.toggle(
+        "active",
+        button.dataset.provider ===
+          provider
+      );
+
+    }
+  );
+
+
+  /* Header */
+
+  if (providerName) {
+    providerName.textContent =
+      config.name;
+  }
+
+  if (providerBadge) {
+    providerBadge.textContent =
+      config.badge;
+  }
+
+  if (providerDescription) {
+    providerDescription.textContent =
+      config.description;
+  }
+
+
+  /* Model */
+
+  renderModels(
+    config.models
+  );
+
+
+  /* Duration */
+
+  renderOptions(
+    durationSelect,
+    config.durations,
     value =>
       `${value} detik`
   );
 
-  renderSelect(
-    aspect,
-    provider.aspectRatios,
+
+  /* Aspect */
+
+  renderOptions(
+    aspectSelect,
+    config.aspects,
     value =>
       value
   );
 
-  if (
-    provider.resolutions &&
-    provider.resolutions.length
-  ) {
-    addResolutionControl(
-      provider.resolutions
-    );
-  }
 
-  renderModelControl(
-    provider.models
+  /* Resolution */
+
+  renderResolutions(
+    config.resolutions
   );
 
-  updateProviderNotice();
+
+  renderCapabilities(
+    config
+  );
+
 }
 
+
 /* =========================================================
-   MODEL
+   MODELS
 ========================================================= */
 
-function renderModelControl(models) {
-  let modelSelect =
-    $("model");
+function renderModels(
+  models
+) {
+
+  if (!modelSelect) {
+    return;
+  }
+
+  modelSelect.innerHTML = "";
 
   if (!models.length) {
-    if (modelSelect) {
-      modelSelect.remove();
-    }
+
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value = "";
+
+    option.textContent =
+      "Model belum dikonfigurasi";
+
+    modelSelect.appendChild(
+      option
+    );
 
     return;
   }
 
-  if (!modelSelect) {
-    modelSelect =
-      document.createElement("select");
 
-    modelSelect.id = "model";
-    modelSelect.className = "control";
+  models.forEach(
+    model => {
 
-    const label =
-      document.createElement("label");
+      const option =
+        document.createElement(
+          "option"
+        );
 
-    label.textContent =
-      "Model";
+      option.value =
+        model.id;
 
-    label.htmlFor =
-      "model";
+      option.textContent =
+        model.name;
 
-    if (providerSettings) {
-      providerSettings.appendChild(label);
-      providerSettings.appendChild(
-        modelSelect
+      modelSelect.appendChild(
+        option
       );
+
     }
+  );
+
+}
+
+
+/* =========================================================
+   OPTIONS
+========================================================= */
+
+function renderOptions(
+  select,
+  values,
+  formatter
+) {
+
+  if (!select) {
+    return;
   }
 
-  modelSelect.innerHTML =
-    models.map(model => `
-      <option value="${escapeHtml(model.id)}">
-        ${escapeHtml(model.name)}
-      </option>
-    `).join("");
+  select.innerHTML = "";
+
+  values.forEach(
+    value => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        value;
+
+      option.textContent =
+        formatter(value);
+
+      select.appendChild(
+        option
+      );
+
+    }
+  );
+
 }
+
 
 /* =========================================================
    RESOLUTION
 ========================================================= */
 
-function addResolutionControl(resolutions) {
-  let select =
-    $("resolution");
+function renderResolutions(
+  resolutions
+) {
 
-  if (!select) {
-    select =
-      document.createElement("select");
-
-    select.id =
-      "resolution";
-
-    select.className =
-      "control";
-
-    const label =
-      document.createElement("label");
-
-    label.textContent =
-      "Resolusi";
-
-    label.htmlFor =
-      "resolution";
-
-    if (providerSettings) {
-      providerSettings.appendChild(label);
-      providerSettings.appendChild(select);
-    }
+  if (!resolutionSelect) {
+    return;
   }
 
-  select.innerHTML =
-    resolutions.map(
-      value =>
-        `<option value="${value}">
-          ${value}
-        </option>`
-    ).join("");
+  resolutionSelect.innerHTML = "";
+
+  if (!resolutions.length) {
+
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value = "";
+
+    option.textContent =
+      "Default provider";
+
+    resolutionSelect.appendChild(
+      option
+    );
+
+    return;
+  }
+
+
+  resolutions.forEach(
+    resolution => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        resolution;
+
+      option.textContent =
+        resolution;
+
+      resolutionSelect.appendChild(
+        option
+      );
+
+    }
+  );
+
 }
+
 
 /* =========================================================
-   SELECT
+   CAPABILITIES
 ========================================================= */
 
-function renderSelect(
-  element,
-  values,
-  formatter
+function renderCapabilities(
+  config
 ) {
-  if (!element) return;
 
-  element.innerHTML =
-    values.map(
-      value =>
-        `<option value="${value}">
-          ${formatter(value)}
-        </option>`
+  if (!providerPanel) {
+    return;
+  }
+
+  let capabilities =
+    providerPanel.querySelector(
+      ".capabilities"
+    );
+
+  if (!capabilities) {
+
+    capabilities =
+      document.createElement(
+        "div"
+      );
+
+    capabilities.className =
+      "capabilities";
+
+    providerPanel.appendChild(
+      capabilities
+    );
+
+  }
+
+
+  const items = [];
+
+
+  if (config.imageToVideo) {
+    items.push(
+      "Image → Video"
+    );
+  }
+
+  if (config.audio) {
+    items.push(
+      "Native Audio"
+    );
+  }
+
+  config.aspects.forEach(
+    aspect => {
+      items.push(aspect);
+    }
+  );
+
+
+  if (config.resolutions.includes("4k")) {
+    items.push("4K");
+  }
+
+
+  items.push(
+    config.status
+  );
+
+
+  capabilities.innerHTML =
+    items.map(
+      item =>
+        `<span class="capability">
+          ${escapeHtml(item)}
+        </span>`
     ).join("");
+
 }
+
 
 /* =========================================================
    CHARACTER
 ========================================================= */
 
-function setupCharacterUpload() {
-  if (!characterFile) return;
+function setupCharacter() {
+
+  if (!characterFile) {
+    return;
+  }
 
   characterFile.addEventListener(
     "change",
-    async event => {
+    event => {
 
       const file =
         event.target.files?.[0];
 
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
-      if (!file.type.startsWith("image/")) {
+
+      if (
+        !file.type.startsWith(
+          "image/"
+        )
+      ) {
+
         setStatus(
           "File harus berupa gambar.",
           "error"
@@ -365,7 +675,12 @@ function setupCharacterUpload() {
         return;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
+
+      if (
+        file.size >
+        10 * 1024 * 1024
+      ) {
+
         setStatus(
           "Ukuran gambar maksimal 10 MB.",
           "error"
@@ -374,199 +689,294 @@ function setupCharacterUpload() {
         return;
       }
 
+
       const reader =
         new FileReader();
 
-      reader.onload = () => {
-        state.imageData =
-          reader.result;
 
-        if (characterPreview) {
-          characterPreview.src =
-            state.imageData;
+      reader.onload =
+        event => {
 
-          characterPreview.style.display =
-            "block";
-        }
+          state.imageData =
+            event.target.result;
 
-        if (characterInfo) {
-          characterInfo.textContent =
-            `${file.name} • ${formatBytes(file.size)}`;
-        }
-      };
 
-      reader.readAsDataURL(file);
+          if (characterPreview) {
+
+            characterPreview.src =
+              state.imageData;
+
+            characterPreview.style.display =
+              "block";
+
+          }
+
+
+          if (characterInfo) {
+
+            characterInfo.textContent =
+              `${file.name} • ${formatBytes(file.size)}`;
+
+          }
+
+        };
+
+
+      reader.readAsDataURL(
+        file
+      );
+
     }
   );
+
 }
+
 
 /* =========================================================
    PROMPT
 ========================================================= */
 
-function setupPromptCounter() {
-  if (!prompt) return;
+function setupPrompt() {
 
-  const update = () => {
-    if (promptCounter) {
-      promptCounter.textContent =
-        `${prompt.value.length}/512`;
-    }
-  };
+  if (!promptInput) {
+    return;
+  }
 
-  prompt.addEventListener(
+  const update =
+    () => {
+
+      if (promptCounter) {
+
+        promptCounter.textContent =
+          `${promptInput.value.length}/512`;
+
+      }
+
+    };
+
+
+  promptInput.addEventListener(
     "input",
     update
   );
 
+
   update();
+
 }
+
 
 /* =========================================================
    GENERATE
 ========================================================= */
 
 function setupGenerate() {
-  if (!videoBtn) return;
 
-  videoBtn.addEventListener(
+  if (!videoButton) {
+    return;
+  }
+
+  videoButton.addEventListener(
     "click",
     generateVideo
   );
+
 }
 
+
 async function generateVideo() {
-  if (state.generating) return;
 
-  const text =
-    prompt?.value.trim();
+  if (state.generating) {
+    return;
+  }
 
-  if (!text) {
+
+  const prompt =
+    promptInput?.value.trim();
+
+
+  if (!prompt) {
+
     setStatus(
-      "Masukkan prompt terlebih dahulu.",
+      "Prompt belum diisi.",
       "error"
     );
 
     return;
   }
 
-  state.generating = true;
 
-  videoBtn.disabled = true;
+  const config =
+    PROVIDERS[state.provider];
+
+
+  if (!config) {
+    return;
+  }
+
+
+  /*
+   * Luma saat ini tidak menerima
+   * imageData lokal melalui jalur ini.
+   */
+
+  if (
+    state.provider === "luma" &&
+    state.imageData
+  ) {
+
+    setStatus(
+      "Luma image-to-video membutuhkan URL gambar publik. Tanpa storage/CDN publik, gunakan Veo atau MiniMax untuk Character Reference.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  state.generating =
+    true;
+
+  videoButton.disabled =
+    true;
+
 
   setStatus(
-    "Mengirim permintaan ke Worker...",
+    `Mengirim ke ${config.name}...`,
     "loading"
   );
 
-  if (videoPreview) {
-    videoPreview.removeAttribute("src");
-    videoPreview.style.display =
-      "none";
-  }
-
-  if (download) {
-    download.style.display =
-      "none";
-  }
 
   try {
 
     const body = {
-      provider: state.provider,
-      prompt: text,
-      imageData: state.imageData,
+
+      provider:
+        state.provider,
+
+      prompt,
+
+      imageData:
+        state.imageData,
+
       duration:
-        Number(duration?.value || 6),
+        Number(
+          durationSelect?.value ||
+          6
+        ),
+
       aspectRatio:
-        aspect?.value || "16:9",
+        aspectSelect?.value ||
+        "16:9",
+
       seed:
-        seed?.value || ""
+        seedInput?.value ||
+        "",
+
+      model:
+        modelSelect?.value ||
+        "",
+
+      resolution:
+        resolutionSelect?.value ||
+        ""
+
     };
 
-    const model =
-      $("model");
-
-    if (model) {
-      body.model =
-        model.value;
-    }
-
-    const resolution =
-      $("resolution");
-
-    if (resolution) {
-      body.resolution =
-        resolution.value;
-    }
 
     const response =
       await fetch(
         "/api/generate",
         {
           method: "POST",
+
           headers: {
             "Content-Type":
               "application/json"
           },
+
           body:
             JSON.stringify(body)
         }
       );
 
+
     const data =
       await response.json();
 
-    if (!response.ok ||
-        !data.success) {
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
 
       throw new Error(
         data.error ||
         "Generate gagal."
       );
+
     }
+
 
     setStatus(
       data.message ||
-      "Video sedang dibuat...",
+      `${config.name} sedang membuat video...`,
       "loading"
     );
+
 
     const id =
       data.operationName ||
       data.taskId ||
       data.generationId;
 
+
     if (
-      data.status === "completed" &&
+      data.status ===
+        "completed" &&
       data.videoUrl
     ) {
-      showVideo(data.videoUrl);
+
+      showVideo(
+        data.videoUrl
+      );
+
       return;
     }
 
+
     if (!id) {
+
       throw new Error(
         "ID proses video tidak ditemukan."
       );
+
     }
+
 
     pollStatus(
       state.provider,
       id
     );
 
+
   } catch (error) {
 
-    state.generating = false;
-    videoBtn.disabled = false;
+    state.generating =
+      false;
+
+    videoButton.disabled =
+      false;
 
     setStatus(
       error.message,
       "error"
     );
+
   }
+
 }
+
 
 /* =========================================================
    POLLING
@@ -576,17 +986,21 @@ function pollStatus(
   provider,
   id
 ) {
+
   clearTimeout(
     state.pollTimer
   );
+
 
   let attempts = 0;
 
   const maxAttempts = 180;
 
-  const poll = async () => {
+
+  async function check() {
 
     attempts++;
+
 
     try {
 
@@ -595,35 +1009,37 @@ function pollStatus(
           `/api/generate?provider=${encodeURIComponent(provider)}&id=${encodeURIComponent(id)}`
         );
 
+
       const data =
         await response.json();
 
-      if (!response.ok ||
-          !data.success) {
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
 
         throw new Error(
           data.error ||
-          "Gagal mengecek status."
+          "Gagal membaca status."
         );
+
       }
+
 
       if (
         data.status ===
         "completed"
       ) {
 
-        state.generating =
-          false;
-
-        videoBtn.disabled =
-          false;
-
         showVideo(
           data.videoUrl
         );
 
         return;
+
       }
+
 
       if (
         data.status ===
@@ -634,94 +1050,115 @@ function pollStatus(
           data.error ||
           "Video gagal dibuat."
         );
+
       }
+
 
       setStatus(
         `Membuat video... ${attempts}`,
         "loading"
       );
 
-      if (attempts >= maxAttempts) {
+
+      if (
+        attempts >= maxAttempts
+      ) {
+
         throw new Error(
-          "Waktu pembuatan video terlalu lama."
+          "Proses video terlalu lama."
         );
+
       }
+
 
       state.pollTimer =
         setTimeout(
-          poll,
+          check,
           5000
         );
+
 
     } catch (error) {
 
       state.generating =
         false;
 
-      videoBtn.disabled =
+      videoButton.disabled =
         false;
 
       setStatus(
         error.message,
         "error"
       );
-    }
-  };
 
-  poll();
+    }
+
+  }
+
+
+  check();
+
 }
 
+
 /* =========================================================
-   VIDEO RESULT
+   SHOW VIDEO
 ========================================================= */
 
-function showVideo(videoUrl) {
+function showVideo(
+  videoUrl
+) {
 
   if (!videoUrl) {
-    setStatus(
-      "Video selesai tetapi URL tidak ditemukan.",
-      "error"
+
+    throw new Error(
+      "URL video tidak ditemukan."
     );
 
-    return;
   }
 
-  if (videoPreview) {
 
-    videoPreview.src =
+  if (videoElement) {
+
+    videoElement.src =
       videoUrl;
 
-    videoPreview.controls =
-      true;
-
-    videoPreview.style.display =
+    videoElement.style.display =
       "block";
 
-    videoPreview.load();
+    videoElement.load();
+
   }
 
-  if (download) {
-    download.href =
+
+  if (downloadElement) {
+
+    downloadElement.href =
       videoUrl;
 
-    download.download =
+    downloadElement.download =
       `gen-z-ai-${Date.now()}.mp4`;
 
-    download.style.display =
-      "inline-block";
+    downloadElement.style.display =
+      "block";
+
   }
+
+
+  state.generating =
+    false;
+
+  videoButton.disabled =
+    false;
+
 
   setStatus(
     "Video berhasil dibuat.",
     "success"
   );
 
-  state.generating =
-    false;
-
-  videoBtn.disabled =
-    false;
 }
+
 
 /* =========================================================
    STATUS
@@ -731,67 +1168,33 @@ function setStatus(
   message,
   type = ""
 ) {
-  if (!status) return;
 
-  status.textContent =
+  if (!statusElement) {
+    return;
+  }
+
+  statusElement.textContent =
     message;
 
-  status.className =
-    `status ${type}`;
+  statusElement.className =
+    type
+      ? `status ${type}`
+      : "status";
+
 }
 
-/* =========================================================
-   PROVIDER NOTICE
-========================================================= */
-
-function updateProviderNotice() {
-  if (!providerSettings) return;
-
-  const existing =
-    $("providerNotice");
-
-  if (existing) {
-    existing.remove();
-  }
-
-  const notice =
-    document.createElement("div");
-
-  notice.id =
-    "providerNotice";
-
-  notice.className =
-    "provider-note";
-
-  if (state.provider === "luma") {
-    notice.textContent =
-      "Luma image-to-video memerlukan URL gambar publik. Mode karakter upload belum tersedia tanpa storage/CDN publik.";
-  } else if (
-    state.provider === "veo"
-  ) {
-    notice.textContent =
-      "Veo menggunakan image-to-video langsung melalui Cloudflare Worker.";
-  } else if (
-    state.provider === "minimax"
-  ) {
-    notice.textContent =
-      "MiniMax dapat menerima karakter sebagai Base64 melalui Worker.";
-  } else {
-    notice.textContent =
-      "Provider ini belum diarahkan ke Worker pada versi ini.";
-  }
-
-  providerSettings.appendChild(
-    notice
-  );
-}
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-function formatBytes(bytes) {
-  if (!bytes) return "0 B";
+function formatBytes(
+  bytes
+) {
+
+  if (!bytes) {
+    return "0 B";
+  }
 
   const units = [
     "B",
@@ -806,17 +1209,43 @@ function formatBytes(bytes) {
       Math.log(1024)
     );
 
-  return `${(
+  return (
     bytes /
-    Math.pow(1024, index)
-  ).toFixed(1)} ${units[index]}`;
+    Math.pow(
+      1024,
+      index
+    )
+  ).toFixed(1)
+    + " " +
+    units[index];
+
 }
 
-function escapeHtml(value) {
+
+function escapeHtml(
+  value
+) {
+
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
 }
