@@ -1,11 +1,8 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Video Tool V8 UPDATE</title>
-
-  <style>
+  <title>AI Video Tool V8</title>  <style>
     * {
       box-sizing: border-box;
     }
@@ -14,7 +11,7 @@
       margin: 0;
       font-family: Arial, sans-serif;
       background: #0b1020;
-      color: #ffffff;
+      color: #fff;
     }
 
     .container {
@@ -53,7 +50,7 @@
       min-height: 130px;
       resize: vertical;
       background: #0b1020;
-      color: #ffffff;
+      color: #fff;
       border: 1px solid #34405e;
       border-radius: 12px;
       padding: 14px;
@@ -67,7 +64,7 @@
 
     select {
       background: #0b1020;
-      color: #ffffff;
+      color: #fff;
       border: 1px solid #34405e;
       border-radius: 10px;
       padding: 11px 14px;
@@ -82,24 +79,20 @@
       font-weight: bold;
       cursor: pointer;
       background: #2563eb;
-      color: white;
+      color: #fff;
     }
 
     button:hover {
-      opacity: 0.9;
+      opacity: .9;
     }
 
     button:disabled {
-      opacity: 0.45;
+      opacity: .45;
       cursor: not-allowed;
     }
 
     .danger {
       background: #7f1d1d;
-    }
-
-    .secondary {
-      background: #374151;
     }
 
     .row {
@@ -114,10 +107,19 @@
       padding: 12px;
       margin: 12px 0;
       color: #fbbf24;
+      white-space: pre-wrap;
+    }
+
+    .status.ok {
+      color: #4ade80;
+    }
+
+    .status.err {
+      color: #f87171;
     }
 
     .connected {
-      color: #4ade80;
+      color: #4ade80 !important;
     }
 
     .preview {
@@ -145,173 +147,115 @@
       font-weight: bold;
       text-decoration: none;
     }
-  </style>
-</head>
+  </style></head><body><div class="container">  <h1>🎬 AI Video Tool V8</h1>  <div class="subtitle">
+    AI Image → AI Video menggunakan Pollinations + Amazon Nova Reel
+  </div>  <!-- KONEKSI POLLINATIONS -->  <div class="card"><span class="title">
+  🔐 Koneksi Pollinations
+</span>
 
-<body>
-<div style="
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:99999;
-  background:red;
-  color:white;
-  padding:20px;
-  text-align:center;
-  font-size:24px;
-  font-weight:bold;
-">
-  TEST VERSI BARU AI VIDEO TOOL
+<div id="polliStatus" class="status">
+  ● Belum terhubung ke Pollinations
 </div>
-<div class="container">
 
-  <h1>🎬 AI Video Tool V8</h1>
-  <div class="subtitle">
-    AI Image → AI Video menggunakan Pollinations + Nova Reel
+<div class="row">
+
+  <button id="connectPolli">
+    🔐 Hubungkan Pollinations
+  </button>
+
+  <button id="disconnectPolli" class="danger">
+    🔓 Putuskan Koneksi
+  </button>
+
+</div>
+
+<div class="small" style="margin-top:10px;">
+  Hubungkan akun Pollinations sebelum membuat gambar AI.
+</div>
+
+  </div>  <!-- PROMPT -->  <div class="card"><label class="title" for="prompt">
+  Prompt
+</label>
+
+<textarea
+  id="prompt"
+  placeholder="Masukkan prompt gambar atau video AI di sini..."
+></textarea>
+
+<div class="row" style="margin-top:15px;">
+
+  <div>
+    <div class="small">Durasi</div>
+
+    <select id="duration">
+      <option value="5">5 detik</option>
+      <option value="10">10 detik</option>
+    </select>
   </div>
 
+  <div>
+    <div class="small">Aspect Ratio</div>
 
-  <!-- POLLINATIONS -->
-  <div class="card">
-
-    <span class="title">
-      🔐 Koneksi Pollinations
-    </span>
-
-    <div id="polliStatus" class="status">
-      ● Belum terhubung ke Pollinations
-    </div>
-
-    <div class="row">
-
-      <button id="connectPolli">
-        🔐 Hubungkan Pollinations
-      </button>
-
-      <button id="disconnectPolli" class="danger">
-        🔓 Putuskan Koneksi
-      </button>
-
-    </div>
-
-    <div class="small" style="margin-top:10px;">
-      Hubungkan akun Pollinations sebelum membuat gambar AI.
-    </div>
-
-  </div>
-
-
-  <!-- PROMPT -->
-  <div class="card">
-
-    <label class="title" for="prompt">
-      Prompt
-    </label>
-
-    <textarea
-      id="prompt"
-      placeholder="Masukkan prompt gambar atau video AI di sini..."
-    ></textarea>
-
-
-    <div class="row" style="margin-top:15px;">
-
-      <div>
-        <div class="small">Durasi</div>
-
-        <select id="duration">
-          <option value="5">5 detik</option>
-          <option value="10">10 detik</option>
-        </select>
-      </div>
-
-
-      <div>
-        <div class="small">Aspect Ratio</div>
-
-        <select id="aspect">
-          <option value="16:9">16:9</option>
-          <option value="9:16">9:16</option>
-          <option value="1:1">1:1</option>
-        </select>
-      </div>
-
-    </div>
-
-
-    <div class="row" style="margin-top:16px;">
-
-      <button id="generateImage">
-        🎨 Buat Gambar AI
-      </button>
-
-      <button id="generateVideo" disabled>
-        🎬 Jadikan Video
-      </button>
-
-    </div>
-
-
-    <div id="workStatus" class="status">
-      Siap digunakan.
-    </div>
-
-  </div>
-
-
-  <!-- IMAGE -->
-  <div class="card">
-
-    <span class="title">
-      🖼️ Preview Gambar
-    </span>
-
-    <img
-      id="imagePreview"
-      class="preview hidden"
-      alt="Preview gambar AI"
-    >
-
-  </div>
-
-
-  <!-- VIDEO -->
-  <div class="card">
-
-    <span class="title">
-      🎥 Preview Video
-    </span>
-
-    <video
-      id="videoPreview"
-      class="preview hidden"
-      controls
-      playsinline
-    ></video>
-
-    <a
-      id="downloadVideo"
-      class="download hidden"
-      download="ai-video.mp4"
-    >
-      ⬇️ Download Video
-    </a>
-
+    <select id="aspect">
+      <option value="16:9">16:9</option>
+      <option value="9:16">9:16</option>
+      <option value="1:1">1:1</option>
+    </select>
   </div>
 
 </div>
 
+<div class="row" style="margin-top:16px;">
 
-<script>
+  <button id="generateImage">
+    🎨 Buat Gambar AI
+  </button>
+
+  <!-- ID HARUS videoBtn -->
+  <button id="videoBtn" disabled>
+    🎬 Jadikan Video
+  </button>
+
+</div>
+
+<!-- ID HARUS status -->
+<div id="status" class="status">
+  Siap digunakan.
+</div>
+
+  </div>  <!-- IMAGE -->  <div class="card"><span class="title">
+  🖼️ Preview Gambar
+</span>
+
+<img
+  id="imagePreview"
+  class="preview hidden"
+  alt="Preview gambar AI"
+>
+
+  </div>  <!-- VIDEO -->  <div class="card"><span class="title">
+  🎥 Preview Video
+</span>
+
+<video
+  id="videoPreview"
+  class="preview hidden"
+  controls
+  playsinline
+></video>
+
+<!-- ID HARUS download -->
+<a
+  id="download"
+  class="download hidden"
+  download="ai-video-nova-reel.mp4"
+>
+  ⬇️ Download Video
+</a>
+
+  </div></div><script>
 
 (function () {
-
-  /*
-   * ==========================================
-   * POLLINATIONS OAUTH
-   * ==========================================
-   */
 
   const CLIENT_ID = "pk_TbW0TG3A2MmE7rOM";
 
@@ -328,15 +272,48 @@
 
   const polliStatus = $("polliStatus");
 
-  const workStatus = $("workStatus");
+  const statusBox = $("status");
 
+
+  /*
+   * ==========================================
+   * TOKEN
+   * ==========================================
+   */
 
   function getToken() {
 
-    return localStorage.getItem(TOKEN_KEY);
+    return (
+      localStorage.getItem(TOKEN_KEY) ||
+      sessionStorage.getItem(TOKEN_KEY) ||
+      sessionStorage.getItem("pollinations_access_token") ||
+      sessionStorage.getItem("access_token") ||
+      ""
+    );
 
   }
 
+
+  function saveToken(token) {
+
+    localStorage.setItem(
+      TOKEN_KEY,
+      token
+    );
+
+    sessionStorage.setItem(
+      TOKEN_KEY,
+      token
+    );
+
+  }
+
+
+  /*
+   * ==========================================
+   * STATUS
+   * ==========================================
+   */
 
   function updateConnectionStatus() {
 
@@ -345,16 +322,33 @@
       polliStatus.textContent =
         "● Terhubung ke Pollinations";
 
-      polliStatus.classList.add("connected");
+      polliStatus.classList.add(
+        "connected"
+      );
 
     } else {
 
       polliStatus.textContent =
         "● Belum terhubung ke Pollinations";
 
-      polliStatus.classList.remove("connected");
+      polliStatus.classList.remove(
+        "connected"
+      );
 
     }
+
+  }
+
+
+  function setStatus(
+    message,
+    type = ""
+  ) {
+
+    statusBox.textContent = message;
+
+    statusBox.className =
+      "status " + type;
 
   }
 
@@ -377,7 +371,9 @@
       const hash =
         await crypto.subtle.digest(
           "SHA-256",
-          new TextEncoder().encode(verifier)
+          new TextEncoder().encode(
+            verifier
+          )
         );
 
 
@@ -435,9 +431,11 @@
 
     } catch (error) {
 
-      workStatus.textContent =
+      setStatus(
         "Gagal memulai koneksi Pollinations: " +
-        error.message;
+        error.message,
+        "err"
+      );
 
     }
 
@@ -446,7 +444,7 @@
 
   /*
    * ==========================================
-   * HANDLE OAUTH CALLBACK
+   * OAUTH CALLBACK
    * ==========================================
    */
 
@@ -469,16 +467,15 @@
 
 
     if (!code || !verifier) {
-
       return;
-
     }
 
 
     try {
 
-      workStatus.textContent =
-        "Menghubungkan ke Pollinations...";
+      setStatus(
+        "Menghubungkan ke Pollinations..."
+      );
 
 
       const response =
@@ -497,7 +494,8 @@
               grant_type:
                 "authorization_code",
 
-              code: code,
+              code:
+                code,
 
               client_id:
                 CLIENT_ID,
@@ -509,7 +507,6 @@
                 verifier
 
             })
-
           }
         );
 
@@ -542,8 +539,7 @@
       }
 
 
-      localStorage.setItem(
-        TOKEN_KEY,
+      saveToken(
         accessToken
       );
 
@@ -563,14 +559,18 @@
       updateConnectionStatus();
 
 
-      workStatus.textContent =
-        "Pollinations berhasil terhubung.";
+      setStatus(
+        "Pollinations berhasil terhubung.",
+        "ok"
+      );
 
     } catch (error) {
 
-      workStatus.textContent =
+      setStatus(
         "Gagal menghubungkan Pollinations: " +
-        error.message;
+        error.message,
+        "err"
+      );
 
     }
 
@@ -590,10 +590,23 @@
         TOKEN_KEY
       );
 
+      sessionStorage.removeItem(
+        TOKEN_KEY
+      );
+
+      sessionStorage.removeItem(
+        "pollinations_access_token"
+      );
+
+      sessionStorage.removeItem(
+        "access_token"
+      );
+
       updateConnectionStatus();
 
-      workStatus.textContent =
-        "Koneksi Pollinations diputus.";
+      setStatus(
+        "Koneksi Pollinations diputus."
+      );
 
     };
 
@@ -617,8 +630,10 @@
 
       if (!prompt) {
 
-        workStatus.textContent =
-          "Masukkan prompt terlebih dahulu.";
+        setStatus(
+          "Masukkan prompt terlebih dahulu.",
+          "err"
+        );
 
         return;
 
@@ -631,8 +646,10 @@
 
       if (!accessToken) {
 
-        workStatus.textContent =
-          "Hubungkan Pollinations terlebih dahulu.";
+        setStatus(
+          "Hubungkan Pollinations terlebih dahulu.",
+          "err"
+        );
 
         return;
 
@@ -645,8 +662,9 @@
           true;
 
 
-        workStatus.textContent =
-          "Sedang membuat gambar AI...";
+        setStatus(
+          "Sedang membuat gambar AI..."
+        );
 
 
         const aspect =
@@ -678,8 +696,10 @@
           "https://gen.pollinations.ai/image/" +
           encodeURIComponent(prompt) +
           "?model=black-forest-labs/flux.1-schnell" +
-          "&width=" + width +
-          "&height=" + height +
+          "&width=" +
+          width +
+          "&height=" +
+          height +
           "&nologo=true";
 
 
@@ -710,6 +730,15 @@
           await response.blob();
 
 
+        if (!blob.size) {
+
+          throw new Error(
+            "Gambar yang diterima kosong."
+          );
+
+        }
+
+
         const localImageURL =
           URL.createObjectURL(blob);
 
@@ -724,37 +753,38 @@
 
 
         /*
-         * DATA UNTUK ai_video_real_v8.js
+         * DATA UNTUK ENGINE VIDEO V8
          */
 
         window.__AI_VIDEO_SOURCE =
           localImageURL;
 
-
         window.__AI_VIDEO_PROMPT =
           prompt;
 
-
         window.__AI_VIDEO_DURATION =
           $("duration").value;
-
 
         window.__AI_VIDEO_ASPECT =
           aspect;
 
 
-        $("generateVideo").disabled =
+        $("videoBtn").disabled =
           false;
 
 
-        workStatus.textContent =
-          "Gambar berhasil dibuat. Siap dijadikan video.";
+        setStatus(
+          "Gambar berhasil dibuat. Siap dijadikan video.",
+          "ok"
+        );
 
       } catch (error) {
 
-        workStatus.textContent =
+        setStatus(
           "Gagal membuat gambar: " +
-          error.message;
+          error.message,
+          "err"
+        );
 
       } finally {
 
@@ -768,147 +798,47 @@
 
   /*
    * ==========================================
-   * GENERATE VIDEO
+   * VIDEO
    * ==========================================
+   *
+   * ai_video_real_v8.js menangani proses
+   * Amazon Nova Reel.
    */
 
-  $("generateVideo").onclick =
+  $("videoBtn").onclick =
     async function () {
-
-
-      /*
-       * Pastikan ai_video_real_v8.js
-       * benar-benar sudah dimuat.
-       */
 
       if (
         typeof window.generateVideoWithNovaReel !==
         "function"
       ) {
 
-        workStatus.textContent =
-          "ai_video_real_v8.js belum termuat atau fungsi generateVideoWithNovaReel tidak tersedia.";
+        setStatus(
+          "Engine video V8 belum termuat. Periksa ai_video_real_v8.js.",
+          "err"
+        );
 
         return;
 
       }
 
 
-      try {
-
-        $("generateVideo").disabled =
-          true;
-
-
-        workStatus.textContent =
-          "Mengirim gambar ke AI Video...";
-
-
-        const result =
-          await window.generateVideoWithNovaReel({
-
-            imageUrl:
-              window.__AI_VIDEO_SOURCE,
-
-            prompt:
-              window.__AI_VIDEO_PROMPT,
-
-            duration:
-              Number(
-                window.__AI_VIDEO_DURATION
-              ),
-
-            aspect:
-              window.__AI_VIDEO_ASPECT,
-
-            accessToken:
-              getToken()
-
-          });
-
-
-        const videoURL =
-          typeof result === "string"
-            ? result
-            : (
-                result &&
-                (
-                  result.url ||
-                  result.videoUrl
-                )
-              );
-
-
-        if (!videoURL) {
-
-          throw new Error(
-            "URL video tidak ditemukan."
-          );
-
-        }
-
-
-        $("videoPreview").src =
-          videoURL;
-
-
-        $("videoPreview")
-          .classList
-          .remove("hidden");
-
-
-        $("downloadVideo").href =
-          videoURL;
-
-
-        $("downloadVideo")
-          .classList
-          .remove("hidden");
-
-
-        workStatus.textContent =
-          "Video berhasil dibuat.";
-
-      } catch (error) {
-
-        workStatus.textContent =
-          "Gagal membuat video: " +
-          error.message;
-
-      } finally {
-
-        $("generateVideo").disabled =
-          false;
-
-      }
+      await window.generateVideoWithNovaReel();
 
     };
 
 
   /*
    * ==========================================
-   * LOAD
+   * START
    * ==========================================
    */
 
-  handleOAuthCallback();
-
   updateConnectionStatus();
+
+  handleOAuthCallback();
 
 })();
 
-</script>
-
-
-<!--
-================================================
-ENGINE VIDEO V8
-File ini WAJIB ada:
-public/ai_video_real_v8.js
-================================================
--->
-
-<script src="/ai_video_real_v8.js"></script>
-
-</body>
+</script><!-- ENGINE VIDEO V8 --><script src="/ai_video_real_v8.js?v=8"></script></body>
 </html>
