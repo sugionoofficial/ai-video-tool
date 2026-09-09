@@ -13,109 +13,280 @@
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0b0b0f;
+      background: #08090d;
       color: #fff;
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
     }
 
-    .container {
-      width: min(760px, 92%);
-      margin: 35px auto;
+    .app {
+      width: 100%;
+      max-width: 950px;
+      margin: auto;
+      padding: 20px;
     }
 
-    h1 {
+    .header {
       text-align: center;
-      margin-bottom: 6px;
+      margin-bottom: 25px;
+    }
+
+    .logo {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -1px;
     }
 
     .subtitle {
-      text-align: center;
-      color: #999;
-      margin-bottom: 28px;
+      color: #8d9099;
+      margin-top: 6px;
+      font-size: 14px;
     }
 
     .card {
-      background: #15151c;
-      border: 1px solid #292936;
+      background: #111217;
+      border: 1px solid #272a32;
       border-radius: 18px;
       padding: 20px;
       margin-bottom: 16px;
     }
 
-    h2 {
-      font-size: 18px;
-      margin-top: 0;
+    .title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 15px;
     }
 
     label {
       display: block;
-      margin: 14px 0 8px;
-      font-weight: bold;
+      color: #c9cbd2;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 7px;
     }
 
     input,
     textarea,
     select {
       width: 100%;
-      padding: 13px;
-      border-radius: 12px;
-      border: 1px solid #343440;
-      background: #0d0d12;
+      background: #090a0e;
       color: #fff;
+      border: 1px solid #30333c;
+      border-radius: 11px;
+      padding: 12px;
       outline: none;
+      font-size: 14px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #707582;
     }
 
     textarea {
       min-height: 130px;
       resize: vertical;
+      line-height: 1.5;
+    }
+
+    .provider-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .provider {
+      border: 1px solid #30333c;
+      background: #0b0c10;
+      color: #fff;
+      padding: 14px 10px;
+      border-radius: 13px;
+      cursor: pointer;
+      text-align: center;
+      transition: 0.15s;
+    }
+
+    .provider:hover {
+      border-color: #777;
+    }
+
+    .provider.active {
+      border-color: #fff;
+      background: #1b1d23;
+    }
+
+    .provider-name {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .provider-type {
+      font-size: 10px;
+      color: #858892;
+      margin-top: 4px;
+    }
+
+    .provider-panel {
+      background: #0b0c10;
+      border: 1px solid #292c34;
+      border-radius: 14px;
+      padding: 15px;
+    }
+
+    .provider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .provider-header h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .badge {
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: #191b21;
+      color: #aaa;
+      font-size: 10px;
+    }
+
+    .provider-description {
+      color: #91949d;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    .capabilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .capability {
+      background: #171920;
+      border: 1px solid #292c34;
+      padding: 6px 8px;
+      border-radius: 7px;
+      color: #b8bac2;
+      font-size: 10px;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns:
+        repeat(3, 1fr);
       gap: 12px;
     }
 
-    .info {
-      color: #999;
-      font-size: 13px;
+    .upload {
+      border: 1px dashed #41444e;
+      background: #0b0c10;
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    #characterPreview {
+      display: none;
+      width: 100%;
+      max-width: 420px;
+      max-height: 500px;
+      object-fit: contain;
+      margin: 15px auto 0;
+      border-radius: 13px;
+      border: 1px solid #292c34;
+    }
+
+    #characterInfo {
+      color: #858892;
+      font-size: 11px;
       margin-top: 8px;
-      line-height: 1.5;
+      text-align: center;
     }
 
     .counter {
       text-align: right;
-      color: #888;
-      font-size: 12px;
-      margin-top: 6px;
+      color: #70737d;
+      font-size: 11px;
+      margin-top: 5px;
     }
 
-    .preview {
+    button.generate {
       width: 100%;
-      max-height: 430px;
-      object-fit: contain;
-      border-radius: 14px;
-      margin-top: 15px;
-      background: #050507;
-      display: none;
-    }
-
-    button {
-      width: 100%;
-      padding: 15px;
-      border: none;
+      border: 0;
       border-radius: 13px;
-      margin-top: 18px;
       background: #fff;
-      color: #000;
+      color: #08090d;
+      padding: 15px;
       font-size: 15px;
-      font-weight: bold;
+      font-weight: 900;
       cursor: pointer;
     }
 
-    button:disabled {
+    button.generate:disabled {
       opacity: .5;
       cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 13px;
+      min-height: 20px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #0b0c10;
+      border: 1px solid #292c34;
+      color: #a8abb4;
+      font-size: 13px;
+    }
+
+    #status.success {
+      color: #bff1c9;
+    }
+
+    #status.error {
+      color: #ffb5b5;
+    }
+
+    #status.loading {
+      color: #ddd;
+    }
+
+    #videoPreview {
+      display: none;
+      width: 100%;
+      max-height: 600px;
+      margin-top: 18px;
+      background: #000;
+      border-radius: 14px;
+    }
+
+    #download {
+      display: none;
+      width: 100%;
+      text-align: center;
+      margin-top: 10px;
+      padding: 13px;
+      border-radius: 11px;
+      background: #191b21;
+      border: 1px solid #30333c;
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .connection {
@@ -126,52 +297,59 @@
       flex-wrap: wrap;
     }
 
-    .connection button {
-      width: auto;
-      margin: 0;
-      padding: 10px 15px;
+    .connection-status {
+      color: #92959e;
+      font-size: 12px;
     }
 
-    .status {
-      background: #0d0d12;
-      border-radius: 12px;
-      padding: 14px;
-      color: #aaa;
-      min-height: 45px;
-      line-height: 1.5;
+    .connection-buttons {
+      display: flex;
+      gap: 8px;
     }
 
-    .status.ok {
-      color: #9effb0;
+    .small-button {
+      background: #181a20;
+      border: 1px solid #30333c;
+      color: #fff;
+      border-radius: 9px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 11px;
     }
 
-    .status.err {
-      color: #ff8f8f;
-    }
-
-    video {
-      width: 100%;
-      border-radius: 15px;
-      margin-top: 10px;
-      background: #000;
-      display: none;
-    }
-
-    .download {
-      display: none;
+    .footer {
       text-align: center;
-      text-decoration: none;
-      background: #fff;
-      color: #000;
-      padding: 14px;
-      border-radius: 12px;
-      margin-top: 12px;
-      font-weight: bold;
+      color: #555861;
+      font-size: 10px;
+      padding: 15px;
     }
 
-    @media (max-width: 600px) {
+    @media(max-width:700px) {
+      .provider-grid {
+        grid-template-columns:
+          repeat(2, 1fr);
+      }
+
       .grid {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media(max-width:420px) {
+      .provider-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .app {
+        padding: 12px;
+      }
+
+      .card {
+        padding: 15px;
+      }
+
+      .logo {
+        font-size: 30px;
       }
     }
   </style>
@@ -179,119 +357,323 @@
 
 <body>
 
-<div class="container">
+<main class="app">
 
-  <h1>GEN-Z.AI</h1>
+  <!-- HEADER -->
 
-  <div class="subtitle">
-    Character Reference → AI Video
-  </div>
+  <header class="header">
+
+    <div class="logo">
+      GEN-Z.AI
+    </div>
+
+    <div class="subtitle">
+      Character Reference → AI Video
+    </div>
+
+  </header>
+
+
+  <!-- POLLINATIONS CONNECTION -->
+
+  <section class="card">
+
+    <div class="title">
+      Pollinations Connection
+    </div>
+
+    <div class="connection">
+
+      <div
+        id="connectionStatus"
+        class="connection-status"
+      >
+        Belum terhubung
+      </div>
+
+      <div class="connection-buttons">
+
+        <button
+          id="connectPolli"
+          class="small-button"
+          type="button"
+        >
+          Connect
+        </button>
+
+        <button
+          id="disconnectPolli"
+          class="small-button"
+          type="button"
+        >
+          Disconnect
+        </button>
+
+      </div>
+
+    </div>
+
+  </section>
+
 
   <!-- PROVIDER -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>Provider Video</h2>
+    <div class="title">
+      AI Video Provider
+    </div>
 
-    <label for="providerSelect">
-      Pilih Provider
-    </label>
 
-    <select id="providerSelect">
+    <!-- SEMUA PROVIDER TERLIHAT -->
 
-      <option value="pollinations">
-        Pollinations
-      </option>
+    <div class="provider-grid">
 
-      <option value="fal">
-        fal.ai
-      </option>
+      <button
+        type="button"
+        class="provider"
+        data-provider="pollinations"
+      >
+        <div class="provider-name">
+          Pollinations
+        </div>
 
-      <option value="runway">
-        Runway
-      </option>
+        <div class="provider-type">
+          AI Video
+        </div>
+      </button>
 
-      <option value="veo">
-        Google Veo
-      </option>
 
-      <option value="luma">
-        Luma
-      </option>
+      <button
+        type="button"
+        class="provider"
+        data-provider="fal"
+      >
+        <div class="provider-name">
+          fal.ai
+        </div>
 
-      <option value="minimax">
-        MiniMax / Hailuo
-      </option>
+        <div class="provider-type">
+          AI Models
+        </div>
+      </button>
 
-    </select>
+
+      <button
+        type="button"
+        class="provider"
+        data-provider="runway"
+      >
+        <div class="provider-name">
+          Runway
+        </div>
+
+        <div class="provider-type">
+          Gen Video
+        </div>
+      </button>
+
+
+      <button
+        type="button"
+        class="provider active"
+        data-provider="veo"
+      >
+        <div class="provider-name">
+          Google Veo
+        </div>
+
+        <div class="provider-type">
+          Veo 3.1
+        </div>
+      </button>
+
+
+      <button
+        type="button"
+        class="provider"
+        data-provider="luma"
+      >
+        <div class="provider-name">
+          Luma
+        </div>
+
+        <div class="provider-type">
+          Dream Machine
+        </div>
+      </button>
+
+
+      <button
+        type="button"
+        class="provider"
+        data-provider="minimax"
+      >
+        <div class="provider-name">
+          MiniMax
+        </div>
+
+        <div class="provider-type">
+          Hailuo
+        </div>
+      </button>
+
+    </div>
+
+
+    <!-- PROVIDER DETAIL -->
 
     <div
-      id="providerSettings"
-      style="margin-top:10px;"
-    ></div>
+      id="providerPanel"
+      class="provider-panel"
+    >
 
-  </div>
+      <div class="provider-header">
+
+        <h3 id="providerName">
+          Google Veo
+        </h3>
+
+        <span
+          id="providerBadge"
+          class="badge"
+        >
+          Veo 3.1
+        </span>
+
+      </div>
+
+
+      <div
+        id="providerDescription"
+        class="provider-description"
+      >
+        Google Veo 3.1 untuk pembuatan video
+        dengan character reference.
+      </div>
+
+
+      <div class="field">
+
+        <label for="model">
+          Model
+        </label>
+
+        <select id="model">
+
+          <option value="veo-3.1-fast-generate-preview">
+            Veo 3.1 Fast
+          </option>
+
+          <option value="veo-3.1-generate-preview">
+            Veo 3.1
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="capabilities">
+
+        <span class="capability">
+          Character Reference
+        </span>
+
+        <span class="capability">
+          Image → Video
+        </span>
+
+        <span class="capability">
+          Native Audio
+        </span>
+
+        <span class="capability">
+          16:9
+        </span>
+
+        <span class="capability">
+          9:16
+        </span>
+
+        <span class="capability">
+          4K
+        </span>
+
+      </div>
+
+    </div>
+
+  </section>
 
 
   <!-- CHARACTER -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>1. Character Reference</h2>
-
-    <label for="characterFile">
-      Upload Foto Karakter
-    </label>
-
-    <input
-      id="characterFile"
-      type="file"
-      accept="image/jpeg,image/png,image/webp"
-    >
-
-    <div
-      id="characterInfo"
-      class="info"
-    >
-      JPG, PNG, atau WEBP. Maksimal 20 MB.
+    <div class="title">
+      Character Reference
     </div>
 
-    <img
-      id="characterPreview"
-      class="preview"
-      alt="Character Reference"
-    >
+    <div class="upload">
 
-  </div>
+      <label for="characterFile">
+        Upload Foto Karakter
+      </label>
+
+      <input
+        id="characterFile"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+      >
+
+      <img
+        id="characterPreview"
+        alt="Character Reference"
+      >
+
+      <div id="characterInfo"></div>
+
+    </div>
+
+  </section>
 
 
   <!-- PROMPT -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>2. Video Prompt</h2>
+    <div class="title">
+      Video Prompt
+    </div>
+
+    <label for="prompt">
+      Deskripsi Video
+    </label>
 
     <textarea
       id="prompt"
       maxlength="512"
-      placeholder="Contoh: Karakter berjalan perlahan menuju kamera sambil tersenyum."
+      placeholder="Contoh: karakter berjalan perlahan menuju kamera, ekspresi natural, rambut bergerak tertiup angin, cinematic realistic movement..."
     ></textarea>
 
     <div
       id="promptCounter"
       class="counter"
     >
-      0 / 512
+      0/512
     </div>
 
-  </div>
+  </section>
 
 
   <!-- SETTINGS -->
 
-  <div class="card">
+  <section class="card">
 
-    <h2>3. Video Settings</h2>
+    <div class="title">
+      Video Settings
+    </div>
 
     <div class="grid">
 
@@ -307,11 +689,7 @@
             4 detik
           </option>
 
-          <option value="5">
-            5 detik
-          </option>
-
-          <option value="6" selected>
+          <option value="6">
             6 detik
           </option>
 
@@ -319,17 +697,10 @@
             8 detik
           </option>
 
-          <option value="10">
-            10 detik
-          </option>
-
-          <option value="12">
-            12 detik
-          </option>
-
         </select>
 
       </div>
+
 
       <div>
 
@@ -347,8 +718,29 @@
             9:16
           </option>
 
-          <option value="1:1">
-            1:1
+        </select>
+
+      </div>
+
+
+      <div>
+
+        <label for="resolution">
+          Resolusi
+        </label>
+
+        <select id="resolution">
+
+          <option value="720p">
+            720p
+          </option>
+
+          <option value="1080p">
+            1080p
+          </option>
+
+          <option value="4k">
+            4K
           </option>
 
         </select>
@@ -358,50 +750,36 @@
     </div>
 
 
-    <label for="seed">
-      Seed
-    </label>
+    <div style="margin-top:12px;">
 
-    <input
-      id="seed"
-      type="number"
-      min="0"
-      max="2147483646"
-      placeholder="Kosongkan untuk random"
-    >
+      <label for="seed">
+        Seed
+      </label>
 
+      <input
+        id="seed"
+        type="number"
+        placeholder="Random"
+      >
+
+    </div>
+
+  </section>
+
+
+  <!-- GENERATE -->
+
+  <section class="card">
 
     <button
       id="videoBtn"
+      class="generate"
       type="button"
     >
-      GENERATE VIDEO
+      Generate Video
     </button>
 
-  </div>
-
-
-  <!-- STATUS -->
-
-  <div class="card">
-
-    <h2>Status</h2>
-
-    <div
-      id="status"
-      class="status"
-    >
-      Siap digunakan.
-    </div>
-
-  </div>
-
-
-  <!-- RESULT -->
-
-  <div class="card">
-
-    <h2>Hasil Video</h2>
+    <div id="status"></div>
 
     <video
       id="videoPreview"
@@ -411,28 +789,26 @@
 
     <a
       id="download"
-      class="download"
-      download="gen-z-ai-video.mp4"
+      href="#"
+      download
     >
       Download Video
     </a>
 
-  </div>
+  </section>
 
-</div>
 
+  <footer class="footer">
+    GEN-Z.AI • AI Video Generator
+  </footer>
+
+</main>
+
+
+<!-- JAVASCRIPT -->
 
 <script src="/js/config.js"></script>
 <script src="/js/auth.js"></script>
-
-<script src="/js/providers/pollinations.js"></script>
-<script src="/js/providers/fal.js"></script>
-<script src="/js/providers/runway.js"></script>
-
-<script src="/js/providers/veo.js"></script>
-<script src="/js/providers/luma.js"></script>
-<script src="/js/providers/minimax.js"></script>
-
 <script src="/js/app.js"></script>
 
 </body>
