@@ -1,2 +1,218 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Video Tool V8</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:auto;padding:20px;background:#f5f5f5}.card{background:#fff;padding:20px;border-radius:14px}textarea,select,button{width:100%;box-sizing:border-box;padding:12px;margin:7px 0;font-size:16px}button{cursor:pointer;background:#222;color:#fff;border:0;border-radius:8px}button:disabled{opacity:.45}img,video{width:100%;max-width:100%;margin-top:10px;border-radius:10px}.status{margin-top:10px;padding:12px;background:#eee;border-radius:8px}.status.ok{background:#dff5df}.status.err{background:#ffdede}a{display:block;margin-top:10px;padding:12px;background:#222;color:#fff;text-align:center;text-decoration:none;border-radius:8px}</style></head><body><div class="card"><h2>AI Video Tool V8</h2><textarea id="prompt" placeholder="Tulis prompt..."></textarea><select id="duration"><option value="5">5 detik</option><option value="10">10 detik</option></select><select id="aspect"><option value="16:9">16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option></select><button id="generate">Buat Gambar AI</button><button id="videoBtn" type="button" disabled onclick="generateVideoWithNovaReel()">Jadikan Video</button><div id="status" class="status">Siap.</div><img id="imagePreview" style="display:none" alt=""><video id="videoPreview" style="display:none" controls></video><a id="download" style="display:none" href="#">Download Video</a></div><script>
-const CLIENT_ID="pk_TbW0TG3A2MmE7rOM",REDIRECT_URI="https://ai-video-tool-ten.vercel.app/",AUTH_URL="https://enter.pollinations.ai/authorize",TOKEN_URL="https://enter.pollinations.ai/api/oauth/token",KEY="polli_access_token";const S=id=>document.getElementById(id);function st(t,c=""){S("status").textContent=t;S("status").className="status "+c}async function oauth(){const u=new URL(AUTH_URL);u.searchParams.set("client_id",CLIENT_ID);u.searchParams.set("redirect_uri",REDIRECT_URI);u.searchParams.set("response_type","code");u.searchParams.set("scope","usage");location.href=u}async function exchange(code){try{const r=await fetch(TOKEN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({grant_type:"authorization_code",client_id:CLIENT_ID,code,redirect_uri:REDIRECT_URI})}),d=await r.json();if(!d.access_token)throw Error("OAuth gagal");sessionStorage.setItem(KEY,d.access_token);history.replaceState({},document.title,REDIRECT_URI);st("Pollinations terhubung.","ok")}catch(e){st(e.message,"err")}}(async()=>{const code=new URLSearchParams(location.search).get("code");if(code)await exchange(code);const t=sessionStorage.getItem(KEY);if(!t){S("generate").textContent="Hubungkan Pollinations";S("generate").onclick=oauth;return}S("generate").onclick=async()=>{const p=S("prompt").value.trim();if(!p){st("Masukkan prompt terlebih dahulu.","err");return}st("Membuat gambar AI...");try{const r=await fetch("https://gen.pollinations.ai/image/"+encodeURIComponent(p)+"?model=black-forest-labs%2Fflux.1-schnell&width=1024&height=1024",{headers:{Authorization:"Bearer "+t}});if(!r.ok)throw Error("Gambar gagal: HTTP "+r.status);const b=await r.blob();S("imagePreview").src=URL.createObjectURL(b);S("imagePreview").style.display="block";S("videoBtn").disabled=false;st("Gambar siap. Tombol Jadikan Video aktif.","ok")}catch(e){st(e.message,"err")}}})();</script><script src="ai_video_real_v8.js?v=8"></script></body></html>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Video Tool V8</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f6f8; color: #222; }
+    main { width: min(900px, 94%); margin: 30px auto; background: #fff; padding: 24px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+    h1 { margin-top: 0; }
+    label { display: block; margin: 14px 0 6px; font-weight: 700; }
+    textarea, select, button { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+    textarea { min-height: 110px; resize: vertical; }
+    button { margin-top: 14px; cursor: pointer; background: #111; color: #fff; border: 0; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .status { margin-top: 16px; padding: 12px; border-radius: 8px; background: #eef1f4; min-height: 44px; }
+    .status.ok { background: #e6f7e9; }
+    .status.err { background: #fde8e8; color: #9b1c1c; }
+    img, video { width: 100%; margin-top: 18px; border-radius: 10px; display: none; }
+    #download { display: none; margin-top: 14px; text-align: center; padding: 12px; border-radius: 8px; background: #111; color: #fff; text-decoration: none; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AI Video Tool V8</h1>
+
+    <label for="prompt">Prompt</label>
+    <textarea id="prompt" placeholder="Contoh: seorang pria berjalan perlahan di taman, kamera mengikuti gerakannya secara natural"></textarea>
+
+    <div class="row">
+      <div>
+        <label for="duration">Durasi</label>
+        <select id="duration">
+          <option value="5">5 detik</option>
+          <option value="10">10 detik</option>
+        </select>
+      </div>
+      <div>
+        <label for="aspect">Rasio</label>
+        <select id="aspect">
+          <option value="16:9">16:9</option>
+          <option value="9:16">9:16</option>
+          <option value="1:1">1:1</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="generate" type="button">Buat Gambar AI</button>
+    <button id="videoBtn" type="button" disabled onclick="generateVideoWithNovaReel()">Jadikan Video</button>
+
+    <div id="status" class="status">Siap.</div>
+
+    <img id="imagePreview" alt="Hasil gambar AI">
+    <video id="videoPreview" controls playsinline></video>
+    <a id="download" href="#">Download Video</a>
+  </main>
+
+  <script>
+    (() => {
+      const CLIENT_ID = "pk_TbW0TG3A2MmE7rOM";
+      const REDIRECT_URI = "https://ai-video-tool-ten.vercel.app/";
+      const AUTH_URL = "https://enter.pollinations.ai/authorize";
+      const TOKEN_URL = "https://enter.pollinations.ai/api/oauth/token";
+      const KEY = "polli_access_token";
+
+      const $ = (id) => document.getElementById(id);
+
+      function setStatus(text, cls = "") {
+        const el = $("status");
+        el.textContent = text;
+        el.className = "status " + cls;
+      }
+
+      function base64url(bytes) {
+        let s = "";
+        bytes.forEach((b) => s += String.fromCharCode(b));
+        return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+
+      async function sha256(text) {
+        const data = new TextEncoder().encode(text);
+        const hash = await crypto.subtle.digest("SHA-256", data);
+        return new Uint8Array(hash);
+      }
+
+      function randomString(length = 64) {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+        const bytes = crypto.getRandomValues(new Uint8Array(length));
+        return Array.from(bytes, b => chars[b % chars.length]).join("");
+      }
+
+      async function startOAuth() {
+        const verifier = randomString();
+        const challenge = base64url(await sha256(verifier));
+        sessionStorage.setItem("polli_pkce_verifier", verifier);
+        const state = randomString(32);
+        sessionStorage.setItem("polli_oauth_state", state);
+
+        const params = new URLSearchParams({
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
+          response_type: "code",
+          scope: "usage",
+          code_challenge: challenge,
+          code_challenge_method: "S256",
+          state
+        });
+        window.location.href = AUTH_URL + "?" + params.toString();
+      }
+
+      async function handleOAuthCallback() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        const state = params.get("state");
+        if (!code) return false;
+
+        const savedState = sessionStorage.getItem("polli_oauth_state");
+        const verifier = sessionStorage.getItem("polli_pkce_verifier");
+        if (!verifier || !savedState || state !== savedState) {
+          setStatus("OAuth gagal: state atau PKCE tidak cocok.", "err");
+          return false;
+        }
+
+        setStatus("Menyelesaikan koneksi Pollinations...");
+        const body = new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
+          code_verifier: verifier
+        });
+
+        const response = await fetch(TOKEN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
+
+        const text = await response.text();
+        if (!response.ok) {
+          setStatus("OAuth gagal: HTTP " + response.status + " - " + text.slice(0, 500), "err");
+          return false;
+        }
+
+        let data;
+        try { data = JSON.parse(text); } catch { data = {}; }
+        const token = data.access_token || data.key || data.token;
+        if (!token) {
+          setStatus("OAuth berhasil tetapi access token tidak ditemukan.", "err");
+          return false;
+        }
+
+        sessionStorage.setItem(KEY, token);
+        sessionStorage.removeItem("polli_pkce_verifier");
+        sessionStorage.removeItem("polli_oauth_state");
+        history.replaceState({}, document.title, REDIRECT_URI);
+        setStatus("Pollinations terhubung. Siap membuat gambar.", "ok");
+        return true;
+      }
+
+      async function generateImage() {
+        const prompt = $("prompt").value.trim();
+        if (!prompt) {
+          setStatus("Masukkan prompt terlebih dahulu.", "err");
+          return;
+        }
+
+        const token = sessionStorage.getItem(KEY) || "";
+        if (!token) {
+          setStatus("Menghubungkan ke Pollinations...");
+          await startOAuth();
+          return;
+        }
+
+        setStatus("Membuat gambar AI...");
+        const imagePrompt = prompt + ". High quality realistic image, detailed, consistent subject, natural lighting.";
+        const url = "https://gen.pollinations.ai/image/" + encodeURIComponent(imagePrompt) + "?model=black-forest-labs/flux.1-schnell&width=1024&height=1024&nologo=true";
+
+        const response = await fetch(url, {
+          headers: { Authorization: "Bearer " + token }
+        });
+
+        if (!response.ok) {
+          setStatus("Gambar gagal: HTTP " + response.status, "err");
+          return;
+        }
+
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        const img = $("imagePreview");
+        img.src = imageUrl;
+        img.style.display = "block";
+        $("videoBtn").disabled = false;
+        setStatus("Gambar AI berhasil dibuat. Tombol Jadikan Video aktif.", "ok");
+      }
+
+      $("generate").addEventListener("click", generateImage);
+      window.generateVideoWithNovaReel = function () {
+        setStatus("Tombol video aktif. Menyiapkan proses...");
+        if (typeof window.__NOVA_REEL_V8_GENERATE === "function") {
+          return window.__NOVA_REEL_V8_GENERATE();
+        }
+        setStatus("File ai_video_real_v8.js belum termuat. Pastikan file berada di folder public yang sama dengan index.html.", "err");
+      };
+
+      handleOAuthCallback().catch(err => setStatus(err.message || String(err), "err"));
+    })();
+  </script>
+
+  <script src="ai_video_real_v8.js?v=8"></script>
+  <script>
+    window.generateVideoWithNovaReel = window.generateVideoWithNovaReel || function () {};
+  </script>
+</body>
+</html>
