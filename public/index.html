@@ -2,10 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>GEN-Z.AI</title>
 
@@ -145,6 +142,14 @@
       line-height: 1.5;
     }
 
+    .status.ok {
+      color: #9effb0;
+    }
+
+    .status.err {
+      color: #ff8f8f;
+    }
+
     video {
       width: 100%;
       border-radius: 15px;
@@ -196,7 +201,7 @@
     Character Reference → AI Video
   </div>
 
-  <!-- CONNECTION -->
+  <!-- POLLINATIONS -->
 
   <div class="card">
 
@@ -293,6 +298,82 @@
 
     <h2>3. Video Settings</h2>
 
+    <label for="videoModel">
+      Model Video
+    </label>
+
+    <select id="videoModel">
+
+      <option value="seedance-2.5">
+        Seedance 2.5
+      </option>
+
+      <option value="seedance-2.0">
+        Seedance 2.0
+      </option>
+
+      <option value="seedance-2.0-fast">
+        Seedance 2.0 Fast
+      </option>
+
+      <option value="seedance-2.0-mini">
+        Seedance 2.0 Mini
+      </option>
+
+      <option value="seedance-pro">
+        Seedance Pro
+      </option>
+
+      <option value="veo">
+        Veo
+      </option>
+
+      <option value="wan">
+        Wan
+      </option>
+
+      <option value="wan-fast">
+        Wan Fast
+      </option>
+
+      <option value="wan-pro">
+        Wan Pro
+      </option>
+
+      <option value="grok-video-pro">
+        Grok Video Pro
+      </option>
+
+      <option value="grok-imagine-video-1.5">
+        Grok Imagine Video 1.5
+      </option>
+
+      <option value="happyhorse-1.1">
+        HappyHorse 1.1
+      </option>
+
+      <option value="minimax-h3">
+        MiniMax H3
+      </option>
+
+      <option value="p-video">
+        Pruna P-Video
+      </option>
+
+      <option value="nova-reel">
+        Nova Reel
+      </option>
+
+    </select>
+
+    <div
+      id="modelInfo"
+      class="info"
+    >
+      Seedance 2.5 dipilih sebagai model default.
+    </div>
+
+
     <div class="grid">
 
       <div>
@@ -303,8 +384,28 @@
 
         <select id="duration">
 
-          <option value="6">
+          <option value="4">
+            4 detik
+          </option>
+
+          <option value="5">
+            5 detik
+          </option>
+
+          <option value="6" selected>
             6 detik
+          </option>
+
+          <option value="8">
+            8 detik
+          </option>
+
+          <option value="10">
+            10 detik
+          </option>
+
+          <option value="12">
+            12 detik
           </option>
 
         </select>
@@ -321,15 +422,15 @@
         <select id="aspect">
 
           <option value="16:9">
-            16:9 Native
+            16:9
           </option>
 
           <option value="9:16">
-            9:16 Portrait
+            9:16
           </option>
 
           <option value="1:1">
-            1:1 Square
+            1:1
           </option>
 
         </select>
@@ -351,9 +452,13 @@
       placeholder="Kosongkan untuk random"
     >
 
-    <div class="native-output">
-      Nova Reel Native Output:
-      <strong>1280 × 720 • 24 FPS • 16:9</strong>
+
+    <div
+      class="native-output"
+      id="modelOutput"
+    >
+      Model video:
+      <strong>Seedance 2.5</strong>
     </div>
 
 
@@ -420,20 +525,47 @@
   const promptCounter =
     document.getElementById("promptCounter");
 
-  if (promptInput && promptCounter) {
+  const modelSelect =
+    document.getElementById("videoModel");
 
-    promptInput.addEventListener(
-      "input",
-      function () {
+  const modelInfo =
+    document.getElementById("modelInfo");
 
-        promptCounter.textContent =
-          promptInput.value.length +
-          " / 512";
+  const modelOutput =
+    document.getElementById("modelOutput");
 
-      }
-    );
 
-  }
+  promptInput.addEventListener(
+    "input",
+    () => {
+
+      promptCounter.textContent =
+        promptInput.value.length +
+        " / 512";
+
+    }
+  );
+
+
+  modelSelect.addEventListener(
+    "change",
+    () => {
+
+      const name =
+        modelSelect.options[
+          modelSelect.selectedIndex
+        ].text;
+
+      modelInfo.textContent =
+        "Model aktif: " + name;
+
+      modelOutput.innerHTML =
+        "Model video: <strong>" +
+        name +
+        "</strong>";
+
+    }
+  );
 
 </script>
 
