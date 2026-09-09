@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>AI Video Tool V8</title>
+  <title>GEN-Z.AI</title>
 
   <style>
     * {
@@ -14,152 +14,150 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #0b1020;
+      background: #0b0b0f;
       color: #fff;
     }
 
     .container {
-      width: 100%;
-      max-width: 900px;
-      margin: auto;
-      padding: 24px;
+      width: min(760px, 92%);
+      margin: 40px auto;
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
+      text-align: center;
+      margin-bottom: 8px;
     }
 
     .subtitle {
-      color: #9ca3af;
-      margin-bottom: 22px;
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 30px;
     }
 
     .card {
-      background: #151c31;
-      border: 1px solid #29334f;
-      border-radius: 16px;
-      padding: 18px;
-      margin-bottom: 16px;
+      background: #15151c;
+      border: 1px solid #292936;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
     }
 
-    .title {
+    .card h2 {
+      margin-top: 0;
+      font-size: 19px;
+    }
+
+    label {
       display: block;
+      margin: 14px 0 8px;
       font-weight: bold;
-      margin-bottom: 10px;
+    }
+
+    input[type="file"],
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid #333341;
+      background: #0d0d12;
+      color: white;
+      border-radius: 12px;
+      padding: 13px;
     }
 
     textarea {
-      width: 100%;
       min-height: 130px;
       resize: vertical;
-      background: #0b1020;
-      color: #fff;
-      border: 1px solid #34405e;
-      border-radius: 12px;
-      padding: 14px;
-      font-size: 16px;
-      outline: none;
-    }
-
-    textarea:focus,
-    select:focus {
-      border-color: #2563eb;
-    }
-
-    select {
-      background: #0b1020;
-      color: #fff;
-      border: 1px solid #34405e;
-      border-radius: 10px;
-      padding: 11px 14px;
-      font-size: 15px;
-    }
-
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-      background: #2563eb;
-      color: #fff;
-    }
-
-    button:hover {
-      opacity: .9;
-    }
-
-    button:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-    }
-
-    .danger {
-      background: #7f1d1d;
-    }
-
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .status {
-      background: #0b1020;
-      border-radius: 10px;
-      padding: 12px;
-      margin: 12px 0;
-      color: #fbbf24;
-      white-space: pre-wrap;
-    }
-
-    .status.ok {
-      color: #4ade80;
-    }
-
-    .status.err {
-      color: #f87171;
-    }
-
-    .connected {
-      color: #4ade80 !important;
     }
 
     .preview {
       width: 100%;
-      max-height: 550px;
+      max-height: 420px;
       object-fit: contain;
+      margin-top: 15px;
+      border-radius: 14px;
+      background: #08080b;
+      display: none;
+    }
+
+    .info {
+      color: #999;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 13px;
+      padding: 15px;
+      margin-top: 18px;
+      background: #fff;
+      color: #000;
+      font-weight: bold;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      padding: 14px;
       border-radius: 12px;
-      background: #050814;
+      background: #0d0d12;
+      color: #aaa;
+      min-height: 45px;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 15px;
+      background: #000;
       margin-top: 10px;
     }
 
-    .hidden {
-      display: none !important;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #9ca3af;
-    }
-
     .download {
-      display: inline-block;
-      margin-top: 12px;
-      color: #93c5fd;
-      font-weight: bold;
+      display: block;
+      text-align: center;
       text-decoration: none;
-    }
-
-    .audio-preview {
-      width: 100%;
+      background: #fff;
+      color: #000;
+      padding: 14px;
+      border-radius: 12px;
       margin-top: 12px;
+      font-weight: bold;
     }
 
-    .section-space {
-      margin-top: 15px;
+    .connection {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .connection button {
+      width: auto;
+      margin: 0;
+      padding: 10px 16px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 25px auto;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -168,281 +166,157 @@
 
 <div class="container">
 
-  <h1>🎬 GEN-Z.AI</h1>
+  <h1>GEN-Z.AI</h1>
 
   <div class="subtitle">
-    AI Image → AI Video menggunakan Pollinations + Amazon Nova Reel
+    Character Reference → AI Video
   </div>
 
-
-  <!-- ==============================
-       POLLINATIONS
-       ============================== -->
-
+  <!-- CONNECTION -->
   <div class="card">
+    <div class="connection">
+      <div>
+        <strong>Pollinations</strong>
+        <div id="connectionStatus" class="info">
+          Belum terhubung
+        </div>
+      </div>
 
-    <span class="title">
-      🔐 Koneksi Pollinations
-    </span>
-
-    <div id="polliStatus" class="status">
-      ● Belum terhubung ke Pollinations
-    </div>
-
-    <div class="row">
-
-      <button id="connectPolli">
-        🔐 Hubungkan Pollinations
+      <button id="connectPolli" type="button">
+        Hubungkan
       </button>
 
-      <button
-        id="disconnectPolli"
-        class="danger"
-      >
-        🔓 Putuskan Koneksi
+      <button id="disconnectPolli" type="button" style="display:none;">
+        Putuskan
       </button>
-
     </div>
-
-    <div class="small section-space">
-      Hubungkan akun Pollinations sebelum membuat gambar AI.
-    </div>
-
   </div>
 
-
-  <!-- ==============================
-       PROMPT
-       ============================== -->
-
+  <!-- CHARACTER -->
   <div class="card">
 
-    <label
-      class="title"
-      for="prompt"
+    <h2>1. Character Reference</h2>
+
+    <label for="characterFile">
+      Upload Foto Karakter
+    </label>
+
+    <input
+      id="characterFile"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
     >
-      Prompt
+
+    <div id="characterInfo" class="info">
+      Pilih foto karakter sebagai referensi.
+    </div>
+
+    <img
+      id="characterPreview"
+      class="preview"
+      alt="Character Preview"
+    >
+
+  </div>
+
+  <!-- PROMPT -->
+  <div class="card">
+
+    <h2>2. Video Prompt</h2>
+
+    <label for="prompt">
+      Deskripsi Video
     </label>
 
     <textarea
       id="prompt"
-      placeholder="Masukkan prompt gambar atau video AI di sini..."
+      placeholder="Contoh: Karakter berjalan perlahan menuju kamera sambil tersenyum natural. Kamera mengikuti gerakannya secara halus..."
     ></textarea>
 
+    <div class="info">
+      Jelaskan gerakan karakter, ekspresi, kamera, lokasi, pencahayaan,
+      dan suasana video.
+    </div>
 
-    <div
-      class="row section-space"
-    >
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="card">
+
+    <h2>3. Pengaturan Video</h2>
+
+    <div class="row">
 
       <div>
-
-        <div class="small">
+        <label for="duration">
           Durasi
-        </div>
+        </label>
 
         <select id="duration">
-
-          <option value="5">
-            5 detik
-          </option>
-
-          <option value="10">
-            10 detik
-          </option>
-
+          <option value="5">5 detik</option>
+          <option value="10">10 detik</option>
         </select>
-
       </div>
-
 
       <div>
-
-        <div class="small">
+        <label for="aspect">
           Aspect Ratio
-        </div>
+        </label>
 
         <select id="aspect">
-
-          <option value="16:9">
-            16:9
-          </option>
-
-          <option value="9:16">
-            9:16
-          </option>
-
-          <option value="1:1">
-            1:1
-          </option>
-
+          <option value="16:9">16:9</option>
+          <option value="9:16">9:16</option>
+          <option value="1:1">1:1</option>
         </select>
-
       </div>
 
     </div>
 
+    <button id="videoBtn" type="button">
+      GENERATE VIDEO
+    </button>
 
-    <div
-      class="row section-space"
-    >
+  </div>
 
-      <button id="generateImage">
-        🎨 Buat Gambar AI
-      </button>
+  <!-- STATUS -->
+  <div class="card">
 
-      <button
-        id="videoBtn"
-        disabled
-      >
-        🎬 Jadikan Video
-      </button>
+    <h2>Status</h2>
 
-    </div>
-
-
-    <div
-      id="status"
-      class="status"
-    >
+    <div id="status" class="status">
       Siap digunakan.
     </div>
 
   </div>
 
-
-  <!-- ==============================
-       IMAGE
-       ============================== -->
-
+  <!-- RESULT -->
   <div class="card">
 
-    <span class="title">
-      🖼️ Preview Gambar
-    </span>
-
-    <img
-      id="imagePreview"
-      class="preview hidden"
-      alt="Preview gambar AI"
-    >
-
-  </div>
-
-
-  <!-- ==============================
-       VIDEO
-       ============================== -->
-
-  <div class="card">
-
-    <span class="title">
-      🎥 Preview Video
-    </span>
+    <h2>Hasil Video</h2>
 
     <video
       id="videoPreview"
-      class="preview"
       controls
       playsinline
-      style="display:none"
+      style="display:none;"
     ></video>
 
     <a
       id="download"
       class="download"
-      download="ai-video-nova-reel.mp4"
-      style="display:none"
+      style="display:none;"
+      download="gen-z-ai-video.mp4"
     >
-      ⬇️ Download Video
-    </a>
-
-  </div>
-
-
-  <!-- ==============================
-       AUDIO
-       ============================== -->
-
-  <div class="card">
-
-    <span class="title">
-      🔊 Audio AI
-    </span>
-
-    <textarea
-      id="audioText"
-      placeholder="Masukkan dialog atau narasi suara AI..."
-      style="min-height:90px"
-    ></textarea>
-
-    <div class="row section-space">
-
-      <div>
-
-        <div class="small">
-          Voice
-        </div>
-
-        <select id="voiceSelect">
-
-          <option value="nova">
-            Nova
-          </option>
-
-          <option value="alloy">
-            Alloy
-          </option>
-
-          <option value="echo">
-            Echo
-          </option>
-
-          <option value="shimmer">
-            Shimmer
-          </option>
-
-        </select>
-
-      </div>
-
-    </div>
-
-    <button
-      id="generateAudio"
-      class="section-space"
-    >
-      🔊 Buat Audio AI
-    </button>
-
-    <audio
-      id="audioPreview"
-      class="audio-preview"
-      controls
-      style="display:none"
-    ></audio>
-
-    <a
-      id="audioDownload"
-      class="download"
-      style="display:none"
-    >
-      ⬇️ Download Audio
+      Download Video
     </a>
 
   </div>
 
 </div>
 
-
-<!-- ==============================
-     JAVASCRIPT CABANG
-     ============================== -->
-
 <script src="/js/config.js"></script>
 <script src="/js/auth.js"></script>
-<script src="/js/image-engine.js"></script>
 <script src="/js/video-engine.js"></script>
-<script src="/js/audio-engine.js"></script>
 
 </body>
 </html>
