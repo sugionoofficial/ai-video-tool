@@ -3,16 +3,28 @@
 
   const C = window.AIVideoConfig || {};
 
+  // ==============================
+  // TOKEN
+  // ==============================
+
   function getToken() {
     if (typeof window.getPollinationsToken === "function") {
       return window.getPollinationsToken();
     }
 
     return (
-      localStorage.getItem(C.TOKEN_KEY || "polli_access_token") ||
-      sessionStorage.getItem(C.TOKEN_KEY || "polli_access_token")
+      localStorage.getItem(
+        C.TOKEN_KEY || "polli_access_token"
+      ) ||
+      sessionStorage.getItem(
+        C.TOKEN_KEY || "polli_access_token"
+      )
     );
   }
+
+  // ==============================
+  // STATUS
+  // ==============================
 
   function setStatus(message) {
     const el = document.getElementById("status");
@@ -26,32 +38,83 @@
     }
   }
 
+  // ==============================
+  // PROMPT
+  // ==============================
+
   function getPrompt() {
-    return document.getElementById("prompt")?.value.trim() || "";
+    return (
+      document.getElementById("prompt")?.value.trim() ||
+      ""
+    );
   }
 
-  function getCharacterFile() {
-    return document.getElementById("characterFile")?.files?.[0] || null;
+  /*
+   * Nova Reel memiliki batas prompt 512 karakter.
+   *
+   * Prompt pengguna dikirim langsung.
+   * Tidak lagi ditambahkan instruksi panjang
+   * yang menyebabkan error HTTP 400.
+   */
+
+  function buildPrompt(userPrompt) {
+    const prompt = userPrompt.trim();
+
+    if (!prompt) {
+      throw new Error(
+        "Masukkan prompt video terlebih dahulu."
+      );
+    }
+
+    if (prompt.length > 512) {
+      throw new Error(
+        "Prompt terlalu panjang. Maksimal 512 karakter. " +
+        "Prompt kamu saat ini " +
+        prompt.length +
+        " karakter."
+      );
+    }
+
+    return prompt;
   }
+
+  // ==============================
+  // CHARACTER FILE
+  // ==============================
+
+  function getCharacterFile() {
+    return (
+      document.getElementById(
+        "characterFile"
+      )?.files?.[0] || null
+    );
+  }
+
+  // ==============================
+  // VALIDASI GAMBAR
+  // ==============================
 
   function validateImage(file) {
     if (!file) {
-      throw new Error("Silakan upload foto karakter terlebih dahulu.");
+      throw new Error(
+        "Silakan upload foto karakter terlebih dahulu."
+      );
     }
 
-    const allowed = [
+    const allowedTypes = [
       "image/jpeg",
       "image/png",
       "image/webp"
     ];
 
-    if (!allowed.includes(file.type)) {
+    if (!allowedTypes.includes(file.type)) {
       throw new Error(
         "Format foto harus JPG, PNG, atau WEBP."
       );
     }
 
-    const maxSize = 20 * 1024 * 1024;
+    const maxSize =
+      20 * 1024 * 1024;
 
     if (file.size > maxSize) {
       throw new Error(
@@ -60,31 +123,48 @@
     }
   }
 
-  async function uploadCharacter(file, token) {
+  // ==============================
+  // UPLOAD CHARACTER
+  // ==============================
 
-    setStatus("Mengunggah foto karakter...");
+  async function uploadCharacter(
+    file,
+    token
+  ) {
 
-    const formData = new FormData();
+    setStatus(
+      "Mengunggah foto karakter..."
+    );
+
+    const formData =
+      new FormData();
 
     formData.append(
       "file",
       file,
-      file.name || "character-reference.jpg"
+      file.name ||
+        "character-reference.jpg"
     );
 
-    const response = await fetch(
-      C.UPLOAD_API,
-      {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token
-        },
-        body: formData
-      }
-    );
+    const response =
+      await fetch(
+        C.UPLOAD_API,
+        {
+          method: "POST",
+
+          headers: {
+            Authorization:
+              "Bearer " + token
+          },
+
+          body: formData
+        }
+      );
 
     if (!response.ok) {
-      const text = await response.text();
+
+      const text =
+        await response.text();
 
       throw new Error(
         "Upload karakter gagal: HTTP " +
@@ -94,7 +174,8 @@
       );
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     const imageURL =
       data.url ||
@@ -111,44 +192,35 @@
     return imageURL;
   }
 
-  function buildPrompt(userPrompt) {
-
-    return `
-Use the uploaded character reference image as the primary identity reference.
-
-Preserve the character's identity, facial structure, hairstyle,
-skin tone, body proportions, and overall appearance consistently
-throughout the entire video.
-
-Do not replace the character.
-Do not create another person.
-Do not duplicate the character.
-Do not morph the face.
-Do not change the identity.
-
-Animate the character naturally according to the user's video
-description.
-
-Natural human movement.
-Natural facial expressions.
-Realistic body motion.
-Consistent anatomy.
-Stable character appearance.
-
-User video description:
-${userPrompt}
-`.trim();
-  }
+  // ==============================
+  // GENERATE VIDEO
+  // ==============================
 
   async function generateVideo() {
 
-    const button = document.getElementById("videoBtn");
-    const video = document.getElementById("videoPreview");
-    const download = document.getElementById("download");
+    const button =
+      document.getElementById(
+        "videoBtn"
+      );
+
+    const video =
+      document.getElementById(
+        "videoPreview"
+      );
+
+    const download =
+      document.getElementById(
+        "download"
+      );
 
     try {
 
-      const token = getToken();
+      // ------------------------------
+      // TOKEN
+      // ------------------------------
+
+      const token =
+        getToken();
 
       if (!token) {
         throw new Error(
@@ -156,52 +228,108 @@ ${userPrompt}
         );
       }
 
-      const file = getCharacterFile();
+      // ------------------------------
+      // CHARACTER
+      // ------------------------------
+
+      const file =
+        getCharacterFile();
 
       validateImage(file);
 
-      const userPrompt = getPrompt();
+      // ------------------------------
+      // PROMPT
+      // ------------------------------
 
-      if (!userPrompt) {
-        throw new Error(
-          "Masukkan prompt video terlebih dahulu."
+      const userPrompt =
+        getPrompt();
+
+      const finalPrompt =
+        buildPrompt(
+          userPrompt
         );
-      }
+
+      // ------------------------------
+      // SETTINGS
+      // ------------------------------
 
       const duration =
-        document.getElementById("duration")?.value || "5";
+        document.getElementById(
+          "duration"
+        )?.value || "5";
 
       const aspect =
-        document.getElementById("aspect")?.value || "16:9";
+        document.getElementById(
+          "aspect"
+        )?.value || "16:9";
 
-      button.disabled = true;
+      // ------------------------------
+      // DISABLE BUTTON
+      // ------------------------------
+
+      if (button) {
+        button.disabled = true;
+        button.textContent =
+          "MEMBUAT VIDEO...";
+      }
+
+      // ------------------------------
+      // RESET RESULT
+      // ------------------------------
 
       if (video) {
-        video.style.display = "none";
-        video.removeAttribute("src");
+
+        video.pause();
+
+        video.removeAttribute(
+          "src"
+        );
+
+        video.style.display =
+          "none";
+
         video.load();
       }
 
       if (download) {
-        download.style.display = "none";
-        download.removeAttribute("href");
+
+        download.removeAttribute(
+          "href"
+        );
+
+        download.style.display =
+          "none";
       }
 
+      // ------------------------------
+      // UPLOAD CHARACTER
+      // ------------------------------
+
       const imageURL =
-        await uploadCharacter(file, token);
+        await uploadCharacter(
+          file,
+          token
+        );
+
+      // ------------------------------
+      // STATUS
+      // ------------------------------
 
       setStatus(
-        "Membuat video dengan Nova Reel..."
+        "Foto berhasil diunggah. Membuat video..."
       );
 
-      const finalPrompt =
-        buildPrompt(userPrompt);
+      // ------------------------------
+      // QUERY PARAMETER
+      // ------------------------------
 
-      const params = new URLSearchParams();
+      const params =
+        new URLSearchParams();
 
       params.set(
         "model",
-        C.VIDEO_MODEL || "amazon/nova-reel-v1"
+        C.VIDEO_MODEL ||
+          "amazon/nova-reel-v1"
       );
 
       params.set(
@@ -219,31 +347,74 @@ ${userPrompt}
         imageURL
       );
 
+      // ------------------------------
+      // VIDEO URL
+      // ------------------------------
+
       const url =
         C.VIDEO_API +
-        encodeURIComponent(finalPrompt) +
+        encodeURIComponent(
+          finalPrompt
+        ) +
         "?" +
         params.toString();
 
-      const response = await fetch(
-        url,
+      console.log(
+        "GEN-Z.AI VIDEO REQUEST:",
         {
-          method: "GET",
-          headers: {
-            Authorization: "Bearer " + token,
-            Accept: "video/mp4"
-          }
+          prompt:
+            finalPrompt,
+
+          promptLength:
+            finalPrompt.length,
+
+          duration:
+            duration,
+
+          aspect:
+            aspect,
+
+          image:
+            imageURL
         }
       );
 
-      if (response.status === 401) {
+      // ------------------------------
+      // REQUEST
+      // ------------------------------
+
+      const response =
+        await fetch(
+          url,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization:
+                "Bearer " + token,
+
+              Accept:
+                "video/mp4"
+            }
+          }
+        );
+
+      // ------------------------------
+      // AUTH ERROR
+      // ------------------------------
+
+      if (
+        response.status === 401
+      ) {
 
         localStorage.removeItem(
-          C.TOKEN_KEY || "polli_access_token"
+          C.TOKEN_KEY ||
+            "polli_access_token"
         );
 
         sessionStorage.removeItem(
-          C.TOKEN_KEY || "polli_access_token"
+          C.TOKEN_KEY ||
+            "polli_access_token"
         );
 
         throw new Error(
@@ -251,11 +422,22 @@ ${userPrompt}
         );
       }
 
-      if (response.status === 402) {
+      // ------------------------------
+      // BALANCE ERROR
+      // ------------------------------
+
+      if (
+        response.status === 402
+      ) {
+
         throw new Error(
           "Saldo Pollinations tidak mencukupi untuk membuat video."
         );
       }
+
+      // ------------------------------
+      // OTHER ERROR
+      // ------------------------------
 
       if (!response.ok) {
 
@@ -270,6 +452,10 @@ ${userPrompt}
         );
       }
 
+      // ------------------------------
+      // DOWNLOAD RESPONSE
+      // ------------------------------
+
       setStatus(
         "Video berhasil dibuat. Menyiapkan hasil..."
       );
@@ -283,21 +469,45 @@ ${userPrompt}
         );
       }
 
+      // ------------------------------
+      // CREATE VIDEO URL
+      // ------------------------------
+
       const videoURL =
-        URL.createObjectURL(blob);
+        URL.createObjectURL(
+          blob
+        );
+
+      // ------------------------------
+      // DISPLAY VIDEO
+      // ------------------------------
 
       if (video) {
 
-        video.src = videoURL;
-        video.style.display = "block";
-        video.controls = true;
+        video.src =
+          videoURL;
+
+        video.style.display =
+          "block";
+
+        video.controls =
+          true;
+
+        video.playsInline =
+          true;
 
         video.load();
       }
 
+      // ------------------------------
+      // DOWNLOAD BUTTON
+      // ------------------------------
+
       if (download) {
 
-        download.href = videoURL;
+        download.href =
+          videoURL;
+
         download.download =
           "gen-z-ai-video-" +
           Date.now() +
@@ -306,6 +516,10 @@ ${userPrompt}
         download.style.display =
           "block";
       }
+
+      // ------------------------------
+      // SUCCESS
+      // ------------------------------
 
       setStatus(
         "Video berhasil dibuat."
@@ -325,23 +539,41 @@ ${userPrompt}
 
     } finally {
 
-      button.disabled = false;
+      if (button) {
 
+        button.disabled =
+          false;
+
+        button.textContent =
+          "GENERATE VIDEO";
+      }
     }
   }
+
+  // ==============================
+  // CHARACTER PREVIEW
+  // ==============================
 
   function setupCharacterPreview() {
 
     const input =
-      document.getElementById("characterFile");
+      document.getElementById(
+        "characterFile"
+      );
 
     const preview =
-      document.getElementById("characterPreview");
+      document.getElementById(
+        "characterPreview"
+      );
 
     const info =
-      document.getElementById("characterInfo");
+      document.getElementById(
+        "characterInfo"
+      );
 
-    if (!input) return;
+    if (!input) {
+      return;
+    }
 
     input.addEventListener(
       "change",
@@ -352,59 +584,97 @@ ${userPrompt}
 
         if (!file) {
 
-          preview.style.display =
-            "none";
+          if (preview) {
+            preview.style.display =
+              "none";
 
-          info.textContent =
-            "Pilih foto karakter sebagai referensi.";
+            preview.removeAttribute(
+              "src"
+            );
+          }
+
+          if (info) {
+            info.textContent =
+              "Pilih foto karakter sebagai referensi.";
+          }
 
           return;
         }
 
         try {
 
-          validateImage(file);
+          validateImage(
+            file
+          );
 
         } catch (error) {
 
-          input.value = "";
+          input.value =
+            "";
 
-          preview.style.display =
-            "none";
+          if (preview) {
+            preview.style.display =
+              "none";
 
-          info.textContent =
-            error.message;
+            preview.removeAttribute(
+              "src"
+            );
+          }
+
+          if (info) {
+            info.textContent =
+              error.message;
+          }
 
           return;
         }
 
         const url =
-          URL.createObjectURL(file);
+          URL.createObjectURL(
+            file
+          );
 
-        preview.src = url;
-        preview.style.display =
-          "block";
+        if (preview) {
+
+          preview.src =
+            url;
+
+          preview.style.display =
+            "block";
+        }
 
         const sizeMB =
-          (file.size / 1024 / 1024)
-            .toFixed(2);
+          (
+            file.size /
+            1024 /
+            1024
+          ).toFixed(2);
 
-        info.textContent =
-          file.name +
-          " • " +
-          sizeMB +
-          " MB";
+        if (info) {
+
+          info.textContent =
+            file.name +
+            " • " +
+            sizeMB +
+            " MB";
+        }
 
       }
     );
   }
+
+  // ==============================
+  // SETUP
+  // ==============================
 
   function setup() {
 
     setupCharacterPreview();
 
     const button =
-      document.getElementById("videoBtn");
+      document.getElementById(
+        "videoBtn"
+      );
 
     if (button) {
 
@@ -415,11 +685,19 @@ ${userPrompt}
     }
   }
 
+  // ==============================
+  // GLOBAL API
+  // ==============================
+
   window.generateVideoWithNovaReel =
     generateVideo;
 
   window.__NOVA_REEL_V8_LOADED =
     true;
+
+  // ==============================
+  // INIT
+  // ==============================
 
   if (
     document.readyState ===
