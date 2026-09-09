@@ -53,8 +53,7 @@
       font-weight: bold;
     }
 
-    input[type="file"],
-    input[type="number"],
+    input,
     textarea,
     select {
       width: 100%;
@@ -69,6 +68,19 @@
     textarea {
       min-height: 130px;
       resize: vertical;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .info {
+      color: #999;
+      font-size: 13px;
+      margin-top: 8px;
+      line-height: 1.5;
     }
 
     .counter {
@@ -86,19 +98,6 @@
       margin-top: 15px;
       background: #050507;
       display: none;
-    }
-
-    .info {
-      color: #999;
-      font-size: 13px;
-      margin-top: 8px;
-      line-height: 1.5;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
     }
 
     button {
@@ -170,20 +169,7 @@
       font-weight: bold;
     }
 
-    .native-output {
-      padding: 12px;
-      border-radius: 12px;
-      background: #0d0d12;
-      color: #aaa;
-      font-size: 13px;
-      margin-top: 15px;
-    }
-
     @media (max-width: 600px) {
-      .container {
-        margin: 25px auto;
-      }
-
       .grid {
         grid-template-columns: 1fr;
       }
@@ -201,39 +187,48 @@
     Character Reference → AI Video
   </div>
 
-  <!-- POLLINATIONS -->
+  <!-- PROVIDER -->
 
   <div class="card">
 
-    <div class="connection">
+    <h2>Provider Video</h2>
 
-      <div>
-        <strong>Pollinations</strong>
+    <label for="providerSelect">
+      Pilih Provider
+    </label>
 
-        <div
-          id="connectionStatus"
-          class="info"
-        >
-          Belum terhubung
-        </div>
-      </div>
+    <select id="providerSelect">
 
-      <button
-        id="connectPolli"
-        type="button"
-      >
-        Hubungkan
-      </button>
+      <option value="pollinations">
+        Pollinations
+      </option>
 
-      <button
-        id="disconnectPolli"
-        type="button"
-        style="display:none;"
-      >
-        Putuskan
-      </button>
+      <option value="fal">
+        fal.ai
+      </option>
 
-    </div>
+      <option value="runway">
+        Runway
+      </option>
+
+      <option value="veo">
+        Google Veo
+      </option>
+
+      <option value="luma">
+        Luma
+      </option>
+
+      <option value="minimax">
+        MiniMax / Hailuo
+      </option>
+
+    </select>
+
+    <div
+      id="providerSettings"
+      style="margin-top:10px;"
+    ></div>
 
   </div>
 
@@ -279,7 +274,7 @@
     <textarea
       id="prompt"
       maxlength="512"
-      placeholder="Contoh: Karakter berjalan perlahan menuju kamera sambil tersenyum tipis."
+      placeholder="Contoh: Karakter berjalan perlahan menuju kamera sambil tersenyum."
     ></textarea>
 
     <div
@@ -297,82 +292,6 @@
   <div class="card">
 
     <h2>3. Video Settings</h2>
-
-    <label for="videoModel">
-      Model Video
-    </label>
-
-    <select id="videoModel">
-
-      <option value="seedance-2.5">
-        Seedance 2.5
-      </option>
-
-      <option value="seedance-2.0">
-        Seedance 2.0
-      </option>
-
-      <option value="seedance-2.0-fast">
-        Seedance 2.0 Fast
-      </option>
-
-      <option value="seedance-2.0-mini">
-        Seedance 2.0 Mini
-      </option>
-
-      <option value="seedance-pro">
-        Seedance Pro
-      </option>
-
-      <option value="veo">
-        Veo
-      </option>
-
-      <option value="wan">
-        Wan
-      </option>
-
-      <option value="wan-fast">
-        Wan Fast
-      </option>
-
-      <option value="wan-pro">
-        Wan Pro
-      </option>
-
-      <option value="grok-video-pro">
-        Grok Video Pro
-      </option>
-
-      <option value="grok-imagine-video-1.5">
-        Grok Imagine Video 1.5
-      </option>
-
-      <option value="happyhorse-1.1">
-        HappyHorse 1.1
-      </option>
-
-      <option value="minimax-h3">
-        MiniMax H3
-      </option>
-
-      <option value="p-video">
-        Pruna P-Video
-      </option>
-
-      <option value="nova-reel">
-        Nova Reel
-      </option>
-
-    </select>
-
-    <div
-      id="modelInfo"
-      class="info"
-    >
-      Seedance 2.5 dipilih sebagai model default.
-    </div>
-
 
     <div class="grid">
 
@@ -412,7 +331,6 @@
 
       </div>
 
-
       <div>
 
         <label for="aspect">
@@ -451,15 +369,6 @@
       max="2147483646"
       placeholder="Kosongkan untuk random"
     >
-
-
-    <div
-      class="native-output"
-      id="modelOutput"
-    >
-      Model video:
-      <strong>Seedance 2.5</strong>
-    </div>
 
 
     <button
@@ -515,60 +424,7 @@
 
 <script src="/js/config.js"></script>
 <script src="/js/auth.js"></script>
-<script src="/js/video-engine.js"></script>
-<script src="/js/fal-provider.js"></script>
-
-<script>
-
-  const promptInput =
-    document.getElementById("prompt");
-
-  const promptCounter =
-    document.getElementById("promptCounter");
-
-  const modelSelect =
-    document.getElementById("videoModel");
-
-  const modelInfo =
-    document.getElementById("modelInfo");
-
-  const modelOutput =
-    document.getElementById("modelOutput");
-
-
-  promptInput.addEventListener(
-    "input",
-    () => {
-
-      promptCounter.textContent =
-        promptInput.value.length +
-        " / 512";
-
-    }
-  );
-
-
-  modelSelect.addEventListener(
-    "change",
-    () => {
-
-      const name =
-        modelSelect.options[
-          modelSelect.selectedIndex
-        ].text;
-
-      modelInfo.textContent =
-        "Model aktif: " + name;
-
-      modelOutput.innerHTML =
-        "Model video: <strong>" +
-        name +
-        "</strong>";
-
-    }
-  );
-
-</script>
+<script src="/js/app.js"></script>
 
 </body>
 </html>
