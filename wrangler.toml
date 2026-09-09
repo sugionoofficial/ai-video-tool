@@ -8,5 +8,8 @@ preview_urls = true
 directory = "./public"
 binding = "ASSETS"
 
+[vars]
+TEST_BINDING = "GENZ_TEST"
+
 [observability]
 enabled = true
