@@ -2,6 +2,10 @@
 
 window.AIVideoConfig = {
 
+  /* =========================
+     POLLINATIONS
+     ========================= */
+
   CLIENT_ID:
     "pk_TbW0TG3A2MmE7rOM",
 
@@ -24,10 +28,21 @@ window.AIVideoConfig = {
     "https://media.pollinations.ai/upload",
 
   VIDEO_MODEL:
-    "seedance-2.5"
+    "seedance-2.5",
+
+
+  /* =========================
+     SUPABASE
+     ========================= */
+
+  SUPABASE_URL:
+    "https://gwrtovfcyybtdnlqluok.supabase.co",
+
+  SUPABASE_PUBLISHABLE_KEY:
+    "sb_publishable_uq8ubpcEZXtUtu5KOzRiZg_oXWcNcJb"
 
 };
 
 console.log(
-  "GEN-Z.AI multi-model configuration loaded."
+  "GEN-Z.AI configuration loaded."
 );
