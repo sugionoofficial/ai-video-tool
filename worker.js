@@ -53,15 +53,28 @@ testBindingConfigured: Boolean(env.TEST_BINDING),
       }
 
       // ===================================================
-      // STATUS
-      // ===================================================
+// STATUS POST
+// API key dikirim melalui JSON body.
+// ===================================================
 
-      if (
-        url.pathname === "/api/generate" &&
-        request.method === "GET"
-      ) {
-        return await handleStatus(request, env);
-      }
+if (
+  url.pathname === "/api/generate/status" &&
+  request.method === "POST"
+) {
+  return await handleStatusPost(request, env);
+}
+
+// ===================================================
+// STATUS LEGACY GET
+// Tetap dipertahankan untuk kompatibilitas.
+// ===================================================
+
+if (
+  url.pathname === "/api/generate" &&
+  request.method === "GET"
+) {
+  return await handleStatus(request, env);
+}
 
       // ===================================================
       // VIDEO PROXY
@@ -172,16 +185,17 @@ async function handleGenerate(request, env) {
 
 async function generateVeo(body, env) {
   const apiKey =
+  String(body.apiKey || "").trim() ||
   env.GEMINI_API_KEY ||
   env.GEMINI_API_KEY1;
 
-  if (!apiKey) {
-    return json({
-      success: false,
-      error:
-        "GEMINI_API_KEY belum tersedia pada runtime Cloudflare Worker."
-    }, 500);
-  }
+if (!apiKey) {
+  return json({
+    success: false,
+    error:
+      "API key Google Veo belum disimpan pada akun ini."
+  }, 400);
+}
 
   const allowedModels = [
     "veo-3.1-generate-preview",
@@ -858,16 +872,17 @@ async function statusVeo(
   env
 ) {
   const apiKey =
+  String(body.apiKey || "").trim() ||
   env.GEMINI_API_KEY ||
   env.GEMINI_API_KEY1;
 
-  if (!apiKey) {
-    return json({
-      success: false,
-      error:
-        "GEMINI_API_KEY belum tersedia pada runtime Cloudflare Worker."
-    }, 500);
-  }
+if (!apiKey) {
+  return json({
+    success: false,
+    error:
+      "API key Google Veo belum disimpan pada akun ini."
+  }, 400);
+}
 
   if (!operationName) {
     return json({
