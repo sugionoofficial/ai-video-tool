@@ -36,7 +36,13 @@ a{display:block;text-align:center;color:#8ec5ff;margin-top:12px}.small{font-size
 <button id="videoBtn" disabled>Jadikan Video</button>
 <img id="imagePreview" alt="Hasil gambar AI"><video id="videoPreview" controls></video>
 <a id="download" download="ai-video-wan-fast.mp4" style="display:none">Download Video</a>
-</div></main>
+</div>
+<div class="card">
+<button id="checkModels" type="button" style="background:#555;color:#fff">Cek Model Pollinations</button>
+<div id="modelStatus" class="status">Belum diperiksa.</div>
+<div id="modelList" class="small" style="margin-top:10px;white-space:pre-wrap"></div>
+</div>
+</main>
 <script>
 "use strict";
 const CLIENT_ID="pk_TbW0TG3A2MmE7rOM";
@@ -84,5 +90,64 @@ async function generateImage(){
 }
 connectBtn.onclick=startOAuth;generateBtn.onclick=generateImage;callback().then(loadSession);
 </script>
+
+<script>
+"use strict";
+(() => {
+  const btn = document.getElementById("checkModels");
+  const status = document.getElementById("modelStatus");
+  const list = document.getElementById("modelList");
+
+  function token() {
+    return sessionStorage.getItem("polli_access_token") ||
+           sessionStorage.getItem("pollinations_access_token") ||
+           sessionStorage.getItem("access_token") || null;
+  }
+
+  function show(t, cls="") {
+    status.textContent = t;
+    status.className = "status " + cls;
+  }
+
+  btn.onclick = async () => {
+    const t = token();
+    list.textContent = "";
+    if (!t) {
+      show("Token OAuth tidak ditemukan. Hubungkan Pollinations terlebih dahulu.", "err");
+      return;
+    }
+
+    btn.disabled = true;
+    show("Membaca daftar model Pollinations...");
+
+    try {
+      const r = await fetch("https://gen.pollinations.ai/v1/models", {
+        headers: { Authorization: "Bearer " + t }
+      });
+      const text = await r.text();
+      if (!r.ok) throw new Error("HTTP " + r.status + ": " + text.slice(0, 400));
+
+      let data;
+      try { data = JSON.parse(text); }
+      catch (_) { throw new Error("Respons bukan JSON."); }
+
+      const models = Array.isArray(data) ? data :
+        Array.isArray(data.data) ? data.data :
+        Array.isArray(data.models) ? data.models : [];
+
+      if (!models.length) throw new Error("Daftar model kosong atau format tidak dikenali.");
+
+      const names = models.map(x => x.id || x.name || x.model).filter(Boolean);
+      list.textContent = names.map((n,i) => (i + 1) + ". " + n).join("\n");
+      show("Berhasil membaca " + names.length + " model dari katalog.", "ok");
+    } catch (e) {
+      show("Gagal membaca model: " + (e.message || e), "err");
+    } finally {
+      btn.disabled = false;
+    }
+  };
+})();
+</script>
+
 <script src="ai_video_real_v4.js"></script>
 </body></html>
