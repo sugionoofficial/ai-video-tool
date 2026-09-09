@@ -239,13 +239,20 @@ async function generateImage(){
   }
 
   const prompt=document.getElementById("prompt").value.trim();
-  let model=document.getElementById("model").value;
-  // Normalize legacy/short aliases to the exact IDs accepted by Pollinations.
-  if(model==="flux.1-schnell"){
-    model="black-forest-labs/flux.1-schnell";
-  }else if(model==="gpt-image-1-mini"){
-    model="openai/gpt-image-1-mini";
-  }
+  const selectedModel=document.getElementById("model").value;
+
+  /*
+   * Model ID dikunci ke ID canonical Pollinations.
+   * Alias lama seperti flux.1-schnell tidak pernah dikirim ke API.
+   */
+  const modelMap={
+    "flux.1-schnell":"black-forest-labs/flux.1-schnell",
+    "black-forest-labs/flux.1-schnell":"black-forest-labs/flux.1-schnell",
+    "gpt-image-1-mini":"openai/gpt-image-1-mini",
+    "openai/gpt-image-1-mini":"openai/gpt-image-1-mini"
+  };
+
+  const model=modelMap[selectedModel]||"black-forest-labs/flux.1-schnell";
   const [w,h]=dims(document.getElementById("aspect").value);
 
   if(!prompt){
@@ -255,7 +262,7 @@ async function generateImage(){
 
   generateBtn.disabled=true;
   videoBtn.disabled=true;
-  setStatus("Membuat gambar AI...");
+  setStatus("Membuat gambar AI dengan model: "+model+"...");
 
   try{
     const q=encodeURIComponent(
@@ -292,11 +299,6 @@ async function generateImage(){
     imageEl.src=imageObjectUrl;
     imageEl.style.display="block";
 
-    /*
-     * Tombol video hanya aktif bila:
-     * 1. ada gambar, dan
-     * 2. minimal satu model video terdeteksi dari /v1/models.
-     */
     videoBtn.disabled=detectedVideoModels.length===0;
 
     setStatus(
@@ -311,7 +313,6 @@ async function generateImage(){
     generateBtn.disabled=!accessToken;
   }
 }
-
 async function checkModels(silent=false){
   const btn=document.getElementById("checkModels");
   const status=document.getElementById("modelStatus");
@@ -440,6 +441,6 @@ callback().then(loadSession);
   File video lama tetap dipanggil untuk menjaga kompatibilitas.
   Tombol video dikunci oleh index ini jika tidak ada model video.
 -->
-<script src="ai_video_real_v5.js"></script>
+<script src="ai_video_real_v5.js?v=20260909-2"></script>
 </body>
 </html>
