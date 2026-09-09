@@ -2,148 +2,39 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // CORS / preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders()
+      });
+    }
+
     try {
-      // ==============================
-      // API ROUTES
-      // ==============================
-
-      if (
-        url.pathname === "/api/upload" &&
-        request.method === "POST"
-      ) {
-        return handleUpload(request);
+      if (url.pathname === "/api/generate" && request.method === "POST") {
+        return await handleGenerate(request, env);
       }
 
-      if (
-        url.pathname === "/api/generate" &&
-        request.method === "POST"
-      ) {
-        return handleGenerate(request, env);
+      if (url.pathname === "/api/generate" && request.method === "GET") {
+        return await handleStatus(request, env);
       }
 
-      if (
-        url.pathname === "/api/generate" &&
-        request.method === "GET"
-      ) {
-        return handleStatus(request, env);
+      if (url.pathname === "/api/video" && request.method === "GET") {
+        return await handleVideoProxy(request, env);
       }
-
-      if (
-        url.pathname === "/api/video" &&
-        request.method === "GET"
-      ) {
-        return handleVideoProxy(request, env);
-      }
-
-      // ==============================
-      // STATIC FILES
-      // ==============================
 
       return env.ASSETS.fetch(request);
 
     } catch (error) {
-      return json(
-        {
-          success: false,
-          error: error?.message || "Internal Worker error."
-        },
-        500
-      );
+      console.error(error);
+
+      return json({
+        success: false,
+        error: error?.message || "Internal Worker error."
+      }, 500);
     }
   }
 };
-
-
-/* =========================================================
-   RESPONSE
-========================================================= */
-
-function json(data, status = 200) {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "no-store",
-        "Access-Control-Allow-Origin": "*"
-      }
-    }
-  );
-}
-
-
-/* =========================================================
-   UPLOAD
-   Tanpa R2.
-   Mengubah gambar menjadi Data URL.
-========================================================= */
-
-async function handleUpload(request) {
-  try {
-    const form = await request.formData();
-
-    const file = form.get("file");
-
-    if (!(file instanceof File)) {
-      return json(
-        {
-          success: false,
-          error: "File gambar tidak ditemukan."
-        },
-        400
-      );
-    }
-
-    if (!file.type.startsWith("image/")) {
-      return json(
-        {
-          success: false,
-          error: "File harus berupa gambar."
-        },
-        400
-      );
-    }
-
-    const MAX_SIZE = 10 * 1024 * 1024;
-
-    if (file.size > MAX_SIZE) {
-      return json(
-        {
-          success: false,
-          error: "Ukuran gambar maksimal 10 MB."
-        },
-        400
-      );
-    }
-
-    const buffer = await file.arrayBuffer();
-
-    const bytes = new Uint8Array(buffer);
-
-    const base64 = uint8ToBase64(bytes);
-
-    const imageData =
-      `data:${file.type};base64,${base64}`;
-
-    return json({
-      success: true,
-      filename: file.name,
-      type: file.type,
-      size: file.size,
-      imageData
-    });
-
-  } catch (error) {
-    return json(
-      {
-        success: false,
-        error: error?.message || "Upload gagal."
-      },
-      500
-    );
-  }
-}
 
 
 /* =========================================================
@@ -151,144 +42,72 @@ async function handleUpload(request) {
 ========================================================= */
 
 async function handleGenerate(request, env) {
-  try {
-    const body = await request.json();
+  const body = await request.json();
 
-    if (!body || typeof body !== "object") {
-      return json(
-        {
-          success: false,
-          error: "Request tidak valid."
-        },
-        400
-      );
-    }
+  if (!body || typeof body !== "object") {
+    return json({
+      success: false,
+      error: "Request tidak valid."
+    }, 400);
+  }
 
-    const provider =
-      String(body.provider || "").trim();
+  const provider = String(body.provider || "").toLowerCase();
+  const prompt = String(body.prompt || "").trim();
 
-    const prompt =
-      String(body.prompt || "").trim();
+  if (!prompt) {
+    return json({
+      success: false,
+      error: "Prompt wajib diisi."
+    }, 400);
+  }
 
-    if (!provider) {
-      return json(
-        {
-          success: false,
-          error: "Provider belum dipilih."
-        },
-        400
-      );
-    }
+  if (prompt.length > 2000) {
+    return json({
+      success: false,
+      error: "Prompt maksimal 2000 karakter."
+    }, 400);
+  }
 
-    if (!prompt) {
-      return json(
-        {
-          success: false,
-          error: "Prompt belum diisi."
-        },
-        400
-      );
-    }
+  switch (provider) {
+    case "veo":
+      return await generateVeo(body, env);
 
-    if (prompt.length > 2000) {
-      return json(
-        {
-          success: false,
-          error: "Prompt maksimal 2000 karakter."
-        },
-        400
-      );
-    }
+    case "minimax":
+      return await generateMiniMax(body, env);
 
-    switch (provider) {
+    case "luma":
+      return await generateLuma(body, env);
 
-      case "veo":
-        return generateVeo(body, env);
-
-      case "minimax":
-        return generateMiniMax(body, env);
-
-      case "luma":
-        return generateLuma(body, env);
-
-      case "pollinations":
-      case "fal":
-      case "runway":
-        return json(
-          {
-            success: false,
-            provider,
-            error:
-              `Provider "${provider}" belum diaktifkan di Worker.`
-          },
-          400
-        );
-
-      default:
-        return json(
-          {
-            success: false,
-            error:
-              `Provider "${provider}" tidak dikenal.`
-          },
-          400
-        );
-    }
-
-  } catch (error) {
-    return json(
-      {
+    case "pollinations":
+    case "fal":
+    case "runway":
+      return json({
         success: false,
-        error:
-          error?.message ||
-          "Request generate gagal."
-      },
-      500
-    );
+        error: `${provider} belum diaktifkan pada backend GEN-Z.AI.`
+      }, 501);
+
+    default:
+      return json({
+        success: false,
+        error: `Provider "${provider}" tidak dikenali.`
+      }, 400);
   }
 }
 
 
 /* =========================================================
-   GOOGLE VEO 3.1
+   GOOGLE VEO
 ========================================================= */
 
 async function generateVeo(body, env) {
+  const apiKey = env.GEMINI_API_KEY;
 
-  if (!env.GEMINI_API_KEY) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          "GEMINI_API_KEY belum dikonfigurasi di Cloudflare."
-      },
-      500
-    );
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "GEMINI_API_KEY belum dikonfigurasi di Cloudflare."
+    }, 500);
   }
-
-  const model =
-    body.model ||
-    "veo-3.1-fast-generate-preview";
-
-  const duration =
-    Number(body.duration || 8);
-
-  const resolution =
-    body.resolution ||
-    "720p";
-
-  const aspectRatio =
-    body.aspectRatio ||
-    "16:9";
-
-  const hasImage =
-    Boolean(body.imageData);
-
-
-  /* =======================================================
-     VALIDASI MODEL
-  ======================================================= */
 
   const allowedModels = [
     "veo-3.1-generate-preview",
@@ -296,426 +115,167 @@ async function generateVeo(body, env) {
     "veo-3.1-lite-generate-preview"
   ];
 
+  const model = body.model || "veo-3.1-fast-generate-preview";
+
   if (!allowedModels.includes(model)) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          `Model Veo tidak valid: ${model}`
-      },
-      400
-    );
+    return json({
+      success: false,
+      error: "Model Veo tidak valid."
+    }, 400);
   }
 
+  const duration = Number(body.duration || 8);
+  const resolution = String(body.resolution || "720p").toLowerCase();
+  const aspectRatio = String(body.aspectRatio || "16:9");
+  const imageData = body.imageData || null;
 
-  /* =======================================================
-     VALIDASI ASPECT RATIO
-  ======================================================= */
+  if (![4, 6, 8].includes(duration)) {
+    return json({
+      success: false,
+      error: "Durasi Veo harus 4, 6, atau 8 detik."
+    }, 400);
+  }
 
+  if (!["16:9", "9:16"].includes(aspectRatio)) {
+    return json({
+      success: false,
+      error: "Aspect ratio Veo hanya 16:9 atau 9:16."
+    }, 400);
+  }
+
+  if (!["720p", "1080p", "4k"].includes(resolution)) {
+    return json({
+      success: false,
+      error: "Resolusi Veo tidak valid."
+    }, 400);
+  }
+
+  // Veo Lite tidak mendukung 4K
   if (
-    !["16:9", "9:16"].includes(
-      aspectRatio
-    )
+    model === "veo-3.1-lite-generate-preview" &&
+    resolution === "4k"
   ) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          "Aspect ratio Veo hanya 16:9 atau 9:16."
-      },
-      400
-    );
+    return json({
+      success: false,
+      error: "Veo 3.1 Lite tidak mendukung 4K."
+    }, 400);
   }
 
-
-  /* =======================================================
-     VALIDASI DURASI
-  ======================================================= */
-
+  // 1080p dan 4K membutuhkan 8 detik
   if (
-    ![4, 6, 8].includes(
-      duration
-    )
-  ) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          "Durasi Veo hanya 4, 6, atau 8 detik."
-      },
-      400
-    );
-  }
-
-
-  /* =======================================================
-     VALIDASI RESOLUSI
-  ======================================================= */
-
-  const allowedResolutions =
-    model === "veo-3.1-lite-generate-preview"
-      ? ["720p", "1080p"]
-      : ["720p", "1080p", "4k"];
-
-  if (
-    !allowedResolutions.includes(
-      resolution
-    )
-  ) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          `Resolusi ${resolution} tidak tersedia untuk ${model}.`
-      },
-      400
-    );
-  }
-
-
-  /* =======================================================
-     1080P / 4K = WAJIB 8 DETIK
-  ======================================================= */
-
-  if (
-    (
-      resolution === "1080p" ||
-      resolution === "4k"
-    ) &&
+    (resolution === "1080p" || resolution === "4k") &&
     duration !== 8
   ) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          `${resolution} pada Veo membutuhkan durasi 8 detik.`
-      },
-      400
-    );
+    return json({
+      success: false,
+      error: "Veo 1080p/4K membutuhkan durasi 8 detik."
+    }, 400);
   }
 
-
-  /* =======================================================
-     CHARACTER REFERENCE / IMAGE INPUT
-  ======================================================= */
-
-  if (
-    hasImage &&
-    duration !== 8
-  ) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          "Character Reference membutuhkan durasi 8 detik pada Veo 3.1."
-      },
-      400
-    );
+  // Image-to-video membutuhkan 8 detik
+  if (imageData && duration !== 8) {
+    return json({
+      success: false,
+      error: "Veo dengan character reference membutuhkan durasi 8 detik."
+    }, 400);
   }
-
-
-  /* =======================================================
-     IMAGE DATA
-  ======================================================= */
 
   const instance = {
-    prompt: body.prompt
+    prompt: String(body.prompt).trim()
   };
 
-  if (hasImage) {
+  // Character reference / image-to-video
+  if (imageData) {
+    const parsed = parseDataUrl(imageData);
 
-    let parsed;
-
-    try {
-      parsed =
-        parseDataUrl(
-          body.imageData
-        );
-    } catch (error) {
-      return json(
-        {
-          success: false,
-          provider: "veo",
-          error:
-            "Format gambar Character Reference tidak valid."
-        },
-        400
-      );
+    if (!parsed) {
+      return json({
+        success: false,
+        error: "Format character reference tidak valid."
+      }, 400);
     }
 
     instance.image = {
       inlineData: {
-        mimeType:
-          parsed.mimeType,
-        data:
-          parsed.base64
+        mimeType: parsed.mimeType,
+        data: parsed.base64
       }
     };
   }
 
-
-  /* =======================================================
-     PARAMETERS
-  ======================================================= */
-
   const parameters = {
     aspectRatio,
-    durationSeconds:
-      String(duration),
+    durationSeconds: String(duration),
     resolution
   };
-
-
-  /* =======================================================
-     SEED
-  ======================================================= */
 
   if (
     body.seed !== undefined &&
     body.seed !== null &&
-    body.seed !== ""
+    String(body.seed).trim() !== ""
   ) {
-
-    const seed =
-      Number(body.seed);
+    const seed = Number(body.seed);
 
     if (
-      Number.isInteger(seed) &&
-      seed >= 0
+      !Number.isInteger(seed) ||
+      seed < 0
     ) {
-      parameters.seed =
-        seed;
+      return json({
+        success: false,
+        error: "Seed harus berupa angka bulat positif."
+      }, 400);
     }
+
+    parameters.seed = seed;
   }
 
-
-  /* =======================================================
-     PERSON GENERATION
-  ======================================================= */
-
-  if (hasImage) {
-    parameters.personGeneration =
-      "allow_adult";
+  // Image reference menggunakan adult generation policy.
+  if (imageData) {
+    parameters.personGeneration = "allow_adult";
   }
-
-
-  /* =======================================================
-     API REQUEST
-  ======================================================= */
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predictLongRunning`;
 
-  const response =
-    await fetch(
-      endpoint,
-      {
-        method: "POST",
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      instances: [instance],
+      parameters
+    })
+  });
 
-        headers: {
-          "Content-Type":
-            "application/json",
-
-          "x-goog-api-key":
-            env.GEMINI_API_KEY
-        },
-
-        body:
-          JSON.stringify({
-            instances: [
-              instance
-            ],
-            parameters
-          })
-      }
-    );
-
-
-  const text =
-    await response.text();
+  const data = await safeJson(response);
 
   if (!response.ok) {
-
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          extractProviderError(
-            text,
-            response.status
-          )
-      },
-      response.status
-    );
+    return json({
+      success: false,
+      error: extractApiError(data, "Gagal membuat video Veo.")
+    }, response.status);
   }
 
+  const operationName =
+    data?.name ||
+    data?.operationName;
 
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          "Response Veo tidak valid."
-      },
-      502
-    );
+  if (!operationName) {
+    return json({
+      success: false,
+      error: "Veo tidak mengembalikan operation ID."
+    }, 502);
   }
-
-
-  if (!data.name) {
-    return json(
-      {
-        success: false,
-        provider: "veo",
-        error:
-          "Veo tidak mengembalikan operation name."
-      },
-      502
-    );
-  }
-
 
   return json({
     success: true,
     provider: "veo",
     status: "processing",
-    operationName: data.name,
-    message:
-      "Veo sedang membuat video."
+    operationName,
+    id: operationName
   });
-}
-
-
-/* =========================================================
-   VEO STATUS
-========================================================= */
-
-async function getVeoStatus(
-  operationName,
-  env
-) {
-
-  if (!env.GEMINI_API_KEY) {
-    throw new Error(
-      "GEMINI_API_KEY belum dikonfigurasi."
-    );
-  }
-
-  if (!operationName) {
-    throw new Error(
-      "Operation name tidak ditemukan."
-    );
-  }
-
-
-  const endpoint =
-    `https://generativelanguage.googleapis.com/v1beta/${operationName}`;
-
-
-  const response =
-    await fetch(
-      endpoint,
-      {
-        headers: {
-          "x-goog-api-key":
-            env.GEMINI_API_KEY
-        }
-      }
-    );
-
-
-  const text =
-    await response.text();
-
-
-  if (!response.ok) {
-    throw new Error(
-      extractProviderError(
-        text,
-        response.status
-      )
-    );
-  }
-
-
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    throw new Error(
-      "Response status Veo tidak valid."
-    );
-  }
-
-
-  if (!data.done) {
-    return {
-      success: true,
-      provider: "veo",
-      status: "processing",
-      operationName
-    };
-  }
-
-
-  if (data.error) {
-    return {
-      success: false,
-      provider: "veo",
-      status: "failed",
-      error:
-        data.error.message ||
-        "Veo gagal membuat video."
-    };
-  }
-
-
-  const sample =
-    data
-      ?.response
-      ?.generateVideoResponse
-      ?.generatedSamples?.[0];
-
-
-  const videoUri =
-    sample?.video?.uri;
-
-
-  if (!videoUri) {
-
-    return {
-      success: false,
-      provider: "veo",
-      status: "failed",
-      error:
-        "Veo selesai tetapi URL video tidak ditemukan."
-    };
-  }
-
-
-  return {
-    success: true,
-    provider: "veo",
-    status: "completed",
-
-    videoUrl:
-      `/api/video?provider=veo&url=${encodeURIComponent(videoUri)}`
-  };
 }
 
 
@@ -723,199 +283,374 @@ async function getVeoStatus(
    MINIMAX / HAILUO
 ========================================================= */
 
-async function generateMiniMax(
-  body,
-  env
-) {
+async function generateMiniMax(body, env) {
+  const apiKey = env.MINIMAX_API_KEY;
 
-  if (!env.MINIMAX_API_KEY) {
-    return json(
-      {
-        success: false,
-        provider: "minimax",
-        error:
-          "MINIMAX_API_KEY belum dikonfigurasi."
-      },
-      500
-    );
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "MINIMAX_API_KEY belum dikonfigurasi di Cloudflare."
+    }, 500);
   }
 
+  const allowedModels = [
+    "MiniMax-Hailuo-2.3",
+    "MiniMax-Hailuo-2.3-Fast",
+    "MiniMax-Hailuo-02"
+  ];
 
   const model =
-    body.model ||
-    "MiniMax-Hailuo-2.3";
+    body.model || "MiniMax-Hailuo-2.3";
+
+  if (!allowedModels.includes(model)) {
+    return json({
+      success: false,
+      error: "Model MiniMax tidak valid."
+    }, 400);
+  }
+
+  const duration = Number(body.duration || 6);
+
+  if (![6, 10].includes(duration)) {
+    return json({
+      success: false,
+      error: "Durasi MiniMax harus 6 atau 10 detik."
+    }, 400);
+  }
+
+  const resolution =
+    String(body.resolution || "768P").toUpperCase();
+
+  if (!["768P", "1080P"].includes(resolution)) {
+    return json({
+      success: false,
+      error: "Resolusi MiniMax harus 768P atau 1080P."
+    }, 400);
+  }
+
+  // 1080P hanya 6 detik pada model Hailuo yang relevan
+  if (
+    resolution === "1080P" &&
+    duration !== 6
+  ) {
+    return json({
+      success: false,
+      error: "MiniMax 1080P menggunakan durasi 6 detik."
+    }, 400);
+  }
 
   const payload = {
     model,
-    prompt:
-      body.prompt
+    prompt: String(body.prompt).trim(),
+    duration,
+    resolution
   };
 
-
-  /* IMAGE */
-
+  // Image-to-video
   if (body.imageData) {
-
     if (
-      !String(
-        body.imageData
-      ).startsWith("data:image/")
+      typeof body.imageData !== "string" ||
+      !body.imageData.startsWith("data:image/")
     ) {
-      return json(
-        {
-          success: false,
-          provider: "minimax",
-          error:
-            "Format Character Reference MiniMax tidak valid."
-        },
-        400
-      );
+      return json({
+        success: false,
+        error: "Character reference MiniMax harus berupa Data URL gambar."
+      }, 400);
     }
 
-    payload.first_frame_image =
-      body.imageData;
+    payload.first_frame_image = body.imageData;
   }
 
-
-  /* DURATION */
-
-  if (body.duration) {
-
-    const duration =
-      Number(body.duration);
-
-    if (
-      ![6, 10].includes(
-        duration
-      )
-    ) {
-      return json(
-        {
-          success: false,
-          provider: "minimax",
-          error:
-            "Durasi MiniMax harus 6 atau 10 detik."
-        },
-        400
-      );
+  const response = await fetch(
+    "https://api.minimax.io/v1/video_generation",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
     }
+  );
 
-    payload.duration =
-      duration;
-  }
-
-
-  /* RESOLUTION */
-
-  if (body.resolution) {
-
-    const resolution =
-      String(
-        body.resolution
-      );
-
-    if (
-      !["768P", "1080P"].includes(
-        resolution
-      )
-    ) {
-      return json(
-        {
-          success: false,
-          provider: "minimax",
-          error:
-            "Resolusi MiniMax harus 768P atau 1080P."
-        },
-        400
-      );
-    }
-
-    payload.resolution =
-      resolution;
-  }
-
-
-  const response =
-    await fetch(
-      "https://api.minimax.io/v1/video_generation",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-
-          "Authorization":
-            `Bearer ${env.MINIMAX_API_KEY}`
-        },
-
-        body:
-          JSON.stringify(payload)
-      }
-    );
-
-
-  const text =
-    await response.text();
-
+  const data = await safeJson(response);
 
   if (!response.ok) {
-    return json(
-      {
-        success: false,
-        provider: "minimax",
-        error:
-          extractProviderError(
-            text,
-            response.status
-          )
-      },
-      response.status
-    );
+    return json({
+      success: false,
+      error: extractApiError(data, "Gagal membuat video MiniMax.")
+    }, response.status);
   }
-
-
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    return json(
-      {
-        success: false,
-        provider: "minimax",
-        error:
-          "Response MiniMax tidak valid."
-      },
-      502
-    );
-  }
-
 
   const taskId =
-    data.task_id ||
-    data.id;
-
+    data?.task_id ||
+    data?.data?.task_id;
 
   if (!taskId) {
-    return json(
-      {
-        success: false,
-        provider: "minimax",
-        error:
-          "MiniMax tidak mengembalikan task ID."
-      },
-      502
-    );
+    return json({
+      success: false,
+      error: "MiniMax tidak mengembalikan task ID."
+    }, 502);
   }
-
 
   return json({
     success: true,
     provider: "minimax",
     status: "processing",
-    taskId
+    taskId,
+    id: taskId
+  });
+}
+
+
+/* =========================================================
+   LUMA
+========================================================= */
+
+async function generateLuma(body, env) {
+  const apiKey = env.LUMA_API_KEY;
+
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "LUMA_API_KEY belum dikonfigurasi di Cloudflare."
+    }, 500);
+  }
+
+  // Saat ini Luma digunakan untuk text-to-video.
+  if (body.imageData) {
+    return json({
+      success: false,
+      error:
+        "Character reference Luma belum diaktifkan. Luma membutuhkan image URL publik untuk workflow image-to-video."
+    }, 400);
+  }
+
+  const allowedModels = [
+    "ray-2",
+    "ray-flash-2"
+  ];
+
+  const model =
+    body.model || "ray-flash-2";
+
+  if (!allowedModels.includes(model)) {
+    return json({
+      success: false,
+      error: "Model Luma tidak valid."
+    }, 400);
+  }
+
+  const allowedAspectRatios = [
+    "1:1",
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "21:9",
+    "9:21"
+  ];
+
+  const aspectRatio =
+    body.aspectRatio || "16:9";
+
+  if (!allowedAspectRatios.includes(aspectRatio)) {
+    return json({
+      success: false,
+      error: "Aspect ratio Luma tidak valid."
+    }, 400);
+  }
+
+  const payload = {
+    generation_type: "video",
+    prompt: String(body.prompt).trim(),
+    model,
+    aspect_ratio: aspectRatio
+  };
+
+  /*
+   * Luma menerima parameter duration/resolution
+   * melalui API video generation.
+   * Hanya kirim apabila diberikan frontend.
+   */
+
+  if (
+    body.duration !== undefined &&
+    body.duration !== null &&
+    String(body.duration).trim() !== ""
+  ) {
+    payload.duration = Number(body.duration);
+  }
+
+  if (
+    body.resolution !== undefined &&
+    body.resolution !== null &&
+    String(body.resolution).trim() !== ""
+  ) {
+    payload.resolution =
+      String(body.resolution).toLowerCase();
+  }
+
+  if (body.loop !== undefined) {
+    payload.loop = Boolean(body.loop);
+  }
+
+  const response = await fetch(
+    "https://api.lumalabs.ai/dream-machine/v1/generations/video",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  const data = await safeJson(response);
+
+  if (!response.ok) {
+    return json({
+      success: false,
+      error: extractApiError(data, "Gagal membuat video Luma.")
+    }, response.status);
+  }
+
+  const generationId =
+    data?.id ||
+    data?.generation_id;
+
+  if (!generationId) {
+    return json({
+      success: false,
+      error: "Luma tidak mengembalikan generation ID."
+    }, 502);
+  }
+
+  return json({
+    success: true,
+    provider: "luma",
+    status: "processing",
+    id: generationId
+  });
+}
+
+
+/* =========================================================
+   STATUS ROUTER
+========================================================= */
+
+async function handleStatus(request, env) {
+  const url = new URL(request.url);
+
+  const provider =
+    String(url.searchParams.get("provider") || "")
+      .toLowerCase();
+
+  const id =
+    url.searchParams.get("id") ||
+    url.searchParams.get("operationName") ||
+    url.searchParams.get("taskId");
+
+  if (!id) {
+    return json({
+      success: false,
+      error: "ID generation tidak ditemukan."
+    }, 400);
+  }
+
+  switch (provider) {
+    case "veo":
+      return await getVeoStatus(id, env);
+
+    case "minimax":
+      return await getMiniMaxStatus(id, env);
+
+    case "luma":
+      return await getLumaStatus(id, env);
+
+    default:
+      return json({
+        success: false,
+        error: `Provider "${provider}" tidak didukung.`
+      }, 400);
+  }
+}
+
+
+/* =========================================================
+   VEO STATUS
+========================================================= */
+
+async function getVeoStatus(operationName, env) {
+  const apiKey = env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "GEMINI_API_KEY tidak tersedia."
+    }, 500);
+  }
+
+  const endpoint =
+    `https://generativelanguage.googleapis.com/v1beta/${operationName}`;
+
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers: {
+      "x-goog-api-key": apiKey
+    }
+  });
+
+  const data = await safeJson(response);
+
+  if (!response.ok) {
+    return json({
+      success: false,
+      error: extractApiError(data, "Gagal mengambil status Veo.")
+    }, response.status);
+  }
+
+  if (!data?.done) {
+    return json({
+      success: true,
+      status: "processing",
+      provider: "veo",
+      operationName
+    });
+  }
+
+  if (data?.error) {
+    return json({
+      success: false,
+      error:
+        data.error.message ||
+        "Veo gagal membuat video."
+    }, 502);
+  }
+
+  const videoUri =
+    data?.response
+      ?.generateVideoResponse
+      ?.generatedSamples?.[0]
+      ?.video?.uri;
+
+  if (!videoUri) {
+    return json({
+      success: false,
+      error: "Veo selesai tetapi URL video tidak ditemukan."
+    }, 502);
+  }
+
+  const videoUrl =
+    `/api/video?provider=veo&url=${encodeURIComponent(videoUri)}`;
+
+  return json({
+    success: true,
+    status: "completed",
+    provider: "veo",
+    videoUrl,
+    video_url: videoUrl
   });
 }
 
@@ -924,324 +659,107 @@ async function generateMiniMax(
    MINIMAX STATUS
 ========================================================= */
 
-async function getMiniMaxStatus(
-  taskId,
-  env
-) {
+async function getMiniMaxStatus(taskId, env) {
+  const apiKey = env.MINIMAX_API_KEY;
+
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "MINIMAX_API_KEY tidak tersedia."
+    }, 500);
+  }
 
   const endpoint =
     `https://api.minimax.io/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`;
 
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`
+    }
+  });
 
-  const response =
-    await fetch(
-      endpoint,
-      {
-        headers: {
-          "Authorization":
-            `Bearer ${env.MINIMAX_API_KEY}`
-        }
-      }
-    );
-
-
-  const text =
-    await response.text();
-
+  const data = await safeJson(response);
 
   if (!response.ok) {
-    throw new Error(
-      extractProviderError(
-        text,
-        response.status
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal mengambil status MiniMax."
       )
-    );
+    }, response.status);
   }
-
-
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    throw new Error(
-      "Response status MiniMax tidak valid."
-    );
-  }
-
 
   const status =
     String(
-      data.status ||
-      data.task_status ||
-      "processing"
+      data?.status ||
+      data?.data?.status ||
+      ""
     ).toLowerCase();
-
-
-  /* COMPLETED */
 
   if (
     [
       "success",
+      "succeeded",
       "completed",
-      "succeeded"
+      "finished"
     ].includes(status)
   ) {
-
     const fileId =
-      data.file_id ||
-      data.file?.file_id ||
-      data.video?.file_id;
+      data?.file_id ||
+      data?.data?.file_id;
 
+    const downloadUrl =
+      data?.download_url ||
+      data?.data?.download_url ||
+      data?.file?.download_url;
 
-    if (!fileId) {
-      throw new Error(
-        "MiniMax selesai tetapi file ID tidak ditemukan."
-      );
+    if (downloadUrl) {
+      return json({
+        success: true,
+        status: "completed",
+        provider: "minimax",
+        videoUrl: downloadUrl,
+        video_url: downloadUrl
+      });
     }
 
+    if (fileId) {
+      const videoUrl =
+        `/api/video?provider=minimax&fileId=${encodeURIComponent(fileId)}`;
 
-    const fileResponse =
-      await fetch(
-        `https://api.minimax.io/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`,
-        {
-          headers: {
-            "Authorization":
-              `Bearer ${env.MINIMAX_API_KEY}`
-          }
-        }
-      );
-
-
-    const fileText =
-      await fileResponse.text();
-
-
-    if (!fileResponse.ok) {
-      throw new Error(
-        extractProviderError(
-          fileText,
-          fileResponse.status
-        )
-      );
+      return json({
+        success: true,
+        status: "completed",
+        provider: "minimax",
+        videoUrl,
+        video_url: videoUrl
+      });
     }
-
-
-    let fileData;
-
-    try {
-      fileData =
-        JSON.parse(fileText);
-    } catch {
-      throw new Error(
-        "Response file MiniMax tidak valid."
-      );
-    }
-
-
-    const videoUrl =
-      fileData?.file?.download_url ||
-      fileData?.download_url;
-
-
-    if (!videoUrl) {
-      throw new Error(
-        "URL video MiniMax tidak ditemukan."
-      );
-    }
-
-
-    return {
-      success: true,
-      provider: "minimax",
-      status: "completed",
-      videoUrl
-    };
   }
-
-
-  /* FAILED */
 
   if (
     [
-      "fail",
       "failed",
-      "failure"
+      "failure",
+      "error"
     ].includes(status)
   ) {
-
-    return {
+    return json({
       success: false,
-      provider: "minimax",
-      status: "failed",
-
       error:
-        data.base_resp?.status_msg ||
-        data.error ||
-        data.message ||
+        data?.error?.message ||
+        data?.data?.error?.message ||
         "MiniMax gagal membuat video."
-    };
+    }, 502);
   }
-
-
-  /* PROCESSING */
-
-  return {
-    success: true,
-    provider: "minimax",
-    status: "processing",
-    taskId
-  };
-}
-
-
-/* =========================================================
-   LUMA
-========================================================= */
-
-async function generateLuma(
-  body,
-  env
-) {
-
-  if (!env.LUMA_API_KEY) {
-    return json(
-      {
-        success: false,
-        provider: "luma",
-        error:
-          "LUMA_API_KEY belum dikonfigurasi."
-      },
-      500
-    );
-  }
-
-
-  /*
-   * Tanpa R2/CDN publik,
-   * image-to-video Luma belum digunakan.
-   */
-
-  if (body.imageData) {
-    return json(
-      {
-        success: false,
-        provider: "luma",
-        error:
-          "Luma Character Reference membutuhkan URL gambar publik. Saat ini Luma digunakan untuk Text-to-Video."
-      },
-      400
-    );
-  }
-
-
-  const model =
-    body.model ||
-    "ray-flash-2";
-
-
-  const payload = {
-    prompt:
-      body.prompt,
-
-    model
-  };
-
-
-  if (body.aspectRatio) {
-    payload.aspect_ratio =
-      body.aspectRatio;
-  }
-
-
-  if (body.duration) {
-
-    const duration =
-      Number(body.duration);
-
-    payload.duration =
-      `${duration}s`;
-  }
-
-
-  const response =
-    await fetch(
-      "https://api.lumalabs.ai/dream-machine/v1/generations",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-
-          "Authorization":
-            `Bearer ${env.LUMA_API_KEY}`
-        },
-
-        body:
-          JSON.stringify(payload)
-      }
-    );
-
-
-  const text =
-    await response.text();
-
-
-  if (!response.ok) {
-    return json(
-      {
-        success: false,
-        provider: "luma",
-        error:
-          extractProviderError(
-            text,
-            response.status
-          )
-      },
-      response.status
-    );
-  }
-
-
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    return json(
-      {
-        success: false,
-        provider: "luma",
-        error:
-          "Response Luma tidak valid."
-      },
-      502
-    );
-  }
-
-
-  if (!data.id) {
-    return json(
-      {
-        success: false,
-        provider: "luma",
-        error:
-          "Luma tidak mengembalikan generation ID."
-      },
-      502
-    );
-  }
-
 
   return json({
     success: true,
-    provider: "luma",
     status: "processing",
-    generationId:
-      data.id
+    provider: "minimax",
+    taskId
   });
 }
 
@@ -1250,85 +768,74 @@ async function generateLuma(
    LUMA STATUS
 ========================================================= */
 
-async function getLumaStatus(
-  id,
-  env
-) {
+async function getLumaStatus(generationId, env) {
+  const apiKey = env.LUMA_API_KEY;
 
-  const response =
-    await fetch(
-      `https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(id)}`,
-      {
-        headers: {
-          "Authorization":
-            `Bearer ${env.LUMA_API_KEY}`
-        }
-      }
-    );
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "LUMA_API_KEY tidak tersedia."
+    }, 500);
+  }
 
+  const endpoint =
+    `https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(generationId)}`;
 
-  const text =
-    await response.text();
+  const response = await fetch(endpoint, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`
+    }
+  });
 
+  const data = await safeJson(response);
 
   if (!response.ok) {
-    throw new Error(
-      extractProviderError(
-        text,
-        response.status
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal mengambil status Luma."
       )
-    );
+    }, response.status);
   }
-
-
-  let data;
-
-  try {
-    data =
-      JSON.parse(text);
-  } catch {
-    throw new Error(
-      "Response status Luma tidak valid."
-    );
-  }
-
 
   const state =
     String(
-      data.state ||
-      data.status ||
-      "dreaming"
+      data?.state ||
+      data?.status ||
+      ""
     ).toLowerCase();
-
 
   if (
     [
       "completed",
-      "success",
-      "succeeded"
+      "complete",
+      "succeeded",
+      "success"
     ].includes(state)
   ) {
-
     const videoUrl =
-      data.assets?.video ||
-      data.video?.url;
-
+      data?.assets?.video ||
+      data?.video?.url ||
+      data?.video_url;
 
     if (!videoUrl) {
-      throw new Error(
-        "Luma selesai tetapi URL video tidak ditemukan."
-      );
+      return json({
+        success: false,
+        error:
+          "Luma selesai tetapi URL video tidak ditemukan."
+      }, 502);
     }
 
-
-    return {
+    return json({
       success: true,
-      provider: "luma",
       status: "completed",
-      videoUrl
-    };
+      provider: "luma",
+      videoUrl,
+      video_url: videoUrl
+    });
   }
-
 
   if (
     [
@@ -1336,118 +843,21 @@ async function getLumaStatus(
       "error"
     ].includes(state)
   ) {
-
-    return {
+    return json({
       success: false,
-      provider: "luma",
-      status: "failed",
       error:
-        data.failure_reason ||
-        data.error ||
+        data?.failure_reason ||
+        data?.error?.message ||
         "Luma gagal membuat video."
-    };
+    }, 502);
   }
 
-
-  return {
+  return json({
     success: true,
-    provider: "luma",
     status: "processing",
-    generationId: id
-  };
-}
-
-
-/* =========================================================
-   STATUS ROUTER
-========================================================= */
-
-async function handleStatus(
-  request,
-  env
-) {
-
-  try {
-
-    const url =
-      new URL(request.url);
-
-
-    const provider =
-      url.searchParams.get(
-        "provider"
-      );
-
-
-    const id =
-      url.searchParams.get("id") ||
-      url.searchParams.get("operationName") ||
-      url.searchParams.get("taskId");
-
-
-    if (!provider || !id) {
-      return json(
-        {
-          success: false,
-          error:
-            "Provider atau ID tidak ditemukan."
-        },
-        400
-      );
-    }
-
-
-    if (provider === "veo") {
-      return json(
-        await getVeoStatus(
-          id,
-          env
-        )
-      );
-    }
-
-
-    if (provider === "minimax") {
-      return json(
-        await getMiniMaxStatus(
-          id,
-          env
-        )
-      );
-    }
-
-
-    if (provider === "luma") {
-      return json(
-        await getLumaStatus(
-          id,
-          env
-        )
-      );
-    }
-
-
-    return json(
-      {
-        success: false,
-        error:
-          "Provider status tidak dikenal."
-      },
-      400
-    );
-
-  } catch (error) {
-
-    return json(
-      {
-        success: false,
-        error:
-          error?.message ||
-          "Gagal mengambil status."
-      },
-      500
-    );
-  }
+    provider: "luma",
+    id: generationId
+  });
 }
 
 
@@ -1455,356 +865,294 @@ async function handleStatus(
    VIDEO PROXY
 ========================================================= */
 
-async function handleVideoProxy(
-  request,
-  env
-) {
+async function handleVideoProxy(request, env) {
+  const url = new URL(request.url);
 
-  try {
+  const provider =
+    String(url.searchParams.get("provider") || "")
+      .toLowerCase();
 
-    const url =
-      new URL(request.url);
+  /*
+   * Jangan jadikan Worker sebagai open proxy.
+   * Internet sudah cukup banyak kekacauan tanpa kita
+   * menambahkan satu lagi.
+   */
 
-
-    const provider =
-      url.searchParams.get(
-        "provider"
-      );
-
-
+  if (provider === "veo") {
     const target =
-      url.searchParams.get(
-        "url"
-      );
-
+      url.searchParams.get("url");
 
     if (!target) {
-      return new Response(
-        "Video URL tidak ditemukan.",
-        {
-          status: 400
-        }
-      );
+      return json({
+        success: false,
+        error: "URL video tidak ditemukan."
+      }, 400);
     }
-
-
-    /*
-     * Jangan izinkan proxy URL sembarangan.
-     * Ini mencegah Worker dijadikan open proxy.
-     */
 
     let targetUrl;
 
     try {
-      targetUrl =
-        new URL(target);
+      targetUrl = new URL(target);
     } catch {
-      return new Response(
-        "URL video tidak valid.",
-        {
-          status: 400
-        }
-      );
+      return json({
+        success: false,
+        error: "URL video tidak valid."
+      }, 400);
     }
-
 
     const allowedHosts = [
       "generativelanguage.googleapis.com",
-      "storage.googleapis.com",
-      "api.minimax.io",
-      "api.lumalabs.ai"
+      "storage.googleapis.com"
     ];
 
-
-    const allowed =
-      allowedHosts.some(
-        host =>
-          targetUrl.hostname === host ||
-          targetUrl.hostname.endsWith(
-            `.${host}`
-          )
-      );
-
-
-    if (!allowed) {
-      return new Response(
-        "Host video tidak diizinkan.",
-        {
-          status: 403
-        }
-      );
+    if (!allowedHosts.includes(targetUrl.hostname)) {
+      return json({
+        success: false,
+        error: "Host video tidak diizinkan."
+      }, 403);
     }
 
+    const apiKey = env.GEMINI_API_KEY;
 
-    const headers =
-      new Headers();
-
-
-    if (
-      provider === "veo"
-    ) {
-
-      if (!env.GEMINI_API_KEY) {
-        return new Response(
-          "GEMINI_API_KEY belum dikonfigurasi.",
-          {
-            status: 500
-          }
-        );
-      }
-
-      headers.set(
-        "x-goog-api-key",
-        env.GEMINI_API_KEY
-      );
+    if (!apiKey) {
+      return json({
+        success: false,
+        error: "GEMINI_API_KEY tidak tersedia."
+      }, 500);
     }
 
+    const separator =
+      targetUrl.search ? "&" : "?";
 
-    if (
-      provider === "minimax"
-    ) {
-
-      if (!env.MINIMAX_API_KEY) {
-        return new Response(
-          "MINIMAX_API_KEY belum dikonfigurasi.",
-          {
-            status: 500
-          }
-        );
-      }
-
-      headers.set(
-        "Authorization",
-        `Bearer ${env.MINIMAX_API_KEY}`
-      );
-    }
-
-
-    if (
-      provider === "luma"
-    ) {
-
-      if (!env.LUMA_API_KEY) {
-        return new Response(
-          "LUMA_API_KEY belum dikonfigurasi.",
-          {
-            status: 500
-          }
-        );
-      }
-
-      headers.set(
-        "Authorization",
-        `Bearer ${env.LUMA_API_KEY}`
-      );
-    }
-
+    targetUrl.search +=
+      `${separator}key=${encodeURIComponent(apiKey)}`;
 
     const response =
-      await fetch(
-        targetUrl.toString(),
-        {
-          method: "GET",
-          headers,
-          redirect: "follow"
-        }
-      );
-
+      await fetch(targetUrl.toString());
 
     if (!response.ok) {
-
-      const errorText =
-        await response.text();
-
       return new Response(
-        errorText ||
-          "Gagal mengambil video.",
+        await response.text(),
         {
-          status:
-            response.status,
-
-          headers: {
-            "Content-Type":
-              "text/plain; charset=utf-8"
-          }
+          status: response.status,
+          headers: corsHeaders()
         }
       );
     }
 
-
-    const responseHeaders =
-      new Headers(
-        response.headers
-      );
-
-
-    responseHeaders.set(
-      "Cache-Control",
-      "no-store"
-    );
-
-
-    responseHeaders.set(
-      "Access-Control-Allow-Origin",
-      "*"
-    );
-
-
-    /*
-     * Jangan memaksa Content-Type.
-     * Provider sudah mengirim MIME yang benar.
-     */
-
-    return new Response(
-      response.body,
-      {
-        status:
-          response.status,
-
-        headers:
-          responseHeaders
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        ...corsHeaders(),
+        "Content-Type":
+          response.headers.get("Content-Type") ||
+          "video/mp4",
+        "Cache-Control": "private, max-age=3600",
+        "Accept-Ranges": "bytes"
       }
-    );
-
-  } catch (error) {
-
-    return new Response(
-      error?.message ||
-        "Video proxy gagal.",
-      {
-        status: 500,
-        headers: {
-          "Content-Type":
-            "text/plain; charset=utf-8"
-        }
-      }
-    );
+    });
   }
+
+
+  /* -------------------------------------------------------
+     MINIMAX FILE PROXY
+  ------------------------------------------------------- */
+
+  if (provider === "minimax") {
+    const fileId =
+      url.searchParams.get("fileId");
+
+    if (!fileId) {
+      return json({
+        success: false,
+        error: "File ID MiniMax tidak ditemukan."
+      }, 400);
+    }
+
+    const apiKey = env.MINIMAX_API_KEY;
+
+    if (!apiKey) {
+      return json({
+        success: false,
+        error: "MINIMAX_API_KEY tidak tersedia."
+      }, 500);
+    }
+
+    const endpoint =
+      `https://api.minimax.io/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`;
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`
+      }
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      return json({
+        success: false,
+        error: extractApiError(
+          data,
+          "Gagal mengambil file MiniMax."
+        )
+      }, response.status);
+    }
+
+    const downloadUrl =
+      data?.file?.download_url ||
+      data?.download_url ||
+      data?.data?.download_url;
+
+    if (!downloadUrl) {
+      return json({
+        success: false,
+        error: "URL download MiniMax tidak ditemukan."
+      }, 502);
+    }
+
+    let targetUrl;
+
+    try {
+      targetUrl = new URL(downloadUrl);
+    } catch {
+      return json({
+        success: false,
+        error: "URL download MiniMax tidak valid."
+      }, 502);
+    }
+
+    if (targetUrl.hostname !== "api.minimax.io") {
+      return json({
+        success: false,
+        error: "Host download MiniMax tidak diizinkan."
+      }, 403);
+    }
+
+    const videoResponse =
+      await fetch(targetUrl.toString());
+
+    if (!videoResponse.ok) {
+      return new Response(
+        await videoResponse.text(),
+        {
+          status: videoResponse.status,
+          headers: corsHeaders()
+        }
+      );
+    }
+
+    return new Response(videoResponse.body, {
+      status: 200,
+      headers: {
+        ...corsHeaders(),
+        "Content-Type":
+          videoResponse.headers.get("Content-Type") ||
+          "video/mp4",
+        "Cache-Control": "private, max-age=3600",
+        "Accept-Ranges": "bytes"
+      }
+    });
+  }
+
+
+  return json({
+    success: false,
+    error: "Provider video tidak didukung."
+  }, 400);
 }
 
 
 /* =========================================================
-   DATA URL PARSER
+   HELPERS
 ========================================================= */
 
-function parseDataUrl(
-  dataUrl
-) {
-
+function parseDataUrl(value) {
   if (
-    typeof dataUrl !== "string"
+    typeof value !== "string" ||
+    !value.startsWith("data:")
   ) {
-    throw new Error(
-      "Data URL tidak valid."
-    );
+    return null;
   }
 
-
   const match =
-    dataUrl.match(
+    value.match(
       /^data:([^;,]+);base64,(.+)$/s
     );
 
-
   if (!match) {
-    throw new Error(
-      "Format Data URL tidak valid."
-    );
+    return null;
   }
 
-
   return {
-    mimeType:
-      match[1],
-
-    base64:
-      match[2]
+    mimeType: match[1],
+    base64: match[2]
   };
 }
 
 
-/* =========================================================
-   UINT8 → BASE64
-========================================================= */
+async function safeJson(response) {
+  const text = await response.text();
 
-function uint8ToBase64(
-  bytes
-) {
-
-  let binary = "";
-
-  const chunkSize =
-    0x8000;
-
-
-  for (
-    let i = 0;
-    i < bytes.length;
-    i += chunkSize
-  ) {
-
-    const chunk =
-      bytes.subarray(
-        i,
-        Math.min(
-          i + chunkSize,
-          bytes.length
-        )
-      );
-
-    binary +=
-      String.fromCharCode(
-        ...chunk
-      );
+  if (!text) {
+    return {};
   }
 
-
-  return btoa(binary);
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      raw: text
+    };
+  }
 }
 
 
-/* =========================================================
-   PROVIDER ERROR PARSER
-========================================================= */
-
-function extractProviderError(
-  text,
-  status
-) {
-
-  let message = "";
-
-
-  try {
-
-    const data =
-      JSON.parse(text);
-
-
-    message =
-      data?.error?.message ||
-      data?.message ||
-      data?.base_resp?.status_msg ||
-      data?.error ||
-      "";
-
-  } catch {
-    // Response bukan JSON.
+function extractApiError(data, fallback) {
+  if (!data) {
+    return fallback;
   }
 
-
-  if (!message) {
-
-    message =
-      text
-        ?.replace(/\s+/g, " ")
-        ?.trim()
-        ?.slice(0, 500);
+  if (typeof data === "string") {
+    return data;
   }
-
 
   return (
-    message ||
-    `Provider mengembalikan HTTP ${status}.`
+    data?.error?.message ||
+    data?.error?.detail ||
+    data?.message ||
+    data?.detail ||
+    data?.data?.error?.message ||
+    data?.raw ||
+    fallback
+  );
+}
+
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods":
+      "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization",
+    "Cache-Control":
+      "no-store"
+  };
+}
+
+
+function json(data, status = 200) {
+  return new Response(
+    JSON.stringify(data),
+    {
+      status,
+      headers: {
+        ...corsHeaders(),
+        "Content-Type":
+          "application/json; charset=utf-8"
+      }
+    }
   );
 }
