@@ -1,15 +1,10 @@
-name = "ai-video-tool"
+name = "gen-z-ai-video"
 main = "worker.js"
-compatibility_date = "2026-09-08"
-workers_dev = true
-preview_urls = true
+compatibility_date = "2026-09-01"
 
 [assets]
 directory = "./public"
-binding = "ASSETS"
 
 [vars]
-TEST_BINDING = "GENZ_TEST"
-
-[observability]
-enabled = true
+ALLOWED_ORIGIN = "*"
+GENERATION_CREDIT_COST = "1"
