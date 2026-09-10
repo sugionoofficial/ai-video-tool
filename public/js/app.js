@@ -1,2014 +1,247 @@
-let supabase = null;
-
-const $ = id => document.getElementById(id);
-
-const cfg = {
-  veo: {
-    name: 'Gemini / Veo',
-    models: [
-      'veo-3.1-fast-generate-preview',
-      'veo-3.1-generate-preview',
-      'veo-3.1-lite-generate-preview'
-    ],
-    durations: [4, 6, 8],
-    aspects: ['16:9', '9:16'],
-    res: ['720p', '1080p', '4k']
-  },
-
-  minimax: {
-    name: 'MiniMax',
-    models: [
-      'MiniMax-Hailuo-2.3',
-      'MiniMax-Hailuo-2.3-Fast',
-      'MiniMax-Hailuo-02'
-    ],
-    durations: [6, 10],
-    aspects: ['16:9', '9:16'],
-    res: ['512P', '768P', '1080P']
-  },
-
-  luma: {
-    name: 'Luma',
-    models: [
-      'ray-2',
-      'ray-flash-2'
-    ],
-    durations: ['5s', '9s'],
-    aspects: [
-      '1:1',
-      '16:9',
-      '9:16',
-      '4:3',
-      '3:4',
-      '21:9',
-      '9:21'
-    ],
-    res: ['720p', '1080p', '4k']
-  }
-};
-
-let provider = null;
-let imageData = null;
-let poll = null;
-let providers = [];
-let account = null;
-let currentVideoObjectUrl = null;
-
 /* =========================================================
-UTILITY
+   GEN-Z.AI APPLICATION CONTROLLER
 ========================================================= */
 
-function opts(el, arr) {
-  if (!el) return;
+(function () {
 
-  el.innerHTML = (arr || [])
-    .map(x =>
-      `<option value="${escapeAttr(x)}">${escapeHtml(x)}</option>`
-    )
-    .join('');
-}
+  'use strict';
 
-function escapeHtml(s) {
-  return String(s ?? '').replace(
-    /[&<>'"]/g,
-    c => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      "'": '&#39;',
-      '"': '&quot;'
-    }[c])
-  );
-}
+  const GENZ =
+    window.GENZ ||
+    (window.GENZ = {});
 
-function escapeAttr(s) {
-  return escapeHtml(s);
-}
 
-/* =========================================================
-AUTH CLIENT
-========================================================= */
+  /* -------------------------------------------------------
+     LOAD MAIN COMPONENTS
+  ------------------------------------------------------- */
 
-function getAuthClient() {
-  const client = window.GENZ_AUTH_CLIENT;
+  async function loadComponents() {
 
-  if (
-    client &&
-    client.auth &&
-    typeof client.auth.getSession === 'function'
-  ) {
-    supabase = client;
-    return client;
-  }
+    const app =
+      document.getElementById(
+        'app'
+      );
 
-  return null;
-}
+    if (!app) {
 
-/* =========================================================
-UI STATE
-========================================================= */
+      throw new Error(
+        'Element #app tidak ditemukan'
+      );
 
-function showLoggedInUI() {
-  const auth = $('auth');
-  const studio = $('studio');
-  const accountBtn = $('accountBtn');
-  const accountPage = $('accountPage');
+    }
 
-  if (auth) {
-    auth.classList.add('hidden');
-    auth.style.display = 'none';
-  }
 
-  if (studio) {
-    studio.classList.remove('hidden');
-    studio.style.display = '';
-  }
+    app.innerHTML = `
 
-  if (accountPage) {
-    accountPage.classList.add('hidden');
-    accountPage.style.display = 'none';
-  }
+      <div id="header-container"></div>
 
-  /*
-   * PENTING:
-   * Jangan hanya remove class hidden.
-   * Paksa tombol akun terlihat.
-   */
-  if (accountBtn) {
-    accountBtn.classList.remove('hidden');
-    accountBtn.removeAttribute('hidden');
-    accountBtn.style.display = 'flex';
-    accountBtn.style.visibility = 'visible';
-    accountBtn.style.opacity = '1';
-  }
+      <main id="main-container"></main>
 
-  $('backToStudio')?.classList.add('hidden');
-  $('pageBack')?.classList.add('hidden');
-}
-/* =========================================================
-ACCOUNT BUTTON FORCE FIX
-========================================================= */
-
-function ensureAccountButton() {
-  const topbar =
-    document.querySelector('.topbar');
-
-  if (!topbar) return null;
-
-  let account =
-    topbar.querySelector('.account');
-
-  /*
-   * Jika container account belum ada,
-   * buat otomatis.
-   */
-  if (!account) {
-    account =
-      document.createElement('div');
-
-    account.className = 'account';
-
-    topbar.appendChild(account);
-  }
-
-  let button =
-    document.getElementById('accountBtn');
-
-  /*
-   * Jika tombol akun belum ada,
-   * buat otomatis.
-   */
-  if (!button) {
-    button =
-      document.createElement('button');
-
-    button.id = 'accountBtn';
-    button.type = 'button';
-    button.className = 'account-btn';
-
-    button.setAttribute(
-      'aria-label',
-      'Menu akun'
-    );
-
-    button.innerHTML = `
-      <span id="userEmail">—</span>
-      <strong id="credits">— credit</strong>
-      <span aria-hidden="true">⌄</span>
     `;
 
-    account.prepend(button);
-  }
-
-  /*
-   * Pastikan tombol benar-benar terlihat.
-   */
-  button.classList.remove('hidden');
-  button.removeAttribute('hidden');
-
-  button.style.setProperty(
-    'display',
-    'flex',
-    'important'
-  );
-
-  button.style.setProperty(
-    'visibility',
-    'visible',
-    'important'
-  );
-
-  button.style.setProperty(
-    'opacity',
-    '1',
-    'important'
-  );
-
-  button.style.setProperty(
-    'position',
-    'relative',
-    'important'
-  );
-
-  button.style.setProperty(
-    'z-index',
-    '9999',
-    'important'
-  );
-
-  account.style.setProperty(
-    'display',
-    'flex',
-    'important'
-  );
-
-  account.style.setProperty(
-    'visibility',
-    'visible',
-    'important'
-  );
-
-  account.style.setProperty(
-    'opacity',
-    '1',
-    'important'
-  );
-
-  account.style.setProperty(
-    'position',
-    'relative',
-    'important'
-  );
-
-  account.style.setProperty(
-    'z-index',
-    '9999',
-    'important'
-  );
-
-  return button;
-}
-
-function showLoggedOutUI() {
-  const auth = $('auth');
-  const studio = $('studio');
-  const accountBtn = $('accountBtn');
-  const accountPage = $('accountPage');
-
-  if (auth) {
-    auth.classList.remove('hidden');
-    auth.style.display = '';
-  }
-
-  if (studio) {
-    studio.classList.add('hidden');
-    studio.style.display = 'none';
-  }
-
-  if (accountPage) {
-    accountPage.classList.add('hidden');
-    accountPage.style.display = 'none';
-  }
-
-  if (accountBtn) {
-    accountBtn.classList.add('hidden');
-    accountBtn.style.display = 'none';
-    accountBtn.style.visibility = 'hidden';
-    accountBtn.style.opacity = '0';
-  }
-
-  const menu = $('accountMenu');
-
-  if (menu) {
-    menu.classList.add('hidden');
-    menu.style.display = 'none';
-  }
-
-  $('backToStudio')?.classList.add('hidden');
-  $('pageBack')?.classList.add('hidden');
-
-  stopPolling();
-  clearVideo();
-
-  account = null;
-  provider = null;
-  imageData = null;
-}
-
-/* =========================================================
-ROLE MENU
-========================================================= */
-
-function updateRoleMenu(isAdmin) {
-  const adminPanel = $('adminPanel');
-  const contactAdmin = $('contactAdmin');
-
-  if (adminPanel) {
-    adminPanel.classList.toggle(
-      'hidden',
-      !Boolean(isAdmin)
-    );
-  }
-
-  if (contactAdmin) {
-    contactAdmin.classList.toggle(
-      'hidden',
-      Boolean(isAdmin)
-    );
-
-    contactAdmin.textContent = 'Chat Admin';
-  }
-}
-
-function resetRoleMenu() {
-  $('adminPanel')?.classList.add('hidden');
-  $('contactAdmin')?.classList.add('hidden');
-
-  if ($('contactAdmin')) {
-    $('contactAdmin').textContent = 'Chat Admin';
-  }
-}
-
-/* =========================================================
-PROVIDER
-========================================================= */
-
-function selectProvider(p) {
-  provider = p;
-
-  document
-    .querySelectorAll('.provider')
-    .forEach(button => {
-      button.classList.toggle(
-        'active',
-        button.dataset.provider === p
-      );
-    });
-
-  const c =
-    cfg[p] ||
-    providers.find(x => x.id === p)?.capabilities;
-
-  if (!c) return;
-
-  opts(
-    $('model'),
-    c.models || []
-  );
-
-  opts(
-    $('duration'),
-    c.durations || []
-  );
-
-  opts(
-    $('aspect'),
-    c.aspects || []
-  );
-
-  opts(
-    $('resolution'),
-    c.resolutions || c.res || []
-  );
-}
-
-function renderProviders() {
-  const box = $('providers');
-
-  if (!box) return;
-
-  box.innerHTML = '';
-
-  providers.forEach(p => {
-    const button =
-      document.createElement('button');
-
-    button.className = 'provider';
-    button.dataset.provider = p.id;
-    button.type = 'button';
-
-    button.innerHTML = `
-      ${escapeHtml(p.name)}
-      <small>${escapeHtml(p.adapter || '')}</small>
-    `;
-
-    button.addEventListener(
-      'click',
-      () => {
-        selectProvider(p.id);
-      }
-    );
-
-    box.append(button);
-  });
-
-  if (providers[0]) {
-    selectProvider(
-      providers[0].id
-    );
-
-    if ($('generate')) {
-      $('generate').disabled = false;
-    }
-  } else {
-    if ($('status')) {
-      $('status').textContent =
-        'Belum ada provider aktif.';
-    }
-
-    if ($('generate')) {
-      $('generate').disabled = true;
-    }
-  }
-}
-
-async function loadProviders() {
-  const r =
-    await fetch(
-      '/api/providers',
-      {
-        cache: 'no-store'
-      }
-    );
-
-  const d =
-    await r.json();
-
-  if (
-    !r.ok ||
-    d.success === false
-  ) {
-    throw Error(
-      d.error ||
-      'Gagal memuat provider'
-    );
-  }
-
-  providers =
-    Array.isArray(d.providers)
-      ? d.providers
-      : [];
-
-  renderProviders();
-}
-
-/* =========================================================
-TOKEN
-========================================================= */
-
-async function token() {
-  const client =
-    getAuthClient();
-
-  if (!client) {
-    throw Error(
-      'Supabase Auth belum siap.'
-    );
-  }
-
-  const {
-    data,
-    error
-  } =
-    await client.auth.getSession();
-
-  if (error) {
-    throw Error(
-      error.message ||
-      'Gagal membaca session.'
-    );
-  }
-
-  if (!data?.session) {
-    throw Error(
-      'Silakan login.'
-    );
-  }
-
-  return data.session.access_token;
-}
-
-/* =========================================================
-API
-========================================================= */
-
-async function api(
-  path,
-  body,
-  method = 'POST',
-  extraHeaders = {}
-) {
-  const t =
-    await token();
-
-  const r =
-    await fetch(
-      path,
-      {
-        method,
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          Authorization:
-            `Bearer ${t}`,
-
-          ...extraHeaders
-        },
-
-        body:
-          body === undefined
-            ? undefined
-            : JSON.stringify(body)
-      }
-    );
-
-  let d;
-
-  try {
-    d =
-      await r.json();
-  } catch {
-    throw Error(
-      `Server mengembalikan respons tidak valid (${r.status}).`
-    );
-  }
-
-  if (
-    !r.ok ||
-    d.success === false
-  ) {
-    throw Error(
-      d.error ||
-      'Request gagal'
-    );
-  }
-
-  return d;
-}
-
-/* =========================================================
-REFRESH ACCOUNT
-========================================================= */
-
-async function refresh() {
-  const client =
-    getAuthClient();
-
-  if (!client) {
-    showLoggedOutUI();
-    return false;
-  }
-
-  try {
-    const {
-      data,
-      error
-    } =
-      await client.auth.getUser();
-
-    if (error) {
-      console.error(
-        '[GEN-Z.AI] Gagal membaca user:',
-        error
-      );
-
-      showLoggedOutUI();
-
-      return false;
-    }
-
-    const user =
-      data?.user;
-
-    if (!user) {
-      showLoggedOutUI();
-
-      return false;
-    }
 
     /*
-     * Pastikan UI langsung tampil.
+     * Header
      */
-    showLoggedInUI();
 
-    if ($('userEmail')) {
-      $('userEmail').textContent =
-        user.email || '';
-    }
+    await GENZ.loadComponent(
+      '#header-container',
+      '/components/header.html'
+    );
 
-    if ($('menuEmail')) {
-      $('menuEmail').textContent =
-        user.email || '';
-    }
 
     /*
-     * Jangan menyembunyikan menu akun
-     * hanya karena endpoint credit lambat.
+     * Account
      */
-    try {
-      const d =
-        await api(
-          '/api/account/credits',
-          undefined,
-          'GET'
-        );
 
-      account = {
-        ...d,
-        user
-      };
+    await GENZ.account.init();
 
-      const isAdmin =
-        Boolean(d.isAdmin);
-
-      if ($('credits')) {
-        $('credits').textContent =
-          `${d.credits ?? 0} credit`;
-      }
-
-      updateRoleMenu(
-        isAdmin
-      );
-
-    } catch (e) {
-      console.error(
-        '[GEN-Z.AI] Gagal memuat account:',
-        e
-      );
-
-      const previousIsAdmin =
-        Boolean(
-          account?.isAdmin
-        );
-
-      account = {
-        ...(account || {}),
-        user,
-        credits:
-          account?.credits ?? 0,
-        isAdmin:
-          previousIsAdmin
-      };
-
-      updateRoleMenu(
-        previousIsAdmin
-      );
-
-      if ($('credits')) {
-        $('credits').textContent =
-          account.credits !== undefined
-            ? `${account.credits} credit`
-            : '— credit';
-      }
-    }
-
-    /*
-     * PENGAMAN TERAKHIR:
-     * pastikan tombol akun tetap terlihat
-     * setelah semua proses refresh selesai.
-     */
-    const accountBtn =
-      $('accountBtn');
-
-    if (accountBtn) {
-      accountBtn.classList.remove('hidden');
-      accountBtn.removeAttribute('hidden');
-      accountBtn.style.display = 'flex';
-      accountBtn.style.visibility = 'visible';
-      accountBtn.style.opacity = '1';
-    }
-
-    return true;
-
-  } catch (e) {
-    console.error(
-      '[GEN-Z.AI] Refresh error:',
-      e
-    );
-
-    return false;
-  }
-}
-
-/* =========================================================
-LOGIN SESSION SYNC
-========================================================= */
-
-async function syncLoginState() {
-  const client =
-    getAuthClient();
-
-  if (!client) {
-    return false;
   }
 
-  try {
-    const {
-      data,
-      error
-    } =
-      await client.auth.getSession();
 
-    if (error) {
-      console.error(
-        '[GEN-Z.AI] Session error:',
-        error
-      );
+  /* -------------------------------------------------------
+     AUTH STATE
+  ------------------------------------------------------- */
 
-      return false;
-    }
+  async function syncAuth() {
 
-    if (data?.session?.user) {
+    const client =
+      window.GENZ_AUTH_CLIENT;
 
-      /*
-       * Tampilkan UI terlebih dahulu.
-       */
-      showLoggedInUI();
+    if (!client) {
 
-      resetRoleMenu();
-
-      /*
-       * Refresh account tidak boleh
-       * menghilangkan UI utama.
-       */
-      await refresh();
-
-      /*
-       * Pastikan tombol akun tetap terlihat.
-       */
-      const accountBtn =
-        $('accountBtn');
-
-      if (accountBtn) {
-        accountBtn.classList.remove('hidden');
-        accountBtn.removeAttribute('hidden');
-        accountBtn.style.display = 'flex';
-        accountBtn.style.visibility = 'visible';
-        accountBtn.style.opacity = '1';
-      }
-
-      try {
-        await loadProviders();
-
-      } catch (e) {
-        console.error(
-          '[GEN-Z.AI] Provider error:',
-          e
-        );
-      }
-
-      return true;
-    }
-
-    showLoggedOutUI();
-
-  } catch (e) {
-    console.error(
-      '[GEN-Z.AI] Sync login error:',
-      e
-    );
-  }
-
-  return false;
-}
-
-/* =========================================================
-MENU
-========================================================= */
-
-function closeMenu() {
-  const menu =
-    $('accountMenu');
-
-  if (!menu) return;
-
-  menu.classList.add('hidden');
-  menu.style.display = 'none';
-}
-
-function openMenu() {
-  const menu =
-    $('accountMenu');
-
-  if (!menu) return;
-
-  menu.classList.remove('hidden');
-  menu.style.display = 'block';
-}
-
-function showStudio() {
-  $('accountPage')?.classList.add(
-    'hidden'
-  );
-
-  if ($('accountPage')) {
-    $('accountPage').style.display = 'none';
-  }
-
-  $('studio')?.classList.remove(
-    'hidden'
-  );
-
-  if ($('studio')) {
-    $('studio').style.display = '';
-  }
-
-  $('backToStudio')?.classList.add(
-    'hidden'
-  );
-
-  $('pageBack')?.classList.add(
-    'hidden'
-  );
-
-  closeMenu();
-}
-
-/* =========================================================
-CREDIT HISTORY
-========================================================= */
-
-async function loadCreditHistory() {
-  try {
-    const d =
-      await api(
-        '/api/account/transactions?limit=30',
-        undefined,
-        'GET'
-      );
-
-    const box =
-      $('creditHistory');
-
-    if (!box) return;
-
-    if (
-      !d.transactions?.length
-    ) {
-      box.innerHTML =
-        '<p>Belum ada transaksi credit.</p>';
-
-      return;
-    }
-
-    box.innerHTML =
-      '<h3>Riwayat Credit</h3>' +
-      d.transactions
-        .map(t => {
-          const sign =
-            Number(t.amount) > 0
-              ? '+'
-              : '';
-
-          const label = {
-            generation:
-              'Generation',
-
-            refund:
-              'Refund',
-
-            admin_adjustment:
-              'Penyesuaian Admin',
-
-            topup:
-              'Top-up'
-          }[t.type] ||
-            t.type;
-
-          return `
-            <div class="credit-history-row">
-
-              <div>
-
-                <strong>
-                  ${escapeHtml(label)}
-                </strong>
-
-                <small>
-                  ${escapeHtml(t.note || '')}
-                </small>
-
-              </div>
-
-              <span>
-                ${sign}${Number(t.amount)}
-                · ${Number(t.balance_after ?? 0)}
-                saldo
-              </span>
-
-            </div>
-          `;
-        })
-        .join('');
-
-  } catch (e) {
-    console.error(
-      '[GEN-Z.AI] Credit history error:',
-      e
-    );
-
-    const box =
-      $('creditHistory');
-
-    if (box) {
-      box.innerHTML =
-        '<p>Riwayat credit belum dapat dimuat.</p>';
-    }
-  }
-}
-
-/* =========================================================
-TOP UP
-========================================================= */
-
-async function loadTopups() {
-  const box =
-    $('topupState');
-
-  if (!box) return;
-
-  try {
-    const d =
-      await api(
-        '/api/account/topup-requests?limit=20',
-        undefined,
-        'GET'
-      );
-
-    if (
-      !d.requests?.length
-    ) {
-      box.innerHTML =
-        '<p>Belum ada request top-up.</p>';
-
-    } else {
-      box.innerHTML =
-        '<h3>Request Terakhir</h3>' +
-        d.requests
-          .map(r => `
-            <div class="credit-history-row">
-
-              <div>
-
-                <strong>
-                  ${Number(r.amount)}
-                  credit ·
-                  ${escapeHtml(r.status)}
-                </strong>
-
-                <small>
-                  ${escapeHtml(r.note || '')}
-
-                  ${
-                    r.admin_note
-                      ? ' · ' +
-                        escapeHtml(
-                          r.admin_note
-                        )
-                      : ''
-                  }
-                </small>
-
-              </div>
-
-              <span>
-                ${new Date(
-                  r.created_at
-                ).toLocaleString()}
-              </span>
-
-            </div>
-          `)
-          .join('');
-    }
-
-  } catch (e) {
-    console.error(
-      '[GEN-Z.AI] Topup history error:',
-      e
-    );
-
-    box.innerHTML =
-      '<p>Request belum dapat dimuat.</p>';
-  }
-
-  const btn =
-    $('submitTopup');
-
-  if (!btn) return;
-
-  btn.onclick =
-    async () => {
-      const amount =
-        Number(
-          $('topupAmount')?.value
-        );
-
-      const note =
-        $('topupNote')
-          ?.value
-          .trim() || '';
-
-      if (
-        !Number.isInteger(amount) ||
-        amount <= 0 ||
-        amount > 1000000
-      ) {
-        alert(
-          'Jumlah harus integer 1–1.000.000.'
-        );
-
-        return;
-      }
-
-      try {
-        btn.disabled = true;
-
-        await api(
-          '/api/account/topup-requests',
-          {
-            amount,
-            note
-          }
-        );
-
-        alert(
-          'Request top-up berhasil dikirim.'
-        );
-
-        showPage('topup');
-
-      } catch (e) {
-        alert(
-          e.message ||
-          'Gagal mengirim request top-up.'
-        );
-
-      } finally {
-        btn.disabled = false;
-      }
-    };
-}
-
-/* =========================================================
-ACCOUNT PAGES
-========================================================= */
-
-function showPage(page) {
-
-  if (
-    page === 'contact' &&
-    account?.isAdmin
-  ) {
-    console.warn(
-      '[GEN-Z.AI] Admin tidak memiliki akses Chat Admin.'
-    );
-
-    return;
-  }
-
-  if (page === 'diagnostic') {
-    console.warn(
-      '[GEN-Z.AI] System Diagnostic tidak tersedia dari menu utama.'
-    );
-
-    return;
-  }
-
-  $('studio')?.classList.add(
-    'hidden'
-  );
-
-  if ($('studio')) {
-    $('studio').style.display = 'none';
-  }
-
-  $('accountPage')?.classList.remove(
-    'hidden'
-  );
-
-  if ($('accountPage')) {
-    $('accountPage').style.display = '';
-  }
-
-  $('backToStudio')?.classList.remove(
-    'hidden'
-  );
-
-  $('pageBack')?.classList.remove(
-    'hidden'
-  );
-
-  closeMenu();
-
-  const title =
-    $('pageTitle');
-
-  const content =
-    $('pageContent');
-
-  if (!title || !content) {
-    return;
-  }
-
-  const email =
-    escapeHtml(
-      account?.user?.email || ''
-    );
-
-  const credits =
-    Number(
-      account?.credits || 0
-    );
-
-  /* =======================================================
-  PROFILE
-  ======================================================= */
-
-  if (page === 'profile') {
-    title.textContent =
-      'Profil';
-
-    content.innerHTML = `
-      <div class="profile-card">
-
-        <div class="avatar">
-          ${
-            email.charAt(0).toUpperCase() ||
-            'U'
-          }
-        </div>
-
-        <div>
-
-          <h3>
-            ${email}
-          </h3>
-
-          <p>
-            Akun ${
-              account?.isAdmin
-                ? 'Administrator'
-                : 'User'
-            }
-          </p>
-
-        </div>
-
-      </div>
-    `;
-
-    return;
-  }
-
-  /* =======================================================
-  CREDIT
-  ======================================================= */
-
-  if (page === 'credit') {
-    title.textContent =
-      'Kredit';
-
-    content.innerHTML = `
-      <div class="credit-big">
-        ${credits}
-        <span>credit</span>
-      </div>
-
-      <p>
-        Credit digunakan setiap kali
-        membuat video. Setiap perubahan
-        credit tercatat di riwayat.
-      </p>
-
-      <button
-        class="primary"
-        data-page="topup"
-        type="button"
-      >
-        Top-up
-      </button>
-
-      <div
-        id="creditHistory"
-        class="credit-history"
-      >
-        <p>
-          Memuat riwayat...
-        </p>
-      </div>
-    `;
-
-    content
-      .querySelector(
-        '[data-page="topup"]'
-      )
-      ?.addEventListener(
-        'click',
-        () => {
-          showPage('topup');
-        }
-      );
-
-    loadCreditHistory();
-
-    return;
-  }
-
-  /* =======================================================
-  TOP UP
-  ======================================================= */
-
-  if (page === 'topup') {
-    title.textContent =
-      'Top-up';
-
-    content.innerHTML = `
-      <div class="topup-box">
-
-        <h3>
-          Ajukan Top-up
-        </h3>
-
-        <p>
-          Masukkan jumlah kredit.
-          Admin akan memeriksa dan
-          menyetujui atau menolak
-          permintaan Anda.
-        </p>
-
-        <label>
-          Jumlah credit
-
-          <input
-            id="topupAmount"
-            type="number"
-            min="1"
-            max="1000000"
-            step="1"
-            placeholder="Contoh: 100"
-          >
-        </label>
-
-        <label>
-          Catatan (opsional)
-
-          <textarea
-            id="topupNote"
-            maxlength="500"
-            placeholder="Keterangan pembayaran atau kebutuhan"
-          ></textarea>
-        </label>
-
-        <button
-          class="primary"
-          id="submitTopup"
-          type="button"
-        >
-          Kirim Request Top-up
-        </button>
-
-        <div
-          id="topupState"
-          class="credit-history"
-        >
-          <p>
-            Memuat request...
-          </p>
-        </div>
-
-      </div>
-    `;
-
-    loadTopups();
-
-    return;
-  }
-
-  /* =======================================================
-  CHAT ADMIN
-  ======================================================= */
-
-  if (page === 'contact') {
-
-    if (account?.isAdmin) {
-      showStudio();
-      return;
-    }
-
-    title.textContent =
-      'Chat Admin';
-
-    const contact =
-      account?.adminContactUrl;
-
-    content.innerHTML =
-      contact
-        ? `
-          <p>
-            Gunakan kontak berikut untuk
-            bantuan, top-up, atau
-            kendala akun.
-          </p>
-
-          <a
-            class="contact-btn"
-            href="${escapeAttr(contact)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Chat Admin
-          </a>
-        `
-        : `
-          <p>
-            Kontak admin belum
-            dikonfigurasi.
-          </p>
-        `;
-
-    return;
-  }
-}
-
-/* =========================================================
-IMAGE UPLOAD
-========================================================= */
-
-function setupImageUpload() {
-  const input =
-    $('image');
-
-  if (!input) return;
-
-  input.onchange =
-    event => {
-      const file =
-        event.target.files?.[0];
-
-      if (!file) {
-        imageData = null;
-        return;
-      }
-
-      if (
-        file.size >
-        12 * 1024 * 1024
-      ) {
-        imageData = null;
-
-        if ($('status')) {
-          $('status').textContent =
-            'Gambar maksimal 12 MB.';
-        }
-
-        input.value = '';
-
-        return;
-      }
-
-      if (
-        !file.type.startsWith(
-          'image/'
-        )
-      ) {
-        imageData = null;
-
-        if ($('status')) {
-          $('status').textContent =
-            'File harus berupa gambar.';
-        }
-
-        input.value = '';
-
-        return;
-      }
-
-      const reader =
-        new FileReader();
-
-      reader.onload =
-        () => {
-          imageData =
-            reader.result;
-        };
-
-      reader.onerror =
-        () => {
-          imageData = null;
-
-          if ($('status')) {
-            $('status').textContent =
-              'Gagal membaca gambar.';
-          }
-        };
-
-      reader.readAsDataURL(file);
-    };
-}
-
-/* =========================================================
-VIDEO CLEANUP
-========================================================= */
-
-function stopPolling() {
-  if (poll) {
-    clearTimeout(poll);
-    poll = null;
-  }
-}
-
-function clearVideo() {
-  stopPolling();
-
-  const video =
-    $('video');
-
-  const download =
-    $('download');
-
-  if (video) {
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
-    video.classList.add('hidden');
-  }
-
-  if (download) {
-    download.removeAttribute('href');
-    download.classList.add('hidden');
-  }
-
-  if (currentVideoObjectUrl) {
-    try {
-      URL.revokeObjectURL(
-        currentVideoObjectUrl
-      );
-    } catch {}
-
-    currentVideoObjectUrl = null;
-  }
-}
-
-/* =========================================================
-VIDEO GENERATION
-========================================================= */
-
-async function generateVideo() {
-  const generate =
-    $('generate');
-
-  if (!generate) return;
-
-  try {
-    generate.disabled = true;
-
-    clearVideo();
-
-    if ($('status')) {
-      $('status').textContent =
-        'Memulai generation...';
-    }
-
-    const idem =
-      typeof crypto !== 'undefined' &&
-      typeof crypto.randomUUID ===
-        'function'
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}`;
-
-    const d =
-      await api(
-        '/api/generate',
-        {
-          provider,
-
-          model:
-            $('model')?.value,
-
-          duration:
-            $('duration')?.value,
-
-          aspectRatio:
-            $('aspect')?.value,
-
-          resolution:
-            $('resolution')?.value,
-
-          prompt:
-            $('prompt')?.value || '',
-
-          imageData
-        },
-        'POST',
-        {
-          'Idempotency-Key':
-            idem
-        }
-      );
-
-    if ($('status')) {
-      $('status').textContent =
-        'Processing...';
-    }
-
-    const id =
-      d.externalId;
-
-    if (!id) {
-      throw Error(
-        'Server tidak mengembalikan ID generation.'
-      );
-    }
-
-    stopPolling();
-
-    const run =
-      async () => {
-        try {
-          const s =
-            await api(
-              '/api/generate/status',
-              {
-                provider,
-                operationName: id,
-                taskId: id,
-                id
-              }
-            );
-
-          if (
-            s.status === 'completed' &&
-            s.videoUrl
-          ) {
-            let url =
-              s.videoUrl;
-
-            if (
-              url.startsWith(
-                '/api/video'
-              )
-            ) {
-              const t =
-                await token();
-
-              const r =
-                await fetch(
-                  url,
-                  {
-                    headers: {
-                      Authorization:
-                        `Bearer ${t}`
-                    }
-                  }
-                );
-
-              if (!r.ok) {
-                throw Error(
-                  'Gagal mengambil file video.'
-                );
-              }
-
-              const blob =
-                await r.blob();
-
-              url =
-                URL.createObjectURL(
-                  blob
-                );
-
-              currentVideoObjectUrl =
-                url;
-            }
-
-            const video =
-              $('video');
-
-            if (video) {
-              video.src = url;
-
-              video.classList.remove(
-                'hidden'
-              );
-
-              video.load();
-            }
-
-            const download =
-              $('download');
-
-            if (download) {
-              download.href =
-                url;
-
-              download.classList.remove(
-                'hidden'
-              );
-            }
-
-            if ($('status')) {
-              $('status').textContent =
-                'Video selesai.';
-            }
-
-            generate.disabled =
-              false;
-
-            await refresh();
-
-            return;
-          }
-
-          if (
-            s.status === 'failed' ||
-            s.status === 'error' ||
-            s.status === 'cancelled'
-          ) {
-            if ($('status')) {
-              $('status').textContent =
-                s.error ||
-                s.message ||
-                'Generation gagal.';
-            }
-
-            generate.disabled =
-              false;
-
-            await refresh();
-
-            return;
-          }
-
-          if ($('status')) {
-            $('status').textContent =
-              'Processing...';
-          }
-
-          poll =
-            setTimeout(
-              run,
-              7000
-            );
-
-        } catch (e) {
-          console.error(
-            '[GEN-Z.AI] Polling error:',
-            e
-          );
-
-          if ($('status')) {
-            $('status').textContent =
-              e.message ||
-              'Gagal mengecek status video.';
-          }
-
-          generate.disabled =
-            false;
-        }
-      };
-
-    run();
-
-  } catch (e) {
-    console.error(
-      '[GEN-Z.AI] Generation error:',
-      e
-    );
-
-    if ($('status')) {
-      $('status').textContent =
-        e.message ||
-        'Generation gagal.';
-    }
-
-    generate.disabled =
-      false;
-  }
-}
-
-/* =========================================================
-EVENTS
-========================================================= */
-
-function setupEvents() {
-
-  $('accountBtn')?.addEventListener(
-    'click',
-    event => {
-      event.stopPropagation();
-
-      const menu =
-        $('accountMenu');
-
-      if (!menu) return;
-
-      const isHidden =
-        menu.classList.contains('hidden');
-
-      if (isHidden) {
-        openMenu();
-      } else {
-        closeMenu();
-      }
-    }
-  );
-
-  document
-    .querySelectorAll(
-      '#accountMenu [data-page]'
-    )
-    .forEach(button => {
-      button.addEventListener(
-        'click',
-        () => {
-          const page =
-            button.dataset.page;
-
-          if (page) {
-            showPage(page);
-          }
-        }
-      );
-    });
-
-  $('adminPanel')?.addEventListener(
-    'click',
-    () => {
-      if (
-        !account?.isAdmin
-      ) {
-        return;
-      }
-
-      closeMenu();
-
-      location.href =
-        '/admin.html';
-    }
-  );
-
-  $('contactAdmin')?.addEventListener(
-    'click',
-    () => {
-      if (
-        account?.isAdmin
-      ) {
-        return;
-      }
-
-      showPage('contact');
-    }
-  );
-
-  $('backToStudio')?.addEventListener(
-    'click',
-    showStudio
-  );
-
-  $('pageBack')?.addEventListener(
-    'click',
-    showStudio
-  );
-
-  document.addEventListener(
-    'click',
-    event => {
-      const menu =
-        $('accountMenu');
-
-      const button =
-        $('accountBtn');
-
-      if (!menu || !button) {
-        return;
-      }
-
-      if (
-        !menu.contains(event.target) &&
-        !button.contains(event.target)
-      ) {
-        closeMenu();
-      }
-    }
-  );
-
-  setupImageUpload();
-
-  $('generate')?.addEventListener(
-    'click',
-    generateVideo
-  );
-}
-
-/* =========================================================
-AUTH LOGIN EVENT
-========================================================= */
-
-window.addEventListener(
-  'genz-auth-login',
-  async event => {
-    console.log(
-      '[GEN-Z.AI] LOGIN EVENT DITERIMA',
-      event?.detail || null
-    );
-
-    /*
-     * UI langsung tampil.
-     */
-    showLoggedInUI();
-
-    /*
-     * Role menu reset terlebih dahulu.
-     */
-    resetRoleMenu();
-
-    const success =
-      await syncLoginState();
-
-    if (!success) {
       console.warn(
-        '[GEN-Z.AI] Login event diterima tetapi session belum tersedia.'
+        '[GEN-Z.AI] Auth client belum tersedia'
       );
 
-      setTimeout(
-        syncLoginState,
-        500
-      );
+      return;
+
     }
-  }
-);
 
-/* =========================================================
-LOGOUT EVENT
-========================================================= */
 
-window.addEventListener(
-  'genz-auth-logout',
-  () => {
-    console.log(
-      '[GEN-Z.AI] LOGOUT EVENT DITERIMA'
-    );
+    try {
 
-    showLoggedOutUI();
-  }
-);
+      const result =
+        await client.auth.getSession();
 
-/* =========================================================
-BOOTSTRAP
-========================================================= */
 
-async function bootstrap() {
-  console.log(
-    '[GEN-Z.AI] APP BOOTSTRAP'
-  );
+      const session =
+        result?.data?.session;
 
-  setupEvents();
 
-  /*
-   * Tunggu auth.js membuat client.
-   */
-  let attempts = 0;
+      if (
+        session &&
+        session.user
+      ) {
 
-  while (
-    !getAuthClient() &&
-    attempts < 60
-  ) {
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          100
-        )
-    );
+        GENZ.state.loggedIn =
+          true;
 
-    attempts++;
-  }
+        GENZ.state.user =
+          session.user;
 
-  const client =
-    getAuthClient();
 
-  if (!client) {
-    console.error(
-      '[GEN-Z.AI] Supabase Auth tidak tersedia.'
-    );
-
-    return;
-  }
-
-  /*
-   * Sinkronkan session awal.
-   */
-  await syncLoginState();
-
-  /*
-   * Listener tambahan langsung pada Supabase.
-   */
-  try {
-    client.auth.onAuthStateChange(
-      async (
-        event,
-        session
-      ) => {
-        console.log(
-          '[GEN-Z.AI] Supabase event:',
-          event
+        GENZ.emit(
+          'auth-login',
+          session.user
         );
 
-        if (
-          event === 'SIGNED_IN' &&
-          session?.user
-        ) {
-          /*
-           * Tampilkan akun sebelum
-           * mengambil data lainnya.
-           */
-          showLoggedInUI();
+      } else {
 
-          resetRoleMenu();
+        GENZ.state.loggedIn =
+          false;
 
-          await refresh();
+        GENZ.emit(
+          'auth-logout'
+        );
 
-          try {
-            await loadProviders();
+      }
 
-          } catch (e) {
-            console.error(
-              '[GEN-Z.AI] Provider error:',
-              e
-            );
-          }
+    } catch (error) {
 
-          /*
-           * Pengaman setelah listener selesai.
-           */
-          const accountBtn =
-            $('accountBtn');
+      console.error(
+        '[GEN-Z.AI] Auth sync error',
+        error
+      );
 
-          if (accountBtn) {
-            accountBtn.classList.remove('hidden');
-            accountBtn.removeAttribute('hidden');
-            accountBtn.style.display = 'flex';
-            accountBtn.style.visibility = 'visible';
-            accountBtn.style.opacity = '1';
-          }
-        }
+    }
 
-        if (
-          event === 'SIGNED_OUT'
-        ) {
-          showLoggedOutUI();
-        }
+  }
+
+
+  /* -------------------------------------------------------
+     AUTH EVENTS
+  ------------------------------------------------------- */
+
+  function bindAuth() {
+
+    window.addEventListener(
+      'genz-auth-login',
+      function (event) {
+
+        const user =
+          event?.detail ||
+          GENZ.state.user;
+
+
+        GENZ.state.loggedIn =
+          true;
+
+        GENZ.state.user =
+          user;
+
+
+        GENZ.emit(
+          'auth-login',
+          user
+        );
+
       }
     );
 
-  } catch (e) {
-    console.error(
-      '[GEN-Z.AI] Auth listener error:',
-      e
+
+    window.addEventListener(
+      'genz-auth-logout',
+      function () {
+
+        GENZ.state.loggedIn =
+          false;
+
+        GENZ.state.user =
+          null;
+
+
+        GENZ.emit(
+          'auth-logout'
+        );
+
+      }
     );
+
   }
-}
 
-/* =========================================================
-START
-========================================================= */
 
-if (
-  document.readyState ===
-  'loading'
-) {
-  document.addEventListener(
-    'DOMContentLoaded',
-    bootstrap,
-    {
-      once: true
+  /* -------------------------------------------------------
+     START
+  ------------------------------------------------------- */
+
+  async function start() {
+
+    if (
+      GENZ.state.initialized
+    ) {
+      return;
     }
-  );
 
-} else {
-  bootstrap();
-}
+
+    GENZ.state.initialized =
+      true;
+
+
+    console.log(
+      '[GEN-Z.AI] APPLICATION START'
+    );
+
+
+    bindAuth();
+
+
+    await loadComponents();
+
+
+    await syncAuth();
+
+
+    console.log(
+      '[GEN-Z.AI] APPLICATION READY'
+    );
+
+  }
+
+
+  /* -------------------------------------------------------
+     PUBLIC API
+  ------------------------------------------------------- */
+
+  GENZ.start =
+    start;
+
+
+  if (
+    document.readyState ===
+    'loading'
+  ) {
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      start
+    );
+
+  } else {
+
+    start();
+
+  }
+
+
+})();
