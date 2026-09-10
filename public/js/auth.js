@@ -309,10 +309,26 @@ window.dispatchEvent(
       if (data?.session && data?.user) {
 
         message(
-          'Pendaftaran berhasil.'
-        );
+  'Pendaftaran berhasil.'
+);
 
-        window.dispatchEvent(
+const authPage = document.getElementById('auth');
+const studio = document.getElementById('studio');
+const accountBtn = document.getElementById('accountBtn');
+
+if (authPage) {
+  authPage.classList.add('hidden');
+}
+
+if (studio) {
+  studio.classList.remove('hidden');
+}
+
+if (accountBtn) {
+  accountBtn.classList.remove('hidden');
+}
+
+window.dispatchEvent(
           new CustomEvent(
             'genz-auth-login',
             {
