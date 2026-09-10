@@ -1,0 +1,161 @@
+/* =========================================================
+   GEN-Z.AI - PAGES
+   ========================================================= */
+
+.page-card {
+  width: min(760px, calc(100% - 24px));
+  margin: 24px auto;
+  padding: 24px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  box-sizing: border-box;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  opacity: .65;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.profile-info {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-row,
+.transaction-row,
+.topup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.04);
+}
+
+.profile-row span,
+.transaction-row small,
+.topup-row small {
+  opacity: .65;
+}
+
+.credit-balance {
+  text-align: center;
+  padding: 28px;
+  margin-bottom: 24px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.05);
+}
+
+.credit-balance span {
+  display: block;
+  opacity: .65;
+}
+
+.credit-balance strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 36px;
+}
+
+.credit-history h3,
+.topup-history h3 {
+  margin-bottom: 14px;
+}
+
+#topupForm {
+  display: grid;
+  gap: 12px;
+}
+
+#topupForm input,
+#topupForm textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.05);
+  color: inherit;
+  outline: none;
+}
+
+.primary-btn {
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.topup-status {
+  margin-top: 15px;
+  min-height: 20px;
+}
+
+.credit-plus {
+  font-weight: 700;
+}
+
+.credit-minus {
+  font-weight: 700;
+}
+
+.empty-state {
+  padding: 20px;
+  text-align: center;
+  opacity: .6;
+}
+
+.topup-badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.status-pending {
+  background: rgba(255,193,7,.15);
+}
+
+.status-approved {
+  background: rgba(40,167,69,.15);
+}
+
+.status-rejected {
+  background: rgba(220,53,69,.15);
+}
+
+@media (max-width: 600px) {
+
+  .page-card {
+    padding: 18px;
+    margin-top: 15px;
+  }
+
+  .profile-row,
+  .transaction-row,
+  .topup-row {
+    padding: 12px;
+  }
+}
