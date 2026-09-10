@@ -1,82 +1,88 @@
 /* GEN-Z.AI Diagnostic
  * Pemeriksaan frontend -> Worker -> provider configuration.
- * Hasil ditampilkan langsung di halaman.
- * Tidak mengubah proses generate video.
+ * Hasil tampil langsung di halaman.
+ * Tidak menggunakan Console sebagai output utama.
+ * Tidak melakukan generate video.
  */
 
 (function () {
   'use strict';
 
-  function getElement(id) {
-    return document.getElementById(id);
+  function escapeHtml(value) {
+    return String(value ?? '').replace(
+      /[&<>'"]/g,
+      function (char) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[char];
+      }
+    );
   }
 
+
   function createPanel() {
-    if (getElement('genzDiagnosticPanel')) {
-      return getElement('genzDiagnosticPanel');
+
+    if (
+      document.getElementById(
+        'genzDiagnosticPanel'
+      )
+    ) {
+      return;
     }
 
-    const panel = document.createElement('section');
+    const panel =
+      document.createElement('section');
 
-    panel.id = 'genzDiagnosticPanel';
+    panel.id =
+      'genzDiagnosticPanel';
 
-    panel.style.cssText = `
-      margin:20px auto;
-      padding:18px;
-      max-width:900px;
-      background:#15151b;
-      border:1px solid #292933;
-      border-radius:14px;
-      color:#f5f5f5;
-      font-family:Arial,sans-serif;
-      box-sizing:border-box;
-    `;
+    panel.className =
+      'card hidden';
 
     panel.innerHTML = `
-      <div style="
-        font-size:20px;
-        font-weight:bold;
-        margin-bottom:6px;
-      ">
-        GEN-Z.AI System Diagnostic
+      <div class="page-head">
+
+        <h2>
+          System Diagnostic
+        </h2>
+
+        <button
+          id="genzDiagnosticBack"
+          type="button"
+        >
+          ← Kembali
+        </button>
+
       </div>
 
-      <div style="
-        color:#999;
-        font-size:13px;
-        margin-bottom:16px;
-      ">
-        Pemeriksaan sistem tanpa menggunakan Console.
-      </div>
+      <p>
+        Pemeriksaan sistem GEN-Z.AI
+        tanpa menggunakan Console.
+      </p>
 
       <button
         id="genzDiagnosticRun"
+        class="primary"
         type="button"
-        style="
-          width:100%;
-          padding:12px;
-          border:0;
-          border-radius:10px;
-          background:#fff;
-          color:#000;
-          font-weight:bold;
-          cursor:pointer;
-        "
       >
         PERIKSA SISTEM
       </button>
 
       <div
         id="genzDiagnosticResults"
-        style="margin-top:16px;"
+        style="margin-top:20px;"
       ></div>
 
       <pre
         id="genzDiagnosticDetails"
         style="
           display:none;
-          margin-top:16px;
-          padding:12px;
+          margin-top:20px;
+          padding:14px;
           background:#0b0b0f;
           border-radius:10px;
           color:#aaa;
@@ -88,105 +94,83 @@
       ></pre>
     `;
 
-    const target =
-      getElement('studio') ||
-      getElement('auth') ||
-      document.body;
+    const accountPage =
+      document.getElementById(
+        'accountPage'
+      );
 
-    target.appendChild(panel);
+    if (accountPage) {
+      accountPage.parentNode.insertBefore(
+        panel,
+        accountPage.nextSibling
+      );
+    } else {
+      document.body.appendChild(panel);
+    }
 
-    getElement('genzDiagnosticRun')
-      .addEventListener(
+
+    document
+      .getElementById(
+        'genzDiagnosticRun'
+      )
+      ?.addEventListener(
         'click',
         runDiagnostic
       );
 
-    return panel;
+
+    document
+      .getElementById(
+        'genzDiagnosticBack'
+      )
+      ?.addEventListener(
+        'click',
+        function () {
+
+          panel.classList.add(
+            'hidden'
+          );
+
+          document
+            .getElementById(
+              'accountPage'
+            )
+            ?.classList.remove(
+              'hidden'
+            );
+        }
+      );
   }
 
 
-  function addResult(
-    name,
-    status,
-    message
-  ) {
+  function showPanel() {
 
-    const results =
-      getElement(
-        'genzDiagnosticResults'
+    createPanel();
+
+    document
+      .getElementById(
+        'accountPage'
+      )
+      ?.classList.add(
+        'hidden'
       );
 
-    if (!results) {
-      return;
-    }
-
-    const row =
-      document.createElement('div');
-
-    let statusColor =
-      '#ffc857';
-
-    if (status === 'OK') {
-      statusColor =
-        '#35d07f';
-    }
-
-    if (status === 'ERROR') {
-      statusColor =
-        '#ff5c5c';
-    }
-
-    row.style.cssText = `
-      margin-bottom:10px;
-      padding:12px;
-      background:#0f0f14;
-      border:1px solid #292933;
-      border-radius:10px;
-    `;
-
-    row.innerHTML = `
-      <div style="
-        display:flex;
-        justify-content:space-between;
-        gap:10px;
-        align-items:center;
-      ">
-        <strong>
-          ${escapeHtml(name)}
-        </strong>
-
-        <strong style="
-          color:${statusColor};
-        ">
-          ${escapeHtml(status)}
-        </strong>
-      </div>
-
-      <div style="
-        margin-top:7px;
-        color:#aaa;
-        font-size:13px;
-        line-height:1.5;
-      ">
-        ${escapeHtml(message)}
-      </div>
-    `;
-
-    results.appendChild(row);
-  }
-
-
-  function escapeHtml(value) {
-
-    return String(value)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll(
-        "'",
-        '&#039;'
+    document
+      .getElementById(
+        'studio'
+      )
+      ?.classList.add(
+        'hidden'
       );
+
+    const panel =
+      document.getElementById(
+        'genzDiagnosticPanel'
+      );
+
+    panel?.classList.remove(
+      'hidden'
+    );
   }
 
 
@@ -201,7 +185,7 @@
             method: 'GET',
             cache: 'no-store',
             headers: {
-              'Accept':
+              Accept:
                 'application/json'
             }
           }
@@ -213,12 +197,9 @@
       let data;
 
       try {
-
         data =
           JSON.parse(text);
-
       } catch {
-
         data = {
           raw: text
         };
@@ -236,14 +217,110 @@
         ok: false,
         status: 0,
         error:
-          error.message ||
+          error?.message ||
           'Request gagal.'
       };
     }
   }
 
 
-  function providerList(data) {
+  function addResult(
+    name,
+    status,
+    message
+  ) {
+
+    const box =
+      document.getElementById(
+        'genzDiagnosticResults'
+      );
+
+    if (!box) return;
+
+    let symbol = '⚠';
+
+    let color =
+      '#ffc857';
+
+    if (status === 'OK') {
+      symbol = '✓';
+      color = '#35d07f';
+    }
+
+    if (status === 'ERROR') {
+      symbol = '✕';
+      color = '#ff5c5c';
+    }
+
+    const item =
+      document.createElement('div');
+
+    item.style.cssText = `
+      margin-bottom:10px;
+      padding:14px;
+      background:#0f0f14;
+      border:1px solid #292933;
+      border-radius:10px;
+    `;
+
+    item.innerHTML = `
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        align-items:center;
+      ">
+
+        <strong>
+          ${escapeHtml(name)}
+        </strong>
+
+        <strong style="
+          color:${color};
+          white-space:nowrap;
+        ">
+          ${symbol}
+          ${escapeHtml(status)}
+        </strong>
+
+      </div>
+
+      <div style="
+        margin-top:8px;
+        color:#aaa;
+        font-size:13px;
+        line-height:1.5;
+      ">
+        ${escapeHtml(message)}
+      </div>
+    `;
+
+    box.appendChild(item);
+  }
+
+
+  function endpointMessage(
+    result,
+    endpoint
+  ) {
+
+    if (result?.error) {
+      return result.error;
+    }
+
+    if (result?.status) {
+      return (
+        `HTTP ${result.status} dari ${endpoint}.`
+      );
+    }
+
+    return (
+      `Tidak dapat mengakses ${endpoint}.`
+    );
+  }
+
+
+  function getProviders(data) {
 
     if (
       Array.isArray(
@@ -266,17 +343,17 @@
   async function runDiagnostic() {
 
     const button =
-      getElement(
+      document.getElementById(
         'genzDiagnosticRun'
       );
 
     const results =
-      getElement(
+      document.getElementById(
         'genzDiagnosticResults'
       );
 
     const details =
-      getElement(
+      document.getElementById(
         'genzDiagnosticDetails'
       );
 
@@ -293,9 +370,7 @@
     if (details) {
       details.style.display =
         'none';
-
-      details.textContent =
-        '';
+      details.textContent = '';
     }
 
 
@@ -320,89 +395,55 @@
 
 
     /*
-     * 1. Supabase Library
+     * FRONTEND
      */
 
-    if (
-      window.supabase &&
-      typeof window.supabase
-        .createClient ===
-        'function'
-    ) {
-
-      report.frontend.supabase =
-        true;
-
-      addResult(
-        'Supabase Library',
-        'OK',
-        'Library Supabase berhasil dimuat.'
+    const supabaseOK =
+      Boolean(
+        window.supabase &&
+        typeof window.supabase
+          .createClient ===
+          'function'
       );
 
-    } else {
+    report.frontend.supabase =
+      supabaseOK;
 
-      report.frontend.supabase =
-        false;
+    addResult(
+      'Supabase Library',
+      supabaseOK
+        ? 'OK'
+        : 'ERROR',
+      supabaseOK
+        ? 'Library Supabase berhasil dimuat.'
+        : 'Library Supabase tidak berhasil dimuat.'
+    );
 
-      addResult(
-        'Supabase Library',
-        'ERROR',
-        'Library Supabase tidak berhasil dimuat.'
+
+    const bridgeOK =
+      Boolean(
+        window.supabaseJs &&
+        typeof window.supabaseJs
+          .createClient ===
+          'function'
       );
-    }
+
+    report.frontend.supabaseJs =
+      bridgeOK;
+
+    addResult(
+      'Supabase Bridge',
+      bridgeOK
+        ? 'OK'
+        : 'ERROR',
+      bridgeOK
+        ? 'window.supabaseJs tersedia.'
+        : 'window.supabaseJs tidak tersedia.'
+    );
 
 
     /*
-     * 2. Supabase compatibility bridge
-     */
-
-    if (
-      window.supabaseJs &&
-      typeof window.supabaseJs
-        .createClient ===
-        'function'
-    ) {
-
-      report.frontend.supabaseJs =
-        true;
-
-      addResult(
-        'Supabase Bridge',
-        'OK',
-        'window.supabaseJs tersedia.'
-      );
-
-    } else if (
-      window.supabase &&
-      typeof window.supabase
-        .createClient ===
-        'function'
-    ) {
-
-      report.frontend.supabaseJs =
-        false;
-
-      addResult(
-        'Supabase Bridge',
-        'WARNING',
-        'window.supabase tersedia tetapi window.supabaseJs belum tersedia.'
-      );
-
-    } else {
-
-      report.frontend.supabaseJs =
-        false;
-
-      addResult(
-        'Supabase Bridge',
-        'ERROR',
-        'Supabase client tidak tersedia.'
-      );
-    }
-
-
-    /*
-     * 3. /api/config
+     * CONFIG
      */
 
     report.endpoints.config =
@@ -424,29 +465,22 @@
           data?.supabasePublishableKey
         );
 
-      if (valid) {
-
-        addResult(
-          'Backend Config',
-          'OK',
-          'Supabase URL dan Publishable Key tersedia.'
-        );
-
-      } else {
-
-        addResult(
-          'Backend Config',
-          'ERROR',
-          'Endpoint aktif tetapi konfigurasi Supabase belum lengkap.'
-        );
-      }
+      addResult(
+        'Backend Config',
+        valid
+          ? 'OK'
+          : 'ERROR',
+        valid
+          ? 'Konfigurasi Supabase tersedia.'
+          : 'Endpoint aktif tetapi konfigurasi Supabase belum lengkap.'
+      );
 
     } else {
 
       addResult(
         'Backend Config',
         'ERROR',
-        getRequestError(
+        endpointMessage(
           report.endpoints.config,
           '/api/config'
         )
@@ -455,7 +489,7 @@
 
 
     /*
-     * 4. /api/providers
+     * PROVIDERS
      */
 
     report.endpoints.providers =
@@ -468,7 +502,7 @@
     ) {
 
       const list =
-        providerList(
+        getProviders(
           report.endpoints
             .providers.data
         );
@@ -479,18 +513,20 @@
       addResult(
         'Video Providers',
         'OK',
-        `Endpoint provider aktif. ${list.length} provider ditemukan.`
+        `${list.length} provider ditemukan.`
       );
 
-      if (list.length === 0) {
+
+      if (!list.length) {
 
         addResult(
           'Provider Configuration',
           'WARNING',
-          'Tidak ada provider yang dikembalikan oleh backend.'
+          'Backend tidak mengembalikan provider.'
         );
 
       }
+
 
       list.forEach(
         function (provider) {
@@ -517,7 +553,7 @@
             addResult(
               `Provider: ${name}`,
               'OK',
-              'Aktif dan konfigurasi API terdeteksi.'
+              'Aktif dan konfigurasi API tersedia.'
             );
 
           } else if (
@@ -528,7 +564,7 @@
             addResult(
               `Provider: ${name}`,
               'WARNING',
-              'Provider aktif tetapi konfigurasi API belum terdeteksi.'
+              'Provider aktif tetapi konfigurasi API belum tersedia.'
             );
 
           } else {
@@ -547,7 +583,7 @@
       addResult(
         'Video Providers',
         'ERROR',
-        getRequestError(
+        endpointMessage(
           report.endpoints.providers,
           '/api/providers'
         )
@@ -556,7 +592,7 @@
 
 
     /*
-     * 5. /api/diagnostic
+     * BACKEND DIAGNOSTIC
      */
 
     report.endpoints.diagnostic =
@@ -572,7 +608,7 @@
       addResult(
         'Backend Diagnostic',
         'OK',
-        'Worker diagnostic merespons dengan normal.'
+        'Worker merespons dengan normal.'
       );
 
     } else {
@@ -580,9 +616,8 @@
       addResult(
         'Backend Diagnostic',
         'ERROR',
-        getRequestError(
-          report.endpoints
-            .diagnostic,
+        endpointMessage(
+          report.endpoints.diagnostic,
           '/api/diagnostic'
         )
       );
@@ -590,7 +625,7 @@
 
 
     /*
-     * Detail
+     * DETAIL
      */
 
     if (details) {
@@ -621,46 +656,16 @@
   }
 
 
-  function getRequestError(
-    result,
-    endpoint
-  ) {
-
-    if (
-      result?.error
-    ) {
-      return result.error;
-    }
-
-    if (
-      result?.status
-    ) {
-      return `HTTP ${result.status} dari ${endpoint}.`;
-    }
-
-    return `Tidak dapat mengakses ${endpoint}.`;
-  }
-
-
-  /*
-   * Public API
-   */
-
   window.GENZ_DIAGNOSTIC = {
+
     run:
-      runDiagnostic
+      runDiagnostic,
+
+    createPanel:
+      createPanel,
+
+    show:
+      showPanel
   };
-
-
-  /*
-   * Jangan otomatis menjalankan
-   * diagnostic ketika halaman dibuka.
-   *
-   * Panel hanya dibuat jika
-   * elemen diagnostic memang diminta.
-   */
-
-  window.GENZ_DIAGNOSTIC.createPanel =
-    createPanel;
 
 })();
