@@ -62,28 +62,24 @@ function opts(el, arr) {
   if (!el) return;
 
   el.innerHTML = (arr || [])
-    .map(
-      x =>
-        `<option value="${escapeAttr(x)}">${escapeHtml(x)}</option>`
+    .map(x =>
+      `<option value="${escapeAttr(x)}">${escapeHtml(x)}</option>`
     )
     .join('');
 }
 
-
 function escapeHtml(s) {
   return String(s ?? '').replace(
     /[&<>'"]/g,
-    c =>
-      ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;'
-      }[c])
+    c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[c])
   );
 }
-
 
 function escapeAttr(s) {
   return escapeHtml(s);
@@ -92,11 +88,85 @@ function escapeAttr(s) {
 
 /* =========================================================
    AUTH CLIENT
-   auth.js adalah satu-satunya pemilik Supabase Auth.
 ========================================================= */
 
 function getAuthClient() {
-  return window.GENZ_AUTH_CLIENT || null;
+  const client = window.GENZ_AUTH_CLIENT;
+
+  if (
+    client &&
+    client.auth &&
+    typeof client.auth.getSession === 'function'
+  ) {
+    supabase = client;
+    return client;
+  }
+
+  return null;
+}
+
+
+/* =========================================================
+   UI STATE
+========================================================= */
+
+function showLoggedInUI() {
+  const auth = $('auth');
+  const studio = $('studio');
+  const accountBtn = $('accountBtn');
+  const accountPage = $('accountPage');
+
+  if (auth) {
+    auth.classList.add('hidden');
+    auth.style.display = 'none';
+  }
+
+  if (studio) {
+    studio.classList.remove('hidden');
+    studio.style.display = '';
+  }
+
+  if (accountPage) {
+    accountPage.classList.add('hidden');
+  }
+
+  if (accountBtn) {
+    accountBtn.classList.remove('hidden');
+  }
+
+  $('backToStudio')?.classList.add('hidden');
+  $('pageBack')?.classList.add('hidden');
+}
+
+function showLoggedOutUI() {
+  const auth = $('auth');
+  const studio = $('studio');
+  const accountBtn = $('accountBtn');
+  const accountPage = $('accountPage');
+
+  if (auth) {
+    auth.classList.remove('hidden');
+    auth.style.display = '';
+  }
+
+  if (studio) {
+    studio.classList.add('hidden');
+    studio.style.display = 'none';
+  }
+
+  if (accountPage) {
+    accountPage.classList.add('hidden');
+  }
+
+  if (accountBtn) {
+    accountBtn.classList.add('hidden');
+  }
+
+  $('accountMenu')?.classList.add('hidden');
+  $('backToStudio')?.classList.add('hidden');
+  $('pageBack')?.classList.add('hidden');
+
+  account = null;
 }
 
 
@@ -131,7 +201,6 @@ function selectProvider(p) {
   );
 }
 
-
 function renderProviders() {
   const box = $('providers');
 
@@ -140,15 +209,14 @@ function renderProviders() {
   box.innerHTML = '';
 
   providers.forEach(p => {
-    const button =
-      document.createElement('button');
+    const button = document.createElement('button');
 
     button.className = 'provider';
     button.dataset.provider = p.id;
 
     button.innerHTML = `
       ${escapeHtml(p.name)}
-      <small>${escapeHtml(p.adapter)}</small>
+      <small>${escapeHtml(p.adapter || '')}</small>
     `;
 
     button.onclick = () => {
@@ -172,12 +240,13 @@ function renderProviders() {
   }
 }
 
-
 async function loadProviders() {
-  const r =
-    await fetch('/api/providers', {
+  const r = await fetch(
+    '/api/providers',
+    {
       cache: 'no-store'
-    });
+    }
+  );
 
   const d = await r.json();
 
@@ -188,8 +257,7 @@ async function loadProviders() {
     );
   }
 
-  providers =
-    d.providers || [];
+  providers = d.providers || [];
 
   renderProviders();
 }
@@ -211,13 +279,16 @@ async function token() {
   const {
     data,
     error
-  } =
-    await client.auth.getSession();
+  } = await client.auth.getSession();
 
-  if (
-    error ||
-    !data?.session
-  ) {
+  if (error) {
+    throw Error(
+      error.message ||
+      'Gagal membaca session.'
+    );
+  }
+
+  if (!data?.session) {
     throw Error(
       'Silakan login.'
     );
@@ -237,16 +308,15 @@ async function api(
   method = 'POST',
   extraHeaders = {}
 ) {
-  const t =
-    await token();
+  const t = await token();
 
-  const r =
-    await fetch(path, {
+  const r = await fetch(
+    path,
+    {
       method,
 
       headers: {
-        'Content-Type':
-          'application/json',
+        'Content-Type': 'application/json',
 
         Authorization:
           `Bearer ${t}`,
@@ -258,13 +328,13 @@ async function api(
         body === undefined
           ? undefined
           : JSON.stringify(body)
-    });
+    }
+  );
 
   let d;
 
   try {
-    d =
-      await r.json();
+    d = await r.json();
   } catch {
     throw Error(
       `Server mengembalikan respons tidak valid (${r.status}).`
@@ -286,61 +356,22 @@ async function api(
 
 
 /* =========================================================
-   UI STATE
-========================================================= */
-
-function showLoggedInUI() {
-  $('auth')?.classList.add('hidden');
-
-  $('studio')?.classList.remove('hidden');
-
-  $('accountPage')?.classList.add('hidden');
-
-  $('accountBtn')?.classList.remove('hidden');
-
-  $('backToStudio')?.classList.add('hidden');
-
-  $('pageBack')?.classList.add('hidden');
-}
-
-
-function showLoggedOutUI() {
-  $('auth')?.classList.remove('hidden');
-
-  $('studio')?.classList.add('hidden');
-
-  $('accountPage')?.classList.add('hidden');
-
-  $('accountBtn')?.classList.add('hidden');
-
-  $('accountMenu')?.classList.add('hidden');
-
-  $('backToStudio')?.classList.add('hidden');
-
-  $('pageBack')?.classList.add('hidden');
-
-  account = null;
-}
-
-
-/* =========================================================
-   REFRESH
+   REFRESH ACCOUNT
 ========================================================= */
 
 async function refresh() {
-  const client =
-    getAuthClient();
+  const client = getAuthClient();
 
   if (!client) {
-    return;
+    showLoggedOutUI();
+    return false;
   }
 
   try {
     const {
       data,
       error
-    } =
-      await client.auth.getUser();
+    } = await client.auth.getUser();
 
     if (error) {
       console.error(
@@ -349,19 +380,21 @@ async function refresh() {
       );
 
       showLoggedOutUI();
-      return;
+      return false;
     }
 
-    const user =
-      data?.user;
+    const user = data?.user;
 
     if (!user) {
       showLoggedOutUI();
-      return;
+      return false;
     }
 
-    /* LOGIN BERHASIL */
-
+    /*
+     * INI SENGAJA DILAKUKAN SEBELUM API ACCOUNT.
+     * Jadi walaupun endpoint credit bermasalah,
+     * studio tetap tampil.
+     */
     showLoggedInUI();
 
     if ($('userEmail')) {
@@ -374,18 +407,12 @@ async function refresh() {
         user.email || '';
     }
 
-
-    /* =====================================================
-       ACCOUNT / CREDIT
-    ===================================================== */
-
     try {
-      const d =
-        await api(
-          '/api/account/credits',
-          undefined,
-          'GET'
-        );
+      const d = await api(
+        '/api/account/credits',
+        undefined,
+        'GET'
+      );
 
       account = {
         ...d,
@@ -425,12 +452,72 @@ async function refresh() {
       }
     }
 
+    return true;
+
   } catch (e) {
     console.error(
       '[GEN-Z.AI] Refresh error:',
       e
     );
+
+    return false;
   }
+}
+
+
+/* =========================================================
+   LOGIN SESSION SYNC
+   Mekanisme cadangan agar UI tetap berpindah
+   meskipun custom event terlambat/tidak tertangkap.
+========================================================= */
+
+async function syncLoginState() {
+  const client = getAuthClient();
+
+  if (!client) {
+    return false;
+  }
+
+  try {
+    const {
+      data,
+      error
+    } = await client.auth.getSession();
+
+    if (error) {
+      console.error(
+        '[GEN-Z.AI] Session error:',
+        error
+      );
+
+      return false;
+    }
+
+    if (data?.session?.user) {
+      showLoggedInUI();
+
+      await refresh();
+
+      try {
+        await loadProviders();
+      } catch (e) {
+        console.error(
+          '[GEN-Z.AI] Provider error:',
+          e
+        );
+      }
+
+      return true;
+    }
+
+  } catch (e) {
+    console.error(
+      '[GEN-Z.AI] Sync login error:',
+      e
+    );
+  }
+
+  return false;
 }
 
 
@@ -443,7 +530,6 @@ function closeMenu() {
     'hidden'
   );
 }
-
 
 function showStudio() {
   $('accountPage')?.classList.add(
@@ -472,21 +558,17 @@ function showStudio() {
 
 async function loadCreditHistory() {
   try {
-    const d =
-      await api(
-        '/api/account/transactions?limit=30',
-        undefined,
-        'GET'
-      );
+    const d = await api(
+      '/api/account/transactions?limit=30',
+      undefined,
+      'GET'
+    );
 
-    const box =
-      $('creditHistory');
+    const box = $('creditHistory');
 
     if (!box) return;
 
-    if (
-      !d.transactions?.length
-    ) {
+    if (!d.transactions?.length) {
       box.innerHTML =
         '<p>Belum ada transaksi credit.</p>';
 
@@ -495,7 +577,6 @@ async function loadCreditHistory() {
 
     box.innerHTML =
       '<h3>Riwayat Credit</h3>' +
-
       d.transactions
         .map(t => {
           const sign =
@@ -504,48 +585,30 @@ async function loadCreditHistory() {
               : '';
 
           const label = {
-            generation:
-              'Generation',
-
-            refund:
-              'Refund',
-
+            generation: 'Generation',
+            refund: 'Refund',
             admin_adjustment:
               'Penyesuaian Admin',
-
-            topup:
-              'Top-up'
-          }[
-            t.type
-          ] || t.type;
+            topup: 'Top-up'
+          }[t.type] || t.type;
 
           return `
             <div class="credit-history-row">
-
               <div>
-
                 <strong>
                   ${escapeHtml(label)}
                 </strong>
 
                 <small>
-                  ${escapeHtml(
-                    t.note || ''
-                  )}
+                  ${escapeHtml(t.note || '')}
                 </small>
-
               </div>
 
               <span>
-                ${sign}${Number(
-                  t.amount
-                )}
-                · ${Number(
-                  t.balance_after ?? 0
-                )}
+                ${sign}${Number(t.amount)}
+                · ${Number(t.balance_after ?? 0)}
                 saldo
               </span>
-
             </div>
           `;
         })
@@ -557,8 +620,7 @@ async function loadCreditHistory() {
       e
     );
 
-    const box =
-      $('creditHistory');
+    const box = $('creditHistory');
 
     if (box) {
       box.innerHTML =
@@ -573,58 +635,44 @@ async function loadCreditHistory() {
 ========================================================= */
 
 async function loadTopups() {
-  const box =
-    $('topupState');
+  const box = $('topupState');
 
   if (!box) return;
 
   try {
-    const d =
-      await api(
-        '/api/account/topup-requests?limit=20',
-        undefined,
-        'GET'
-      );
+    const d = await api(
+      '/api/account/topup-requests?limit=20',
+      undefined,
+      'GET'
+    );
 
-    if (
-      !d.requests?.length
-    ) {
+    if (!d.requests?.length) {
       box.innerHTML =
         '<p>Belum ada request top-up.</p>';
 
     } else {
       box.innerHTML =
         '<h3>Request Terakhir</h3>' +
-
         d.requests
           .map(r => `
             <div class="credit-history-row">
-
               <div>
-
                 <strong>
                   ${Number(r.amount)}
                   credit ·
-                  ${escapeHtml(
-                    r.status
-                  )}
+                  ${escapeHtml(r.status)}
                 </strong>
 
                 <small>
-                  ${escapeHtml(
-                    r.note || ''
-                  )}
+                  ${escapeHtml(r.note || '')}
 
                   ${
                     r.admin_note
                       ? ' · ' +
-                        escapeHtml(
-                          r.admin_note
-                        )
+                        escapeHtml(r.admin_note)
                       : ''
                   }
                 </small>
-
               </div>
 
               <span>
@@ -632,7 +680,6 @@ async function loadTopups() {
                   r.created_at
                 ).toLocaleString()}
               </span>
-
             </div>
           `)
           .join('');
@@ -648,62 +695,55 @@ async function loadTopups() {
       '<p>Request belum dapat dimuat.</p>';
   }
 
-
-  const btn =
-    $('submitTopup');
+  const btn = $('submitTopup');
 
   if (!btn) return;
 
-  btn.onclick =
-    async () => {
+  btn.onclick = async () => {
+    const amount =
+      Number(
+        $('topupAmount')?.value
+      );
 
-      const amount =
-        Number(
-          $('topupAmount')?.value
-        );
+    const note =
+      $('topupNote')?.value.trim() || '';
 
-      const note =
-        $('topupNote')?.value.trim() ||
-        '';
+    if (
+      !Number.isInteger(amount) ||
+      amount <= 0 ||
+      amount > 1000000
+    ) {
+      alert(
+        'Jumlah harus integer 1–1.000.000.'
+      );
 
-      if (
-        !Number.isInteger(amount) ||
-        amount <= 0 ||
-        amount > 1000000
-      ) {
-        alert(
-          'Jumlah harus integer 1–1.000.000.'
-        );
+      return;
+    }
 
-        return;
-      }
+    try {
+      btn.disabled = true;
 
-      try {
-        btn.disabled = true;
+      await api(
+        '/api/account/topup-requests',
+        {
+          amount,
+          note
+        }
+      );
 
-        await api(
-          '/api/account/topup-requests',
-          {
-            amount,
-            note
-          }
-        );
+      alert(
+        'Request top-up berhasil dikirim.'
+      );
 
-        alert(
-          'Request top-up berhasil dikirim.'
-        );
+      showPage('topup');
 
-        showPage('topup');
+    } catch (e) {
+      alert(e.message);
 
-      } catch (e) {
-        alert(
-          e.message
-        );
-
-      } finally {
-        btn.disabled = false;
-      }
-    };
+    } finally {
+      btn.disabled = false;
+    }
+  };
 }
 
 
@@ -712,7 +752,6 @@ async function loadTopups() {
 ========================================================= */
 
 function showPage(page) {
-
   $('studio')?.classList.add(
     'hidden'
   );
@@ -731,26 +770,14 @@ function showPage(page) {
 
   closeMenu();
 
-  const title =
-    $('pageTitle');
+  const title = $('pageTitle');
+  const content = $('pageContent');
 
-  const content =
-    $('pageContent');
-
-  if (
-    !title ||
-    !content
-  ) {
+  if (!title || !content) {
     return;
   }
 
-
-  /* =======================================================
-     SYSTEM DIAGNOSTIC
-  ======================================================= */
-
   if (page === 'diagnostic') {
-
     title.textContent =
       'System Diagnostic';
 
@@ -797,17 +824,13 @@ function showPage(page) {
     $('genzDiagnosticRun')?.addEventListener(
       'click',
       async () => {
-
         if (
           window.GENZ_DIAGNOSTIC &&
           typeof window.GENZ_DIAGNOSTIC.run ===
             'function'
         ) {
-
           await window.GENZ_DIAGNOSTIC.run();
-
         } else {
-
           const results =
             $('genzDiagnosticResults');
 
@@ -830,7 +853,6 @@ function showPage(page) {
     return;
   }
 
-
   const email =
     escapeHtml(
       account?.user?.email || ''
@@ -841,32 +863,20 @@ function showPage(page) {
       account?.credits || 0
     );
 
-
-  /* =======================================================
-     PROFILE
-  ======================================================= */
-
   if (page === 'profile') {
-
-    title.textContent =
-      'Profil';
+    title.textContent = 'Profil';
 
     content.innerHTML = `
       <div class="profile-card">
-
         <div class="avatar">
           ${
-            email.charAt(0)
-              .toUpperCase() ||
+            email.charAt(0).toUpperCase() ||
             'U'
           }
         </div>
 
         <div>
-
-          <h3>
-            ${email}
-          </h3>
+          <h3>${email}</h3>
 
           <p>
             Akun ${
@@ -875,24 +885,15 @@ function showPage(page) {
                 : 'User'
             }
           </p>
-
         </div>
-
       </div>
     `;
 
     return;
   }
 
-
-  /* =======================================================
-     CREDIT
-  ======================================================= */
-
   if (page === 'credit') {
-
-    title.textContent =
-      'Kredit';
+    title.textContent = 'Kredit';
 
     content.innerHTML = `
       <div class="credit-big">
@@ -934,13 +935,7 @@ function showPage(page) {
     return;
   }
 
-
-  /* =======================================================
-     TOP UP
-  ======================================================= */
-
   if (page === 'topup') {
-
     title.textContent =
       'Top-up Kredit';
 
@@ -1004,13 +999,7 @@ function showPage(page) {
     return;
   }
 
-
-  /* =======================================================
-     CONTACT ADMIN
-  ======================================================= */
-
   if (page === 'contact') {
-
     title.textContent =
       'Kontak Admin';
 
@@ -1019,7 +1008,6 @@ function showPage(page) {
 
     content.innerHTML =
       contact
-
         ? `
           <p>
             Gunakan kontak berikut untuk
@@ -1036,7 +1024,6 @@ function showPage(page) {
             Hubungi Admin
           </a>
         `
-
         : `
           <p>
             Kontak admin belum
@@ -1054,62 +1041,54 @@ function showPage(page) {
 ========================================================= */
 
 function setupImageUpload() {
-
-  const input =
-    $('image');
+  const input = $('image');
 
   if (!input) return;
 
-  input.onchange =
-    event => {
+  input.onchange = event => {
+    const file =
+      event.target.files?.[0];
 
-      const file =
-        event.target.files?.[0];
+    if (!file) {
+      imageData = null;
+      return;
+    }
 
-      if (!file) {
-        imageData = null;
-        return;
+    if (
+      file.size >
+      12 * 1024 * 1024
+    ) {
+      imageData = null;
+
+      if ($('status')) {
+        $('status').textContent =
+          'Gambar maksimal 12 MB.';
       }
 
-      if (
-        file.size >
-        12 * 1024 * 1024
-      ) {
+      input.value = '';
 
-        imageData = null;
+      return;
+    }
 
-        if ($('status')) {
-          $('status').textContent =
-            'Gambar maksimal 12 MB.';
-        }
+    const reader =
+      new FileReader();
 
-        input.value = '';
-
-        return;
-      }
-
-      const reader =
-        new FileReader();
-
-      reader.onload =
-        () => {
-          imageData =
-            reader.result;
-        };
-
-      reader.onerror =
-        () => {
-
-          imageData = null;
-
-          if ($('status')) {
-            $('status').textContent =
-              'Gagal membaca gambar.';
-          }
-        };
-
-      reader.readAsDataURL(file);
+    reader.onload = () => {
+      imageData =
+        reader.result;
     };
+
+    reader.onerror = () => {
+      imageData = null;
+
+      if ($('status')) {
+        $('status').textContent =
+          'Gagal membaca gambar.';
+      }
+    };
+
+    reader.readAsDataURL(file);
+  };
 }
 
 
@@ -1118,18 +1097,17 @@ function setupImageUpload() {
 ========================================================= */
 
 async function generateVideo() {
-
-  const generate =
-    $('generate');
+  const generate = $('generate');
 
   if (!generate) return;
 
   try {
-
     generate.disabled = true;
 
-    $('status').textContent =
-      'Memulai generation...';
+    if ($('status')) {
+      $('status').textContent =
+        'Memulai generation...';
+    }
 
     const idem =
       crypto.randomUUID();
@@ -1164,8 +1142,10 @@ async function generateVideo() {
         }
       );
 
-    $('status').textContent =
-      'Processing...';
+    if ($('status')) {
+      $('status').textContent =
+        'Processing...';
+    }
 
     const id =
       d.externalId;
@@ -1174,171 +1154,150 @@ async function generateVideo() {
       clearTimeout(poll);
     }
 
+    const run = async () => {
+      try {
+        const s =
+          await api(
+            '/api/generate/status',
+            {
+              provider,
+              operationName: id,
+              taskId: id,
+              id
+            }
+          );
 
-    const run =
-      async () => {
-
-        try {
-
-          const s =
-            await api(
-              '/api/generate/status',
-              {
-                provider,
-
-                operationName:
-                  id,
-
-                taskId:
-                  id,
-
-                id
-              }
-            );
-
+        if (
+          s.status === 'completed' &&
+          s.videoUrl
+        ) {
+          let url =
+            s.videoUrl;
 
           if (
-            s.status === 'completed' &&
-            s.videoUrl
+            url.startsWith('/api/video')
           ) {
+            const t =
+              await token();
 
-            let url =
-              s.videoUrl;
-
-            if (
-              url.startsWith(
-                '/api/video'
-              )
-            ) {
-
-              const t =
-                await token();
-
-              const r =
-                await fetch(
-                  url,
-                  {
-                    headers: {
-                      Authorization:
-                        `Bearer ${t}`
-                    }
+            const r =
+              await fetch(
+                url,
+                {
+                  headers: {
+                    Authorization:
+                      `Bearer ${t}`
                   }
-                );
+                }
+              );
 
-              if (!r.ok) {
-                throw Error(
-                  'Gagal mengambil file video.'
-                );
-              }
-
-              const blob =
-                await r.blob();
-
-              url =
-                URL.createObjectURL(
-                  blob
-                );
-            }
-
-            const video =
-              $('video');
-
-            if (video) {
-
-              video.src =
-                url;
-
-              video.classList.remove(
-                'hidden'
+            if (!r.ok) {
+              throw Error(
+                'Gagal mengambil file video.'
               );
             }
 
-            const download =
-              $('download');
+            const blob =
+              await r.blob();
 
-            if (download) {
-
-              download.href =
-                url;
-
-              download.classList.remove(
-                'hidden'
+            url =
+              URL.createObjectURL(
+                blob
               );
-            }
-
-            $('status').textContent =
-              'Video selesai.';
-
-            generate.disabled =
-              false;
-
-            await refresh();
-
-            return;
           }
 
+          const video = $('video');
 
-          if (
-            s.status === 'failed' ||
-            s.status === 'error' ||
-            s.status === 'cancelled'
-          ) {
+          if (video) {
+            video.src = url;
+            video.classList.remove(
+              'hidden'
+            );
+          }
 
+          const download =
+            $('download');
+
+          if (download) {
+            download.href = url;
+            download.classList.remove(
+              'hidden'
+            );
+          }
+
+          if ($('status')) {
+            $('status').textContent =
+              'Video selesai.';
+          }
+
+          generate.disabled = false;
+
+          await refresh();
+
+          return;
+        }
+
+        if (
+          s.status === 'failed' ||
+          s.status === 'error' ||
+          s.status === 'cancelled'
+        ) {
+          if ($('status')) {
             $('status').textContent =
               s.error ||
               s.message ||
               'Generation gagal.';
-
-            generate.disabled =
-              false;
-
-            await refresh();
-
-            return;
           }
 
+          generate.disabled = false;
 
+          await refresh();
+
+          return;
+        }
+
+        if ($('status')) {
           $('status').textContent =
             'Processing...';
+        }
 
-          poll =
-            setTimeout(
-              run,
-              7000
-            );
-
-        } catch (e) {
-
-          console.error(
-            '[GEN-Z.AI] Polling error:',
-            e
+        poll =
+          setTimeout(
+            run,
+            7000
           );
 
+      } catch (e) {
+        console.error(
+          '[GEN-Z.AI] Polling error:',
+          e
+        );
+
+        if ($('status')) {
           $('status').textContent =
             e.message ||
             'Gagal mengecek status video.';
-
-          generate.disabled =
-            false;
         }
-      };
 
+        generate.disabled = false;
+      }
+    };
 
     run();
 
   } catch (e) {
-
     console.error(
       '[GEN-Z.AI] Generation error:',
       e
     );
 
-    $('status').textContent =
-      e.message ||
-      'Generation gagal.';
+    if ($('status')) {
+      $('status').textContent =
+        e.message ||
+        'Generation gagal.';
+    }
 
-    generate.disabled =
-      false;
+    generate.disabled = false;
   }
 }
 
@@ -1348,32 +1307,21 @@ async function generateVideo() {
 ========================================================= */
 
 function setupEvents() {
-
-  /* ACCOUNT */
-
   $('accountBtn')?.addEventListener(
     'click',
     () => {
-
       $('accountMenu')?.classList.toggle(
         'hidden'
       );
     }
   );
 
-
-  /* ACCOUNT PAGES */
-
   document
-    .querySelectorAll(
-      '[data-page]'
-    )
+    .querySelectorAll('[data-page]')
     .forEach(button => {
-
       button.addEventListener(
         'click',
         () => {
-
           const page =
             button.dataset.page;
 
@@ -1384,9 +1332,6 @@ function setupEvents() {
       );
     });
 
-
-  /* ADMIN */
-
   $('adminPanel')?.addEventListener(
     'click',
     () => {
@@ -1395,18 +1340,12 @@ function setupEvents() {
     }
   );
 
-
-  /* CONTACT ADMIN */
-
   $('contactAdmin')?.addEventListener(
     'click',
     () => {
       showPage('contact');
     }
   );
-
-
-  /* BACK */
 
   $('backToStudio')?.addEventListener(
     'click',
@@ -1418,13 +1357,7 @@ function setupEvents() {
     showStudio
   );
 
-
-  /* IMAGE */
-
   setupImageUpload();
-
-
-  /* GENERATE */
 
   $('generate')?.addEventListener(
     'click',
@@ -1434,105 +1367,60 @@ function setupEvents() {
 
 
 /* =========================================================
-   AUTH EVENTS
+   AUTH EVENT
+   Event dari auth.js tetap digunakan.
 ========================================================= */
 
 window.addEventListener(
   'genz-auth-login',
-  async () => {
-
+  async event => {
     console.log(
-      '[GEN-Z.AI] Login event diterima.'
+      '[GEN-Z.AI] LOGIN EVENT DITERIMA',
+      event?.detail || null
     );
 
     /*
-      PENTING:
-      auth.js sudah berhasil membuat
-      GENZ_AUTH_CLIENT.
-      Kita hanya membaca session.
-    */
-
+     * LANGSUNG pindahkan UI.
+     * Jangan menunggu API account/provider.
+     */
     showLoggedInUI();
 
-    await refresh();
-
     /*
-      Provider baru dimuat setelah login.
-    */
+     * Ambil session terbaru.
+     */
+    const success =
+      await syncLoginState();
 
-    try {
-      await loadProviders();
-    } catch (e) {
-      console.error(
-        '[GEN-Z.AI] Provider error:',
-        e
+    if (!success) {
+      console.warn(
+        '[GEN-Z.AI] Login event diterima tetapi session belum tersedia.'
       );
 
-      if ($('status')) {
-        $('status').textContent =
-          e.message ||
-          'Gagal memuat provider.';
-      }
+      /*
+       * Beri sedikit waktu kepada Supabase
+       * untuk menyelesaikan penyimpanan session.
+       */
+      setTimeout(
+        syncLoginState,
+        500
+      );
     }
-  }
-);
-
-
-window.addEventListener(
-  'genz-auth-logout',
-  () => {
-
-    console.log(
-      '[GEN-Z.AI] Logout event diterima.'
-    );
-
-    showLoggedOutUI();
   }
 );
 
 
 /* =========================================================
-   AUTH READY
+   LOGOUT EVENT
 ========================================================= */
 
 window.addEventListener(
-  'genz-auth-ready',
-  async () => {
-
+  'genz-auth-logout',
+  () => {
     console.log(
-      '[GEN-Z.AI] Auth ready.'
+      '[GEN-Z.AI] LOGOUT EVENT DITERIMA'
     );
 
-    const client =
-      getAuthClient();
-
-    if (!client) {
-      return;
-    }
-
-    await refresh();
-
-    /*
-      Provider hanya dimuat ketika
-      user sudah login.
-    */
-
-    const {
-      data
-    } =
-      await client.auth.getSession();
-
-    if (data?.session) {
-
-      try {
-        await loadProviders();
-      } catch (e) {
-        console.error(
-          '[GEN-Z.AI] Provider error:',
-          e
-        );
-      }
-    }
+    showLoggedOutUI();
   }
 );
 
@@ -1542,101 +1430,91 @@ window.addEventListener(
 ========================================================= */
 
 async function bootstrap() {
+  console.log(
+    '[GEN-Z.AI] APP BOOTSTRAP'
+  );
 
-  try {
+  setupEvents();
 
-    /*
-      app.js TIDAK lagi membuat
-      Supabase client sendiri.
+  /*
+   * Tunggu auth.js membuat client.
+   */
+  let attempts = 0;
 
-      auth.js adalah pemilik client.
-    */
-
-    const client =
-      getAuthClient();
-
-    if (!client) {
-
-      /*
-        auth.js mungkin belum selesai
-        initialize karena kedua script
-        berjalan sebelum DOMContentLoaded.
-
-        Tunggu sebentar.
-      */
-
-      let attempts = 0;
-
-      while (
-        !window.GENZ_AUTH_CLIENT &&
-        attempts < 50
-      ) {
-
-        await new Promise(
-          resolve =>
-            setTimeout(
-              resolve,
-              100
-            )
-        );
-
-        attempts++;
-      }
-    }
-
-
-    supabase =
-      getAuthClient();
-
-    if (!supabase) {
-
-      throw Error(
-        'Supabase Auth belum siap.'
-      );
-    }
-
-
-    /*
-      Pasang event Studio.
-    */
-
-    setupEvents();
-
-
-    /*
-      Baca session saat halaman
-      pertama kali dibuka.
-    */
-
-    await refresh();
-
-
-    /*
-      Provider hanya dimuat jika
-      user memang sudah login.
-    */
-
-    const {
-      data
-    } =
-      await supabase.auth.getSession();
-
-    if (data?.session) {
-
-      await loadProviders();
-    }
-
-  } catch (e) {
-
-    console.error(
-      '[GEN-Z.AI] bootstrap error:',
-      e
+  while (
+    !getAuthClient() &&
+    attempts < 60
+  ) {
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          100
+        )
     );
 
-    if ($('status')) {
-      $('status').textContent =
-        e.message;
-    }
+    attempts++;
+  }
+
+  const client =
+    getAuthClient();
+
+  if (!client) {
+    console.error(
+      '[GEN-Z.AI] Supabase Auth tidak tersedia.'
+    );
+
+    return;
+  }
+
+  /*
+   * Sinkronkan session awal.
+   */
+  await syncLoginState();
+
+  /*
+   * Listener tambahan langsung pada Supabase.
+   * Ini menjadi pengaman kedua jika custom event
+   * terlewat oleh browser.
+   */
+  try {
+    client.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log(
+          '[GEN-Z.AI] Supabase event:',
+          event
+        );
+
+        if (
+          event === 'SIGNED_IN' &&
+          session?.user
+        ) {
+          showLoggedInUI();
+
+          await refresh();
+
+          try {
+            await loadProviders();
+          } catch (e) {
+            console.error(
+              '[GEN-Z.AI] Provider error:',
+              e
+            );
+          }
+        }
+
+        if (
+          event === 'SIGNED_OUT'
+        ) {
+          showLoggedOutUI();
+        }
+      }
+    );
+  } catch (e) {
+    console.error(
+      '[GEN-Z.AI] Auth listener error:',
+      e
+    );
   }
 }
 
@@ -1648,7 +1526,6 @@ async function bootstrap() {
 if (
   document.readyState === 'loading'
 ) {
-
   document.addEventListener(
     'DOMContentLoaded',
     bootstrap,
@@ -1656,9 +1533,6 @@ if (
       once: true
     }
   );
-
 } else {
-
   bootstrap();
-
 }
