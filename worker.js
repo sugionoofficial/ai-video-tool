@@ -145,7 +145,175 @@ export default {
   }
 };
 
+// =========================================================
+// ADMIN SAVE PROVIDER
+// =========================================================
 
+async function adminSaveProvider(
+  request,
+  env
+) {
+  let body;
+
+  try {
+    body = await request.json();
+  } catch {
+    return json({
+      success: false,
+      error: "Request tidak valid."
+    }, 400);
+  }
+
+  const provider = String(
+    body?.provider || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const apiKey = String(
+    body?.api_key || ""
+  ).trim();
+
+  const allowed = [
+    "veo",
+    "minimax",
+    "luma"
+  ];
+
+  if (!allowed.includes(provider)) {
+    return json({
+      success: false,
+      error: "Provider tidak didukung."
+    }, 400);
+  }
+
+  if (!apiKey) {
+    return json({
+      success: false,
+      error: "API key wajib diisi."
+    }, 400);
+  }
+
+  if (apiKey.length > 1000) {
+    return json({
+      success: false,
+      error: "API key tidak valid."
+    }, 400);
+  }
+
+  const response = await supabaseRequest(
+    "/rest/v1/admin_provider_keys",
+    {
+      method: "POST",
+
+      headers: {
+        "Prefer":
+          "resolution=merge-duplicates,return=minimal"
+      },
+
+      body: JSON.stringify({
+        provider,
+        api_key: apiKey,
+        updated_at: new Date().toISOString()
+      })
+    },
+    env
+  );
+
+  if (!response.ok) {
+    const data = await safeJson(response);
+
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal menyimpan API key provider."
+      )
+    }, response.status);
+  }
+
+  return json({
+    success: true,
+    message:
+      `API key ${provider} berhasil disimpan.`
+  });
+}
+
+// =========================================================
+// ADMIN LIST TOPUPS
+// =========================================================
+
+async function adminListTopups(env) {
+  const response = await supabaseRequest(
+    "/rest/v1/topup_requests" +
+    "?select=id,user_id,amount,credits,status,note,created_at,processed_at" +
+    "&order=created_at.desc",
+    {
+      method: "GET"
+    },
+    env
+  );
+
+  if (!response.ok) {
+    const data = await safeJson(response);
+
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal mengambil daftar top up."
+      )
+    }, response.status);
+  }
+
+  const requests = await response.json();
+
+  const users = await listAuthUsers(env);
+
+  const userMap = new Map(
+    users.map(user => [
+      user.id,
+      user
+    ])
+  );
+
+  return json({
+    success: true,
+
+    topups: requests.map(item => {
+      const user =
+        userMap.get(item.user_id);
+
+      return {
+        id: item.id,
+
+        user_id:
+          item.user_id,
+
+        email:
+          user?.email || "",
+
+        amount:
+          Number(item.amount || 0),
+
+        credits:
+          Number(item.credits || 0),
+
+        status:
+          item.status,
+
+        note:
+          item.note || "",
+
+        created_at:
+          item.created_at,
+
+        processed_at:
+          item.processed_at
+      };
+    })
+  });
+}
 // =========================================================
 // SUPABASE HELPERS
 // =========================================================
