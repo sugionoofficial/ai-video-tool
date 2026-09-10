@@ -3,7 +3,11 @@
 /* =========================================================
    GEN-Z.AI
    Global Video Generator
-   Supabase Account + Per-user API Keys
+   Secure Provider Architecture
+
+   IMPORTANT:
+   Browser TIDAK menyimpan atau mengirim API key provider.
+   API key dikelola oleh Worker secara server-side.
 ========================================================= */
 
 const state = {
@@ -26,7 +30,7 @@ const PROVIDERS = {
 
   pollinations: {
     name: "Pollinations",
-    badge: "AI VIDEO",
+    badge: "INACTIVE",
     description: "Pollinations AI Video",
     active: false,
     models: [
@@ -43,7 +47,7 @@ const PROVIDERS = {
 
   fal: {
     name: "fal.ai",
-    badge: "AI VIDEO",
+    badge: "INACTIVE",
     description: "fal.ai Video Generation",
     active: false,
     models: [
@@ -60,7 +64,7 @@ const PROVIDERS = {
 
   runway: {
     name: "Runway",
-    badge: "AI VIDEO",
+    badge: "INACTIVE",
     description: "Runway Video Generation",
     active: false,
     models: [
@@ -74,6 +78,11 @@ const PROVIDERS = {
     resolutions: ["720p", "1080p"],
     imageToVideo: true
   },
+
+  /* -------------------------------------------------------
+     GEMINI
+     Internal provider ID tetap "veo"
+  ------------------------------------------------------- */
 
   veo: {
     name: "Gemini",
@@ -149,6 +158,33 @@ const PROVIDERS = {
 };
 
 /* =========================================================
+   PROVIDER CANONICAL ID
+========================================================= */
+
+function getCanonicalProviderId(provider) {
+
+  if (
+    window.GENZProviderRegistry &&
+    typeof window.GENZProviderRegistry.canonicalId === "function"
+  ) {
+    return window.GENZProviderRegistry.canonicalId(
+      provider
+    );
+  }
+
+  const value =
+    String(provider || "")
+      .trim()
+      .toLowerCase();
+
+  if (value === "gemini") {
+    return "veo";
+  }
+
+  return value;
+}
+
+/* =========================================================
    DOM
 ========================================================= */
 
@@ -186,33 +222,52 @@ document.addEventListener(
 
 function setupProviders() {
 
-  $all(".provider").forEach(button => {
+  $all(".provider").forEach(
+    button => {
 
-    button.addEventListener(
-      "click",
-      () => {
+      button.addEventListener(
+        "click",
+        () => {
 
-        const provider =
-          button.dataset.provider;
+          const rawProvider =
+            button.dataset.provider;
 
-        if (
-          !provider ||
-          !PROVIDERS[provider]
-        ) {
-          return;
+          const provider =
+            getCanonicalProviderId(
+              rawProvider
+            );
+
+          if (
+            !provider ||
+            !PROVIDERS[provider]
+          ) {
+            return;
+          }
+
+          if (
+            !PROVIDERS[provider].active
+          ) {
+
+            showStatus(
+              `${PROVIDERS[provider].name} belum diaktifkan.`,
+              "error"
+            );
+
+            return;
+          }
+
+          state.provider =
+            provider;
+
+          clearVideoResult();
+
+          renderProvider();
+
         }
+      );
 
-        state.provider =
-          provider;
-
-        clearVideoResult();
-
-        renderProvider();
-
-      }
-    );
-
-  });
+    }
+  );
 
 }
 
@@ -223,20 +278,44 @@ function setupProviders() {
 function renderProvider() {
 
   const provider =
-    PROVIDERS[state.provider];
+    PROVIDERS[
+      getCanonicalProviderId(
+        state.provider
+      )
+    ];
 
   if (!provider) {
     return;
   }
 
+  state.provider =
+    getCanonicalProviderId(
+      state.provider
+    );
+
   $all(".provider").forEach(
     button => {
 
+      const buttonProvider =
+        getCanonicalProviderId(
+          button.dataset.provider
+        );
+
       button.classList.toggle(
         "active",
-        button.dataset.provider ===
+        buttonProvider ===
           state.provider
       );
+
+      /*
+       * Provider inactive tidak boleh
+       * terlihat seperti pilihan aktif.
+       */
+
+      button.disabled =
+        !PROVIDERS[
+          buttonProvider
+        ]?.active;
 
     }
   );
@@ -251,18 +330,24 @@ function renderProvider() {
     $("#providerDescription");
 
   if (name) {
+
     name.textContent =
       provider.name;
+
   }
 
   if (badge) {
+
     badge.textContent =
       provider.badge;
+
   }
 
   if (description) {
+
     description.textContent =
       provider.description;
+
   }
 
   renderModels(
@@ -303,24 +388,26 @@ function renderModels(models) {
 
   select.innerHTML = "";
 
-  models.forEach(model => {
+  (models || []).forEach(
+    model => {
 
-    const option =
-      document.createElement(
-        "option"
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        model.id;
+
+      option.textContent =
+        model.name;
+
+      select.appendChild(
+        option
       );
 
-    option.value =
-      model.id;
-
-    option.textContent =
-      model.name;
-
-    select.appendChild(
-      option
-    );
-
-  });
+    }
+  );
 
 }
 
@@ -342,24 +429,26 @@ function renderValues(
 
   select.innerHTML = "";
 
-  values.forEach(value => {
+  (values || []).forEach(
+    value => {
 
-    const option =
-      document.createElement(
-        "option"
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        String(value);
+
+      option.textContent =
+        String(value);
+
+      select.appendChild(
+        option
       );
 
-    option.value =
-      String(value);
-
-    option.textContent =
-      String(value);
-
-    select.appendChild(
-      option
-    );
-
-  });
+    }
+  );
 
 }
 
@@ -384,8 +473,11 @@ function setupCharacterUpload() {
         event.target.files?.[0];
 
       if (!file) {
+
         clearCharacter();
+
         return;
+
       }
 
       if (
@@ -401,6 +493,7 @@ function setupCharacterUpload() {
         input.value = "";
 
         return;
+
       }
 
       const reader =
@@ -438,6 +531,14 @@ function setupCharacterUpload() {
 
           }
 
+          /*
+           * Jika Gemini menggunakan
+           * image-to-video, otomatis
+           * sesuaikan durasi.
+           */
+
+          validateProviderSettings();
+
         };
 
       reader.readAsDataURL(
@@ -461,6 +562,13 @@ function clearCharacter() {
   state.imageMimeType =
     null;
 
+  const input =
+    $("#characterFile");
+
+  if (input) {
+    input.value = "";
+  }
+
   const preview =
     $("#characterPreview");
 
@@ -481,6 +589,8 @@ function clearCharacter() {
   if (info) {
     info.textContent = "";
   }
+
+  validateProviderSettings();
 
 }
 
@@ -567,8 +677,15 @@ async function generateVideo() {
     return;
   }
 
+  const providerId =
+    getCanonicalProviderId(
+      state.provider
+    );
+
   const provider =
-    PROVIDERS[state.provider];
+    PROVIDERS[
+      providerId
+    ];
 
   if (
     !provider ||
@@ -576,7 +693,7 @@ async function generateVideo() {
   ) {
 
     showStatus(
-      `${provider?.name || state.provider} belum diaktifkan.`,
+      `${provider?.name || providerId} belum diaktifkan.`,
       "error"
     );
 
@@ -608,25 +725,6 @@ async function generateVideo() {
     return;
   }
 
-  const keys =
-    await account.getApiKeys();
-
-  const apiKey =
-    getApiKey(
-      state.provider,
-      keys
-    );
-
-  if (!apiKey) {
-
-    showStatus(
-      `API key ${provider.name} belum disimpan.`,
-      "error"
-    );
-
-    return;
-  }
-
   validateProviderSettings();
 
   const model =
@@ -645,11 +743,11 @@ async function generateVideo() {
     getOptionalSeed();
 
   /* -------------------------------------------------------
-     VEO
+     GEMINI / VEO VALIDATION
   ------------------------------------------------------- */
 
   if (
-    state.provider === "veo"
+    providerId === "veo"
   ) {
 
     if (
@@ -658,7 +756,7 @@ async function generateVideo() {
     ) {
 
       showStatus(
-        "Veo dengan gambar karakter membutuhkan durasi 8 detik.",
+        "Gemini dengan gambar karakter membutuhkan durasi 8 detik.",
         "error"
       );
 
@@ -674,7 +772,7 @@ async function generateVideo() {
     ) {
 
       showStatus(
-        "Veo 1080p dan 4K membutuhkan durasi 8 detik.",
+        "Gemini 1080p dan 4K membutuhkan durasi 8 detik.",
         "error"
       );
 
@@ -688,7 +786,7 @@ async function generateVideo() {
     ) {
 
       showStatus(
-        "Veo 3.1 Lite tidak mendukung 4K.",
+        "Gemini Veo 3.1 Lite tidak mendukung 4K.",
         "error"
       );
 
@@ -696,6 +794,10 @@ async function generateVideo() {
     }
 
   }
+
+  /* -------------------------------------------------------
+     START
+  ------------------------------------------------------- */
 
   state.generating =
     true;
@@ -717,17 +819,16 @@ async function generateVideo() {
   try {
 
     /*
-     * Nama parameter disamakan
-     * dengan Worker:
+     * API KEY SENGAJA TIDAK ADA DI SINI.
      *
-     * imageData
-     * aspectRatio
+     * Worker akan mengambil API key
+     * dari admin_provider_keys.
      */
 
     const body = {
 
       provider:
-        state.provider,
+        providerId,
 
       model,
 
@@ -737,20 +838,22 @@ async function generateVideo() {
 
       aspectRatio,
 
-      resolution,
-
-      apiKey
+      resolution
 
     };
 
-    if (state.imageData) {
+    if (
+      state.imageData
+    ) {
 
       body.imageData =
         state.imageData;
 
     }
 
-    if (seed !== null) {
+    if (
+      seed !== null
+    ) {
 
       body.seed =
         seed;
@@ -770,7 +873,9 @@ async function generateVideo() {
           },
 
           body:
-            JSON.stringify(body)
+            JSON.stringify(
+              body
+            )
 
         }
       );
@@ -792,18 +897,20 @@ async function generateVideo() {
     }
 
     /*
-     * Jika server langsung
-     * mengembalikan video.
+     * Server langsung memberikan
+     * URL video.
      */
 
-    if (data.videoUrl) {
+    if (
+      data.videoUrl
+    ) {
 
       await finishVideo(
-        data.videoUrl,
-        apiKey
+        data.videoUrl
       );
 
       return;
+
     }
 
     /*
@@ -822,11 +929,11 @@ async function generateVideo() {
       );
 
       await pollGeneration(
-        data,
-        apiKey
+        data
       );
 
       return;
+
     }
 
     throw new Error(
@@ -837,7 +944,7 @@ async function generateVideo() {
 
     console.error(
       "GEN-Z.AI:",
-      error.message
+      error
     );
 
     showStatus(
@@ -856,43 +963,11 @@ async function generateVideo() {
 }
 
 /* =========================================================
-   API KEY
-========================================================= */
-
-function getApiKey(
-  provider,
-  keys
-) {
-
-  if (!keys) {
-    return null;
-  }
-
-  switch (provider) {
-
-    case "veo":
-      return keys.gemini || null;
-
-    case "minimax":
-      return keys.minimax || null;
-
-    case "luma":
-      return keys.luma || null;
-
-    default:
-      return null;
-
-  }
-
-}
-
-/* =========================================================
    POLLING
 ========================================================= */
 
 async function pollGeneration(
-  initialData,
-  apiKey
+  initialData
 ) {
 
   let operationName =
@@ -931,6 +1006,10 @@ async function pollGeneration(
 
             }
 
+            /*
+             * API KEY TIDAK DIKIRIM.
+             */
+
             const response =
               await fetch(
                 "/api/generate/status",
@@ -947,9 +1026,9 @@ async function pollGeneration(
                     JSON.stringify({
 
                       provider:
-                        state.provider,
-
-                      apiKey,
+                        getCanonicalProviderId(
+                          state.provider
+                        ),
 
                       operationName,
 
@@ -981,22 +1060,28 @@ async function pollGeneration(
             if (
               data.operationName
             ) {
+
               operationName =
                 data.operationName;
+
             }
 
             if (
               data.taskId
             ) {
+
               taskId =
                 data.taskId;
+
             }
 
             if (
               data.id
             ) {
+
               id =
                 data.id;
+
             }
 
             const status =
@@ -1014,7 +1099,7 @@ async function pollGeneration(
             );
 
             /*
-             * Video langsung tersedia.
+             * Video tersedia.
              */
 
             const videoUrl =
@@ -1024,20 +1109,22 @@ async function pollGeneration(
               data.url ||
               null;
 
-            if (videoUrl) {
+            if (
+              videoUrl
+            ) {
 
               await finishVideo(
-                videoUrl,
-                apiKey
+                videoUrl
               );
 
               resolve(data);
 
               return;
+
             }
 
             /*
-             * Belum selesai.
+             * Gagal.
              */
 
             if (
@@ -1055,6 +1142,10 @@ async function pollGeneration(
 
             }
 
+            /*
+             * Poll ulang setiap 5 detik.
+             */
+
             state.pollTimer =
               setTimeout(
                 poll,
@@ -1063,7 +1154,12 @@ async function pollGeneration(
 
           } catch (error) {
 
-            reject(error);
+            state.pollTimer =
+              null;
+
+            reject(
+              error
+            );
 
           }
 
@@ -1118,8 +1214,7 @@ function pollingMessage(
 ========================================================= */
 
 async function finishVideo(
-  videoUrl,
-  apiKey
+  videoUrl
 ) {
 
   if (!videoUrl) {
@@ -1133,16 +1228,21 @@ async function finishVideo(
   let finalUrl =
     videoUrl;
 
-  /*
-   * VEO selalu melalui Worker.
-   */
+  const providerId =
+    getCanonicalProviderId(
+      state.provider
+    );
+
+  /* -------------------------------------------------------
+     GEMINI / VEO
+  ------------------------------------------------------- */
 
   if (
-    state.provider === "veo"
+    providerId === "veo"
   ) {
 
     showStatus(
-      "Mengambil file video Veo...",
+      "Mengambil file video Gemini...",
       "loading"
     );
 
@@ -1152,14 +1252,7 @@ async function finishVideo(
           videoUrl
         )}`,
         {
-
-          method: "GET",
-
-          headers: {
-            "X-Provider-API-Key":
-              apiKey
-          }
-
+          method: "GET"
         }
       );
 
@@ -1170,7 +1263,7 @@ async function finishVideo(
 
       throw new Error(
         text ||
-        `Gagal mengambil video Veo (${response.status}).`
+        `Gagal mengambil video Gemini (${response.status}).`
       );
 
     }
@@ -1188,13 +1281,15 @@ async function finishVideo(
 
   }
 
-  /*
-   * MiniMax Worker proxy.
-   */
+  /* -------------------------------------------------------
+     MINIMAX
+  ------------------------------------------------------- */
 
   if (
-    state.provider === "minimax" &&
-    isWorkerVideoUrl(videoUrl)
+    providerId === "minimax" &&
+    isWorkerVideoUrl(
+      videoUrl
+    )
   ) {
 
     showStatus(
@@ -1208,14 +1303,7 @@ async function finishVideo(
           videoUrl
         )}`,
         {
-
-          method: "GET",
-
-          headers: {
-            "X-Provider-API-Key":
-              apiKey
-          }
-
+          method: "GET"
         }
       );
 
@@ -1459,13 +1547,18 @@ function showStatus(
 function validateProviderSettings() {
 
   const provider =
-    state.provider;
+    getCanonicalProviderId(
+      state.provider
+    );
 
   const duration =
     $("#duration");
 
   const resolution =
     $("#resolution");
+
+  const model =
+    $("#model");
 
   if (
     !duration ||
@@ -1474,28 +1567,31 @@ function validateProviderSettings() {
     return;
   }
 
-  /*
-   * VEO
-   */
+  /* -------------------------------------------------------
+     GEMINI
+  ------------------------------------------------------- */
 
   if (
     provider === "veo"
   ) {
 
+    /*
+     * Image-to-video = 8 detik.
+     */
+
     if (
-      state.imageData
+      state.imageData &&
+      duration.value !== "8"
     ) {
 
-      if (
-        duration.value !== "8"
-      ) {
-
-        duration.value =
-          "8";
-
-      }
+      duration.value =
+        "8";
 
     }
+
+    /*
+     * 1080p / 4K = 8 detik.
+     */
 
     if (
       (
@@ -1503,25 +1599,37 @@ function validateProviderSettings() {
           "1080p" ||
         resolution.value ===
           "4k"
-      )
+      ) &&
+      duration.value !== "8"
     ) {
 
-      if (
-        duration.value !== "8"
-      ) {
+      duration.value =
+        "8";
 
-        duration.value =
-          "8";
+    }
 
-      }
+    /*
+     * Lite tidak mendukung 4K.
+     */
+
+    if (
+      model &&
+      model.value ===
+        "veo-3.1-lite-generate-preview" &&
+      resolution.value ===
+        "4k"
+    ) {
+
+      resolution.value =
+        "1080p";
 
     }
 
   }
 
-  /*
-   * MiniMax
-   */
+  /* -------------------------------------------------------
+     MINIMAX
+  ------------------------------------------------------- */
 
   if (
     provider === "minimax"
@@ -1573,7 +1681,9 @@ function getOptionalSeed() {
     Number(value);
 
   if (
-    !Number.isInteger(seed) ||
+    !Number.isInteger(
+      seed
+    ) ||
     seed < 0
   ) {
 
@@ -1707,7 +1817,7 @@ function friendlyError(
     )
   ) {
 
-    return "API key tidak valid atau tidak memiliki akses.";
+    return "Provider tidak menerima kredensial yang tersimpan.";
 
   }
 
@@ -1755,9 +1865,12 @@ function formatBytes(
   ];
 
   const index =
-    Math.floor(
-      Math.log(bytes) /
-      Math.log(1024)
+    Math.min(
+      Math.floor(
+        Math.log(bytes) /
+        Math.log(1024)
+      ),
+      units.length - 1
     );
 
   return (
