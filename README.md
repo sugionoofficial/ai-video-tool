@@ -69,3 +69,7 @@ Jalankan `supabase/schema.sql` di Supabase SQL Editor. Schema ini:
 - Provider nonaktif tidak dapat dipilih untuk generation baru.
 - Job yang sudah berjalan tetap dapat dipolling walaupun provider kemudian dinonaktifkan.
 - Credit reservation/refund dilakukan secara atomic melalui Supabase RPC.
+
+
+## Production configuration
+The Worker exposes only `/api/config`, containing the Supabase URL and publishable key. Never put `SUPABASE_SERVICE_ROLE_KEY` or provider API keys in `public/`, frontend JavaScript, or client-side environment variables. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_PUBLISHABLE_KEY` in Cloudflare Worker settings/secrets.
