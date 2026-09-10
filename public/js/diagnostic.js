@@ -1,12 +1,13 @@
-/* GEN-Z.AI Diagnostic
- * Pemeriksaan frontend -> Worker -> provider configuration.
- * Hasil tampil langsung di halaman.
+/* GEN-Z.AI SYSTEM DIAGNOSTIC
+ * Diagnostic frontend -> Worker -> provider.
+ * Output langsung di halaman Account.
  * Tidak menggunakan Console sebagai output utama.
  * Tidak melakukan generate video.
  */
 
 (function () {
   'use strict';
+
 
   function escapeHtml(value) {
     return String(value ?? '').replace(
@@ -20,156 +21,6 @@
           '"': '&quot;'
         }[char];
       }
-    );
-  }
-
-
-  function createPanel() {
-
-    if (
-      document.getElementById(
-        'genzDiagnosticPanel'
-      )
-    ) {
-      return;
-    }
-
-    const panel =
-      document.createElement('section');
-
-    panel.id =
-      'genzDiagnosticPanel';
-
-    panel.className =
-      'card hidden';
-
-    panel.innerHTML = `
-      <div class="page-head">
-
-        <h2>
-          System Diagnostic
-        </h2>
-
-        <button
-          id="genzDiagnosticBack"
-          type="button"
-        >
-          ← Kembali
-        </button>
-
-      </div>
-
-      <p>
-        Pemeriksaan sistem GEN-Z.AI
-        tanpa menggunakan Console.
-      </p>
-
-      <button
-        id="genzDiagnosticRun"
-        class="primary"
-        type="button"
-      >
-        PERIKSA SISTEM
-      </button>
-
-      <div
-        id="genzDiagnosticResults"
-        style="margin-top:20px;"
-      ></div>
-
-      <pre
-        id="genzDiagnosticDetails"
-        style="
-          display:none;
-          margin-top:20px;
-          padding:14px;
-          background:#0b0b0f;
-          border-radius:10px;
-          color:#aaa;
-          font-size:12px;
-          white-space:pre-wrap;
-          word-break:break-word;
-          overflow:auto;
-        "
-      ></pre>
-    `;
-
-    const accountPage =
-      document.getElementById(
-        'accountPage'
-      );
-
-    if (accountPage) {
-      accountPage.parentNode.insertBefore(
-        panel,
-        accountPage.nextSibling
-      );
-    } else {
-      document.body.appendChild(panel);
-    }
-
-
-    document
-      .getElementById(
-        'genzDiagnosticRun'
-      )
-      ?.addEventListener(
-        'click',
-        runDiagnostic
-      );
-
-
-    document
-      .getElementById(
-        'genzDiagnosticBack'
-      )
-      ?.addEventListener(
-        'click',
-        function () {
-
-          panel.classList.add(
-            'hidden'
-          );
-
-          document
-            .getElementById(
-              'accountPage'
-            )
-            ?.classList.remove(
-              'hidden'
-            );
-        }
-      );
-  }
-
-
-  function showPanel() {
-
-    createPanel();
-
-    document
-      .getElementById(
-        'accountPage'
-      )
-      ?.classList.add(
-        'hidden'
-      );
-
-    document
-      .getElementById(
-        'studio'
-      )
-      ?.classList.add(
-        'hidden'
-      );
-
-    const panel =
-      document.getElementById(
-        'genzDiagnosticPanel'
-      );
-
-    panel?.classList.remove(
-      'hidden'
     );
   }
 
@@ -197,12 +48,16 @@
       let data;
 
       try {
+
         data =
           JSON.parse(text);
+
       } catch {
+
         data = {
           raw: text
         };
+
       }
 
       return {
@@ -220,6 +75,7 @@
           error?.message ||
           'Request gagal.'
       };
+
     }
   }
 
@@ -237,23 +93,38 @@
 
     if (!box) return;
 
+
     let symbol = '⚠';
 
     let color =
       '#ffc857';
 
+
     if (status === 'OK') {
+
       symbol = '✓';
-      color = '#35d07f';
+
+      color =
+        '#35d07f';
+
     }
+
 
     if (status === 'ERROR') {
+
       symbol = '✕';
-      color = '#ff5c5c';
+
+      color =
+        '#ff5c5c';
+
     }
 
+
     const item =
-      document.createElement('div');
+      document.createElement(
+        'div'
+      );
+
 
     item.style.cssText = `
       margin-bottom:10px;
@@ -262,6 +133,7 @@
       border:1px solid #292933;
       border-radius:10px;
     `;
+
 
     item.innerHTML = `
       <div style="
@@ -295,6 +167,7 @@
       </div>
     `;
 
+
     box.appendChild(item);
   }
 
@@ -305,14 +178,20 @@
   ) {
 
     if (result?.error) {
+
       return result.error;
+
     }
 
+
     if (result?.status) {
+
       return (
         `HTTP ${result.status} dari ${endpoint}.`
       );
+
     }
+
 
     return (
       `Tidak dapat mengakses ${endpoint}.`
@@ -327,14 +206,20 @@
         data?.providers
       )
     ) {
+
       return data.providers;
+
     }
+
 
     if (
       Array.isArray(data)
     ) {
+
       return data;
+
     }
+
 
     return [];
   }
@@ -357,33 +242,48 @@
         'genzDiagnosticDetails'
       );
 
-    if (button) {
-      button.disabled = true;
-      button.textContent =
-        'MEMERIKSA...';
+
+    if (!button || !results) {
+
+      return;
+
     }
 
-    if (results) {
-      results.innerHTML = '';
-    }
+
+    button.disabled = true;
+
+    button.textContent =
+      'MEMERIKSA...';
+
+
+    results.innerHTML =
+      '';
+
 
     if (details) {
+
       details.style.display =
         'none';
-      details.textContent = '';
+
+      details.textContent =
+        '';
+
     }
 
 
     const report = {
+
       timestamp:
         new Date().toISOString(),
 
       browser: {
+
         online:
           navigator.onLine,
 
         userAgent:
           navigator.userAgent
+
       },
 
       frontend: {},
@@ -391,12 +291,13 @@
       endpoints: {},
 
       providers: []
+
     };
 
 
-    /*
-     * FRONTEND
-     */
+    /* =====================================================
+       1. SUPABASE LIBRARY
+    ===================================================== */
 
     const supabaseOK =
       Boolean(
@@ -406,8 +307,10 @@
           'function'
       );
 
+
     report.frontend.supabase =
       supabaseOK;
+
 
     addResult(
       'Supabase Library',
@@ -420,6 +323,10 @@
     );
 
 
+    /* =====================================================
+       2. SUPABASE BRIDGE
+    ===================================================== */
+
     const bridgeOK =
       Boolean(
         window.supabaseJs &&
@@ -428,8 +335,10 @@
           'function'
       );
 
+
     report.frontend.supabaseJs =
       bridgeOK;
+
 
     addResult(
       'Supabase Bridge',
@@ -442,14 +351,15 @@
     );
 
 
-    /*
-     * CONFIG
-     */
+    /* =====================================================
+       3. API CONFIG
+    ===================================================== */
 
     report.endpoints.config =
       await request(
         '/api/config'
       );
+
 
     if (
       report.endpoints.config.ok
@@ -459,11 +369,13 @@
         report.endpoints
           .config.data;
 
+
       const valid =
         Boolean(
           data?.supabaseUrl &&
           data?.supabasePublishableKey
         );
+
 
       addResult(
         'Backend Config',
@@ -485,17 +397,19 @@
           '/api/config'
         )
       );
+
     }
 
 
-    /*
-     * PROVIDERS
-     */
+    /* =====================================================
+       4. PROVIDERS
+    ===================================================== */
 
     report.endpoints.providers =
       await request(
         '/api/providers'
       );
+
 
     if (
       report.endpoints.providers.ok
@@ -507,25 +421,20 @@
             .providers.data
         );
 
+
       report.providers =
         list;
 
+
       addResult(
         'Video Providers',
-        'OK',
-        `${list.length} provider ditemukan.`
+        list.length
+          ? 'OK'
+          : 'WARNING',
+        list.length
+          ? `${list.length} provider ditemukan.`
+          : 'Backend tidak mengembalikan provider.'
       );
-
-
-      if (!list.length) {
-
-        addResult(
-          'Provider Configuration',
-          'WARNING',
-          'Backend tidak mengembalikan provider.'
-        );
-
-      }
 
 
       list.forEach(
@@ -537,13 +446,16 @@
             provider.provider ||
             'Provider';
 
+
           const enabled =
             provider.enabled ===
             true;
 
+
           const configured =
             provider.configured ===
             true;
+
 
           if (
             enabled &&
@@ -574,7 +486,9 @@
               'WARNING',
               'Provider tidak aktif.'
             );
+
           }
+
         }
       );
 
@@ -588,17 +502,19 @@
           '/api/providers'
         )
       );
+
     }
 
 
-    /*
-     * BACKEND DIAGNOSTIC
-     */
+    /* =====================================================
+       5. BACKEND DIAGNOSTIC
+    ===================================================== */
 
     report.endpoints.diagnostic =
       await request(
         '/api/diagnostic'
       );
+
 
     if (
       report.endpoints
@@ -621,12 +537,13 @@
           '/api/diagnostic'
         )
       );
+
     }
 
 
-    /*
-     * DETAIL
-     */
+    /* =====================================================
+       6. DETAIL
+    ===================================================== */
 
     if (details) {
 
@@ -639,17 +556,19 @@
 
       details.style.display =
         'block';
+
     }
 
 
-    if (button) {
+    /* =====================================================
+       SELESAI
+    ===================================================== */
 
-      button.disabled =
-        false;
+    button.disabled =
+      false;
 
-      button.textContent =
-        'PERIKSA ULANG';
-    }
+    button.textContent =
+      'PERIKSA ULANG';
 
 
     return report;
@@ -659,13 +578,9 @@
   window.GENZ_DIAGNOSTIC = {
 
     run:
-      runDiagnostic,
+      runDiagnostic
 
-    createPanel:
-      createPanel,
-
-    show:
-      showPanel
   };
+
 
 })();
