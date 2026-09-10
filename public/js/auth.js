@@ -185,14 +185,35 @@
       }
 
       message(
-        'Login berhasil.'
-      );
+  'Login berhasil.'
+);
 
-      /*
-       * app.js menangani perubahan
-       * tampilan dan refresh akun.
-       */
-      window.dispatchEvent(
+/*
+ * Fallback UI langsung.
+ * Jangan bergantung pada app.js/event listener.
+ */
+const authPage = document.getElementById('auth');
+const studio = document.getElementById('studio');
+const accountBtn = document.getElementById('accountBtn');
+
+if (authPage) {
+  authPage.classList.add('hidden');
+}
+
+if (studio) {
+  studio.classList.remove('hidden');
+}
+
+if (accountBtn) {
+  accountBtn.classList.remove('hidden');
+}
+
+/*
+ * Tetap kirim event ke app.js
+ * untuk memuat account, credit,
+ * provider, dan fitur studio.
+ */
+window.dispatchEvent(
         new CustomEvent(
           'genz-auth-login',
           {
