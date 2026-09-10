@@ -1311,6 +1311,44 @@ async function providerKeyExists(
   }
 }
 
+// =========================================================
+// ADMIN PROVIDER LIST
+// =========================================================
+
+async function adminListProviders(env) {
+  const response = await supabaseRequest(
+    "/rest/v1/admin_provider_keys" +
+    "?select=provider,updated_at" +
+    "&order=provider.asc",
+    {
+      method: "GET"
+    },
+    env
+  );
+
+  if (!response.ok) {
+    const data = await safeJson(response);
+
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal mengambil konfigurasi provider."
+      )
+    }, response.status);
+  }
+
+  const rows = await response.json();
+
+  return json({
+    success: true,
+    providers: rows.map(row => ({
+      provider: row.provider,
+      configured: true,
+      updated_at: row.updated_at
+    }))
+  });
+}
 
 // =========================================================
 // GENERATE ROUTER
