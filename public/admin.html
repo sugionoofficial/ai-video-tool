@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>GEN-Z.AI Admin Panel</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #080b12;
+      color: #f8fafc;
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .container {
+      width: min(1200px, calc(100% - 32px));
+      margin: auto;
+    }
+
+    .topbar {
+      border-bottom: 1px solid #1e293b;
+      background: rgba(8, 11, 18, .96);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .topbar-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: .4px;
+    }
+
+    .brand span {
+      color: #8b5cf6;
+    }
+
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #312e81;
+      color: #c4b5fd;
+      font-size: 12px;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: white;
+      background: #1e293b;
+      font-weight: 700;
+    }
+
+    .btn:hover {
+      background: #334155;
+    }
+
+    .btn-primary {
+      background: #7c3aed;
+    }
+
+    .btn-primary:hover {
+      background: #6d28d9;
+    }
+
+    .btn-danger {
+      background: #991b1b;
+    }
+
+    .btn-success {
+      background: #166534;
+    }
+
+    main {
+      padding: 28px 0 60px;
+    }
+
+    .page-title {
+      margin-bottom: 24px;
+    }
+
+    .page-title h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    .page-title p {
+      margin: 0;
+      color: #94a3b8;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .card.full {
+      grid-column: 1 / -1;
+    }
+
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 19px;
+    }
+
+    .card-description {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .provider {
+      border: 1px solid #243244;
+      background: #0b1220;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+    }
+
+    .provider:last-child {
+      margin-bottom: 0;
+    }
+
+    .provider-title {
+      font-weight: 800;
+      margin-bottom: 9px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #334155;
+      background: #020617;
+      color: white;
+      border-radius: 9px;
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #8b5cf6;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    th,
+    td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #1e293b;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    td {
+      color: #e2e8f0;
+    }
+
+    .status {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    .status-pending {
+      background: #78350f;
+      color: #fde68a;
+    }
+
+    .status-approved {
+      background: #14532d;
+      color: #bbf7d0;
+    }
+
+    .status-rejected {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .credit-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #a78bfa;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    .empty {
+      padding: 25px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .message {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 12px 18px;
+      border-radius: 10px;
+      background: #111827;
+      color: white;
+      display: none;
+      max-width: calc(100% - 30px);
+      text-align: center;
+      box-shadow: 0 15px 40px rgba(0,0,0,.35);
+    }
+
+    .danger-text {
+      color: #fca5a5;
+    }
+
+    .success-text {
+      color: #86efac;
+    }
+
+    .admin-email {
+      font-weight: 700;
+    }
+
+    @media (max-width: 800px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card.full {
+        grid-column: auto;
+      }
+
+      .topbar-inner {
+        min-height: 64px;
+      }
+
+      .top-actions .btn {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .page-title h1 {
+        font-size: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+
+      <div class="brand">
+        GEN-Z<span>.AI</span>
+        <span class="admin-badge">ADMIN</span>
+      </div>
+
+      <div class="top-actions">
+        <button
+          class="btn"
+          onclick="window.location.href='/'"
+        >
+          Generator
+        </button>
+
+        <button
+          class="btn btn-danger"
+          id="logoutButton"
+        >
+          Logout
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+
+  <main class="container">
+
+    <div class="page-title">
+      <h1>Admin Panel</h1>
+      <p id="adminEmail">
+        Memeriksa akun administrator...
+      </p>
+    </div>
+
+
+    <div class="grid">
+
+      <!-- PROVIDER API -->
+      <section class="card full">
+
+        <h2>Provider API</h2>
+
+        <div class="card-description">
+          API key provider disimpan di Supabase dan hanya
+          dapat dikelola administrator.
+        </div>
+
+
+        <div class="provider">
+
+          <div class="provider-title">
+            Google Veo
+          </div>
+
+          <div class="input-row">
+
+            <input
+              id="veoKey"
+              type="password"
+              placeholder="Masukkan API key Veo"
+              autocomplete="off"
+            >
+
+            <button
+              class="btn btn-primary"
+              onclick="GENZAdmin.saveProvider('veo')"
+            >
+              Simpan
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="provider">
+
+          <div class="provider-title">
+            MiniMax
+          </div>
+
+          <div class="input-row">
+
+            <input
+              id="minimaxKey"
+              type="password"
+              placeholder="Masukkan API key MiniMax"
+              autocomplete="off"
+            >
+
+            <button
+              class="btn btn-primary"
+              onclick="GENZAdmin.saveProvider('minimax')"
+            >
+              Simpan
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="provider">
+
+          <div class="provider-title">
+            Luma
+          </div>
+
+          <div class="input-row">
+
+            <input
+              id="lumaKey"
+              type="password"
+              placeholder="Masukkan API key Luma"
+              autocomplete="off"
+            >
+
+            <button
+              class="btn btn-primary"
+              onclick="GENZAdmin.saveProvider('luma')"
+            >
+              Simpan
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ADMIN MANAGEMENT -->
+      <section class="card">
+
+        <h2>Administrator</h2>
+
+        <div class="card-description">
+          Tambahkan akun pengguna yang sudah terdaftar
+          menjadi administrator.
+        </div>
+
+        <div class="input-row">
+
+          <input
+            id="newAdminEmail"
+            type="email"
+            placeholder="Email user"
+          >
+
+          <button
+            class="btn btn-primary"
+            id="addAdminButton"
+          >
+            Tambah
+          </button>
+
+        </div>
+
+        <div
+          id="adminList"
+          style="margin-top:18px"
+        >
+          Memuat administrator...
+        </div>
+
+      </section>
+
+
+      <!-- CONTACT -->
+      <section class="card">
+
+        <h2>Kontak Admin</h2>
+
+        <div class="card-description">
+          Link WhatsApp, Telegram, atau halaman kontak
+          yang akan digunakan user.
+        </div>
+
+        <textarea
+          id="adminContact"
+          placeholder="https://wa.me/..."
+        ></textarea>
+
+        <button
+          class="btn btn-primary"
+          id="saveContactButton"
+          style="margin-top:10px"
+        >
+          Simpan Kontak
+        </button>
+
+      </section>
+
+
+      <!-- USER CREDITS -->
+      <section class="card full">
+
+        <h2>Manajemen Credit User</h2>
+
+        <div class="card-description">
+          Admin dapat melihat dan mengubah saldo credit
+          pengguna.
+        </div>
+
+        <div class="table-wrap">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>User ID</th>
+                <th>Credit</th>
+                <th>Ubah Credit</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+
+            <tbody id="usersTable">
+              <tr>
+                <td colspan="5">
+                  <div class="empty">
+                    Memuat user...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+
+      <!-- TOPUP -->
+      <section class="card full">
+
+        <h2>Permintaan Top Up</h2>
+
+        <div class="card-description">
+          Permintaan top-up dari pengguna.
+        </div>
+
+        <div class="table-wrap">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Nominal</th>
+                <th>Credit</th>
+                <th>Status</th>
+                <th>Tanggal</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+
+            <tbody id="topupTable">
+              <tr>
+                <td colspan="6">
+                  <div class="empty">
+                    Memuat permintaan...
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+
+  <div
+    id="adminMessage"
+    class="message"
+  ></div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/account.js"></script>
+  <script src="/js/admin.js"></script>
+
+</body>
+</html>
