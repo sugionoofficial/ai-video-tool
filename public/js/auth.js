@@ -6,6 +6,7 @@
 
   const $ = (id) => document.getElementById(id);
 
+
   /* =========================================================
      MESSAGE
   ========================================================= */
@@ -86,7 +87,9 @@
     const config = await response.json();
 
     const supabaseUrl =
-      String(config.supabaseUrl || '').trim();
+      String(
+        config.supabaseUrl || ''
+      ).trim();
 
     const supabaseKey =
       String(
@@ -125,6 +128,67 @@
       authClient;
 
     return authClient;
+  }
+
+
+  /* =========================================================
+     SHOW STUDIO
+     Mengatur perpindahan halaman setelah login.
+  ========================================================= */
+
+  function showStudio() {
+
+    const authPage =
+      document.getElementById('auth');
+
+    const studio =
+      document.getElementById('studio');
+
+    const accountPage =
+      document.getElementById('accountPage');
+
+    const accountBtn =
+      document.getElementById('accountBtn');
+
+    /*
+     * Hilangkan halaman login sepenuhnya.
+     */
+    if (authPage) {
+      authPage.classList.add('hidden');
+      authPage.style.display = 'none';
+    }
+
+    /*
+     * Tampilkan generator/studio.
+     */
+    if (studio) {
+      studio.classList.remove('hidden');
+      studio.style.display = 'block';
+    }
+
+    /*
+     * Pastikan halaman account tidak ikut tampil.
+     */
+    if (accountPage) {
+      accountPage.classList.add('hidden');
+      accountPage.style.display = 'none';
+    }
+
+    /*
+     * Tampilkan tombol account.
+     */
+    if (accountBtn) {
+      accountBtn.classList.remove('hidden');
+      accountBtn.style.display = 'flex';
+    }
+
+    /*
+     * Kembali ke bagian paling atas.
+     */
+    window.scrollTo({
+      top: 0,
+      behavior: 'instant'
+    });
   }
 
 
@@ -185,64 +249,24 @@
       }
 
       message(
-  'Login berhasil.'
-);
+        'Login berhasil.'
+      );
 
-      const authPage = document.getElementById('auth');
-const studio = document.getElementById('studio');
-const accountPage = document.getElementById('accountPage');
-const accountBtn = document.getElementById('accountBtn');
+      /*
+       * LANGSUNG pindah dari halaman login
+       * ke Generator.
+       */
+      showStudio();
 
-if (authPage) {
-  authPage.classList.add('hidden');
-  authPage.style.display = 'none';
-}
-
-if (studio) {
-  studio.classList.remove('hidden');
-  studio.style.display = 'block';
-}
-
-if (accountPage) {
-  accountPage.classList.add('hidden');
-  accountPage.style.display = 'none';
-}
-
-if (accountBtn) {
-  accountBtn.classList.remove('hidden');
-  accountBtn.style.display = 'flex';
-}
-
-window.scrollTo({
-  top: 0,
-  behavior: 'instant'
-});
-/*
- * Fallback UI langsung.
- * Jangan bergantung pada app.js/event listener.
- */
-const authPage = document.getElementById('auth');
-const studio = document.getElementById('studio');
-const accountBtn = document.getElementById('accountBtn');
-
-if (authPage) {
-  authPage.classList.add('hidden');
-}
-
-if (studio) {
-  studio.classList.remove('hidden');
-}
-
-if (accountBtn) {
-  accountBtn.classList.remove('hidden');
-}
-
-/*
- * Tetap kirim event ke app.js
- * untuk memuat account, credit,
- * provider, dan fitur studio.
- */
-window.dispatchEvent(
+      /*
+       * Beritahu app.js bahwa login berhasil.
+       * app.js akan memuat:
+       * - akun
+       * - kredit
+       * - provider
+       * - fitur generator
+       */
+      window.dispatchEvent(
         new CustomEvent(
           'genz-auth-login',
           {
@@ -335,29 +359,18 @@ window.dispatchEvent(
        * Jika Supabase langsung memberikan session,
        * user langsung masuk ke studio.
        */
-      if (data?.session && data?.user) {
+      if (
+        data?.session &&
+        data?.user
+      ) {
 
         message(
-  'Pendaftaran berhasil.'
-);
+          'Pendaftaran berhasil.'
+        );
 
-const authPage = document.getElementById('auth');
-const studio = document.getElementById('studio');
-const accountBtn = document.getElementById('accountBtn');
+        showStudio();
 
-if (authPage) {
-  authPage.classList.add('hidden');
-}
-
-if (studio) {
-  studio.classList.remove('hidden');
-}
-
-if (accountBtn) {
-  accountBtn.classList.remove('hidden');
-}
-
-window.dispatchEvent(
+        window.dispatchEvent(
           new CustomEvent(
             'genz-auth-login',
             {
@@ -528,34 +541,42 @@ window.dispatchEvent(
 
 
     if (loginButton) {
+
       loginButton.addEventListener(
         'click',
         login
       );
+
     }
 
 
     if (registerButton) {
+
       registerButton.addEventListener(
         'click',
         register
       );
+
     }
 
 
     if (forgotButton) {
+
       forgotButton.addEventListener(
         'click',
         forgotPassword
       );
+
     }
 
 
     if (logoutButton) {
+
       logoutButton.addEventListener(
         'click',
         logout
       );
+
     }
 
 
@@ -614,13 +635,14 @@ window.dispatchEvent(
       }
 
       /*
-       * Jangan mengubah #auth dan #studio
-       * secara langsung.
-       *
-       * app.js adalah pengendali utama UI.
+       * Jika user sudah memiliki session,
+       * langsung tampilkan studio.
        */
+      if (
+        data?.session?.user
+      ) {
 
-      if (data?.session?.user) {
+        showStudio();
 
         window.dispatchEvent(
           new CustomEvent(
@@ -639,19 +661,28 @@ window.dispatchEvent(
 
       }
 
-      /*
-       * Pantau perubahan session.
-       */
+
+      /* =====================================================
+         PANTAU PERUBAHAN SESSION
+      ===================================================== */
 
       client.auth.onAuthStateChange(
-        function (event, session) {
+        function (
+          event,
+          session
+        ) {
 
           console.log(
             '[GEN-Z AUTH] Auth event:',
             event
           );
 
-          if (event === 'SIGNED_IN') {
+
+          if (
+            event === 'SIGNED_IN'
+          ) {
+
+            showStudio();
 
             window.dispatchEvent(
               new CustomEvent(
@@ -659,16 +690,19 @@ window.dispatchEvent(
                 {
                   detail: {
                     user:
-                      session?.user || null,
+                      session?.user ||
+                      null,
 
                     session:
-                      session || null
+                      session ||
+                      null
                   }
                 }
               )
             );
 
           }
+
 
           if (
             event === 'SIGNED_OUT'
@@ -705,11 +739,17 @@ window.dispatchEvent(
   ========================================================= */
 
   window.GENZ_AUTH = {
+
     login,
+
     register,
+
     forgotPassword,
+
     logout,
+
     initialize
+
   };
 
 
