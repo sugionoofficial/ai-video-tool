@@ -1390,14 +1390,6 @@ async function generateVideo() {
 
 function setupEvents() {
 
-  /* LOGIN */
-
-  $('login')?.addEventListener(
-    'click',
-    login
-  );
-
-
   /* REGISTER */
 
   $('register')?.addEventListener(
