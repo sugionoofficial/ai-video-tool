@@ -23,7 +23,9 @@
 
     if (login) {
       login.disabled = loading;
-      login.textContent = loading ? 'MEMPROSES...' : 'LOGIN';
+      login.textContent = loading
+        ? 'MEMPROSES...'
+        : 'LOGIN';
     }
 
     if (register) {
@@ -40,16 +42,21 @@
       return authClient;
     }
 
-    if (!window.supabase ||
-        typeof window.supabase.createClient !== 'function') {
+    if (
+      !window.supabase ||
+      typeof window.supabase.createClient !== 'function'
+    ) {
       throw new Error(
         'Library Supabase belum termuat.'
       );
     }
 
-    const response = await fetch('/api/config', {
-      cache: 'no-store'
-    });
+    const response = await fetch(
+      '/api/config',
+      {
+        cache: 'no-store'
+      }
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -68,10 +75,11 @@
       );
     }
 
-    authClient = window.supabase.createClient(
-      config.supabaseUrl,
-      config.supabasePublishableKey
-    );
+    authClient =
+      window.supabase.createClient(
+        config.supabaseUrl,
+        config.supabasePublishableKey
+      );
 
     window.GENZ_AUTH_CLIENT = authClient;
 
@@ -79,11 +87,16 @@
   }
 
   async function login() {
-    const email = $('email')?.value.trim() || '';
-    const password = $('password')?.value || '';
+    const email =
+      $('email')?.value.trim() || '';
+
+    const password =
+      $('password')?.value || '';
 
     if (!email || !password) {
-      message('Email dan password wajib diisi.');
+      message(
+        'Email dan password wajib diisi.'
+      );
       return;
     }
 
@@ -91,21 +104,23 @@
     message('Memproses login...');
 
     try {
-      const client = await getClient();
+      const client =
+        await getClient();
 
       const {
         data,
         error
-      } = await client.auth.signInWithPassword({
-        email,
-        password
-      });
+      } =
+        await client.auth.signInWithPassword({
+          email,
+          password
+        });
 
       if (error) {
         throw error;
       }
 
-      if (!data || !data.user) {
+      if (!data?.user) {
         throw new Error(
           'Login gagal. User tidak ditemukan.'
         );
@@ -113,14 +128,21 @@
 
       message('Login berhasil.');
 
-      showStudio();
-
+      /*
+       * Jangan mengubah halaman langsung di sini.
+       * app.js akan menjalankan refresh()
+       * agar seluruh data akun dan studio
+       * dimuat dengan benar.
+       */
       window.dispatchEvent(
-        new CustomEvent('genz-auth-login', {
-          detail: {
-            user: data.user
+        new CustomEvent(
+          'genz-auth-login',
+          {
+            detail: {
+              user: data.user
+            }
           }
-        })
+        )
       );
 
     } catch (error) {
@@ -140,16 +162,23 @@
   }
 
   async function register() {
-    const email = $('email')?.value.trim() || '';
-    const password = $('password')?.value || '';
+    const email =
+      $('email')?.value.trim() || '';
+
+    const password =
+      $('password')?.value || '';
 
     if (!email || !password) {
-      message('Email dan password wajib diisi.');
+      message(
+        'Email dan password wajib diisi.'
+      );
       return;
     }
 
     if (password.length < 6) {
-      message('Password minimal 6 karakter.');
+      message(
+        'Password minimal 6 karakter.'
+      );
       return;
     }
 
@@ -157,23 +186,38 @@
     message('Mendaftarkan akun...');
 
     try {
-      const client = await getClient();
+      const client =
+        await getClient();
 
       const {
         data,
         error
-      } = await client.auth.signUp({
-        email,
-        password
-      });
+      } =
+        await client.auth.signUp({
+          email,
+          password
+        });
 
       if (error) {
         throw error;
       }
 
       if (data?.session) {
-        message('Pendaftaran berhasil. Anda sudah login.');
-        showStudio();
+        message(
+          'Pendaftaran berhasil.'
+        );
+
+        window.dispatchEvent(
+          new CustomEvent(
+            'genz-auth-login',
+            {
+              detail: {
+                user: data.user
+              }
+            }
+          )
+        );
+
       } else {
         message(
           'Pendaftaran berhasil. Periksa email untuk verifikasi akun.'
@@ -197,7 +241,8 @@
   }
 
   async function forgotPassword() {
-    const email = $('email')?.value.trim() || '';
+    const email =
+      $('email')?.value.trim() || '';
 
     if (!email) {
       message(
@@ -207,20 +252,23 @@
     }
 
     setLoading(true);
-    message('Mengirim email reset password...');
+    message(
+      'Mengirim email reset password...'
+    );
 
     try {
-      const client = await getClient();
+      const client =
+        await getClient();
 
-      const {
-        error
-      } = await client.auth.resetPasswordForEmail(
-        email,
-        {
-          redirectTo:
-            window.location.origin
-        }
-      );
+      const { error } =
+        await client.auth
+          .resetPasswordForEmail(
+            email,
+            {
+              redirectTo:
+                window.location.origin
+            }
+          );
 
       if (error) {
         throw error;
@@ -248,16 +296,15 @@
 
   async function logout() {
     try {
-      const client = await getClient();
+      const client =
+        await getClient();
 
       await client.auth.signOut();
 
-      showLogin();
-
-      message('Anda telah logout.');
-
       window.dispatchEvent(
-        new CustomEvent('genz-auth-logout')
+        new CustomEvent(
+          'genz-auth-logout'
+        )
       );
 
     } catch (error) {
@@ -268,56 +315,30 @@
     }
   }
 
-  function showStudio() {
-    $('auth')?.classList.add('hidden');
-    $('studio')?.classList.remove('hidden');
-    $('accountBtn')?.classList.remove('hidden');
-  }
-
-  function showLogin() {
-    $('auth')?.classList.remove('hidden');
-    $('studio')?.classList.add('hidden');
-    $('accountBtn')?.classList.add('hidden');
-    $('accountMenu')?.classList.add('hidden');
-  }
-
   function setupButtons() {
     if (initialized) {
       return;
     }
 
-    const loginButton = $('login');
-    const registerButton = $('register');
-    const forgotButton = $('forgotPassword');
-    const logoutButton = $('logout');
+    $('login')?.addEventListener(
+      'click',
+      login
+    );
 
-    if (loginButton) {
-      loginButton.addEventListener(
-        'click',
-        login
-      );
-    }
+    $('register')?.addEventListener(
+      'click',
+      register
+    );
 
-    if (registerButton) {
-      registerButton.addEventListener(
-        'click',
-        register
-      );
-    }
+    $('forgotPassword')?.addEventListener(
+      'click',
+      forgotPassword
+    );
 
-    if (forgotButton) {
-      forgotButton.addEventListener(
-        'click',
-        forgotPassword
-      );
-    }
-
-    if (logoutButton) {
-      logoutButton.addEventListener(
-        'click',
-        logout
-      );
-    }
+    $('logout')?.addEventListener(
+      'click',
+      logout
+    );
 
     $('password')?.addEventListener(
       'keydown',
@@ -340,44 +361,32 @@
     setupButtons();
 
     try {
-      const client = await getClient();
+      const client =
+        await getClient();
 
       const {
         data
-      } = await client.auth.getSession();
+      } =
+        await client.auth.getSession();
+
+      /*
+       * Jangan mengatur #auth/#studio di sini.
+       * app.js adalah pengendali utama UI.
+       */
 
       if (data?.session) {
-        showStudio();
-      } else {
-        showLogin();
-      }
-
-      client.auth.onAuthStateChange(
-        function (event, session) {
-          console.log(
-            '[GEN-Z AUTH] Auth event:',
-            event
-          );
-
-          if (session) {
-            showStudio();
-          } else {
-            showLogin();
-          }
-
-          window.dispatchEvent(
-            new CustomEvent(
-              'genz-auth-state-change',
-              {
-                detail: {
-                  event,
-                  session
-                }
+        window.dispatchEvent(
+          new CustomEvent(
+            'genz-auth-login',
+            {
+              detail: {
+                user:
+                  data.session.user
               }
-            )
-          );
-        }
-      );
+            }
+          )
+        );
+      }
 
     } catch (error) {
       console.error(
