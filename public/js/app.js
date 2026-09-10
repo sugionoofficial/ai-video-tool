@@ -792,77 +792,355 @@ async function loadTopups() {
 ========================================================= */
 
 function showPage(page) {
+
+  /* =========================================================
+     SYSTEM DIAGNOSTIC
+  ========================================================= */
+
   if (page === 'diagnostic') {
-  $('pageTitle').textContent = 'System Diagnostic';
 
-  $('pageContent').innerHTML = `
-    <div class="card">
-      <p>
-        Pemeriksaan sistem GEN-Z.AI tanpa menggunakan Console.
-      </p>
+    $('studio')?.classList.add('hidden');
 
-      <button
-        id="runDiagnostic"
-        class="primary"
-        type="button"
-      >
-        PERIKSA SISTEM
-      </button>
+    $('accountPage')?.classList.remove('hidden');
 
-      <div
-        id="diagnosticResults"
-        style="margin-top:20px;"
-      ></div>
+    $('backToStudio')?.classList.remove('hidden');
 
-      <pre
-        id="diagnosticDetails"
-        style="
-          display:none;
-          margin-top:20px;
-          padding:14px;
-          background:#0b0b0f;
-          border-radius:10px;
-          color:#aaa;
-          font-size:12px;
-          white-space:pre-wrap;
-          word-break:break-word;
-          overflow:auto;
-        "
-      ></pre>
-    </div>
-  `;
+    $('pageBack')?.classList.remove('hidden');
 
-  $('accountPage')?.classList.remove('hidden');
-  $('studio')?.classList.add('hidden');
+    closeMenu();
 
-  $('pageBack')?.classList.remove('hidden');
+    const title =
+      $('pageTitle');
+
+    const content =
+      $('pageContent');
+
+    if (!title || !content) {
+      return;
+    }
+
+    title.textContent =
+      'System Diagnostic';
+
+    content.innerHTML = `
+      <div class="card">
+
+        <p>
+          Pemeriksaan sistem GEN-Z.AI
+          tanpa menggunakan Console.
+        </p>
+
+        <button
+          id="genzDiagnosticRun"
+          class="primary"
+          type="button"
+        >
+          PERIKSA SISTEM
+        </button>
+
+        <div
+          id="genzDiagnosticResults"
+          style="margin-top:20px;"
+        ></div>
+
+        <pre
+          id="genzDiagnosticDetails"
+          style="
+            display:none;
+            margin-top:20px;
+            padding:14px;
+            background:#0b0b0f;
+            border-radius:10px;
+            color:#aaa;
+            font-size:12px;
+            white-space:pre-wrap;
+            word-break:break-word;
+            overflow:auto;
+          "
+        ></pre>
+
+      </div>
+    `;
+
+    const runButton =
+      $('genzDiagnosticRun');
+
+    if (runButton) {
+
+      runButton.addEventListener(
+        'click',
+        async () => {
+
+          if (
+            window.GENZ_DIAGNOSTIC &&
+            typeof window.GENZ_DIAGNOSTIC.run ===
+              'function'
+          ) {
+
+            await window.GENZ_DIAGNOSTIC.run();
+
+          } else {
+
+            const results =
+              $('genzDiagnosticResults');
+
+            if (results) {
+
+              results.innerHTML = `
+                <div style="
+                  padding:14px;
+                  border:1px solid #ff5c5c;
+                  border-radius:10px;
+                  color:#ff5c5c;
+                ">
+                  System Diagnostic belum siap.
+                </div>
+              `;
+
+            }
+          }
+        }
+      );
+    }
+
+    return;
+  }
+
+  /* =========================================================
+     ACCOUNT PAGES
+  ========================================================= */
+
+  $('studio')?.classList.add(
+    'hidden'
+  );
+
+  $('accountPage')?.classList.remove(
+    'hidden'
+  );
+
+  $('backToStudio')?.classList.remove(
+    'hidden'
+  );
+
+  $('pageBack')?.classList.remove(
+    'hidden'
+  );
 
   closeMenu();
 
-  $('runDiagnostic')?.addEventListener(
-    'click',
-    async () => {
-      if (
-        window.GENZ_DIAGNOSTIC &&
-        typeof window.GENZ_DIAGNOSTIC.run === 'function'
-      ) {
-        await window.GENZ_DIAGNOSTIC.run();
-      } else {
-        $('diagnosticResults').innerHTML = `
-          <div style="
-            padding:14px;
-            border:1px solid #ff5c5c;
-            border-radius:10px;
-            color:#ff5c5c;
-          ">
-            System Diagnostic belum siap.
-          </div>
-        `;
-      }
-    }
-  );
+  const title =
+    $('pageTitle');
 
-  return;
+  const content =
+    $('pageContent');
+
+  if (!title || !content) {
+    return;
+  }
+
+  const email =
+    escapeHtml(
+      account?.user?.email || ''
+    );
+
+  const credits =
+    Number(
+      account?.credits || 0
+    );
+
+
+  /* PROFILE */
+
+  if (page === 'profile') {
+
+    title.textContent =
+      'Profil';
+
+    content.innerHTML = `
+      <div class="profile-card">
+
+        <div class="avatar">
+          ${
+            email.charAt(0).toUpperCase() ||
+            'U'
+          }
+        </div>
+
+        <div>
+          <h3>${email}</h3>
+
+          <p>
+            Akun ${
+              account?.isAdmin
+                ? 'Administrator'
+                : 'User'
+            }
+          </p>
+        </div>
+
+      </div>
+    `;
+
+    return;
+  }
+
+
+  /* CREDIT */
+
+  if (page === 'credit') {
+
+    title.textContent =
+      'Kredit';
+
+    content.innerHTML = `
+      <div class="credit-big">
+        ${credits}
+        <span>credit</span>
+      </div>
+
+      <p>
+        Credit digunakan setiap kali
+        membuat video. Setiap perubahan
+        credit tercatat di riwayat.
+      </p>
+
+      <button
+        class="primary"
+        data-page="topup"
+      >
+        Top-up Kredit
+      </button>
+
+      <div
+        id="creditHistory"
+        class="credit-history"
+      >
+        <p>Memuat riwayat...</p>
+      </div>
+    `;
+
+    const topupButton =
+      content.querySelector(
+        '[data-page="topup"]'
+      );
+
+    if (topupButton) {
+      topupButton.onclick =
+        () => showPage('topup');
+    }
+
+    loadCreditHistory();
+
+    return;
+  }
+
+
+  /* TOP UP */
+
+  if (page === 'topup') {
+
+    title.textContent =
+      'Top-up Kredit';
+
+    content.innerHTML = `
+      <div class="topup-box">
+
+        <h3>
+          Ajukan Top-up
+        </h3>
+
+        <p>
+          Masukkan jumlah kredit.
+          Admin akan memeriksa dan
+          menyetujui atau menolak
+          permintaan Anda.
+        </p>
+
+        <label>
+          Jumlah credit
+
+          <input
+            id="topupAmount"
+            type="number"
+            min="1"
+            max="1000000"
+            step="1"
+            placeholder="Contoh: 100"
+          >
+        </label>
+
+        <label>
+          Catatan (opsional)
+
+          <textarea
+            id="topupNote"
+            maxlength="500"
+            placeholder="Keterangan pembayaran atau kebutuhan"
+          ></textarea>
+        </label>
+
+        <button
+          class="primary"
+          id="submitTopup"
+        >
+          Kirim Request Top-up
+        </button>
+
+        <div
+          id="topupState"
+          class="credit-history"
+        >
+          <p>Memuat request...</p>
+        </div>
+
+      </div>
+    `;
+
+    loadTopups();
+
+    return;
+  }
+
+
+  /* CONTACT ADMIN */
+
+  if (page === 'contact') {
+
+    title.textContent =
+      'Kontak Admin';
+
+    const contact =
+      account?.adminContactUrl;
+
+    content.innerHTML =
+      contact
+
+        ? `
+          <p>
+            Gunakan kontak berikut untuk
+            bantuan, top-up, atau
+            kendala akun.
+          </p>
+
+          <a
+            class="contact-btn"
+            href="${escapeAttr(contact)}"
+            target="_blank"
+            rel="noopener"
+          >
+            Hubungi Admin
+          </a>
+        `
+
+        : `
+          <p>
+            Kontak admin belum
+            dikonfigurasi.
+          </p>
+        `;
+
+    return;
+  }
 }
 
   $('studio')?.classList.add(
