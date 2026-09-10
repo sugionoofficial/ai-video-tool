@@ -1576,8 +1576,21 @@ async function getAdminProviderKey(
   const rows =
     await response.json();
 
-  const apiKey =
-    rows?.[0]?.api_key;
+  const provider =
+  String(body.provider || "")
+    .trim()
+    .toLowerCase();
+
+const providerId =
+  provider === "gemini"
+    ? "veo"
+    : provider;
+
+const apiKey =
+  await requireProviderKey(
+    providerId,
+    env
+  );
 
   if (!apiKey) {
     throw new Error(
@@ -1588,6 +1601,17 @@ async function getAdminProviderKey(
   return String(apiKey).trim();
 }
 
+async function requireProviderKey(provider, env) {
+  const key = await getAdminProviderKey(provider, env);
+
+  if (!key) {
+    throw new Error(
+      `API key provider ${provider} belum dikonfigurasi oleh administrator.`
+    );
+  }
+
+  return key;
+}
 
 async function providerKeyExists(
   provider,
