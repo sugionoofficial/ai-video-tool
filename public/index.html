@@ -1,462 +1,52 @@
-<!doctype html>
-
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8"><meta
-name="viewport"
-content="width=device-width,initial-scale=1"
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-«»
+  <title>GEN-Z.AI</title>
 
-  <title>GEN-Z.AI</title>  <link
-    rel="stylesheet"
-    href="/style.css"
-  >
-</head><body>  <main class="shell"><!-- =====================================================
-     LOGIN PAGE
-====================================================== -->
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/account.css">
+  <link rel="stylesheet" href="/css/generator.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
 
-<section
-  id="auth"
-  class="login-page"
->
+<body>
 
-  <div class="login-box">
+  <!-- =====================================================
+       APPLICATION TERMINAL
+       Semua tampilan dimuat oleh app.js
+  ====================================================== -->
 
-    <div class="login-brand">
+  <div id="app"></div>
 
-      <h1>GEN-Z.AI</h1>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-      <p>
-        Generate Video Realistis
-      </p>
+  <!-- Core -->
+  <script src="/js/config.js"></script>
+  <script src="/js/core.js"></script>
 
-    </div>
+  <!-- Authentication -->
+  <script src="/js/auth.js"></script>
 
-    <div class="login-form">
+  <!-- Account -->
+  <script src="/js/account.js"></script>
 
-      <!-- EMAIL -->
+  <!-- Other modules -->
+  <script src="/js/profile.js"></script>
+  <script src="/js/credit.js"></script>
+  <script src="/js/topup.js"></script>
+  <script src="/js/providers.js"></script>
+  <script src="/js/upload.js"></script>
+  <script src="/js/video.js"></script>
+  <script src="/js/generator.js"></script>
+  <script src="/js/admin.js"></script>
 
-      <input
-        id="email"
-        type="email"
-        placeholder="Email"
-        autocomplete="email"
-        inputmode="email"
-      >
+  <!-- Application controller -->
+  <script src="/js/app.js"></script>
 
-      <!-- PASSWORD -->
-
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-        autocomplete="current-password"
-      >
-
-      <!-- LOGIN -->
-
-      <button
-        id="login"
-        class="login-main"
-        type="button"
-      >
-        LOGIN
-      </button>
-
-      <!-- REGISTER / FORGOT PASSWORD -->
-
-      <div class="login-actions">
-
-        <button
-          id="register"
-          class="login-secondary"
-          type="button"
-        >
-          DAFTAR
-        </button>
-
-        <button
-          id="forgotPassword"
-          class="login-secondary"
-          type="button"
-        >
-          LUPA PASSWORD
-        </button>
-
-      </div>
-
-      <!-- AUTH MESSAGE -->
-
-      <p
-        id="authMsg"
-        class="auth-message"
-        aria-live="polite"
-      ></p>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- =====================================================
-     MAIN STUDIO
-====================================================== -->
-
-<section
-  id="studio"
-  class="card hidden"
->
-
-  <!-- TOP BAR -->
-
-  <header class="topbar">
-
-    <button
-      id="backToStudio"
-      class="icon-btn hidden"
-      type="button"
-      aria-label="Kembali ke studio"
-    >
-      ←
-    </button>
-
-    <!-- BRAND -->
-
-    <div class="brand">
-
-      <h1>
-        GEN-Z.AI
-      </h1>
-
-      <p>
-        Generate Video Realistis
-      </p>
-
-    </div>
-
-    <!-- ACCOUNT -->
-
-    <div class="account">
-
-      <button
-        id="accountBtn"
-        class="account-btn hidden"
-        type="button"
-        aria-label="Menu akun"
-      >
-
-        <span id="userEmail">
-          —
-        </span>
-
-        <strong id="credits">
-          — credit
-        </strong>
-
-        <span aria-hidden="true">
-          ⌄
-        </span>
-
-      </button>
-
-
-      <!-- =================================================
-           ACCOUNT MENU
-           Role dikontrol oleh app.js berdasarkan
-           account.isAdmin dari server.
-      ================================================== -->
-
-      <div
-        id="accountMenu"
-        class="account-menu hidden"
-      >
-
-        <!-- EMAIL -->
-
-        <div
-          class="menu-email"
-          id="menuEmail"
-        >
-          —
-        </div>
-
-
-        <!-- PROFIL -->
-
-        <button
-          type="button"
-          data-page="profile"
-        >
-          Profil
-        </button>
-
-
-        <!-- KREDIT -->
-
-        <button
-          type="button"
-          data-page="credit"
-        >
-          Kredit
-        </button>
-
-
-        <!-- TOP-UP -->
-
-        <button
-          type="button"
-          data-page="topup"
-        >
-          Top-up
-        </button>
-
-
-        <!-- PANEL ADMIN
-             Hanya tampil untuk Administrator.
-             app.js mengatur class hidden berdasarkan
-             account.isAdmin.
-        -->
-
-        <button
-          id="adminPanel"
-          class="hidden"
-          type="button"
-        >
-          Panel Admin
-        </button>
-
-
-        <!-- CHAT ADMIN
-             Hanya tampil untuk User.
-             app.js menyembunyikannya untuk Administrator.
-        -->
-
-        <button
-          id="contactAdmin"
-          class="hidden"
-          type="button"
-        >
-          Chat Admin
-        </button>
-
-
-        <!-- LOGOUT -->
-
-        <button
-          id="logout"
-          class="danger"
-          type="button"
-        >
-          Log out
-        </button>
-
-      </div>
-
-    </div>
-
-  </header>
-
-
-  <!-- =================================================
-       PROVIDERS
-  ================================================== -->
-
-  <div
-    id="providers"
-    class="providers"
-  >
-
-    <span>
-      Memuat provider...
-    </span>
-
-  </div>
-
-
-  <!-- =================================================
-       MODEL
-  ================================================== -->
-
-  <label>
-
-    Model
-
-    <select
-      id="model"
-    ></select>
-
-  </label>
-
-
-  <!-- =================================================
-       VIDEO OPTIONS
-  ================================================== -->
-
-  <div class="grid">
-
-    <!-- DURATION -->
-
-    <label>
-
-      Durasi
-
-      <select
-        id="duration"
-      ></select>
-
-    </label>
-
-
-    <!-- ASPECT -->
-
-    <label>
-
-      Aspect
-
-      <select
-        id="aspect"
-      ></select>
-
-    </label>
-
-
-    <!-- RESOLUTION -->
-
-    <label>
-
-      Resolusi
-
-      <select
-        id="resolution"
-      ></select>
-
-    </label>
-
-  </div>
-
-
-  <!-- =================================================
-       IMAGE
-  ================================================== -->
-
-  <label>
-
-    Character / First Frame
-
-    <input
-      id="image"
-      type="file"
-      accept="image/*"
-    >
-
-  </label>
-
-
-  <!-- =================================================
-       PROMPT
-  ================================================== -->
-
-  <label>
-
-    Prompt
-
-    <textarea
-      id="prompt"
-      maxlength="2000"
-      rows="7"
-      placeholder="Deskripsikan video yang ingin dibuat..."
-    ></textarea>
-
-  </label>
-
-
-  <!-- =================================================
-       GENERATE
-  ================================================== -->
-
-  <button
-    id="generate"
-    class="primary"
-    type="button"
-  >
-    Generate Video
-  </button>
-
-
-  <!-- =================================================
-       STATUS
-  ================================================== -->
-
-  <p
-    id="status"
-    aria-live="polite"
-  ></p>
-
-
-  <!-- =================================================
-       VIDEO PREVIEW
-  ================================================== -->
-
-  <video
-    id="video"
-    controls
-    playsinline
-    class="hidden"
-  ></video>
-
-
-  <!-- =================================================
-       DOWNLOAD
-  ================================================== -->
-
-  <a
-    id="download"
-    class="hidden"
-    download="gen-z-ai.mp4"
-  >
-    Download Video
-  </a>
-
-</section>
-
-
-<!-- =====================================================
-     ACCOUNT PAGE
-====================================================== -->
-
-<section
-  id="accountPage"
-  class="card hidden"
->
-
-  <div class="page-head">
-
-    <h2 id="pageTitle">
-      Profil
-    </h2>
-
-    <button
-      id="pageBack"
-      type="button"
-    >
-      ← Kembali
-    </button>
-
-  </div>
-
-
-  <div
-    id="pageContent"
-  ></div>
-
-</section>
-
-  </main>  <!-- =====================================================
-       JAVASCRIPT
-  ====================================================== -->  <script
-    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-  ></script>  <script src="/js/config.js"></script>  <script src="/js/auth.js"></script>  <script src="/js/runtime-check.js"></script>  <script src="/js/diagnostic.js"></script>  <script src="/js/app.js"></script></body>
+</body>
 </html>
