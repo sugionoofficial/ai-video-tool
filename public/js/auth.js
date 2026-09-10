@@ -1,15 +1,40 @@
 (function () {
   'use strict';
 
+  /*
+   * =========================================================
+   * GEN-Z.AI AUTH SYSTEM
+   * =========================================================
+   *
+   * Fungsi:
+   * - Login
+   * - Register
+   * - Forgot password
+   * - Logout
+   * - Session management
+   * - Supabase auth state
+   * - Token access
+   *
+   * Komponen login dapat dimuat secara dinamis oleh app.js.
+   * Karena itu event listener menggunakan event delegation.
+   * =========================================================
+   */
+
   let authClient = null;
   let initialized = false;
-
-  const $ = (id) => document.getElementById(id);
+  let authListenerRegistered = false;
+  let lastSessionUserId = null;
+  let logoutInProgress = false;
 
 
   /* =========================================================
-     MESSAGE
+     HELPER
   ========================================================= */
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
 
   function message(text) {
     const el = $('authMsg');
@@ -18,13 +43,11 @@
       el.textContent = text || '';
     }
 
-    console.log('[GEN-Z AUTH]', text);
+    if (text) {
+      console.log('[GEN-Z AUTH]', text);
+    }
   }
 
-
-  /* =========================================================
-     LOADING
-  ========================================================= */
 
   function setLoading(loading) {
     const login = $('login');
@@ -86,15 +109,13 @@
 
     const config = await response.json();
 
-    const supabaseUrl =
-      String(
-        config.supabaseUrl || ''
-      ).trim();
+    const supabaseUrl = String(
+      config.supabaseUrl || ''
+    ).trim();
 
-    const supabaseKey =
-      String(
-        config.supabasePublishableKey || ''
-      ).trim();
+    const supabaseKey = String(
+      config.supabasePublishableKey || ''
+    ).trim();
 
     if (!supabaseUrl) {
       throw new Error(
@@ -108,10 +129,22 @@
       );
     }
 
+    /*
+     * Validasi URL Supabase.
+     */
+    let parsedUrl;
+
+    try {
+      parsedUrl = new URL(supabaseUrl);
+    } catch {
+      throw new Error(
+        'Supabase URL tidak valid.'
+      );
+    }
+
     if (
-      !/^https:\/\/[a-z0-9-]+\.supabase\.co/i.test(
-        supabaseUrl
-      )
+      parsedUrl.protocol !== 'https:' ||
+      !parsedUrl.hostname.endsWith('.supabase.co')
     ) {
       throw new Error(
         'Supabase URL tidak valid.'
@@ -124,71 +157,188 @@
         supabaseKey
       );
 
-    window.GENZ_AUTH_CLIENT =
-      authClient;
+    /*
+     * Digunakan oleh app.js.
+     */
+    window.GENZ_AUTH_CLIENT = authClient;
 
     return authClient;
   }
 
 
   /* =========================================================
-     SHOW STUDIO
-     Mengatur perpindahan halaman setelah login.
+     SESSION
+  ========================================================= */
+
+  async function getSession() {
+
+    const client = await getClient();
+
+    const {
+      data,
+      error
+    } = await client.auth.getSession();
+
+    if (error) {
+      throw error;
+    }
+
+    return data?.session || null;
+  }
+
+
+  async function getUser() {
+
+    const session = await getSession();
+
+    return session?.user || null;
+  }
+
+
+  async function token() {
+
+    const session = await getSession();
+
+    return session?.access_token || null;
+  }
+
+
+  /* =========================================================
+     UI
   ========================================================= */
 
   function showStudio() {
 
     const authPage =
-      document.getElementById('auth');
+      $('auth');
 
     const studio =
-      document.getElementById('studio');
+      $('studio');
 
     const accountPage =
-      document.getElementById('accountPage');
+      $('accountPage');
 
     const accountBtn =
-      document.getElementById('accountBtn');
+      $('accountBtn');
 
-    /*
-     * Hilangkan halaman login sepenuhnya.
-     */
     if (authPage) {
       authPage.classList.add('hidden');
       authPage.style.display = 'none';
     }
 
-    /*
-     * Tampilkan generator/studio.
-     */
     if (studio) {
       studio.classList.remove('hidden');
       studio.style.display = 'block';
     }
 
-    /*
-     * Pastikan halaman account tidak ikut tampil.
-     */
     if (accountPage) {
       accountPage.classList.add('hidden');
       accountPage.style.display = 'none';
     }
 
-    /*
-     * Tampilkan tombol account.
-     */
     if (accountBtn) {
       accountBtn.classList.remove('hidden');
       accountBtn.style.display = 'flex';
     }
 
-    /*
-     * Kembali ke bagian paling atas.
-     */
     window.scrollTo({
       top: 0,
       behavior: 'instant'
     });
+  }
+
+
+  function showLoggedOutUI() {
+
+    const authPage =
+      $('auth');
+
+    const studio =
+      $('studio');
+
+    const accountPage =
+      $('accountPage');
+
+    const accountBtn =
+      $('accountBtn');
+
+    if (studio) {
+      studio.classList.add('hidden');
+      studio.style.display = 'none';
+    }
+
+    if (accountPage) {
+      accountPage.classList.add('hidden');
+      accountPage.style.display = 'none';
+    }
+
+    if (accountBtn) {
+      accountBtn.classList.add('hidden');
+      accountBtn.style.display = 'none';
+    }
+
+    if (authPage) {
+      authPage.classList.remove('hidden');
+      authPage.style.display = 'block';
+    }
+  }
+
+
+  /* =========================================================
+     AUTH EVENTS
+  ========================================================= */
+
+  function emitLogin(user, session) {
+
+    if (!user) {
+      return;
+    }
+
+    /*
+     * Hindari event login ganda untuk session yang sama.
+     */
+    if (
+      lastSessionUserId === user.id &&
+      session?.access_token
+    ) {
+      return;
+    }
+
+    lastSessionUserId = user.id;
+
+    window.dispatchEvent(
+      new CustomEvent(
+        'genz-auth-login',
+        {
+          detail: {
+            user: user,
+            session: session || null
+          }
+        }
+      )
+    );
+  }
+
+
+  function emitLogout() {
+
+    /*
+     * Jangan mengirim logout berkali-kali.
+     */
+    if (
+      lastSessionUserId === null &&
+      !logoutInProgress
+    ) {
+      return;
+    }
+
+    lastSessionUserId = null;
+
+    window.dispatchEvent(
+      new CustomEvent(
+        'genz-auth-logout'
+      )
+    );
   }
 
 
@@ -205,16 +355,12 @@
       $('password')?.value || '';
 
     if (!email) {
-      message(
-        'Email wajib diisi.'
-      );
+      message('Email wajib diisi.');
       return;
     }
 
     if (!password) {
-      message(
-        'Password wajib diisi.'
-      );
+      message('Password wajib diisi.');
       return;
     }
 
@@ -234,8 +380,8 @@
         error
       } =
         await client.auth.signInWithPassword({
-          email: email,
-          password: password
+          email,
+          password
         });
 
       if (error) {
@@ -252,30 +398,11 @@
         'Login berhasil.'
       );
 
-      /*
-       * LANGSUNG pindah dari halaman login
-       * ke Generator.
-       */
       showStudio();
 
-      /*
-       * Beritahu app.js bahwa login berhasil.
-       * app.js akan memuat:
-       * - akun
-       * - kredit
-       * - provider
-       * - fitur generator
-       */
-      window.dispatchEvent(
-        new CustomEvent(
-          'genz-auth-login',
-          {
-            detail: {
-              user: data.user,
-              session: data.session || null
-            }
-          }
-        )
+      emitLogin(
+        data.user,
+        data.session || null
       );
 
     } catch (error) {
@@ -311,16 +438,12 @@
       $('password')?.value || '';
 
     if (!email) {
-      message(
-        'Email wajib diisi.'
-      );
+      message('Email wajib diisi.');
       return;
     }
 
     if (!password) {
-      message(
-        'Password wajib diisi.'
-      );
+      message('Password wajib diisi.');
       return;
     }
 
@@ -347,8 +470,8 @@
         error
       } =
         await client.auth.signUp({
-          email: email,
-          password: password
+          email,
+          password
         });
 
       if (error) {
@@ -356,8 +479,8 @@
       }
 
       /*
-       * Jika Supabase langsung memberikan session,
-       * user langsung masuk ke studio.
+       * Supabase dapat mengembalikan session
+       * jika email confirmation tidak diwajibkan.
        */
       if (
         data?.session &&
@@ -370,16 +493,9 @@
 
         showStudio();
 
-        window.dispatchEvent(
-          new CustomEvent(
-            'genz-auth-login',
-            {
-              detail: {
-                user: data.user,
-                session: data.session
-              }
-            }
-          )
+        emitLogin(
+          data.user,
+          data.session
         );
 
       } else {
@@ -482,6 +598,12 @@
 
   async function logout() {
 
+    if (logoutInProgress) {
+      return;
+    }
+
+    logoutInProgress = true;
+
     try {
 
       const client =
@@ -496,11 +618,9 @@
         throw error;
       }
 
-      window.dispatchEvent(
-        new CustomEvent(
-          'genz-auth-logout'
-        )
-      );
+      showLoggedOutUI();
+
+      emitLogout();
 
     } catch (error) {
 
@@ -513,100 +633,205 @@
         error?.message ||
         'Logout gagal.'
       );
+
+    } finally {
+
+      logoutInProgress = false;
+
     }
   }
 
 
   /* =========================================================
-     EVENT LISTENER
+     EVENT DELEGATION
+     Penting karena komponen dapat dimuat dinamis.
   ========================================================= */
 
-  function setupButtons() {
+  function setupDelegatedEvents() {
 
     if (initialized) {
       return;
     }
 
-    const loginButton =
-      $('login');
+    document.addEventListener(
+      'click',
+      function (event) {
 
-    const registerButton =
-      $('register');
+        const target =
+          event.target.closest(
+            '#login, #register, #forgotPassword, #logout'
+          );
 
-    const forgotButton =
-      $('forgotPassword');
+        if (!target) {
+          return;
+        }
 
-    const logoutButton =
-      $('logout');
+        if (target.id === 'login') {
+          event.preventDefault();
+          login();
+          return;
+        }
 
+        if (target.id === 'register') {
+          event.preventDefault();
+          register();
+          return;
+        }
 
-    if (loginButton) {
+        if (target.id === 'forgotPassword') {
+          event.preventDefault();
+          forgotPassword();
+          return;
+        }
 
-      loginButton.addEventListener(
-        'click',
-        login
-      );
+        if (target.id === 'logout') {
+          event.preventDefault();
+          logout();
+        }
 
-    }
-
-
-    if (registerButton) {
-
-      registerButton.addEventListener(
-        'click',
-        register
-      );
-
-    }
-
-
-    if (forgotButton) {
-
-      forgotButton.addEventListener(
-        'click',
-        forgotPassword
-      );
-
-    }
+      }
+    );
 
 
-    if (logoutButton) {
+    document.addEventListener(
+      'keydown',
+      function (event) {
 
-      logoutButton.addEventListener(
-        'click',
-        logout
-      );
+        const target =
+          event.target;
 
-    }
+        if (
+          !target ||
+          target.id !== 'password'
+        ) {
+          return;
+        }
 
+        if (
+          event.key === 'Enter'
+        ) {
 
-    const password =
-      $('password');
+          event.preventDefault();
 
-    if (password) {
-
-      password.addEventListener(
-        'keydown',
-        function (event) {
-
-          if (event.key === 'Enter') {
-
-            event.preventDefault();
-
-            login();
-
-          }
+          login();
 
         }
-      );
 
-    }
+      }
+    );
 
 
     initialized = true;
 
     console.log(
-      '[GEN-Z AUTH] Event listener aktif.'
+      '[GEN-Z AUTH] Event delegation aktif.'
+    );
+  }
+
+
+  /* =========================================================
+     SUPABASE AUTH STATE
+  ========================================================= */
+
+  function setupAuthStateListener(client) {
+
+    if (authListenerRegistered) {
+      return;
+    }
+
+    authListenerRegistered = true;
+
+    client.auth.onAuthStateChange(
+      function (event, session) {
+
+        console.log(
+          '[GEN-Z AUTH] Auth event:',
+          event
+        );
+
+        if (
+          event === 'SIGNED_IN'
+        ) {
+
+          if (session?.user) {
+
+            showStudio();
+
+            emitLogin(
+              session.user,
+              session
+            );
+
+          }
+
+          return;
+        }
+
+
+        if (
+          event === 'SIGNED_OUT'
+        ) {
+
+          showLoggedOutUI();
+
+          emitLogout();
+
+          return;
+        }
+
+
+        /*
+         * TOKEN_REFRESHED tidak dianggap
+         * sebagai login baru.
+         */
+        if (
+          event === 'TOKEN_REFRESHED'
+        ) {
+
+          if (
+            session?.user &&
+            lastSessionUserId === null
+          ) {
+
+            emitLogin(
+              session.user,
+              session
+            );
+
+          }
+
+          return;
+        }
+
+
+        /*
+         * INITIAL_SESSION digunakan hanya
+         * untuk memastikan UI sesuai session.
+         */
+        if (
+          event === 'INITIAL_SESSION'
+        ) {
+
+          if (
+            session?.user
+          ) {
+
+            showStudio();
+
+            emitLogin(
+              session.user,
+              session
+            );
+
+          } else {
+
+            showLoggedOutUI();
+
+          }
+
+        }
+
+      }
     );
   }
 
@@ -617,106 +842,46 @@
 
   async function initialize() {
 
-    setupButtons();
+    /*
+     * Event delegation harus dipasang sekali.
+     * Tidak bergantung pada keberadaan HTML login.
+     */
+    setupDelegatedEvents();
 
     try {
 
       const client =
         await getClient();
 
-      const {
-        data,
-        error
-      } =
-        await client.auth.getSession();
-
-      if (error) {
-        throw error;
-      }
-
       /*
-       * Jika user sudah memiliki session,
-       * langsung tampilkan studio.
+       * Ambil session yang sudah tersimpan.
        */
+      const session =
+        await getSession();
+
       if (
-        data?.session?.user
+        session?.user
       ) {
 
         showStudio();
 
-        window.dispatchEvent(
-          new CustomEvent(
-            'genz-auth-login',
-            {
-              detail: {
-                user:
-                  data.session.user,
-
-                session:
-                  data.session
-              }
-            }
-          )
+        emitLogin(
+          session.user,
+          session
         );
+
+      } else {
+
+        showLoggedOutUI();
 
       }
 
 
-      /* =====================================================
-         PANTAU PERUBAHAN SESSION
-      ===================================================== */
-
-      client.auth.onAuthStateChange(
-        function (
-          event,
-          session
-        ) {
-
-          console.log(
-            '[GEN-Z AUTH] Auth event:',
-            event
-          );
-
-
-          if (
-            event === 'SIGNED_IN'
-          ) {
-
-            showStudio();
-
-            window.dispatchEvent(
-              new CustomEvent(
-                'genz-auth-login',
-                {
-                  detail: {
-                    user:
-                      session?.user ||
-                      null,
-
-                    session:
-                      session ||
-                      null
-                  }
-                }
-              )
-            );
-
-          }
-
-
-          if (
-            event === 'SIGNED_OUT'
-          ) {
-
-            window.dispatchEvent(
-              new CustomEvent(
-                'genz-auth-logout'
-              )
-            );
-
-          }
-
-        }
+      /*
+       * Listener Supabase hanya satu.
+       */
+      setupAuthStateListener(
+        client
       );
 
     } catch (error) {
@@ -738,7 +903,7 @@
      PUBLIC API
   ========================================================= */
 
-  window.GENZ_AUTH = {
+  const API = {
 
     login,
 
@@ -748,9 +913,35 @@
 
     logout,
 
-    initialize
+    initialize,
+
+    getClient,
+
+    getSession,
+
+    getUser,
+
+    token,
+
+    showStudio,
+
+    showLoggedOutUI
 
   };
+
+
+  /*
+   * API utama.
+   */
+  window.GENZ_AUTH = API;
+
+
+  /*
+   * Kompatibilitas dengan modul lama/pendukung
+   * yang memanggil GENZ.auth.
+   */
+  window.GENZ = window.GENZ || {};
+  window.GENZ.auth = API;
 
 
   /* =========================================================
