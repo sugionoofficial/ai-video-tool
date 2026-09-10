@@ -1,0 +1,135 @@
+/* =========================================================
+   GEN-Z.AI ACCOUNT
+========================================================= */
+
+.account {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 9999;
+}
+
+.account-btn {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 42px;
+  padding: 8px 12px;
+
+  border: 1px solid #33405f;
+  border-radius: 10px;
+
+  background: #10172a;
+  color: #ffffff;
+
+  cursor: pointer;
+
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.account-btn:hover {
+  background: #17213a;
+}
+
+.account-btn span:first-child {
+  max-width: 180px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 13px;
+}
+
+.account-btn strong {
+  font-size: 12px;
+  opacity: .75;
+  white-space: nowrap;
+}
+
+.account-menu {
+  position: absolute;
+
+  right: 0;
+  top: calc(100% + 8px);
+
+  width: 230px;
+
+  padding: 8px;
+
+  border: 1px solid #33405f;
+  border-radius: 12px;
+
+  background: #10172a;
+
+  box-shadow:
+    0 15px 40px
+    rgba(0,0,0,.35);
+
+  z-index: 10000;
+}
+
+.account-menu.hidden {
+  display: none;
+}
+
+.account-menu button {
+  display: block;
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #ffffff;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.account-menu button:hover {
+  background: #1b2743;
+}
+
+.account-menu .danger {
+  color: #ff6b6b;
+}
+
+.menu-email {
+  padding: 10px 12px;
+  margin-bottom: 4px;
+
+  border-bottom: 1px solid #293653;
+
+  font-size: 12px;
+
+  color: #9ca9c5;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+
+  .account-btn span:first-child {
+    max-width: 110px;
+  }
+
+  .account-btn strong {
+    display: none;
+  }
+
+  .account-menu {
+    right: -4px;
+    width: 220px;
+  }
+
+}
