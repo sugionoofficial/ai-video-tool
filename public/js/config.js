@@ -1,21 +1,14 @@
-/* GEN-Z.AI runtime config bridge.
- * Supabase CDN exposes the client library as window.supabase.
- * app.js expects window.supabaseJs, so keep an explicit compatibility alias.
- */
+/* GEN-Z.AI runtime config bridge */
 
 window.GENZ_CONFIG = null;
 
+window.supabaseJs = window.supabase;
+
 if (
-  window.supabase &&
-  typeof window.supabase.createClient === 'function'
+  !window.supabaseJs ||
+  typeof window.supabaseJs.createClient !== 'function'
 ) {
-  window.supabaseJs = window.supabase;
-} else {
-  window.supabaseJs = {
-    createClient() {
-      throw new Error(
-        'Supabase library gagal dimuat. Periksa koneksi atau CDN Supabase.'
-      );
-    }
-  };
+  console.error(
+    'GEN-Z.AI: Supabase library belum berhasil dimuat.'
+  );
 }
