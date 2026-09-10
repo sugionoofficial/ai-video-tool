@@ -86,17 +86,17 @@ function escapeHtml(s) {
 
 
 function escapeAttr(s) {
-  return String(s ?? '').replace(
-    /[&<>'"]/g,
-    c =>
-      ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;'
-      }[c])
-  );
+  return escapeHtml(s);
+}
+
+
+/* =========================================================
+   AUTH CLIENT
+   auth.js adalah satu-satunya pemilik Supabase Auth.
+========================================================= */
+
+function getAuthClient() {
+  return window.GENZ_AUTH_CLIENT || null;
 }
 
 
@@ -196,13 +196,15 @@ async function loadProviders() {
 
 
 /* =========================================================
-   AUTH SESSION
+   TOKEN
 ========================================================= */
 
 async function token() {
-  if (!supabase) {
+  const client = getAuthClient();
+
+  if (!client) {
     throw Error(
-      'Supabase belum siap.'
+      'Supabase Auth belum siap.'
     );
   }
 
@@ -210,11 +212,11 @@ async function token() {
     data,
     error
   } =
-    await supabase.auth.getSession();
+    await client.auth.getSession();
 
   if (
     error ||
-    !data.session
+    !data?.session
   ) {
     throw Error(
       'Silakan login.'
@@ -224,6 +226,10 @@ async function token() {
   return data.session.access_token;
 }
 
+
+/* =========================================================
+   API
+========================================================= */
 
 async function api(
   path,
@@ -280,11 +286,52 @@ async function api(
 
 
 /* =========================================================
-   REFRESH UI
+   UI STATE
+========================================================= */
+
+function showLoggedInUI() {
+  $('auth')?.classList.add('hidden');
+
+  $('studio')?.classList.remove('hidden');
+
+  $('accountPage')?.classList.add('hidden');
+
+  $('accountBtn')?.classList.remove('hidden');
+
+  $('backToStudio')?.classList.add('hidden');
+
+  $('pageBack')?.classList.add('hidden');
+}
+
+
+function showLoggedOutUI() {
+  $('auth')?.classList.remove('hidden');
+
+  $('studio')?.classList.add('hidden');
+
+  $('accountPage')?.classList.add('hidden');
+
+  $('accountBtn')?.classList.add('hidden');
+
+  $('accountMenu')?.classList.add('hidden');
+
+  $('backToStudio')?.classList.add('hidden');
+
+  $('pageBack')?.classList.add('hidden');
+
+  account = null;
+}
+
+
+/* =========================================================
+   REFRESH
 ========================================================= */
 
 async function refresh() {
-  if (!supabase) {
+  const client =
+    getAuthClient();
+
+  if (!client) {
     return;
   }
 
@@ -293,85 +340,29 @@ async function refresh() {
       data,
       error
     } =
-      await supabase.auth.getUser();
+      await client.auth.getUser();
 
     if (error) {
       console.error(
         '[GEN-Z.AI] Gagal membaca user:',
         error
       );
+
+      showLoggedOutUI();
+      return;
     }
 
     const user =
       data?.user;
 
-    /* =====================================================
-       BELUM LOGIN
-    ===================================================== */
-
     if (!user) {
-      account = null;
-
-      $('auth')?.classList.remove(
-        'hidden'
-      );
-
-      $('studio')?.classList.add(
-        'hidden'
-      );
-
-      $('accountPage')?.classList.add(
-        'hidden'
-      );
-
-      $('accountBtn')?.classList.add(
-        'hidden'
-      );
-
-      $('accountMenu')?.classList.add(
-        'hidden'
-      );
-
-      $('backToStudio')?.classList.add(
-        'hidden'
-      );
-
-      $('pageBack')?.classList.add(
-        'hidden'
-      );
-
+      showLoggedOutUI();
       return;
     }
 
+    /* LOGIN BERHASIL */
 
-    /* =====================================================
-       SUDAH LOGIN
-    ===================================================== */
-
-    $('auth')?.classList.add(
-      'hidden'
-    );
-
-    $('studio')?.classList.remove(
-      'hidden'
-    );
-
-    $('accountPage')?.classList.add(
-      'hidden'
-    );
-
-    $('accountBtn')?.classList.remove(
-      'hidden'
-    );
-
-    $('backToStudio')?.classList.add(
-      'hidden'
-    );
-
-    $('pageBack')?.classList.add(
-      'hidden'
-    );
-
+    showLoggedInUI();
 
     if ($('userEmail')) {
       $('userEmail').textContent =
@@ -444,7 +435,7 @@ async function refresh() {
 
 
 /* =========================================================
-   LOGOUT UI
+   MENU
 ========================================================= */
 
 function closeMenu() {
@@ -722,42 +713,43 @@ async function loadTopups() {
 
 function showPage(page) {
 
+  $('studio')?.classList.add(
+    'hidden'
+  );
+
+  $('accountPage')?.classList.remove(
+    'hidden'
+  );
+
+  $('backToStudio')?.classList.remove(
+    'hidden'
+  );
+
+  $('pageBack')?.classList.remove(
+    'hidden'
+  );
+
+  closeMenu();
+
+  const title =
+    $('pageTitle');
+
+  const content =
+    $('pageContent');
+
+  if (
+    !title ||
+    !content
+  ) {
+    return;
+  }
+
+
   /* =======================================================
      SYSTEM DIAGNOSTIC
   ======================================================= */
 
   if (page === 'diagnostic') {
-
-    $('studio')?.classList.add(
-      'hidden'
-    );
-
-    $('accountPage')?.classList.remove(
-      'hidden'
-    );
-
-    $('backToStudio')?.classList.remove(
-      'hidden'
-    );
-
-    $('pageBack')?.classList.remove(
-      'hidden'
-    );
-
-    closeMenu();
-
-    const title =
-      $('pageTitle');
-
-    const content =
-      $('pageContent');
-
-    if (
-      !title ||
-      !content
-    ) {
-      return;
-    }
 
     title.textContent =
       'System Diagnostic';
@@ -802,84 +794,42 @@ function showPage(page) {
       </div>
     `;
 
-    const runButton =
-      $('genzDiagnosticRun');
+    $('genzDiagnosticRun')?.addEventListener(
+      'click',
+      async () => {
 
-    if (runButton) {
+        if (
+          window.GENZ_DIAGNOSTIC &&
+          typeof window.GENZ_DIAGNOSTIC.run ===
+            'function'
+        ) {
 
-      runButton.addEventListener(
-        'click',
-        async () => {
+          await window.GENZ_DIAGNOSTIC.run();
 
-          if (
-            window.GENZ_DIAGNOSTIC &&
-            typeof window.GENZ_DIAGNOSTIC.run ===
-              'function'
-          ) {
+        } else {
 
-            await window.GENZ_DIAGNOSTIC.run();
+          const results =
+            $('genzDiagnosticResults');
 
-          } else {
-
-            const results =
-              $('genzDiagnosticResults');
-
-            if (results) {
-
-              results.innerHTML = `
-                <div style="
-                  padding:14px;
-                  border:1px solid #ff5c5c;
-                  border-radius:10px;
-                  color:#ff5c5c;
-                ">
-                  System Diagnostic belum siap.
-                </div>
-              `;
-            }
+          if (results) {
+            results.innerHTML = `
+              <div style="
+                padding:14px;
+                border:1px solid #ff5c5c;
+                border-radius:10px;
+                color:#ff5c5c;
+              ">
+                System Diagnostic belum siap.
+              </div>
+            `;
           }
         }
-      );
-    }
+      }
+    );
 
     return;
   }
 
-
-  /* =======================================================
-     ACCOUNT PAGE
-  ======================================================= */
-
-  $('studio')?.classList.add(
-    'hidden'
-  );
-
-  $('accountPage')?.classList.remove(
-    'hidden'
-  );
-
-  $('backToStudio')?.classList.remove(
-    'hidden'
-  );
-
-  $('pageBack')?.classList.remove(
-    'hidden'
-  );
-
-  closeMenu();
-
-  const title =
-    $('pageTitle');
-
-  const content =
-    $('pageContent');
-
-  if (
-    !title ||
-    !content
-  ) {
-    return;
-  }
 
   const email =
     escapeHtml(
@@ -972,15 +922,12 @@ function showPage(page) {
       </div>
     `;
 
-    const topupButton =
-      content.querySelector(
-        '[data-page="topup"]'
+    content
+      .querySelector('[data-page="topup"]')
+      ?.addEventListener(
+        'click',
+        () => showPage('topup')
       );
-
-    if (topupButton) {
-      topupButton.onclick =
-        () => showPage('topup');
-    }
 
     loadCreditHistory();
 
@@ -1228,10 +1175,6 @@ async function generateVideo() {
     }
 
 
-    /* =====================================================
-       POLLING
-    ===================================================== */
-
     const run =
       async () => {
 
@@ -1254,10 +1197,6 @@ async function generateVideo() {
             );
 
 
-          /* ===============================================
-             COMPLETED
-          =============================================== */
-
           if (
             s.status === 'completed' &&
             s.videoUrl
@@ -1265,12 +1204,6 @@ async function generateVideo() {
 
             let url =
               s.videoUrl;
-
-
-            /*
-              Video internal API membutuhkan
-              Authorization header.
-            */
 
             if (
               url.startsWith(
@@ -1307,9 +1240,6 @@ async function generateVideo() {
                 );
             }
 
-
-            /* VIDEO PREVIEW */
-
             const video =
               $('video');
 
@@ -1322,9 +1252,6 @@ async function generateVideo() {
                 'hidden'
               );
             }
-
-
-            /* DOWNLOAD */
 
             const download =
               $('download');
@@ -1339,7 +1266,6 @@ async function generateVideo() {
               );
             }
 
-
             $('status').textContent =
               'Video selesai.';
 
@@ -1351,10 +1277,6 @@ async function generateVideo() {
             return;
           }
 
-
-          /* ===============================================
-             FAILED
-          =============================================== */
 
           if (
             s.status === 'failed' ||
@@ -1375,10 +1297,6 @@ async function generateVideo() {
             return;
           }
 
-
-          /* ===============================================
-             STILL PROCESSING
-          =============================================== */
 
           $('status').textContent =
             'Processing...';
@@ -1426,26 +1344,12 @@ async function generateVideo() {
 
 
 /* =========================================================
-   EVENT LISTENERS
+   EVENTS
 ========================================================= */
 
 function setupEvents() {
 
-  /*
-    AUTENTIKASI
-
-    Login, register, forgot password,
-    dan logout dikelola oleh auth.js.
-
-    Jangan memasang handler auth kedua
-    di sini agar satu tombol tidak
-    menjalankan dua proses sekaligus.
-  */
-
-
-  /* =======================================================
-     ACCOUNT MENU
-  ======================================================= */
+  /* ACCOUNT */
 
   $('accountBtn')?.addEventListener(
     'click',
@@ -1458,9 +1362,7 @@ function setupEvents() {
   );
 
 
-  /* =======================================================
-     ACCOUNT PAGES
-  ======================================================= */
+  /* ACCOUNT PAGES */
 
   document
     .querySelectorAll(
@@ -1483,42 +1385,33 @@ function setupEvents() {
     });
 
 
-  /* =======================================================
-     ADMIN
-  ======================================================= */
+  /* ADMIN */
 
   $('adminPanel')?.addEventListener(
     'click',
     () => {
-
       location.href =
         '/admin.html';
     }
   );
 
 
-  /* =======================================================
-     CONTACT ADMIN
-  ======================================================= */
+  /* CONTACT ADMIN */
 
   $('contactAdmin')?.addEventListener(
     'click',
     () => {
-
       showPage('contact');
     }
   );
 
 
-  /* =======================================================
-     BACK TO STUDIO
-  ======================================================= */
+  /* BACK */
 
   $('backToStudio')?.addEventListener(
     'click',
     showStudio
   );
-
 
   $('pageBack')?.addEventListener(
     'click',
@@ -1526,16 +1419,12 @@ function setupEvents() {
   );
 
 
-  /* =======================================================
-     IMAGE
-  ======================================================= */
+  /* IMAGE */
 
   setupImageUpload();
 
 
-  /* =======================================================
-     GENERATE
-  ======================================================= */
+  /* GENERATE */
 
   $('generate')?.addEventListener(
     'click',
@@ -1545,7 +1434,7 @@ function setupEvents() {
 
 
 /* =========================================================
-   AUTH EVENTS FROM auth.js
+   AUTH EVENTS
 ========================================================= */
 
 window.addEventListener(
@@ -1557,22 +1446,33 @@ window.addEventListener(
     );
 
     /*
-      auth.js berhasil login.
-      app.js sekarang membaca session
-      dari Supabase dan memindahkan UI
-      dari Login ke Studio.
+      PENTING:
+      auth.js sudah berhasil membuat
+      GENZ_AUTH_CLIENT.
+      Kita hanya membaca session.
+    */
+
+    showLoggedInUI();
+
+    await refresh();
+
+    /*
+      Provider baru dimuat setelah login.
     */
 
     try {
-
-      await refresh();
-
-    } catch (error) {
-
+      await loadProviders();
+    } catch (e) {
       console.error(
-        '[GEN-Z.AI] Refresh setelah login gagal:',
-        error
+        '[GEN-Z.AI] Provider error:',
+        e
       );
+
+      if ($('status')) {
+        $('status').textContent =
+          e.message ||
+          'Gagal memuat provider.';
+      }
     }
   }
 );
@@ -1580,81 +1480,65 @@ window.addEventListener(
 
 window.addEventListener(
   'genz-auth-logout',
-  async () => {
+  () => {
 
     console.log(
       '[GEN-Z.AI] Logout event diterima.'
     );
 
-    try {
+    showLoggedOutUI();
+  }
+);
 
-      showStudio();
 
-      await refresh();
+/* =========================================================
+   AUTH READY
+========================================================= */
 
-    } catch (error) {
+window.addEventListener(
+  'genz-auth-ready',
+  async () => {
 
-      console.error(
-        '[GEN-Z.AI] Refresh setelah logout gagal:',
-        error
-      );
+    console.log(
+      '[GEN-Z.AI] Auth ready.'
+    );
+
+    const client =
+      getAuthClient();
+
+    if (!client) {
+      return;
+    }
+
+    await refresh();
+
+    /*
+      Provider hanya dimuat ketika
+      user sudah login.
+    */
+
+    const {
+      data
+    } =
+      await client.auth.getSession();
+
+    if (data?.session) {
+
+      try {
+        await loadProviders();
+      } catch (e) {
+        console.error(
+          '[GEN-Z.AI] Provider error:',
+          e
+        );
+      }
     }
   }
 );
 
 
 /* =========================================================
-   SUPABASE AUTH STATE
-========================================================= */
-
-function setupAuthStateListener() {
-
-  if (!supabase) {
-    return;
-  }
-
-  supabase.auth.onAuthStateChange(
-    async (
-      event,
-      session
-    ) => {
-
-      console.log(
-        '[GEN-Z.AI] Auth state:',
-        event
-      );
-
-      /*
-        SIGNED_IN:
-        tampilkan Studio.
-
-        SIGNED_OUT:
-        kembali ke Login.
-      */
-
-      if (
-        event === 'SIGNED_IN' ||
-        event === 'TOKEN_REFRESHED' ||
-        event === 'USER_UPDATED'
-      ) {
-
-        await refresh();
-
-      } else if (
-        event === 'SIGNED_OUT'
-      ) {
-
-        showStudio();
-
-        await refresh();
-      }
-    }
-  );
-}
-
-
-/* =========================================================
-   SUPABASE BOOTSTRAP
+   BOOTSTRAP
 ========================================================= */
 
 async function bootstrap() {
@@ -1662,70 +1546,54 @@ async function bootstrap() {
   try {
 
     /*
-      Ambil konfigurasi dari Worker.
+      app.js TIDAK lagi membuat
+      Supabase client sendiri.
+
+      auth.js adalah pemilik client.
     */
 
-    const r =
-      await fetch(
-        '/api/config',
-        {
-          cache: 'no-store'
-        }
-      );
+    const client =
+      getAuthClient();
 
-    const c =
-      await r.json();
+    if (!client) {
 
+      /*
+        auth.js mungkin belum selesai
+        initialize karena kedua script
+        berjalan sebelum DOMContentLoaded.
 
-    if (
-      !r.ok ||
-      !c.supabaseUrl ||
-      !c.supabasePublishableKey
-    ) {
+        Tunggu sebentar.
+      */
 
-      throw Error(
-        'Konfigurasi Supabase belum lengkap.'
-      );
+      let attempts = 0;
+
+      while (
+        !window.GENZ_AUTH_CLIENT &&
+        attempts < 50
+      ) {
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              100
+            )
+        );
+
+        attempts++;
+      }
     }
 
-
-    /*
-      Pastikan Supabase library tersedia.
-    */
-
-    const supabaseLibrary =
-      window.supabaseJs ||
-      window.supabase;
-
-    if (
-      !supabaseLibrary ||
-      typeof supabaseLibrary.createClient !==
-        'function'
-    ) {
-
-      throw Error(
-        'Supabase library belum siap.'
-      );
-    }
-
-
-    /*
-      Buat satu client Supabase
-      untuk seluruh app.js.
-    */
 
     supabase =
-      supabaseLibrary.createClient(
-        c.supabaseUrl,
-        c.supabasePublishableKey
+      getAuthClient();
+
+    if (!supabase) {
+
+      throw Error(
+        'Supabase Auth belum siap.'
       );
-
-
-    /*
-      Auth state listener.
-    */
-
-    setupAuthStateListener();
+    }
 
 
     /*
@@ -1736,24 +1604,32 @@ async function bootstrap() {
 
 
     /*
-      Cek session yang sudah ada.
+      Baca session saat halaman
+      pertama kali dibuka.
     */
 
     await refresh();
 
 
     /*
-      Provider dimuat setelah aplikasi
-      siap.
+      Provider hanya dimuat jika
+      user memang sudah login.
     */
 
-    await loadProviders();
+    const {
+      data
+    } =
+      await supabase.auth.getSession();
 
+    if (data?.session) {
+
+      await loadProviders();
+    }
 
   } catch (e) {
 
     console.error(
-      'GEN-Z.AI bootstrap error:',
+      '[GEN-Z.AI] bootstrap error:',
       e
     );
 
@@ -1761,17 +1637,28 @@ async function bootstrap() {
       $('status').textContent =
         e.message;
     }
-
-    if ($('authMsg')) {
-      $('authMsg').textContent =
-        e.message;
-    }
   }
 }
 
 
 /* =========================================================
-   START APPLICATION
+   START
 ========================================================= */
 
-bootstrap();
+if (
+  document.readyState === 'loading'
+) {
+
+  document.addEventListener(
+    'DOMContentLoaded',
+    bootstrap,
+    {
+      once: true
+    }
+  );
+
+} else {
+
+  bootstrap();
+
+}
