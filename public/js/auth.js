@@ -188,6 +188,35 @@
   'Login berhasil.'
 );
 
+      const authPage = document.getElementById('auth');
+const studio = document.getElementById('studio');
+const accountPage = document.getElementById('accountPage');
+const accountBtn = document.getElementById('accountBtn');
+
+if (authPage) {
+  authPage.classList.add('hidden');
+  authPage.style.display = 'none';
+}
+
+if (studio) {
+  studio.classList.remove('hidden');
+  studio.style.display = 'block';
+}
+
+if (accountPage) {
+  accountPage.classList.add('hidden');
+  accountPage.style.display = 'none';
+}
+
+if (accountBtn) {
+  accountBtn.classList.remove('hidden');
+  accountBtn.style.display = 'flex';
+}
+
+window.scrollTo({
+  top: 0,
+  behavior: 'instant'
+});
 /*
  * Fallback UI langsung.
  * Jangan bergantung pada app.js/event listener.
