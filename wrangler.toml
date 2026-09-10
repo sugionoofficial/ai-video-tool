@@ -10,3 +10,6 @@ ALLOWED_ORIGIN = "https://ai-video-tool.sugionoofficial88.workers.dev"
 GENERATION_CREDIT_COST = "1"
 # Public Supabase publishable key only. Never put the service-role key here.
 SUPABASE_PUBLISHABLE_KEY = "__SUPABASE_PUBLISHABLE_KEY__"
+
+[triggers]
+crons = ["*/15 * * * *"]

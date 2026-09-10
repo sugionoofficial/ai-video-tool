@@ -73,3 +73,19 @@ Jalankan `supabase/schema.sql` di Supabase SQL Editor. Schema ini:
 
 ## Production configuration
 The Worker exposes only `/api/config`, containing the Supabase URL and publishable key. Never put `SUPABASE_SERVICE_ROLE_KEY` or provider API keys in `public/`, frontend JavaScript, or client-side environment variables. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_PUBLISHABLE_KEY` in Cloudflare Worker settings/secrets.
+
+
+## V8 production recovery
+The Worker includes a scheduled stale-job recovery every 15 minutes. Jobs that remain `reserved` or `processing` for more than 24 hours are marked failed and their reserved credits are refunded exactly once. This is a safety net, not a replacement for provider polling.
+
+The generation endpoint rejects request bodies above 64 KiB. Keep provider credentials in Worker secrets; never put the Supabase service-role key or provider API keys in `public/` or client-side configuration.
+
+### V11 security note
+The video proxy is job-bound: the browser cannot request an arbitrary provider file/URL. A signed-in user must reference their own completed video job, and the Worker performs the provider fetch with the server-side provider credential.
+
+
+## V14 Security hardening
+- JSON request bodies are bounded by the Worker even when `Content-Length` is absent.
+- Admin job filters and user identifiers are validated before database queries.
+- Internal Worker errors are logged without returning internal exception details to clients.
+- Continue keeping `SUPABASE_SERVICE_ROLE_KEY` and all provider API keys in Cloudflare secrets only.
