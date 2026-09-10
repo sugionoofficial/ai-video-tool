@@ -14,9 +14,9 @@ export default {
     }
 
     try {
+
       // ===================================================
       // DIAGNOSTIC
-      // Tidak pernah menampilkan nilai API key.
       // ===================================================
 
       if (
@@ -27,28 +27,40 @@ export default {
           success: true,
           worker: "ai-video-tool",
 
-          geminiPrimaryConfigured:
-            Boolean(env.GEMINI_API_KEY),
+          supabaseConfigured:
+            Boolean(
+              env.SUPABASE_URL &&
+              env.SUPABASE_SERVICE_ROLE_KEY
+            ),
 
-          geminiBackupConfigured:
-            Boolean(env.GEMINI_API_KEY1),
+          veoConfigured:
+            await providerKeyExists("veo", env),
 
-          minimaxPrimaryConfigured:
-            Boolean(env.MINIMAX_API_KEY),
+          minimaxConfigured:
+            await providerKeyExists("minimax", env),
 
-          minimaxBackupConfigured:
-            Boolean(env.MINIMAX_API_KEY1),
-
-          lumaPrimaryConfigured:
-            Boolean(env.LUMA_API_KEY),
-
-          lumaBackupConfigured:
-            Boolean(env.LUMA_API_KEY1),
+          lumaConfigured:
+            await providerKeyExists("luma", env),
 
           timestamp:
             new Date().toISOString()
         });
       }
+
+
+      // ===================================================
+      // ADMIN API
+      // ===================================================
+
+      if (
+        url.pathname.startsWith("/api/admin/")
+      ) {
+        return await handleAdminApi(
+          request,
+          env
+        );
+      }
+
 
       // ===================================================
       // GENERATE
@@ -58,8 +70,12 @@ export default {
         url.pathname === "/api/generate" &&
         request.method === "POST"
       ) {
-        return await handleGenerate(request, env);
+        return await handleGenerate(
+          request,
+          env
+        );
       }
+
 
       // ===================================================
       // STATUS POST
@@ -69,8 +85,12 @@ export default {
         url.pathname === "/api/generate/status" &&
         request.method === "POST"
       ) {
-        return await handleStatusPost(request, env);
+        return await handleStatusPost(
+          request,
+          env
+        );
       }
+
 
       // ===================================================
       // STATUS LEGACY GET
@@ -80,8 +100,12 @@ export default {
         url.pathname === "/api/generate" &&
         request.method === "GET"
       ) {
-        return await handleStatus(request, env);
+        return await handleStatus(
+          request,
+          env
+        );
       }
+
 
       // ===================================================
       // VIDEO PROXY
@@ -91,8 +115,12 @@ export default {
         url.pathname === "/api/video" &&
         request.method === "GET"
       ) {
-        return await handleVideoProxy(request, env);
+        return await handleVideoProxy(
+          request,
+          env
+        );
       }
+
 
       // ===================================================
       // STATIC ASSETS
@@ -101,6 +129,7 @@ export default {
       return env.ASSETS.fetch(request);
 
     } catch (error) {
+
       console.error(
         "Worker error:",
         error?.message || error
@@ -118,66 +147,1204 @@ export default {
 
 
 // =========================================================
-// GENERATE ROUTER
+// SUPABASE HELPERS
 // =========================================================
 
-async function handleGenerate(request, env) {
+function supabaseHeaders(env) {
+  return {
+    "apikey":
+      env.SUPABASE_SERVICE_ROLE_KEY,
+
+    "Authorization":
+      `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+
+    "Content-Type":
+      "application/json"
+  };
+}
+
+
+async function supabaseRequest(
+  path,
+  options = {},
+  env
+) {
+  if (
+    !env.SUPABASE_URL ||
+    !env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    throw new Error(
+      "Konfigurasi Supabase Worker belum lengkap."
+    );
+  }
+
+  const headers = {
+    ...supabaseHeaders(env),
+    ...(options.headers || {})
+  };
+
+  return await fetch(
+    `${env.SUPABASE_URL}${path}`,
+    {
+      ...options,
+      headers
+    }
+  );
+}
+
+
+// =========================================================
+// CURRENT USER
+// =========================================================
+
+async function getSupabaseUser(
+  request,
+  env
+) {
+  const authorization =
+    request.headers.get(
+      "Authorization"
+    ) || "";
+
+  if (
+    !authorization.startsWith(
+      "Bearer "
+    )
+  ) {
+    return null;
+  }
+
+  const token =
+    authorization
+      .slice(7)
+      .trim();
+
+  if (!token) {
+    return null;
+  }
+
+  const response =
+    await fetch(
+      `${env.SUPABASE_URL}/auth/v1/user`,
+      {
+        method: "GET",
+
+        headers: {
+          "apikey":
+            env.SUPABASE_SERVICE_ROLE_KEY,
+
+          "Authorization":
+            `Bearer ${token}`
+        }
+      }
+    );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return await response.json();
+}
+
+
+// =========================================================
+// ADMIN CHECK
+// =========================================================
+
+async function assertAdmin(
+  request,
+  env
+) {
+  const user =
+    await getSupabaseUser(
+      request,
+      env
+    );
+
+  if (!user?.id) {
+    throw new AdminError(
+      "Unauthorized",
+      401
+    );
+  }
+
+  const response =
+    await supabaseRequest(
+      `/rest/v1/user_roles` +
+      `?user_id=eq.${encodeURIComponent(user.id)}` +
+      `&role=eq.admin` +
+      `&select=user_id`,
+      {
+        method: "GET"
+      },
+      env
+    );
+
+  if (!response.ok) {
+    throw new AdminError(
+      "Gagal memeriksa status admin.",
+      500
+    );
+  }
+
+  const rows =
+    await response.json();
+
+  if (
+    !Array.isArray(rows) ||
+    rows.length === 0
+  ) {
+    throw new AdminError(
+      "Akses admin ditolak.",
+      403
+    );
+  }
+
+  return user;
+}
+
+
+class AdminError extends Error {
+  constructor(
+    message,
+    status = 403
+  ) {
+    super(message);
+    this.name = "AdminError";
+    this.status = status;
+  }
+}
+
+
+// =========================================================
+// ADMIN API ROUTER
+// =========================================================
+
+async function handleAdminApi(
+  request,
+  env
+) {
+  try {
+
+    // Semua endpoint admin
+    // wajib melewati pemeriksaan admin.
+    const admin =
+      await assertAdmin(
+        request,
+        env
+      );
+
+    const url =
+      new URL(request.url);
+
+
+    // ===================================================
+    // FIND USER
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/users/find" &&
+      request.method === "POST"
+    ) {
+      return await adminFindUser(
+        request,
+        env
+      );
+    }
+
+
+    // ===================================================
+    // LIST USERS
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/users" &&
+      request.method === "GET"
+    ) {
+      return await adminListUsers(
+        env
+      );
+    }
+
+
+    // ===================================================
+    // LIST ADMINS
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/admins" &&
+      request.method === "GET"
+    ) {
+      return await adminListAdmins(
+        env
+      );
+    }
+
+
+    // ===================================================
+    // ADD ADMIN
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/admins/add" &&
+      request.method === "POST"
+    ) {
+      return await adminAddAdmin(
+        request,
+        env
+      );
+    }
+
+
+    // ===================================================
+    // REMOVE ADMIN
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/admins/remove" &&
+      request.method === "POST"
+    ) {
+      return await adminRemoveAdmin(
+        request,
+        env,
+        admin.id
+      );
+    }
+
+
+    // ===================================================
+    // CREDIT ADJUSTMENT
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/credits/adjust" &&
+      request.method === "POST"
+    ) {
+      return await adminAdjustCredit(
+        request,
+        env,
+        admin.id
+      );
+    }
+
+
+    // ===================================================
+    // TOPUP PROCESS
+    // ===================================================
+
+    if (
+      url.pathname ===
+        "/api/admin/topups/process" &&
+      request.method === "POST"
+    ) {
+      return await adminProcessTopup(
+        request,
+        env,
+        admin.id
+      );
+    }
+
+
+    return json({
+      success: false,
+      error:
+        "Admin endpoint tidak ditemukan."
+    }, 404);
+
+  } catch (error) {
+
+    if (
+      error instanceof AdminError
+    ) {
+      return json({
+        success: false,
+        error: error.message
+      }, error.status);
+    }
+
+    console.error(
+      "Admin API error:",
+      error?.message || error
+    );
+
+    return json({
+      success: false,
+      error:
+        "Admin API mengalami kesalahan."
+    }, 500);
+  }
+}
+
+
+// =========================================================
+// SUPABASE AUTH ADMIN USERS
+// =========================================================
+
+async function listAuthUsers(
+  env
+) {
+  const allUsers = [];
+
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
+
+    const response =
+      await supabaseRequest(
+        `/auth/v1/admin/users` +
+        `?page=${page}` +
+        `&per_page=${perPage}`,
+        {
+          method: "GET"
+        },
+        env
+      );
+
+    if (!response.ok) {
+      const data =
+        await safeJson(response);
+
+      throw new Error(
+        extractApiError(
+          data,
+          "Gagal mengambil daftar user."
+        )
+      );
+    }
+
+    const data =
+      await response.json();
+
+    const users =
+      Array.isArray(data?.users)
+        ? data.users
+        : Array.isArray(data)
+          ? data
+          : [];
+
+    allUsers.push(...users);
+
+    if (
+      users.length < perPage
+    ) {
+      break;
+    }
+
+    page++;
+
+    if (page > 20) {
+      break;
+    }
+  }
+
+  return allUsers;
+}
+
+
+// =========================================================
+// FIND USER
+// =========================================================
+
+async function adminFindUser(
+  request,
+  env
+) {
   let body;
 
   try {
-    body = await request.json();
+    body =
+      await request.json();
   } catch {
     return json({
       success: false,
-      error: "Request JSON tidak valid."
+      error:
+        "Request tidak valid."
     }, 400);
   }
 
-  if (!body || typeof body !== "object") {
+  const email =
+    String(
+      body?.email || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (!email) {
     return json({
       success: false,
-      error: "Request tidak valid."
+      error:
+        "Email user wajib diberikan."
+    }, 400);
+  }
+
+  const users =
+    await listAuthUsers(env);
+
+  const user =
+    users.find(
+      item =>
+        String(
+          item.email || ""
+        )
+          .trim()
+          .toLowerCase() === email
+    );
+
+  if (!user) {
+    return json({
+      success: false,
+      error:
+        "User dengan email tersebut tidak ditemukan."
+    }, 404);
+  }
+
+  return json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      created_at:
+        user.created_at,
+      confirmed_at:
+        user.confirmed_at
+    }
+  });
+}
+
+
+// =========================================================
+// LIST USERS
+// =========================================================
+
+async function adminListUsers(
+  env
+) {
+  const users =
+    await listAuthUsers(env);
+
+  const rolesResponse =
+    await supabaseRequest(
+      "/rest/v1/user_roles" +
+      "?select=user_id,role",
+      {
+        method: "GET"
+      },
+      env
+    );
+
+  const creditsResponse =
+    await supabaseRequest(
+      "/rest/v1/user_credits" +
+      "?select=user_id,credits",
+      {
+        method: "GET"
+      },
+      env
+    );
+
+  const roles =
+    rolesResponse.ok
+      ? await rolesResponse.json()
+      : [];
+
+  const credits =
+    creditsResponse.ok
+      ? await creditsResponse.json()
+      : [];
+
+  const roleMap =
+    new Map(
+      roles.map(
+        item => [
+          item.user_id,
+          item.role
+        ]
+      )
+    );
+
+  const creditMap =
+    new Map(
+      credits.map(
+        item => [
+          item.user_id,
+          item.credits
+        ]
+      )
+    );
+
+  return json({
+    success: true,
+
+    users:
+      users.map(
+        user => ({
+          id: user.id,
+
+          email:
+            user.email || "",
+
+          role:
+            roleMap.get(
+              user.id
+            ) || "user",
+
+          credits:
+            Number(
+              creditMap.get(
+                user.id
+              ) || 0
+            ),
+
+          created_at:
+            user.created_at,
+
+          confirmed_at:
+            user.confirmed_at
+        })
+      )
+  });
+}
+
+
+// =========================================================
+// LIST ADMINS
+// =========================================================
+
+async function adminListAdmins(
+  env
+) {
+  const response =
+    await supabaseRequest(
+      "/rest/v1/user_roles" +
+      "?role=eq.admin" +
+      "&select=user_id,role",
+      {
+        method: "GET"
+      },
+      env
+    );
+
+  if (!response.ok) {
+    const data =
+      await safeJson(response);
+
+    return json({
+      success: false,
+      error:
+        extractApiError(
+          data,
+          "Gagal mengambil daftar admin."
+        )
+    }, response.status);
+  }
+
+  const roles =
+    await response.json();
+
+  const users =
+    await listAuthUsers(env);
+
+  const userMap =
+    new Map(
+      users.map(
+        user => [
+          user.id,
+          user
+        ]
+      )
+    );
+
+  return json({
+    success: true,
+
+    admins:
+      roles.map(
+        role => {
+          const user =
+            userMap.get(
+              role.user_id
+            );
+
+          return {
+            user_id:
+              role.user_id,
+
+            email:
+              user?.email ||
+              "(email tidak ditemukan)",
+
+            role:
+              role.role
+          };
+        }
+      )
+  });
+}
+
+
+// =========================================================
+// ADD ADMIN
+// =========================================================
+
+async function adminAddAdmin(
+  request,
+  env
+) {
+  let body;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return json({
+      success: false,
+      error:
+        "Request tidak valid."
+    }, 400);
+  }
+
+  const email =
+    String(
+      body?.email || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (!email) {
+    return json({
+      success: false,
+      error:
+        "Email admin wajib diberikan."
+    }, 400);
+  }
+
+  const users =
+    await listAuthUsers(env);
+
+  const user =
+    users.find(
+      item =>
+        String(
+          item.email || ""
+        )
+          .trim()
+          .toLowerCase() === email
+    );
+
+  if (!user) {
+    return json({
+      success: false,
+      error:
+        "User belum terdaftar."
+    }, 404);
+  }
+
+  const response =
+    await supabaseRequest(
+      "/rest/v1/user_roles",
+      {
+        method: "POST",
+
+        headers: {
+          "Prefer":
+            "resolution=merge-duplicates"
+        },
+
+        body:
+          JSON.stringify({
+            user_id: user.id,
+            role: "admin"
+          })
+      },
+      env
+    );
+
+  if (!response.ok) {
+    const data =
+      await safeJson(response);
+
+    return json({
+      success: false,
+      error:
+        extractApiError(
+          data,
+          "Gagal menambahkan admin."
+        )
+    }, response.status);
+  }
+
+  return json({
+    success: true,
+
+    message:
+      "User berhasil menjadi admin.",
+
+    user: {
+      id: user.id,
+      email: user.email,
+      role: "admin"
+    }
+  });
+}
+
+
+// =========================================================
+// REMOVE ADMIN
+// =========================================================
+
+async function adminRemoveAdmin(
+  request,
+  env,
+  currentAdminId
+) {
+  let body;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return json({
+      success: false,
+      error:
+        "Request tidak valid."
+    }, 400);
+  }
+
+  const userId =
+    String(
+      body?.user_id || ""
+    ).trim();
+
+  if (!userId) {
+    return json({
+      success: false,
+      error:
+        "user_id wajib diberikan."
+    }, 400);
+  }
+
+  if (
+    userId === currentAdminId
+  ) {
+    return json({
+      success: false,
+      error:
+        "Admin tidak dapat menghapus dirinya sendiri."
+    }, 400);
+  }
+
+  const response =
+    await supabaseRequest(
+      "/rest/v1/user_roles" +
+      `?user_id=eq.${encodeURIComponent(userId)}` +
+      "&role=eq.admin",
+      {
+        method: "DELETE"
+      },
+      env
+    );
+
+  if (!response.ok) {
+    const data =
+      await safeJson(response);
+
+    return json({
+      success: false,
+      error:
+        extractApiError(
+          data,
+          "Gagal menghapus admin."
+        )
+    }, response.status);
+  }
+
+  return json({
+    success: true,
+
+    message:
+      "Hak admin berhasil dihapus."
+  });
+}
+
+
+// =========================================================
+// CREDIT ADJUSTMENT
+// =========================================================
+
+async function adminAdjustCredit(
+  request,
+  env,
+  adminId
+) {
+  let body;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return json({
+      success: false,
+      error:
+        "Request tidak valid."
+    }, 400);
+  }
+
+  const userId =
+    String(
+      body?.user_id || ""
+    ).trim();
+
+  const credits =
+    Number(
+      body?.credits
+    );
+
+  const description =
+    String(
+      body?.description ||
+      "Penyesuaian credit oleh admin"
+    ).trim();
+
+  if (!userId) {
+    return json({
+      success: false,
+      error:
+        "user_id wajib diberikan."
+    }, 400);
+  }
+
+  if (
+    !Number.isInteger(credits) ||
+    credits < 0
+  ) {
+    return json({
+      success: false,
+      error:
+        "Credit harus berupa bilangan bulat 0 atau lebih."
+    }, 400);
+  }
+
+  const response =
+    await supabaseRequest(
+      "/rest/v1/rpc/admin_adjust_credit",
+      {
+        method: "POST",
+
+        body:
+          JSON.stringify({
+            p_admin_user_id:
+              adminId,
+
+            p_user_id:
+              userId,
+
+            p_credits:
+              credits,
+
+            p_description:
+              description
+          })
+      },
+      env
+    );
+
+  const data =
+    await safeJson(response);
+
+  if (!response.ok) {
+    return json({
+      success: false,
+      error:
+        extractApiError(
+          data,
+          "Gagal mengubah credit."
+        )
+    }, response.status);
+  }
+
+  return json({
+    success: true,
+    result: data
+  });
+}
+
+
+// =========================================================
+// PROCESS TOPUP
+// =========================================================
+
+async function adminProcessTopup(
+  request,
+  env,
+  adminId
+) {
+  let body;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return json({
+      success: false,
+      error:
+        "Request tidak valid."
+    }, 400);
+  }
+
+  const requestId =
+    Number(
+      body?.request_id
+    );
+
+  const status =
+    String(
+      body?.status || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    !Number.isInteger(
+      requestId
+    ) ||
+    requestId <= 0
+  ) {
+    return json({
+      success: false,
+      error:
+        "request_id tidak valid."
+    }, 400);
+  }
+
+  if (
+    ![
+      "approved",
+      "rejected"
+    ].includes(status)
+  ) {
+    return json({
+      success: false,
+      error:
+        "Status harus approved atau rejected."
+    }, 400);
+  }
+
+  const response =
+    await supabaseRequest(
+      "/rest/v1/rpc/admin_process_topup",
+      {
+        method: "POST",
+
+        body:
+          JSON.stringify({
+            p_admin_user_id:
+              adminId,
+
+            p_request_id:
+              requestId,
+
+            p_status:
+              status
+          })
+      },
+      env
+    );
+
+  const data =
+    await safeJson(response);
+
+  if (!response.ok) {
+    return json({
+      success: false,
+      error:
+        extractApiError(
+          data,
+          "Gagal memproses top up."
+        )
+    }, response.status);
+  }
+
+  return json({
+    success: true,
+    result: data
+  });
+}
+
+
+// =========================================================
+// PROVIDER KEY
+// =========================================================
+
+async function getAdminProviderKey(
+  provider,
+  env
+) {
+  const map = {
+    veo: "veo",
+    gemini: "veo",
+    minimax: "minimax",
+    luma: "luma"
+  };
+
+  const providerName =
+    map[
+      String(provider)
+        .trim()
+        .toLowerCase()
+    ];
+
+  if (!providerName) {
+    throw new Error(
+      "Provider tidak didukung."
+    );
+  }
+
+  const response =
+    await supabaseRequest(
+      "/rest/v1/admin_provider_keys" +
+      `?provider=eq.${encodeURIComponent(providerName)}` +
+      "&select=api_key",
+      {
+        method: "GET"
+      },
+      env
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Gagal mengambil konfigurasi provider."
+    );
+  }
+
+  const rows =
+    await response.json();
+
+  const apiKey =
+    rows?.[0]?.api_key;
+
+  if (!apiKey) {
+    throw new Error(
+      `API key ${providerName} belum dikonfigurasi admin.`
+    );
+  }
+
+  return String(apiKey).trim();
+}
+
+
+async function providerKeyExists(
+  provider,
+  env
+) {
+  try {
+    const key =
+      await getAdminProviderKey(
+        provider,
+        env
+      );
+
+    return Boolean(key);
+
+  } catch {
+    return false;
+  }
+}
+
+
+// =========================================================
+// GENERATE ROUTER
+// =========================================================
+
+async function handleGenerate(
+  request,
+  env
+) {
+  let body;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return json({
+      success: false,
+      error:
+        "Request JSON tidak valid."
+    }, 400);
+  }
+
+  if (
+    !body ||
+    typeof body !== "object"
+  ) {
+    return json({
+      success: false,
+      error:
+        "Request tidak valid."
     }, 400);
   }
 
   const provider =
-    String(body.provider || "")
+    String(
+      body.provider || ""
+    )
       .trim()
       .toLowerCase();
 
   const prompt =
-    String(body.prompt || "").trim();
+    String(
+      body.prompt || ""
+    ).trim();
 
   if (!provider) {
     return json({
       success: false,
-      error: "Provider wajib dipilih."
+      error:
+        "Provider wajib dipilih."
     }, 400);
   }
 
   if (!prompt) {
     return json({
       success: false,
-      error: "Prompt wajib diisi."
+      error:
+        "Prompt wajib diisi."
     }, 400);
   }
 
   if (prompt.length > 2000) {
     return json({
       success: false,
-      error: "Prompt maksimal 2000 karakter."
+      error:
+        "Prompt maksimal 2000 karakter."
     }, 400);
   }
 
   switch (provider) {
+
     case "veo":
-      return await generateVeo(body, env);
+      return await generateVeo(
+        body,
+        env
+      );
 
     case "minimax":
-      return await generateMiniMax(body, env);
+      return await generateMiniMax(
+        body,
+        env
+      );
 
     case "luma":
-      return await generateLuma(body, env);
+      return await generateLuma(
+        body,
+        env
+      );
 
     case "pollinations":
     case "fal":
@@ -202,17 +1369,23 @@ async function handleGenerate(request, env) {
 // GOOGLE VEO
 // =========================================================
 
-async function generateVeo(body, env) {
-  const apiKey =
-    String(body.apiKey || "").trim() ||
-    env.GEMINI_API_KEY ||
-    env.GEMINI_API_KEY1;
+async function generateVeo(
+  body,
+  env
+) {
+  let apiKey;
 
-  if (!apiKey) {
+  try {
+    apiKey =
+      await getAdminProviderKey(
+        "veo",
+        env
+      );
+  } catch (error) {
     return json({
       success: false,
       error:
-        "API key Google Veo belum disimpan pada akun ini."
+        error.message
     }, 400);
   }
 
@@ -228,34 +1401,44 @@ async function generateVeo(body, env) {
       "veo-3.1-fast-generate-preview"
     );
 
-  if (!allowedModels.includes(model)) {
+  if (
+    !allowedModels.includes(model)
+  ) {
     return json({
       success: false,
-      error: "Model Veo tidak valid."
+      error:
+        "Model Veo tidak valid."
     }, 400);
   }
 
   let duration =
-    Number(body.duration || 8);
+    Number(
+      body.duration || 8
+    );
 
-  let resolution =
+  const resolution =
     String(
-      body.resolution || "720p"
+      body.resolution ||
+      "720p"
     ).toLowerCase();
 
   const aspectRatio =
     String(
-      body.aspectRatio || "16:9"
+      body.aspectRatio ||
+      "16:9"
     );
 
   const imageData =
-    body.imageData || null;
+    body.imageData ||
+    null;
 
-  // -------------------------------------------------------
-  // Duration
-  // -------------------------------------------------------
-
-  if (![4, 6, 8].includes(duration)) {
+  if (
+    ![
+      4,
+      6,
+      8
+    ].includes(duration)
+  ) {
     return json({
       success: false,
       error:
@@ -263,11 +1446,14 @@ async function generateVeo(body, env) {
     }, 400);
   }
 
-  // -------------------------------------------------------
-  // Aspect
-  // -------------------------------------------------------
-
-  if (!["16:9", "9:16"].includes(aspectRatio)) {
+  if (
+    ![
+      "16:9",
+      "9:16"
+    ].includes(
+      aspectRatio
+    )
+  ) {
     return json({
       success: false,
       error:
@@ -275,11 +1461,15 @@ async function generateVeo(body, env) {
     }, 400);
   }
 
-  // -------------------------------------------------------
-  // Resolution
-  // -------------------------------------------------------
-
-  if (!["720p", "1080p", "4k"].includes(resolution)) {
+  if (
+    ![
+      "720p",
+      "1080p",
+      "4k"
+    ].includes(
+      resolution
+    )
+  ) {
     return json({
       success: false,
       error:
@@ -287,12 +1477,9 @@ async function generateVeo(body, env) {
     }, 400);
   }
 
-  // -------------------------------------------------------
-  // Lite tidak mendukung 4K
-  // -------------------------------------------------------
-
   if (
-    model === "veo-3.1-lite-generate-preview" &&
+    model ===
+      "veo-3.1-lite-generate-preview" &&
     resolution === "4k"
   ) {
     return json({
@@ -301,10 +1488,6 @@ async function generateVeo(body, env) {
         "Veo 3.1 Lite tidak mendukung 4K."
     }, 400);
   }
-
-  // -------------------------------------------------------
-  // 1080p / 4K harus 8 detik
-  // -------------------------------------------------------
 
   if (
     (
@@ -316,30 +1499,26 @@ async function generateVeo(body, env) {
     duration = 8;
   }
 
-  // -------------------------------------------------------
-  // Image-to-video harus 8 detik
-  // -------------------------------------------------------
-
-  if (imageData && duration !== 8) {
+  if (
+    imageData &&
+    duration !== 8
+  ) {
     duration = 8;
   }
 
-  // -------------------------------------------------------
-  // Instance
-  // -------------------------------------------------------
-
   const instance = {
     prompt:
-      String(body.prompt || "").trim()
+      String(
+        body.prompt || ""
+      ).trim()
   };
 
-  // -------------------------------------------------------
-  // Character reference
-  // -------------------------------------------------------
-
   if (imageData) {
+
     const parsed =
-      parseDataUrl(imageData);
+      parseDataUrl(
+        imageData
+      );
 
     if (!parsed) {
       return json({
@@ -360,14 +1539,12 @@ async function generateVeo(body, env) {
     };
   }
 
-  // -------------------------------------------------------
-  // Parameters
-  // -------------------------------------------------------
-
   const parameters = {
     aspectRatio,
+
     durationSeconds:
       String(duration),
+
     resolution,
 
     personGeneration:
@@ -376,14 +1553,12 @@ async function generateVeo(body, env) {
         : "allow_all"
   };
 
-  // -------------------------------------------------------
-  // Seed
-  // -------------------------------------------------------
-
   if (
     body.seed !== undefined &&
     body.seed !== null &&
-    String(body.seed).trim() !== ""
+    String(
+      body.seed
+    ).trim() !== ""
   ) {
     const seed =
       Number(body.seed);
@@ -399,37 +1574,37 @@ async function generateVeo(body, env) {
       }, 400);
     }
 
-    parameters.seed = seed;
+    parameters.seed =
+      seed;
   }
-
-  // -------------------------------------------------------
-  // Google API
-  // -------------------------------------------------------
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predictLongRunning`;
 
   const response =
-    await fetch(endpoint, {
-      method: "POST",
+    await fetch(
+      endpoint,
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type":
-          "application/json",
+        headers: {
+          "Content-Type":
+            "application/json",
 
-        "x-goog-api-key":
-          apiKey
-      },
+          "x-goog-api-key":
+            apiKey
+        },
 
-      body:
-        JSON.stringify({
-          instances: [
-            instance
-          ],
+        body:
+          JSON.stringify({
+            instances: [
+              instance
+            ],
 
-          parameters
-        })
-    });
+            parameters
+          })
+      }
+    );
 
   const data =
     await safeJson(response);
@@ -480,17 +1655,23 @@ async function generateVeo(body, env) {
 // MINIMAX
 // =========================================================
 
-async function generateMiniMax(body, env) {
-  const apiKey =
-    String(body.apiKey || "").trim() ||
-    env.MINIMAX_API_KEY ||
-    env.MINIMAX_API_KEY1;
+async function generateMiniMax(
+  body,
+  env
+) {
+  let apiKey;
 
-  if (!apiKey) {
+  try {
+    apiKey =
+      await getAdminProviderKey(
+        "minimax",
+        env
+      );
+  } catch (error) {
     return json({
       success: false,
       error:
-        "API key MiniMax belum disimpan pada akun ini."
+        error.message
     }, 400);
   }
 
@@ -506,7 +1687,9 @@ async function generateMiniMax(body, env) {
       "MiniMax-Hailuo-2.3"
     );
 
-  if (!allowedModels.includes(model)) {
+  if (
+    !allowedModels.includes(model)
+  ) {
     return json({
       success: false,
       error:
@@ -515,17 +1698,26 @@ async function generateMiniMax(body, env) {
   }
 
   let duration =
-    Number(body.duration || 6);
+    Number(
+      body.duration || 6
+    );
 
   const resolution =
     String(
-      body.resolution || "768P"
+      body.resolution ||
+      "768P"
     ).toUpperCase();
 
   const imageData =
-    body.imageData || null;
+    body.imageData ||
+    null;
 
-  if (![6, 10].includes(duration)) {
+  if (
+    ![
+      6,
+      10
+    ].includes(duration)
+  ) {
     return json({
       success: false,
       error:
@@ -547,7 +1739,6 @@ async function generateMiniMax(body, env) {
     }, 400);
   }
 
-  // 1080P hanya 6 detik
   if (
     resolution === "1080P" &&
     duration !== 6
@@ -555,11 +1746,15 @@ async function generateMiniMax(body, env) {
     duration = 6;
   }
 
-  let firstFrameImage = null;
+  let firstFrameImage =
+    null;
 
   if (imageData) {
+
     const parsed =
-      parseDataUrl(imageData);
+      parseDataUrl(
+        imageData
+      );
 
     if (!parsed) {
       return json({
@@ -577,9 +1772,12 @@ async function generateMiniMax(body, env) {
     model,
 
     prompt:
-      String(body.prompt || "").trim(),
+      String(
+        body.prompt || ""
+      ).trim(),
 
     duration,
+
     resolution
   };
 
@@ -603,7 +1801,9 @@ async function generateMiniMax(body, env) {
         },
 
         body:
-          JSON.stringify(payload)
+          JSON.stringify(
+            payload
+          )
       }
     );
 
@@ -654,23 +1854,30 @@ async function generateMiniMax(body, env) {
 // LUMA
 // =========================================================
 
-async function generateLuma(body, env) {
-  const apiKey =
-    String(body.apiKey || "").trim() ||
-    env.LUMA_API_KEY ||
-    env.LUMA_API_KEY1;
+async function generateLuma(
+  body,
+  env
+) {
+  let apiKey;
 
-  if (!apiKey) {
+  try {
+    apiKey =
+      await getAdminProviderKey(
+        "luma",
+        env
+      );
+  } catch (error) {
     return json({
       success: false,
       error:
-        "API key Luma belum disimpan pada akun ini."
+        error.message
     }, 400);
   }
 
   const model =
     String(
-      body.model || "ray-flash-2"
+      body.model ||
+      "ray-flash-2"
     );
 
   const allowedModels = [
@@ -678,7 +1885,9 @@ async function generateLuma(body, env) {
     "ray-flash-2"
   ];
 
-  if (!allowedModels.includes(model)) {
+  if (
+    !allowedModels.includes(model)
+  ) {
     return json({
       success: false,
       error:
@@ -686,8 +1895,6 @@ async function generateLuma(body, env) {
     }, 400);
   }
 
-  // Luma membutuhkan URL publik
-  // untuk image-to-video.
   if (body.imageData) {
     return json({
       success: false,
@@ -708,7 +1915,8 @@ async function generateLuma(body, env) {
 
   const aspectRatio =
     String(
-      body.aspectRatio || "16:9"
+      body.aspectRatio ||
+      "16:9"
     );
 
   if (
@@ -724,10 +1932,13 @@ async function generateLuma(body, env) {
   }
 
   const payload = {
-    generation_type: "video",
+    generation_type:
+      "video",
 
     prompt:
-      String(body.prompt || "").trim(),
+      String(
+        body.prompt || ""
+      ).trim(),
 
     model,
 
@@ -735,34 +1946,48 @@ async function generateLuma(body, env) {
       aspectRatio
   };
 
-  // Loop
-  if (body.loop !== undefined) {
+  if (
+    body.loop !== undefined
+  ) {
     payload.loop =
-      Boolean(body.loop);
+      Boolean(
+        body.loop
+      );
   }
 
-  // Duration
   if (
     body.duration !== undefined &&
     body.duration !== null &&
-    String(body.duration).trim() !== ""
+    String(
+      body.duration
+    ).trim() !== ""
   ) {
     const duration =
-      Number(body.duration);
+      Number(
+        body.duration
+      );
 
-    if (Number.isFinite(duration)) {
-      payload.duration = duration;
+    if (
+      Number.isFinite(
+        duration
+      )
+    ) {
+      payload.duration =
+        duration;
     }
   }
 
-  // Resolution
   if (
     body.resolution !== undefined &&
     body.resolution !== null &&
-    String(body.resolution).trim() !== ""
+    String(
+      body.resolution
+    ).trim() !== ""
   ) {
     payload.resolution =
-      String(body.resolution);
+      String(
+        body.resolution
+      );
   }
 
   const response =
@@ -780,7 +2005,9 @@ async function generateLuma(body, env) {
         },
 
         body:
-          JSON.stringify(payload)
+          JSON.stringify(
+            payload
+          )
       }
     );
 
@@ -829,7 +2056,10 @@ async function generateLuma(body, env) {
 // STATUS POST
 // =========================================================
 
-async function handleStatusPost(request, env) {
+async function handleStatusPost(
+  request,
+  env
+) {
   let body;
 
   try {
@@ -843,7 +2073,10 @@ async function handleStatusPost(request, env) {
     }, 400);
   }
 
-  if (!body || typeof body !== "object") {
+  if (
+    !body ||
+    typeof body !== "object"
+  ) {
     return json({
       success: false,
       error:
@@ -858,11 +2091,6 @@ async function handleStatusPost(request, env) {
       .trim()
       .toLowerCase();
 
-  let apiKey =
-    String(
-      body.apiKey || ""
-    ).trim();
-
   if (!provider) {
     return json({
       success: false,
@@ -871,39 +2099,24 @@ async function handleStatusPost(request, env) {
     }, 400);
   }
 
-  // Fallback environment
-  if (!apiKey) {
-    if (provider === "veo") {
-      apiKey =
-        env.GEMINI_API_KEY ||
-        env.GEMINI_API_KEY1 ||
-        "";
-    }
+  let apiKey;
 
-    if (provider === "minimax") {
-      apiKey =
-        env.MINIMAX_API_KEY ||
-        env.MINIMAX_API_KEY1 ||
-        "";
-    }
-
-    if (provider === "luma") {
-      apiKey =
-        env.LUMA_API_KEY ||
-        env.LUMA_API_KEY1 ||
-        "";
-    }
-  }
-
-  if (!apiKey) {
+  try {
+    apiKey =
+      await getAdminProviderKey(
+        provider,
+        env
+      );
+  } catch (error) {
     return json({
       success: false,
       error:
-        "API key provider belum tersedia."
+        error.message
     }, 400);
   }
 
   switch (provider) {
+
     case "veo":
       return await statusVeo(
         body.operationName ||
@@ -938,25 +2151,36 @@ async function handleStatusPost(request, env) {
 // STATUS LEGACY GET
 // =========================================================
 
-async function handleStatus(request, env) {
+async function handleStatus(
+  request,
+  env
+) {
   const url =
     new URL(request.url);
 
   const provider =
     String(
-      url.searchParams.get("provider") || ""
+      url.searchParams.get(
+        "provider"
+      ) || ""
     )
       .trim()
       .toLowerCase();
 
   const operationName =
-    url.searchParams.get("operationName");
+    url.searchParams.get(
+      "operationName"
+    );
 
   const taskId =
-    url.searchParams.get("taskId");
+    url.searchParams.get(
+      "taskId"
+    );
 
   const id =
-    url.searchParams.get("id");
+    url.searchParams.get(
+      "id"
+    );
 
   if (!provider) {
     return json({
@@ -966,29 +2190,40 @@ async function handleStatus(request, env) {
     }, 400);
   }
 
+  let apiKey;
+
+  try {
+    apiKey =
+      await getAdminProviderKey(
+        provider,
+        env
+      );
+  } catch (error) {
+    return json({
+      success: false,
+      error:
+        error.message
+    }, 400);
+  }
+
   switch (provider) {
+
     case "veo":
       return await statusVeo(
         operationName || id,
-        env.GEMINI_API_KEY ||
-        env.GEMINI_API_KEY1 ||
-        ""
+        apiKey
       );
 
     case "minimax":
       return await statusMiniMax(
         taskId || id,
-        env.MINIMAX_API_KEY ||
-        env.MINIMAX_API_KEY1 ||
-        ""
+        apiKey
       );
 
     case "luma":
       return await statusLuma(
         id,
-        env.LUMA_API_KEY ||
-        env.LUMA_API_KEY1 ||
-        ""
+        apiKey
       );
 
     default:
@@ -1026,21 +2261,29 @@ async function statusVeo(
   }
 
   const cleanName =
-    String(operationName)
-      .replace(/^\/+/, "");
+    String(
+      operationName
+    )
+      .replace(
+        /^\/+/,
+        ""
+      );
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/${cleanName}`;
 
   const response =
-    await fetch(endpoint, {
-      method: "GET",
+    await fetch(
+      endpoint,
+      {
+        method: "GET",
 
-      headers: {
-        "x-goog-api-key":
-          apiKey
+        headers: {
+          "x-goog-api-key":
+            apiKey
+        }
       }
-    });
+    );
 
   const data =
     await safeJson(response);
@@ -1098,7 +2341,8 @@ async function statusVeo(
     success: true,
     status: "completed",
     provider: "veo",
-    videoUrl: videoUri
+    videoUrl:
+      videoUri
   });
 }
 
@@ -1131,14 +2375,17 @@ async function statusMiniMax(
     `https://api.minimax.io/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`;
 
   const response =
-    await fetch(endpoint, {
-      method: "GET",
+    await fetch(
+      endpoint,
+      {
+        method: "GET",
 
-      headers: {
-        "Authorization":
-          `Bearer ${apiKey}`
+        headers: {
+          "Authorization":
+            `Bearer ${apiKey}`
+        }
       }
-    });
+    );
 
   const data =
     await safeJson(response);
@@ -1210,7 +2457,8 @@ async function statusMiniMax(
       success: true,
       status: "completed",
       provider: "minimax",
-      videoUrl: downloadUrl
+      videoUrl:
+        downloadUrl
     });
   }
 
@@ -1275,14 +2523,17 @@ async function statusLuma(
     `https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(id)}`;
 
   const response =
-    await fetch(endpoint, {
-      method: "GET",
+    await fetch(
+      endpoint,
+      {
+        method: "GET",
 
-      headers: {
-        "Authorization":
-          `Bearer ${apiKey}`
+        headers: {
+          "Authorization":
+            `Bearer ${apiKey}`
+        }
       }
-    });
+    );
 
   const data =
     await safeJson(response);
@@ -1339,7 +2590,9 @@ async function statusLuma(
     });
   }
 
-  if (state === "completed") {
+  if (
+    state === "completed"
+  ) {
     return json({
       success: false,
       status: "failed",
@@ -1372,16 +2625,23 @@ async function handleVideoProxy(
 
   const provider =
     String(
-      url.searchParams.get("provider") || ""
+      url.searchParams.get(
+        "provider"
+      ) || ""
     ).toLowerCase();
 
-  // =======================================================
-  // VEO
-  // =======================================================
 
-  if (provider === "veo") {
+  // =====================================================
+  // VEO
+  // =====================================================
+
+  if (
+    provider === "veo"
+  ) {
     const target =
-      url.searchParams.get("url");
+      url.searchParams.get(
+        "url"
+      );
 
     if (!target) {
       return json({
@@ -1421,22 +2681,25 @@ async function handleVideoProxy(
       }, 403);
     }
 
-    const apiKey =
-      String(
-        request.headers.get(
-          "X-Provider-API-Key"
-        ) || ""
-      ).trim();
+    let apiKey;
 
-    if (!apiKey) {
+    try {
+      apiKey =
+        await getAdminProviderKey(
+          "veo",
+          env
+        );
+    } catch (error) {
       return json({
         success: false,
         error:
-          "API key Google Veo tidak diberikan."
+          error.message
       }, 400);
     }
 
-    targetUrl.searchParams.delete("key");
+    targetUrl.searchParams.delete(
+      "key"
+    );
 
     const response =
       await fetch(
@@ -1492,13 +2755,18 @@ async function handleVideoProxy(
     );
   }
 
-  // =======================================================
-  // MINIMAX
-  // =======================================================
 
-  if (provider === "minimax") {
+  // =====================================================
+  // MINIMAX
+  // =====================================================
+
+  if (
+    provider === "minimax"
+  ) {
     const fileId =
-      url.searchParams.get("fileId");
+      url.searchParams.get(
+        "fileId"
+      );
 
     if (!fileId) {
       return json({
@@ -1508,20 +2776,19 @@ async function handleVideoProxy(
       }, 400);
     }
 
-    const apiKey =
-      String(
-        request.headers.get(
-          "X-Provider-API-Key"
-        ) || ""
-      ).trim() ||
-      env.MINIMAX_API_KEY ||
-      env.MINIMAX_API_KEY1;
+    let apiKey;
 
-    if (!apiKey) {
+    try {
+      apiKey =
+        await getAdminProviderKey(
+          "minimax",
+          env
+        );
+    } catch (error) {
       return json({
         success: false,
         error:
-          "API key MiniMax belum tersedia."
+          error.message
       }, 400);
     }
 
@@ -1546,7 +2813,9 @@ async function handleVideoProxy(
         metadataResponse
       );
 
-    if (!metadataResponse.ok) {
+    if (
+      !metadataResponse.ok
+    ) {
       return json({
         success: false,
         error:
@@ -1570,11 +2839,6 @@ async function handleVideoProxy(
       }, 502);
     }
 
-    // -----------------------------------------------------
-    // Redirect ke URL file sementara MiniMax.
-    // API key tidak diteruskan ke URL.
-    // -----------------------------------------------------
-
     let targetUrl;
 
     try {
@@ -1588,7 +2852,10 @@ async function handleVideoProxy(
       }, 502);
     }
 
-    if (targetUrl.protocol !== "https:") {
+    if (
+      targetUrl.protocol !==
+      "https:"
+    ) {
       return json({
         success: false,
         error:
@@ -1596,20 +2863,24 @@ async function handleVideoProxy(
       }, 403);
     }
 
-    return new Response(null, {
-      status: 302,
+    return new Response(
+      null,
+      {
+        status: 302,
 
-      headers: {
-        ...corsHeaders(),
+        headers: {
+          ...corsHeaders(),
 
-        "Location":
-          targetUrl.toString(),
+          "Location":
+            targetUrl.toString(),
 
-        "Cache-Control":
-          "no-store"
+          "Cache-Control":
+            "no-store"
+        }
       }
-    });
+    );
   }
+
 
   return json({
     success: false,
@@ -1623,9 +2894,12 @@ async function handleVideoProxy(
 // DATA URL PARSER
 // =========================================================
 
-function parseDataUrl(dataUrl) {
+function parseDataUrl(
+  dataUrl
+) {
   if (
-    typeof dataUrl !== "string"
+    typeof dataUrl !==
+    "string"
   ) {
     return null;
   }
@@ -1644,14 +2918,19 @@ function parseDataUrl(dataUrl) {
 
   const base64 =
     match[2]
-      .replace(/\s/g, "");
+      .replace(
+        /\s/g,
+        ""
+      );
 
   if (!base64) {
     return null;
   }
 
   if (
-    !mimeType.startsWith("image/")
+    !mimeType.startsWith(
+      "image/"
+    )
   ) {
     return null;
   }
@@ -1667,7 +2946,9 @@ function parseDataUrl(dataUrl) {
 // SAFE JSON
 // =========================================================
 
-async function safeJson(response) {
+async function safeJson(
+  response
+) {
   const text =
     await response.text();
 
@@ -1677,6 +2958,7 @@ async function safeJson(response) {
 
   try {
     return JSON.parse(text);
+
   } catch {
     return {
       raw: text
@@ -1698,19 +2980,24 @@ function extractApiError(
   }
 
   if (
-    typeof data === "string"
+    typeof data ===
+    "string"
   ) {
     return data;
   }
 
   if (data.error) {
+
     if (
-      typeof data.error === "string"
+      typeof data.error ===
+      "string"
     ) {
       return data.error;
     }
 
-    if (data.error.message) {
+    if (
+      data.error.message
+    ) {
       return String(
         data.error.message
       );
@@ -1720,6 +3007,7 @@ function extractApiError(
       return JSON.stringify(
         data.error
       );
+
     } catch {
       return fallback;
     }
@@ -1754,7 +3042,7 @@ function corsHeaders() {
       "GET, POST, OPTIONS",
 
     "Access-Control-Allow-Headers":
-      "Content-Type, Authorization, X-Provider-API-Key",
+      "Content-Type, Authorization",
 
     "Access-Control-Max-Age":
       "86400"
