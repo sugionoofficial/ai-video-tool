@@ -1,4 +1,4 @@
-name = "gen-z-ai-video"
+name = "ai-video-tool"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 
