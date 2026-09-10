@@ -4,6 +4,10 @@ create extension if not exists pgcrypto;
 create table if not exists public.user_roles (user_id uuid primary key references auth.users(id) on delete cascade, role text not null default 'user' check(role in ('user','admin')));
 create table if not exists public.user_credits (user_id uuid primary key references auth.users(id) on delete cascade, credits integer not null default 0 check(credits>=0), updated_at timestamptz not null default now());
 
+create table if not exists public.credit_transactions (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, amount integer not null check(amount<>0), balance_after integer, type text not null check(type in ('generation','refund','admin_adjustment','topup')), note text not null default '', job_id uuid, admin_user_id uuid references auth.users(id) on delete set null, created_at timestamptz not null default now());
+create index if not exists credit_transactions_user_created_idx on public.credit_transactions(user_id,created_at desc);
+create index if not exists credit_transactions_job_idx on public.credit_transactions(job_id);
+
 -- Dynamic provider registry. API keys are server-side only and never exposed by the Worker.
 create table if not exists public.providers (
   id text primary key check(id ~ '^[a-z0-9][a-z0-9_-]{1,63}$'),
@@ -44,6 +48,7 @@ begin
   update user_credits set credits=credits-p_credit_cost,updated_at=now() where user_id=p_user_id and credits>=p_credit_cost returning credits into v_credits;
   if v_credits is null then raise exception 'Credit tidak mencukupi'; end if;
   insert into video_jobs(user_id,provider,credit_cost) values(p_user_id,p_provider,p_credit_cost) returning id into v_job;
+  insert into credit_transactions(user_id,amount,balance_after,type,note,job_id) values(p_user_id,-p_credit_cost,v_credits,'generation','Video generation',v_job);
   return jsonb_build_object('job_id',v_job,'credits_remaining',v_credits);
 end; $$;
 
@@ -54,6 +59,7 @@ begin
   if v_user is null then return jsonb_build_object('refunded',false); end if;
   update user_credits set credits=credits+v_amount,updated_at=now() where user_id=v_user returning credits into v_credits;
   update video_jobs set refunded=true,status='failed',updated_at=now() where id=p_job_id;
+  insert into credit_transactions(user_id,amount,balance_after,type,note,job_id) values(v_user,v_amount,v_credits,'refund','Generation gagal; credit dikembalikan',p_job_id);
   return jsonb_build_object('refunded',true,'credits_remaining',v_credits);
 end; $$;
 
@@ -63,8 +69,13 @@ begin
   select role into v_role from user_roles where user_id=p_admin_user_id;
   if v_role<>'admin' then raise exception 'Admin required'; end if;
   insert into user_credits(user_id,credits) values(p_user_id,0) on conflict(user_id) do nothing;
-  update user_credits set credits=credits+p_amount,updated_at=now() where user_id=p_user_id returning credits into v_credits;
-  if v_credits<0 then raise exception 'Credit tidak boleh negatif'; end if;
+  if not exists(select 1 from auth.users where id=p_user_id) then raise exception 'User tidak ditemukan'; end if;
+  if p_amount=0 then raise exception 'Amount tidak boleh 0'; end if;
+  select credits into v_credits from user_credits where user_id=p_user_id for update;
+  if v_credits is null then v_credits:=0; end if;
+  if v_credits+p_amount<0 then raise exception 'Credit tidak boleh negatif'; end if;
+  insert into user_credits(user_id,credits,updated_at) values(p_user_id,v_credits+p_amount,now()) on conflict(user_id) do update set credits=excluded.credits,updated_at=now() returning credits into v_credits;
+  insert into credit_transactions(user_id,amount,balance_after,type,note,admin_user_id) values(p_user_id,p_amount,v_credits,'admin_adjustment',coalesce(nullif(trim(p_note),''),'Admin adjustment'),p_admin_user_id);
   return jsonb_build_object('credits',v_credits);
 end; $$;
 
@@ -74,10 +85,11 @@ alter table public.providers enable row level security;
 alter table public.admin_provider_keys enable row level security;
 alter table public.video_jobs enable row level security;
 alter table public.app_settings enable row level security;
+alter table public.credit_transactions enable row level security;
 
 do $$ begin if not exists (select 1 from pg_policies where schemaname='public' and tablename='user_credits' and policyname='user_credits_self_select') then create policy user_credits_self_select on public.user_credits for select to authenticated using(auth.uid()=user_id); end if; end $$;
 do $$ begin if not exists (select 1 from pg_policies where schemaname='public' and tablename='video_jobs' and policyname='video_jobs_self_select') then create policy video_jobs_self_select on public.video_jobs for select to authenticated using(auth.uid()=user_id); end if; end $$;
--- No browser policy is created for providers/admin_provider_keys. Service-role Worker access only.
+-- No browser policy is created for providers/admin_provider_keys/credit_transactions. Service-role Worker access only.
 
 revoke all on function public.start_video_job(uuid,text,integer) from public;
 revoke all on function public.refund_video_job(uuid) from public;
