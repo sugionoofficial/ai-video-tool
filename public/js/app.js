@@ -792,6 +792,78 @@ async function loadTopups() {
 ========================================================= */
 
 function showPage(page) {
+  if (page === 'diagnostic') {
+  $('pageTitle').textContent = 'System Diagnostic';
+
+  $('pageContent').innerHTML = `
+    <div class="card">
+      <p>
+        Pemeriksaan sistem GEN-Z.AI tanpa menggunakan Console.
+      </p>
+
+      <button
+        id="runDiagnostic"
+        class="primary"
+        type="button"
+      >
+        PERIKSA SISTEM
+      </button>
+
+      <div
+        id="diagnosticResults"
+        style="margin-top:20px;"
+      ></div>
+
+      <pre
+        id="diagnosticDetails"
+        style="
+          display:none;
+          margin-top:20px;
+          padding:14px;
+          background:#0b0b0f;
+          border-radius:10px;
+          color:#aaa;
+          font-size:12px;
+          white-space:pre-wrap;
+          word-break:break-word;
+          overflow:auto;
+        "
+      ></pre>
+    </div>
+  `;
+
+  $('accountPage')?.classList.remove('hidden');
+  $('studio')?.classList.add('hidden');
+
+  $('pageBack')?.classList.remove('hidden');
+
+  closeMenu();
+
+  $('runDiagnostic')?.addEventListener(
+    'click',
+    async () => {
+      if (
+        window.GENZ_DIAGNOSTIC &&
+        typeof window.GENZ_DIAGNOSTIC.run === 'function'
+      ) {
+        await window.GENZ_DIAGNOSTIC.run();
+      } else {
+        $('diagnosticResults').innerHTML = `
+          <div style="
+            padding:14px;
+            border:1px solid #ff5c5c;
+            border-radius:10px;
+            color:#ff5c5c;
+          ">
+            System Diagnostic belum siap.
+          </div>
+        `;
+      }
+    }
+  );
+
+  return;
+}
 
   $('studio')?.classList.add(
     'hidden'
