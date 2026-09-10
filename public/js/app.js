@@ -76,7 +76,7 @@ const PROVIDERS = {
   },
 
   veo: {
-    name: "Google Veo",
+    name: "Gemini",
     badge: "ACTIVE",
     description: "Google Veo 3.1",
     active: true,
