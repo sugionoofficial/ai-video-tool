@@ -1,235 +1,237 @@
 /* =========================================================
    GEN-Z.AI VIDEO
+   public/js/video.js
 ========================================================= */
 
 (function () {
+  "use strict";
 
-  'use strict';
-
-  const GENZ = window.GENZ || (window.GENZ = {});
-
+  const GENZ =
+    window.GENZ ||
+    (window.GENZ = {});
 
   GENZ.video = {
-
     poll: null,
+    objectUrl: null,
 
-    objectUrl: null
-
-  };
-
-
-  /* =======================================================
-     STOP POLLING
-  ======================================================= */
-
-  GENZ.video.stopPolling =
-    function () {
-
-      if (
-        GENZ.video.poll
-      ) {
-
-        clearTimeout(
-          GENZ.video.poll
-        );
-
-        GENZ.video.poll =
-          null;
-
+    stopPolling() {
+      if (this.poll) {
+        clearTimeout(this.poll);
+        this.poll = null;
       }
+    },
 
-    };
-
-
-  /* =======================================================
-     CLEAR VIDEO
-  ======================================================= */
-
-  GENZ.video.clear =
-    function () {
-
-      GENZ.video.stopPolling();
-
+    clear() {
+      this.stopPolling();
 
       const video =
         document.getElementById(
-          'video'
+          "video"
         );
-
 
       const download =
         document.getElementById(
-          'download'
+          "downloadVideo"
+        ) ||
+        document.getElementById(
+          "download"
         );
 
-
       if (video) {
-
         video.pause();
 
         video.removeAttribute(
-          'src'
+          "src"
         );
 
         video.load();
 
         video.classList.add(
-          'hidden'
+          "hidden"
         );
-
       }
 
-
       if (download) {
-
         download.removeAttribute(
-          'href'
+          "href"
         );
 
         download.classList.add(
-          'hidden'
+          "hidden"
         );
-
       }
 
+      if (this.objectUrl) {
+        try {
+          URL.revokeObjectURL(
+            this.objectUrl
+          );
+        } catch (_) {}
+
+        this.objectUrl = null;
+      }
 
       if (
-        GENZ.video.objectUrl
+        GENZ.state
       ) {
-
-        try {
-
-          URL.revokeObjectURL(
-            GENZ.video.objectUrl
-          );
-
-        } catch {}
-
-        GENZ.video.objectUrl =
+        GENZ.state.currentVideoObjectUrl =
           null;
-
       }
+    },
 
-
-      GENZ.state.currentVideoObjectUrl =
-        null;
-
-    };
-
-
-  /* =======================================================
-     SHOW VIDEO
-  ======================================================= */
-
-  GENZ.video.show =
-    function (url) {
+    show(url) {
+      if (!url) {
+        throw new Error(
+          "URL video tidak ditemukan."
+        );
+      }
 
       const video =
         document.getElementById(
-          'video'
+          "video"
         );
-
 
       const download =
         document.getElementById(
-          'download'
+          "downloadVideo"
+        ) ||
+        document.getElementById(
+          "download"
         );
 
-
-      if (video) {
-
-        video.src =
-          url;
-
-        video.classList.remove(
-          'hidden'
+      const result =
+        document.getElementById(
+          "videoResult"
         );
 
-        video.load();
-
+      if (!video) {
+        throw new Error(
+          "Elemen video tidak ditemukan."
+        );
       }
 
+      video.src = url;
+      video.controls = true;
+      video.autoplay = false;
+      video.loop = false;
+      video.playsInline = true;
+
+      video.classList.remove(
+        "hidden"
+      );
+
+      if (result) {
+        result.classList.remove(
+          "hidden"
+        );
+      }
 
       if (download) {
+        download.href = url;
 
-        download.href =
-          url;
+        download.download =
+          "gen-z-ai-video.mp4";
 
         download.classList.remove(
-          'hidden'
+          "hidden"
         );
-
       }
 
-    };
+      video.load();
+    },
 
-
-  /* =======================================================
-     GET VIDEO WITH TOKEN
-  ======================================================= */
-
-  GENZ.video.fetchProtected =
-    async function (url) {
-
+    async fetchProtected(url) {
       if (
         !GENZ.auth ||
         typeof GENZ.auth.token !==
-          'function'
+          "function"
       ) {
-
         throw new Error(
-          'Auth client belum siap.'
+          "Auth client belum siap."
         );
-
       }
-
 
       const token =
         await GENZ.auth.token();
 
+      if (!token) {
+        throw new Error(
+          "Sesi login tidak valid."
+        );
+      }
 
       const response =
         await fetch(
           url,
           {
+            method: "GET",
+
             headers: {
               Authorization:
                 `Bearer ${token}`
-            }
+            },
+
+            credentials: "include"
           }
         );
 
-
       if (!response.ok) {
+        let message =
+          "Gagal mengambil file video.";
+
+        try {
+          const data =
+            await response.json();
+
+          message =
+            data.error ||
+            data.message ||
+            message;
+        } catch (_) {}
 
         throw new Error(
-          'Gagal mengambil file video.'
+          message
         );
-
       }
-
 
       const blob =
         await response.blob();
 
+      if (!blob.size) {
+        throw new Error(
+          "File video kosong."
+        );
+      }
 
+      /*
+       * Hanya buat object URL
+       * SATU KALI.
+       */
       const objectUrl =
         URL.createObjectURL(
           blob
         );
 
+      if (this.objectUrl) {
+        try {
+          URL.revokeObjectURL(
+            this.objectUrl
+          );
+        } catch (_) {}
+      }
 
-      GENZ.video.objectUrl =
+      this.objectUrl =
         objectUrl;
 
-
-      GENZ.state.currentVideoObjectUrl =
-        objectUrl;
-
+      if (
+        GENZ.state
+      ) {
+        GENZ.state.currentVideoObjectUrl =
+          objectUrl;
+      }
 
       return objectUrl;
-
-    };
-
+    }
+  };
 
 })();
