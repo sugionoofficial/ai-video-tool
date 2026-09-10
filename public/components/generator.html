@@ -1,0 +1,219 @@
+<!-- =========================================================
+     GEN-Z.AI - GENERATOR COMPONENT
+========================================================= -->
+
+<section id="studio" class="generator-page">
+
+  <div class="generator-card">
+
+    <div class="generator-header">
+      <h2>AI Video Generator</h2>
+      <p>
+        Buat video realistis menggunakan AI
+      </p>
+    </div>
+
+
+    <!-- =====================================================
+         PROVIDER
+    ====================================================== -->
+
+    <div class="form-group">
+
+      <label for="provider">
+        AI Engine
+      </label>
+
+      <select id="provider">
+        <option value="veo">
+          Veo
+        </option>
+
+        <option value="minimax">
+          MiniMax
+        </option>
+
+        <option value="luma">
+          Luma
+        </option>
+      </select>
+
+    </div>
+
+
+    <!-- =====================================================
+         IMAGE REFERENCE
+    ====================================================== -->
+
+    <div class="form-group">
+
+      <label for="image">
+        Gambar Referensi
+      </label>
+
+      <input
+        id="image"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+      >
+
+      <small>
+        Maksimal 12 MB
+      </small>
+
+      <div
+        id="imagePreview"
+        class="image-preview hidden">
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         PROMPT
+    ====================================================== -->
+
+    <div class="form-group">
+
+      <label for="prompt">
+        Prompt Video
+      </label>
+
+      <textarea
+        id="prompt"
+        rows="7"
+        placeholder="Tuliskan prompt video yang ingin dibuat..."
+      ></textarea>
+
+    </div>
+
+
+    <!-- =====================================================
+         RATIO
+    ====================================================== -->
+
+    <div class="form-row">
+
+      <div class="form-group">
+
+        <label for="ratio">
+          Rasio
+        </label>
+
+        <select id="ratio">
+
+          <option value="9:16">
+            9:16 Portrait
+          </option>
+
+          <option value="16:9">
+            16:9 Landscape
+          </option>
+
+          <option value="1:1">
+            1:1 Square
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <!-- ===================================================
+           DURATION
+      ==================================================== -->
+
+      <div class="form-group">
+
+        <label for="duration">
+          Durasi
+        </label>
+
+        <select id="duration">
+
+          <option value="5">
+            5 detik
+          </option>
+
+          <option value="8" selected>
+            8 detik
+          </option>
+
+          <option value="10">
+            10 detik
+          </option>
+
+        </select>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         GENERATE BUTTON
+    ====================================================== -->
+
+    <button
+      id="generateBtn"
+      type="button"
+      class="generate-btn">
+
+      Generate Video
+
+    </button>
+
+
+    <!-- =====================================================
+         STATUS
+    ====================================================== -->
+
+    <div
+      id="status"
+      class="generator-status">
+    </div>
+
+
+    <!-- =====================================================
+         VIDEO RESULT
+    ====================================================== -->
+
+    <section
+      id="videoResult"
+      class="video-result hidden">
+
+      <div class="result-header">
+
+        <h3>
+          Hasil Video
+        </h3>
+
+      </div>
+
+
+      <video
+        id="video"
+        controls
+        playsinline>
+      </video>
+
+
+      <div class="video-actions">
+
+        <a
+          id="downloadVideo"
+          class="download-btn"
+          href="#"
+          download="gen-z-ai-video.mp4">
+
+          Download Video
+
+        </a>
+
+      </div>
+
+    </section>
+
+  </div>
+
+</section>
