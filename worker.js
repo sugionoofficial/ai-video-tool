@@ -146,6 +146,116 @@ export default {
 };
 
 // =========================================================
+// ADMIN GET CONTACT
+// =========================================================
+
+async function adminGetContact(env) {
+  const response = await supabaseRequest(
+    "/rest/v1/app_settings" +
+    "?setting_key=eq.admin_contact_url" +
+    "&select=setting_key,setting_value",
+    {
+      method: "GET"
+    },
+    env
+  );
+
+  if (!response.ok) {
+    const data = await safeJson(response);
+
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal mengambil kontak admin."
+      )
+    }, response.status);
+  }
+
+  const rows = await response.json();
+
+  return json({
+    success: true,
+
+    url:
+      rows?.[0]?.setting_value || ""
+  });
+}
+
+// =========================================================
+// ADMIN SAVE CONTACT
+// =========================================================
+
+async function adminSaveContact(
+  request,
+  env
+) {
+  let body;
+
+  try {
+    body = await request.json();
+  } catch {
+    return json({
+      success: false,
+      error: "Request tidak valid."
+    }, 400);
+  }
+
+  const url = String(
+    body?.url || ""
+  ).trim();
+
+  if (url.length > 1000) {
+    return json({
+      success: false,
+      error: "Kontak admin terlalu panjang."
+    }, 400);
+  }
+
+  const response = await supabaseRequest(
+    "/rest/v1/app_settings",
+    {
+      method: "POST",
+
+      headers: {
+        "Prefer":
+          "resolution=merge-duplicates,return=minimal"
+      },
+
+      body: JSON.stringify({
+        setting_key:
+          "admin_contact_url",
+
+        setting_value:
+          url,
+
+        updated_at:
+          new Date().toISOString()
+      })
+    },
+    env
+  );
+
+  if (!response.ok) {
+    const data = await safeJson(response);
+
+    return json({
+      success: false,
+      error: extractApiError(
+        data,
+        "Gagal menyimpan kontak admin."
+      )
+    }, response.status);
+  }
+
+  return json({
+    success: true,
+    message:
+      "Kontak admin berhasil disimpan."
+  });
+}
+
+// =========================================================
 // ADMIN SAVE PROVIDER
 // =========================================================
 
