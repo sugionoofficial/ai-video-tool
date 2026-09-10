@@ -1812,7 +1812,41 @@ function setupEvents() {
   );
 }
 
+window.addEventListener(
+  'genz-auth-login',
+  async function () {
+    console.log(
+      '[GEN-Z.AI] Login event diterima.'
+    );
 
+    try {
+      await refresh();
+    } catch (error) {
+      console.error(
+        '[GEN-Z.AI] Refresh setelah login gagal:',
+        error
+      );
+    }
+  }
+);
+
+window.addEventListener(
+  'genz-auth-logout',
+  async function () {
+    console.log(
+      '[GEN-Z.AI] Logout event diterima.'
+    );
+
+    try {
+      await refresh();
+    } catch (error) {
+      console.error(
+        '[GEN-Z.AI] Refresh setelah logout gagal:',
+        error
+      );
+    }
+  }
+);
 /* =========================================================
    SUPABASE BOOTSTRAP
 ========================================================= */
