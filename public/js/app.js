@@ -145,6 +145,129 @@ function showLoggedInUI() {
   $('backToStudio')?.classList.add('hidden');
   $('pageBack')?.classList.add('hidden');
 }
+/* =========================================================
+ACCOUNT BUTTON FORCE FIX
+========================================================= */
+
+function ensureAccountButton() {
+  const topbar =
+    document.querySelector('.topbar');
+
+  if (!topbar) return null;
+
+  let account =
+    topbar.querySelector('.account');
+
+  /*
+   * Jika container account belum ada,
+   * buat otomatis.
+   */
+  if (!account) {
+    account =
+      document.createElement('div');
+
+    account.className = 'account';
+
+    topbar.appendChild(account);
+  }
+
+  let button =
+    document.getElementById('accountBtn');
+
+  /*
+   * Jika tombol akun belum ada,
+   * buat otomatis.
+   */
+  if (!button) {
+    button =
+      document.createElement('button');
+
+    button.id = 'accountBtn';
+    button.type = 'button';
+    button.className = 'account-btn';
+
+    button.setAttribute(
+      'aria-label',
+      'Menu akun'
+    );
+
+    button.innerHTML = `
+      <span id="userEmail">—</span>
+      <strong id="credits">— credit</strong>
+      <span aria-hidden="true">⌄</span>
+    `;
+
+    account.prepend(button);
+  }
+
+  /*
+   * Pastikan tombol benar-benar terlihat.
+   */
+  button.classList.remove('hidden');
+  button.removeAttribute('hidden');
+
+  button.style.setProperty(
+    'display',
+    'flex',
+    'important'
+  );
+
+  button.style.setProperty(
+    'visibility',
+    'visible',
+    'important'
+  );
+
+  button.style.setProperty(
+    'opacity',
+    '1',
+    'important'
+  );
+
+  button.style.setProperty(
+    'position',
+    'relative',
+    'important'
+  );
+
+  button.style.setProperty(
+    'z-index',
+    '9999',
+    'important'
+  );
+
+  account.style.setProperty(
+    'display',
+    'flex',
+    'important'
+  );
+
+  account.style.setProperty(
+    'visibility',
+    'visible',
+    'important'
+  );
+
+  account.style.setProperty(
+    'opacity',
+    '1',
+    'important'
+  );
+
+  account.style.setProperty(
+    'position',
+    'relative',
+    'important'
+  );
+
+  account.style.setProperty(
+    'z-index',
+    '9999',
+    'important'
+  );
+
+  return button;
+}
 
 function showLoggedOutUI() {
   const auth = $('auth');
