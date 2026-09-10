@@ -1,5 +1,512 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GEN-Z.AI — AI Video</title><link rel="stylesheet" href="/style.css"></head><body><main class="shell"><header class="topbar"><button id="backToStudio" class="icon-btn hidden" aria-label="Kembali">←</button><div class="brand"><h1>GEN-Z.AI</h1><p>AI Video Studio — Provider dinamis</p></div><div class="account"><button id="accountBtn" class="account-btn hidden"><span id="userEmail">—</span><strong id="credits">— credit</strong><span>⌄</span></button><div id="accountMenu" class="account-menu hidden"><div class="menu-email" id="menuEmail">—</div><button data-page="profile">Profil</button><button data-page="credit">Kredit</button><button data-page="topup">Top-up Kredit</button><button id="adminPanel" class="hidden">Admin Panel</button><button id="contactAdmin">Kontak Admin</button><button id="logout" class="danger">Log out</button></div></div></header>
-<section id="auth" class="card auth-card"><h2>Masuk</h2><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password"><button id="login">Login</button><p id="authMsg"></p></section>
-<section id="studio" class="card hidden"><div id="providers" class="providers"><span>Memuat provider...</span></div><label>Model<select id="model"></select></label><div class="grid"><label>Durasi<select id="duration"></select></label><label>Aspect<select id="aspect"></select></label><label>Resolusi<select id="resolution"></select></label></div><label>Character / First Frame <input id="image" type="file" accept="image/*"></label><label>Prompt<textarea id="prompt" maxlength="2000" rows="7" placeholder="Deskripsikan video yang ingin dibuat..."></textarea></label><button id="generate" class="primary">Generate Video</button><p id="status"></p><video id="video" controls class="hidden"></video><a id="download" class="hidden" download="gen-z-ai.mp4">Download Video</a></section>
-<section id="accountPage" class="card hidden"><div class="page-head"><h2 id="pageTitle">Profil</h2><button id="pageBack">← Kembali</button></div><div id="pageContent"></div></section>
-</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/js/config.js"></script><script src="/js/app.js"></script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GEN-Z.AI</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+  <main class="shell">
+
+    <!-- =========================
+         LOGIN
+    ========================== -->
+    <section id="auth" class="login-page">
+
+      <div class="login-box">
+
+        <div class="login-brand">
+          <h1>GEN-Z.AI</h1>
+          <p>Generate Video Realistis</p>
+        </div>
+
+        <div class="login-form">
+
+          <input
+            id="email"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+          >
+
+          <input
+            id="password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+          >
+
+          <button id="login" class="login-main">
+            LOGIN
+          </button>
+
+          <p id="authMsg" class="auth-message"></p>
+
+          <div class="login-actions">
+
+            <button
+              type="button"
+              id="register"
+              class="login-secondary"
+            >
+              DAFTAR
+            </button>
+
+            <button
+              type="button"
+              id="forgotPassword"
+              class="login-secondary"
+            >
+              LUPA PASSWORD
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         STUDIO
+    ========================== -->
+    <section id="studio" class="card hidden">
+
+      <header class="topbar">
+        <button
+          id="backToStudio"
+          class="icon-btn hidden"
+          aria-label="Kembali"
+        >
+          ←
+        </button>
+
+        <div class="brand">
+          <h1>GEN-Z.AI</h1>
+          <p>Generate Video Realistis</p>
+        </div>
+
+        <div class="account">
+
+          <button id="accountBtn" class="account-btn hidden">
+            <span id="userEmail">—</span>
+            <strong id="credits">— credit</strong>
+            <span>⌄</span>
+          </button>
+
+          <div id="accountMenu" class="account-menu hidden">
+
+            <div
+              class="menu-email"
+              id="menuEmail"
+            >
+              —
+            </div>
+
+            <button data-page="profile">
+              Profil
+            </button>
+
+            <button data-page="credit">
+              Kredit
+            </button>
+
+            <button data-page="topup">
+              Top-up Kredit
+            </button>
+
+            <button id="adminPanel" class="hidden">
+              Admin Panel
+            </button>
+
+            <button id="contactAdmin">
+              Kontak Admin
+            </button>
+
+            <button id="logout" class="danger">
+              Log out
+            </button>
+
+          </div>
+
+        </div>
+      </header>
+
+
+      <div
+        id="providers"
+        class="providers"
+      >
+        <span>Memuat provider...</span>
+      </div>
+
+
+      <label>
+        Model
+        <select id="model"></select>
+      </label>
+
+
+      <div class="grid">
+
+        <label>
+          Durasi
+          <select id="duration"></select>
+        </label>
+
+        <label>
+          Aspect
+          <select id="aspect"></select>
+        </label>
+
+        <label>
+          Resolusi
+          <select id="resolution"></select>
+        </label>
+
+      </div>
+
+
+      <label>
+        Character / First Frame
+        <input
+          id="image"
+          type="file"
+          accept="image/*"
+        >
+      </label>
+
+
+      <label>
+        Prompt
+
+        <textarea
+          id="prompt"
+          maxlength="2000"
+          rows="7"
+          placeholder="Deskripsikan video yang ingin dibuat..."
+        ></textarea>
+
+      </label>
+
+
+      <button
+        id="generate"
+        class="primary"
+      >
+        Generate Video
+      </button>
+
+
+      <p id="status"></p>
+
+
+      <video
+        id="video"
+        controls
+        class="hidden"
+      ></video>
+
+
+      <a
+        id="download"
+        class="hidden"
+        download="gen-z-ai.mp4"
+      >
+        Download Video
+      </a>
+
+    </section>
+
+
+    <!-- =========================
+         ACCOUNT PAGE
+    ========================== -->
+    <section
+      id="accountPage"
+      class="card hidden"
+    >
+
+      <div class="page-head">
+
+        <h2 id="pageTitle">
+          Profil
+        </h2>
+
+        <button id="pageBack">
+          ← Kembali
+        </button>
+
+      </div>
+
+      <div id="pageContent"></div>
+
+    </section>
+
+  </main>
+
+
+  <!-- SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- CONFIG -->
+  <script src="/js/config.js"></script>
+
+  <!-- APP -->
+  <script src="/js/app.js"></script>
+
+
+  <!-- =========================
+       LOGIN REGISTER / RESET
+  ========================== -->
+  <script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+      const registerButton =
+        document.getElementById("register");
+
+      const forgotButton =
+        document.getElementById("forgotPassword");
+
+      const emailInput =
+        document.getElementById("email");
+
+      const passwordInput =
+        document.getElementById("password");
+
+      const authMessage =
+        document.getElementById("authMsg");
+
+
+      /*
+       * DAFTAR
+       */
+      registerButton.addEventListener("click", async function () {
+
+        const email =
+          emailInput.value.trim();
+
+        const password =
+          passwordInput.value;
+
+
+        if (!email) {
+
+          authMessage.textContent =
+            "Masukkan email terlebih dahulu.";
+
+          return;
+
+        }
+
+
+        if (!password || password.length < 6) {
+
+          authMessage.textContent =
+            "Password minimal 6 karakter.";
+
+          return;
+
+        }
+
+
+        try {
+
+          registerButton.disabled = true;
+
+          authMessage.textContent =
+            "Mendaftarkan akun...";
+
+
+          const client =
+            window.supabase ||
+            window.supabaseJs;
+
+
+          if (!client) {
+
+            throw new Error(
+              "Supabase belum siap."
+            );
+
+          }
+
+
+          /*
+           * app.js membuat instance Supabase
+           * secara internal.
+           *
+           * Tunggu sebentar bila instance belum
+           * tersedia pada saat tombol ditekan.
+           */
+
+          if (
+            typeof window.supabaseClient ===
+            "undefined"
+          ) {
+
+            /*
+             * Login utama tetap menggunakan
+             * instance Supabase yang dibuat
+             * oleh app.js.
+             *
+             * Bila belum tersedia, tampilkan
+             * pesan yang jelas.
+             */
+
+            if (
+              !window.__GENZ_SUPABASE
+            ) {
+
+              throw new Error(
+                "Sistem autentikasi belum siap. Muat ulang halaman."
+              );
+
+            }
+
+          }
+
+
+          const sb =
+            window.__GENZ_SUPABASE;
+
+
+          const { data, error } =
+            await sb.auth.signUp({
+
+              email: email,
+
+              password: password
+
+            });
+
+
+          if (error) {
+
+            throw error;
+
+          }
+
+
+          if (
+            data &&
+            data.user &&
+            !data.session
+          ) {
+
+            authMessage.textContent =
+              "Pendaftaran berhasil. Periksa email untuk verifikasi.";
+
+          } else {
+
+            authMessage.textContent =
+              "Pendaftaran berhasil.";
+
+          }
+
+        } catch (error) {
+
+          authMessage.textContent =
+            error.message ||
+            "Pendaftaran gagal.";
+
+        } finally {
+
+          registerButton.disabled = false;
+
+        }
+
+      });
+
+
+      /*
+       * LUPA PASSWORD
+       */
+      forgotButton.addEventListener("click", async function () {
+
+        const email =
+          emailInput.value.trim();
+
+
+        if (!email) {
+
+          authMessage.textContent =
+            "Masukkan email terlebih dahulu.";
+
+          emailInput.focus();
+
+          return;
+
+        }
+
+
+        try {
+
+          forgotButton.disabled = true;
+
+          authMessage.textContent =
+            "Mengirim email pemulihan...";
+
+
+          const sb =
+            window.__GENZ_SUPABASE;
+
+
+          if (!sb) {
+
+            throw new Error(
+              "Sistem autentikasi belum siap. Muat ulang halaman."
+            );
+
+          }
+
+
+          const redirectUrl =
+            window.location.origin;
+
+
+          const { error } =
+            await sb.auth.resetPasswordForEmail(
+              email,
+              {
+                redirectTo: redirectUrl
+              }
+            );
+
+
+          if (error) {
+
+            throw error;
+
+          }
+
+
+          authMessage.textContent =
+            "Link reset password telah dikirim ke email.";
+
+        } catch (error) {
+
+          authMessage.textContent =
+            error.message ||
+            "Gagal mengirim email reset password.";
+
+        } finally {
+
+          forgotButton.disabled = false;
+
+        }
+
+      });
+
+    });
+
+  </script>
+
+</body>
+</html>
