@@ -152,7 +152,11 @@ async function handleVideo(request,env){const user=await requireUser(request,env
 async function accountApi(request,env){
   const user=await requireUser(request,env);
   const rows=await rowsForAccount(user.id,env);
-  return json({success:true,user:{id:user.id,email:user.email||null},credits:Number(rows?.[0]?.credits||0)},200,env);
+  const roleRows=await rows(`/rest/v1/user_roles?user_id=eq.${encodeURIComponent(user.id)}&role=eq.admin&select=user_id`,env);
+  const isAdmin=Array.isArray(roleRows)&&roleRows.length>0;
+  const contactRes=await sb('/rest/v1/app_settings?setting_key=eq.admin_contact_url&select=setting_value',{},env);
+  const contactRows=contactRes.ok?await contactRes.json():[];
+  return json({success:true,user:{id:user.id,email:user.email||null},credits:Number(rows?.[0]?.credits||0),isAdmin,adminContactUrl:contactRows?.[0]?.setting_value||''},200,env);
 }
 async function rowsForAccount(userId,env){
   const res=await sb(`/rest/v1/user_credits?user_id=eq.${encodeURIComponent(userId)}&select=credits`,{},env);
