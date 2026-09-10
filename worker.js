@@ -456,7 +456,61 @@ async function handleAdminApi(
       error:
         "Admin endpoint tidak ditemukan."
     }, 404);
+    
+// ===================================================
+// PROVIDER CONFIG
+// ===================================================
 
+if (
+  url.pathname === "/api/admin/providers" &&
+  request.method === "GET"
+) {
+  return await adminListProviders(env);
+}
+
+if (
+  url.pathname === "/api/admin/providers" &&
+  request.method === "POST"
+) {
+  return await adminSaveProvider(
+    request,
+    env
+  );
+}
+
+
+// ===================================================
+// TOPUP LIST
+// ===================================================
+
+if (
+  url.pathname === "/api/admin/topups" &&
+  request.method === "GET"
+) {
+  return await adminListTopups(env);
+}
+
+
+// ===================================================
+// ADMIN CONTACT
+// ===================================================
+
+if (
+  url.pathname === "/api/admin/contact" &&
+  request.method === "GET"
+) {
+  return await adminGetContact(env);
+}
+
+if (
+  url.pathname === "/api/admin/contact" &&
+  request.method === "POST"
+) {
+  return await adminSaveContact(
+    request,
+    env
+  );
+}
   } catch (error) {
 
     if (
