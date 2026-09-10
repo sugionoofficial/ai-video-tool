@@ -62,7 +62,10 @@ function opts(el, arr) {
   if (!el) return;
 
   el.innerHTML = (arr || [])
-    .map(x => `<option value="${escapeAttr(x)}">${escapeHtml(x)}</option>`)
+    .map(
+      x =>
+        `<option value="${escapeAttr(x)}">${escapeHtml(x)}</option>`
+    )
     .join('');
 }
 
@@ -70,13 +73,14 @@ function opts(el, arr) {
 function escapeHtml(s) {
   return String(s ?? '').replace(
     /[&<>'"]/g,
-    c => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      "'": '&#39;',
-      '"': '&quot;'
-    }[c])
+    c =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[c])
   );
 }
 
@@ -84,13 +88,14 @@ function escapeHtml(s) {
 function escapeAttr(s) {
   return String(s ?? '').replace(
     /[&<>'"]/g,
-    c => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      "'": '&#39;',
-      '"': '&quot;'
-    }[c])
+    c =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[c])
   );
 }
 
@@ -104,10 +109,10 @@ function selectProvider(p) {
 
   document
     .querySelectorAll('.provider')
-    .forEach(b => {
-      b.classList.toggle(
+    .forEach(button => {
+      button.classList.toggle(
         'active',
-        b.dataset.provider === p
+        button.dataset.provider === p
       );
     });
 
@@ -135,19 +140,22 @@ function renderProviders() {
   box.innerHTML = '';
 
   providers.forEach(p => {
-    const b = document.createElement('button');
+    const button =
+      document.createElement('button');
 
-    b.className = 'provider';
-    b.dataset.provider = p.id;
+    button.className = 'provider';
+    button.dataset.provider = p.id;
 
-    b.innerHTML = `
+    button.innerHTML = `
       ${escapeHtml(p.name)}
       <small>${escapeHtml(p.adapter)}</small>
     `;
 
-    b.onclick = () => selectProvider(p.id);
+    button.onclick = () => {
+      selectProvider(p.id);
+    };
 
-    box.append(b);
+    box.append(button);
   });
 
   if (providers[0]) {
@@ -166,19 +174,22 @@ function renderProviders() {
 
 
 async function loadProviders() {
-  const r = await fetch('/api/providers', {
-    cache: 'no-store'
-  });
+  const r =
+    await fetch('/api/providers', {
+      cache: 'no-store'
+    });
 
   const d = await r.json();
 
   if (!r.ok || d.success === false) {
     throw Error(
-      d.error || 'Gagal memuat provider'
+      d.error ||
+      'Gagal memuat provider'
     );
   }
 
-  providers = d.providers || [];
+  providers =
+    d.providers || [];
 
   renderProviders();
 }
@@ -190,16 +201,24 @@ async function loadProviders() {
 
 async function token() {
   if (!supabase) {
-    throw Error('Supabase belum siap.');
+    throw Error(
+      'Supabase belum siap.'
+    );
   }
 
   const {
     data,
     error
-  } = await supabase.auth.getSession();
+  } =
+    await supabase.auth.getSession();
 
-  if (error || !data.session) {
-    throw Error('Silakan login.');
+  if (
+    error ||
+    !data.session
+  ) {
+    throw Error(
+      'Silakan login.'
+    );
   }
 
   return data.session.access_token;
@@ -212,36 +231,47 @@ async function api(
   method = 'POST',
   extraHeaders = {}
 ) {
-  const t = await token();
+  const t =
+    await token();
 
-  const r = await fetch(path, {
-    method,
+  const r =
+    await fetch(path, {
+      method,
 
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${t}`,
-      ...extraHeaders
-    },
+      headers: {
+        'Content-Type':
+          'application/json',
 
-    body:
-      body === undefined
-        ? undefined
-        : JSON.stringify(body)
-  });
+        Authorization:
+          `Bearer ${t}`,
+
+        ...extraHeaders
+      },
+
+      body:
+        body === undefined
+          ? undefined
+          : JSON.stringify(body)
+    });
 
   let d;
 
   try {
-    d = await r.json();
+    d =
+      await r.json();
   } catch {
     throw Error(
       `Server mengembalikan respons tidak valid (${r.status}).`
     );
   }
 
-  if (!r.ok || d.success === false) {
+  if (
+    !r.ok ||
+    d.success === false
+  ) {
     throw Error(
-      d.error || 'Request gagal'
+      d.error ||
+      'Request gagal'
     );
   }
 
@@ -254,309 +284,167 @@ async function api(
 ========================================================= */
 
 async function refresh() {
-  if (!supabase) return;
-
-  const {
-    data
-  } = await supabase.auth.getUser();
-
-  const user = data?.user;
-
-  if (!user) {
-    account = null;
-
-    $('auth')?.classList.remove('hidden');
-    $('studio')?.classList.add('hidden');
-
-    $('accountBtn')?.classList.add('hidden');
-    $('accountMenu')?.classList.add('hidden');
-
-    return;
-  }
-
-  $('auth')?.classList.add('hidden');
-  $('studio')?.classList.remove('hidden');
-
-  $('accountBtn')?.classList.remove('hidden');
-
-  if ($('userEmail')) {
-    $('userEmail').textContent =
-      user.email || '';
-  }
-
-  if ($('menuEmail')) {
-    $('menuEmail').textContent =
-      user.email || '';
-  }
-
-  try {
-    const d = await api(
-      '/api/account/credits',
-      undefined,
-      'GET'
-    );
-
-    account = d;
-
-    if ($('credits')) {
-      $('credits').textContent =
-        `${d.credits ?? 0} credit`;
-    }
-
-    $('adminPanel')?.classList.toggle(
-      'hidden',
-      !d.isAdmin
-    );
-
-    $('contactAdmin')?.classList.toggle(
-      'hidden',
-      Boolean(d.isAdmin)
-    );
-
-  } catch (e) {
-    if ($('credits')) {
-      $('credits').textContent =
-        '— credit';
-    }
-  }
-}
-
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-async function login() {
   if (!supabase) {
-    $('authMsg').textContent =
-      'Supabase belum siap.';
     return;
   }
-
-  const email =
-    $('email')?.value.trim() || '';
-
-  const password =
-    $('password')?.value || '';
-
-  if (!email || !password) {
-    $('authMsg').textContent =
-      'Email dan password wajib diisi.';
-    return;
-  }
-
-  const button = $('login');
-
-  if (button) {
-    button.disabled = true;
-  }
-
-  $('authMsg').textContent =
-    'Memproses login...';
-
-  try {
-    const {
-      error
-    } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      $('authMsg').textContent =
-        error.message;
-      return;
-    }
-
-    $('authMsg').textContent =
-      'Login berhasil.';
-
-    await refresh();
-
-  } catch (e) {
-    $('authMsg').textContent =
-      e.message ||
-      'Login gagal.';
-
-  } finally {
-    if (button) {
-      button.disabled = false;
-    }
-  }
-}
-
-
-/* =========================================================
-   REGISTER
-========================================================= */
-
-async function register() {
-  if (!supabase) {
-    $('authMsg').textContent =
-      'Supabase belum siap.';
-    return;
-  }
-
-  const email =
-    $('email')?.value.trim() || '';
-
-  const password =
-    $('password')?.value || '';
-
-  if (!email) {
-    $('authMsg').textContent =
-      'Masukkan email terlebih dahulu.';
-    return;
-  }
-
-  if (!password) {
-    $('authMsg').textContent =
-      'Masukkan password terlebih dahulu.';
-    return;
-  }
-
-  if (password.length < 6) {
-    $('authMsg').textContent =
-      'Password minimal 6 karakter.';
-    return;
-  }
-
-  const button = $('register');
-
-  if (button) {
-    button.disabled = true;
-  }
-
-  $('authMsg').textContent =
-    'Mendaftarkan akun...';
 
   try {
     const {
       data,
       error
-    } = await supabase.auth.signUp({
-      email,
-      password
-    });
+    } =
+      await supabase.auth.getUser();
 
     if (error) {
-      $('authMsg').textContent =
-        error.message;
+      console.error(
+        '[GEN-Z.AI] Gagal membaca user:',
+        error
+      );
+    }
+
+    const user =
+      data?.user;
+
+    /* =====================================================
+       BELUM LOGIN
+    ===================================================== */
+
+    if (!user) {
+      account = null;
+
+      $('auth')?.classList.remove(
+        'hidden'
+      );
+
+      $('studio')?.classList.add(
+        'hidden'
+      );
+
+      $('accountPage')?.classList.add(
+        'hidden'
+      );
+
+      $('accountBtn')?.classList.add(
+        'hidden'
+      );
+
+      $('accountMenu')?.classList.add(
+        'hidden'
+      );
+
+      $('backToStudio')?.classList.add(
+        'hidden'
+      );
+
+      $('pageBack')?.classList.add(
+        'hidden'
+      );
+
       return;
     }
 
-    /*
-      Jika email confirmation aktif di Supabase,
-      session biasanya belum tersedia.
-    */
 
-    if (data?.session) {
-      $('authMsg').textContent =
-        'Pendaftaran berhasil. Anda sudah login.';
+    /* =====================================================
+       SUDAH LOGIN
+    ===================================================== */
 
-      await refresh();
-
-    } else {
-      $('authMsg').textContent =
-        'Pendaftaran berhasil. Silakan cek email untuk verifikasi akun.';
-    }
-
-  } catch (e) {
-    $('authMsg').textContent =
-      e.message ||
-      'Pendaftaran gagal.';
-
-  } finally {
-    if (button) {
-      button.disabled = false;
-    }
-  }
-}
-
-
-/* =========================================================
-   FORGOT PASSWORD
-========================================================= */
-
-async function forgotPassword() {
-  if (!supabase) {
-    $('authMsg').textContent =
-      'Supabase belum siap.';
-    return;
-  }
-
-  const email =
-    $('email')?.value.trim() || '';
-
-  if (!email) {
-    $('authMsg').textContent =
-      'Masukkan email terlebih dahulu.';
-    return;
-  }
-
-  const button = $('forgotPassword');
-
-  if (button) {
-    button.disabled = true;
-  }
-
-  $('authMsg').textContent =
-    'Mengirim email reset password...';
-
-  try {
-    const redirectTo =
-      `${window.location.origin}/`;
-
-    const {
-      error
-    } = await supabase.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo
-      }
+    $('auth')?.classList.add(
+      'hidden'
     );
 
-    if (error) {
-      $('authMsg').textContent =
-        error.message;
-      return;
+    $('studio')?.classList.remove(
+      'hidden'
+    );
+
+    $('accountPage')?.classList.add(
+      'hidden'
+    );
+
+    $('accountBtn')?.classList.remove(
+      'hidden'
+    );
+
+    $('backToStudio')?.classList.add(
+      'hidden'
+    );
+
+    $('pageBack')?.classList.add(
+      'hidden'
+    );
+
+
+    if ($('userEmail')) {
+      $('userEmail').textContent =
+        user.email || '';
     }
 
-    $('authMsg').textContent =
-      'Link reset password telah dikirim ke email Anda.';
+    if ($('menuEmail')) {
+      $('menuEmail').textContent =
+        user.email || '';
+    }
+
+
+    /* =====================================================
+       ACCOUNT / CREDIT
+    ===================================================== */
+
+    try {
+      const d =
+        await api(
+          '/api/account/credits',
+          undefined,
+          'GET'
+        );
+
+      account = {
+        ...d,
+        user
+      };
+
+      if ($('credits')) {
+        $('credits').textContent =
+          `${d.credits ?? 0} credit`;
+      }
+
+      $('adminPanel')?.classList.toggle(
+        'hidden',
+        !d.isAdmin
+      );
+
+      $('contactAdmin')?.classList.toggle(
+        'hidden',
+        Boolean(d.isAdmin)
+      );
+
+    } catch (e) {
+      console.error(
+        '[GEN-Z.AI] Gagal memuat account:',
+        e
+      );
+
+      account = {
+        user,
+        credits: 0,
+        isAdmin: false
+      };
+
+      if ($('credits')) {
+        $('credits').textContent =
+          '— credit';
+      }
+    }
 
   } catch (e) {
-    $('authMsg').textContent =
-      e.message ||
-      'Gagal mengirim email reset password.';
-
-  } finally {
-    if (button) {
-      button.disabled = false;
-    }
+    console.error(
+      '[GEN-Z.AI] Refresh error:',
+      e
+    );
   }
 }
 
 
 /* =========================================================
-   LOGOUT
-========================================================= */
-
-async function logout() {
-  closeMenu();
-
-  if (!supabase) return;
-
-  await supabase.auth.signOut();
-
-  showStudio();
-
-  await refresh();
-}
-
-
-/* =========================================================
-   ACCOUNT MENU
+   LOGOUT UI
 ========================================================= */
 
 function closeMenu() {
@@ -593,18 +481,21 @@ function showStudio() {
 
 async function loadCreditHistory() {
   try {
-    const d = await api(
-      '/api/account/transactions?limit=30',
-      undefined,
-      'GET'
-    );
+    const d =
+      await api(
+        '/api/account/transactions?limit=30',
+        undefined,
+        'GET'
+      );
 
     const box =
       $('creditHistory');
 
     if (!box) return;
 
-    if (!d.transactions?.length) {
+    if (
+      !d.transactions?.length
+    ) {
       box.innerHTML =
         '<p>Belum ada transaksi credit.</p>';
 
@@ -622,36 +513,59 @@ async function loadCreditHistory() {
               : '';
 
           const label = {
-            generation: 'Generation',
-            refund: 'Refund',
+            generation:
+              'Generation',
+
+            refund:
+              'Refund',
+
             admin_adjustment:
               'Penyesuaian Admin',
-            topup: 'Top-up'
-          }[t.type] || t.type;
+
+            topup:
+              'Top-up'
+          }[
+            t.type
+          ] || t.type;
 
           return `
             <div class="credit-history-row">
+
               <div>
+
                 <strong>
                   ${escapeHtml(label)}
                 </strong>
 
                 <small>
-                  ${escapeHtml(t.note || '')}
+                  ${escapeHtml(
+                    t.note || ''
+                  )}
                 </small>
+
               </div>
 
               <span>
-                ${sign}${Number(t.amount)}
-                · ${Number(t.balance_after ?? 0)}
+                ${sign}${Number(
+                  t.amount
+                )}
+                · ${Number(
+                  t.balance_after ?? 0
+                )}
                 saldo
               </span>
+
             </div>
           `;
         })
         .join('');
 
   } catch (e) {
+    console.error(
+      '[GEN-Z.AI] Credit history error:',
+      e
+    );
+
     const box =
       $('creditHistory');
 
@@ -674,41 +588,52 @@ async function loadTopups() {
   if (!box) return;
 
   try {
-    const d = await api(
-      '/api/account/topup-requests?limit=20',
-      undefined,
-      'GET'
-    );
+    const d =
+      await api(
+        '/api/account/topup-requests?limit=20',
+        undefined,
+        'GET'
+      );
 
-    if (!d.requests?.length) {
-
+    if (
+      !d.requests?.length
+    ) {
       box.innerHTML =
         '<p>Belum ada request top-up.</p>';
 
     } else {
-
       box.innerHTML =
         '<h3>Request Terakhir</h3>' +
 
         d.requests
           .map(r => `
             <div class="credit-history-row">
+
               <div>
+
                 <strong>
                   ${Number(r.amount)}
                   credit ·
-                  ${escapeHtml(r.status)}
+                  ${escapeHtml(
+                    r.status
+                  )}
                 </strong>
 
                 <small>
-                  ${escapeHtml(r.note || '')}
+                  ${escapeHtml(
+                    r.note || ''
+                  )}
+
                   ${
                     r.admin_note
                       ? ' · ' +
-                        escapeHtml(r.admin_note)
+                        escapeHtml(
+                          r.admin_note
+                        )
                       : ''
                   }
                 </small>
+
               </div>
 
               <span>
@@ -716,74 +641,78 @@ async function loadTopups() {
                   r.created_at
                 ).toLocaleString()}
               </span>
+
             </div>
           `)
           .join('');
     }
 
   } catch (e) {
+    console.error(
+      '[GEN-Z.AI] Topup history error:',
+      e
+    );
 
     box.innerHTML =
       '<p>Request belum dapat dimuat.</p>';
   }
+
 
   const btn =
     $('submitTopup');
 
   if (!btn) return;
 
-  btn.onclick = async () => {
+  btn.onclick =
+    async () => {
 
-    const amount =
-      Number(
-        $('topupAmount')?.value
-      );
+      const amount =
+        Number(
+          $('topupAmount')?.value
+        );
 
-    const note =
-      $('topupNote')?.value.trim() ||
-      '';
+      const note =
+        $('topupNote')?.value.trim() ||
+        '';
 
-    if (
-      !Number.isInteger(amount) ||
-      amount <= 0 ||
-      amount > 1000000
-    ) {
-      alert(
-        'Jumlah harus integer 1–1.000.000.'
-      );
+      if (
+        !Number.isInteger(amount) ||
+        amount <= 0 ||
+        amount > 1000000
+      ) {
+        alert(
+          'Jumlah harus integer 1–1.000.000.'
+        );
 
-      return;
-    }
+        return;
+      }
 
-    try {
+      try {
+        btn.disabled = true;
 
-      btn.disabled = true;
+        await api(
+          '/api/account/topup-requests',
+          {
+            amount,
+            note
+          }
+        );
 
-      await api(
-        '/api/account/topup-requests',
-        {
-          amount,
-          note
-        }
-      );
+        alert(
+          'Request top-up berhasil dikirim.'
+        );
 
-      alert(
-        'Request top-up berhasil dikirim.'
-      );
+        showPage('topup');
 
-      showPage('topup');
+      } catch (e) {
+        alert(
+          e.message
+        );
 
-    } catch (e) {
-
-      alert(
-        e.message
-      );
-
-    } finally {
-
-      btn.disabled = false;
-    }
-  };
+      } finally {
+        btn.disabled = false;
+      }
+    };
 }
 
 
@@ -793,19 +722,27 @@ async function loadTopups() {
 
 function showPage(page) {
 
-  /* =========================================================
+  /* =======================================================
      SYSTEM DIAGNOSTIC
-  ========================================================= */
+  ======================================================= */
 
   if (page === 'diagnostic') {
 
-    $('studio')?.classList.add('hidden');
+    $('studio')?.classList.add(
+      'hidden'
+    );
 
-    $('accountPage')?.classList.remove('hidden');
+    $('accountPage')?.classList.remove(
+      'hidden'
+    );
 
-    $('backToStudio')?.classList.remove('hidden');
+    $('backToStudio')?.classList.remove(
+      'hidden'
+    );
 
-    $('pageBack')?.classList.remove('hidden');
+    $('pageBack')?.classList.remove(
+      'hidden'
+    );
 
     closeMenu();
 
@@ -815,7 +752,10 @@ function showPage(page) {
     const content =
       $('pageContent');
 
-    if (!title || !content) {
+    if (
+      !title ||
+      !content
+    ) {
       return;
     }
 
@@ -896,7 +836,6 @@ function showPage(page) {
                   System Diagnostic belum siap.
                 </div>
               `;
-
             }
           }
         }
@@ -906,9 +845,10 @@ function showPage(page) {
     return;
   }
 
-  /* =========================================================
-     ACCOUNT PAGES
-  ========================================================= */
+
+  /* =======================================================
+     ACCOUNT PAGE
+  ======================================================= */
 
   $('studio')?.classList.add(
     'hidden'
@@ -934,7 +874,10 @@ function showPage(page) {
   const content =
     $('pageContent');
 
-  if (!title || !content) {
+  if (
+    !title ||
+    !content
+  ) {
     return;
   }
 
@@ -949,7 +892,9 @@ function showPage(page) {
     );
 
 
-  /* PROFILE */
+  /* =======================================================
+     PROFILE
+  ======================================================= */
 
   if (page === 'profile') {
 
@@ -961,13 +906,17 @@ function showPage(page) {
 
         <div class="avatar">
           ${
-            email.charAt(0).toUpperCase() ||
+            email.charAt(0)
+              .toUpperCase() ||
             'U'
           }
         </div>
 
         <div>
-          <h3>${email}</h3>
+
+          <h3>
+            ${email}
+          </h3>
 
           <p>
             Akun ${
@@ -976,6 +925,7 @@ function showPage(page) {
                 : 'User'
             }
           </p>
+
         </div>
 
       </div>
@@ -985,7 +935,9 @@ function showPage(page) {
   }
 
 
-  /* CREDIT */
+  /* =======================================================
+     CREDIT
+  ======================================================= */
 
   if (page === 'credit') {
 
@@ -1007,6 +959,7 @@ function showPage(page) {
       <button
         class="primary"
         data-page="topup"
+        type="button"
       >
         Top-up Kredit
       </button>
@@ -1035,7 +988,9 @@ function showPage(page) {
   }
 
 
-  /* TOP UP */
+  /* =======================================================
+     TOP UP
+  ======================================================= */
 
   if (page === 'topup') {
 
@@ -1082,6 +1037,7 @@ function showPage(page) {
         <button
           class="primary"
           id="submitTopup"
+          type="button"
         >
           Kirim Request Top-up
         </button>
@@ -1102,240 +1058,9 @@ function showPage(page) {
   }
 
 
-  /* CONTACT ADMIN */
-
-  if (page === 'contact') {
-
-    title.textContent =
-      'Kontak Admin';
-
-    const contact =
-      account?.adminContactUrl;
-
-    content.innerHTML =
-      contact
-
-        ? `
-          <p>
-            Gunakan kontak berikut untuk
-            bantuan, top-up, atau
-            kendala akun.
-          </p>
-
-          <a
-            class="contact-btn"
-            href="${escapeAttr(contact)}"
-            target="_blank"
-            rel="noopener"
-          >
-            Hubungi Admin
-          </a>
-        `
-
-        : `
-          <p>
-            Kontak admin belum
-            dikonfigurasi.
-          </p>
-        `;
-
-    return;
-  }
-}
-
-  $('studio')?.classList.add(
-    'hidden'
-  );
-
-  $('accountPage')?.classList.remove(
-    'hidden'
-  );
-
-  $('backToStudio')?.classList.remove(
-    'hidden'
-  );
-
-  $('pageBack')?.classList.remove(
-    'hidden'
-  );
-
-  closeMenu();
-
-  const title =
-    $('pageTitle');
-
-  const content =
-    $('pageContent');
-
-  if (!title || !content) {
-    return;
-  }
-
-  const email =
-    escapeHtml(
-      account?.user?.email || ''
-    );
-
-  const credits =
-    Number(
-      account?.credits || 0
-    );
-
-
-  /* PROFILE */
-
-  if (page === 'profile') {
-
-    title.textContent =
-      'Profil';
-
-    content.innerHTML = `
-      <div class="profile-card">
-
-        <div class="avatar">
-          ${
-            email.charAt(0).toUpperCase() ||
-            'U'
-          }
-        </div>
-
-        <div>
-          <h3>${email}</h3>
-
-          <p>
-            Akun ${
-              account?.isAdmin
-                ? 'Administrator'
-                : 'User'
-            }
-          </p>
-        </div>
-
-      </div>
-    `;
-
-    return;
-  }
-
-
-  /* CREDIT */
-
-  if (page === 'credit') {
-
-    title.textContent =
-      'Kredit';
-
-    content.innerHTML = `
-      <div class="credit-big">
-        ${credits}
-        <span>credit</span>
-      </div>
-
-      <p>
-        Credit digunakan setiap kali
-        membuat video. Setiap perubahan
-        credit tercatat di riwayat.
-      </p>
-
-      <button
-        class="primary"
-        data-page="topup"
-      >
-        Top-up Kredit
-      </button>
-
-      <div
-        id="creditHistory"
-        class="credit-history"
-      >
-        <p>Memuat riwayat...</p>
-      </div>
-    `;
-
-    const topupButton =
-      content.querySelector(
-        '[data-page="topup"]'
-      );
-
-    if (topupButton) {
-      topupButton.onclick =
-        () => showPage('topup');
-    }
-
-    loadCreditHistory();
-
-    return;
-  }
-
-
-  /* TOP UP */
-
-  if (page === 'topup') {
-
-    title.textContent =
-      'Top-up Kredit';
-
-    content.innerHTML = `
-      <div class="topup-box">
-
-        <h3>
-          Ajukan Top-up
-        </h3>
-
-        <p>
-          Masukkan jumlah kredit.
-          Admin akan memeriksa dan
-          menyetujui atau menolak
-          permintaan Anda.
-        </p>
-
-        <label>
-          Jumlah credit
-
-          <input
-            id="topupAmount"
-            type="number"
-            min="1"
-            max="1000000"
-            step="1"
-            placeholder="Contoh: 100"
-          >
-        </label>
-
-        <label>
-          Catatan (opsional)
-
-          <textarea
-            id="topupNote"
-            maxlength="500"
-            placeholder="Keterangan pembayaran atau kebutuhan"
-          ></textarea>
-        </label>
-
-        <button
-          class="primary"
-          id="submitTopup"
-        >
-          Kirim Request Top-up
-        </button>
-
-        <div
-          id="topupState"
-          class="credit-history"
-        >
-          <p>Memuat request...</p>
-        </div>
-
-      </div>
-    `;
-
-    loadTopups();
-
-    return;
-  }
-
-
-  /* CONTACT ADMIN */
+  /* =======================================================
+     CONTACT ADMIN
+  ======================================================= */
 
   if (page === 'contact') {
 
@@ -1388,53 +1113,56 @@ function setupImageUpload() {
 
   if (!input) return;
 
-  input.onchange = e => {
+  input.onchange =
+    event => {
 
-    const f =
-      e.target.files?.[0];
+      const file =
+        event.target.files?.[0];
 
-    if (!f) {
-      imageData = null;
-      return;
-    }
-
-    if (
-      f.size >
-      12 * 1024 * 1024
-    ) {
-
-      imageData = null;
-
-      if ($('status')) {
-        $('status').textContent =
-          'Gambar maksimal 12 MB.';
+      if (!file) {
+        imageData = null;
+        return;
       }
 
-      input.value = '';
+      if (
+        file.size >
+        12 * 1024 * 1024
+      ) {
 
-      return;
-    }
+        imageData = null;
 
-    const reader =
-      new FileReader();
+        if ($('status')) {
+          $('status').textContent =
+            'Gambar maksimal 12 MB.';
+        }
 
-    reader.onload = () => {
-      imageData =
-        reader.result;
-    };
+        input.value = '';
 
-    reader.onerror = () => {
-
-      imageData = null;
-
-      if ($('status')) {
-        $('status').textContent =
-          'Gagal membaca gambar.';
+        return;
       }
-    };
 
-    reader.readAsDataURL(f);
-  };
+      const reader =
+        new FileReader();
+
+      reader.onload =
+        () => {
+          imageData =
+            reader.result;
+        };
+
+      reader.onerror =
+        () => {
+
+          imageData = null;
+
+          if ($('status')) {
+            $('status').textContent =
+              'Gagal membaca gambar.';
+          }
+        };
+
+      reader.readAsDataURL(file);
+    };
 }
 
 
@@ -1459,34 +1187,35 @@ async function generateVideo() {
     const idem =
       crypto.randomUUID();
 
-    const d = await api(
-      '/api/generate',
-      {
-        provider,
+    const d =
+      await api(
+        '/api/generate',
+        {
+          provider,
 
-        model:
-          $('model')?.value,
+          model:
+            $('model')?.value,
 
-        duration:
-          $('duration')?.value,
+          duration:
+            $('duration')?.value,
 
-        aspectRatio:
-          $('aspect')?.value,
+          aspectRatio:
+            $('aspect')?.value,
 
-        resolution:
-          $('resolution')?.value,
+          resolution:
+            $('resolution')?.value,
 
-        prompt:
-          $('prompt')?.value,
+          prompt:
+            $('prompt')?.value,
 
-        imageData
-      },
-      'POST',
-      {
-        'Idempotency-Key':
-          idem
-      }
-    );
+          imageData
+        },
+        'POST',
+        {
+          'Idempotency-Key':
+            idem
+        }
+      );
 
     $('status').textContent =
       'Processing...';
@@ -1494,163 +1223,197 @@ async function generateVideo() {
     const id =
       d.externalId;
 
-    clearTimeout(poll);
+    if (poll) {
+      clearTimeout(poll);
+    }
 
 
-    /* POLLING */
+    /* =====================================================
+       POLLING
+    ===================================================== */
 
-    const run = async () => {
+    const run =
+      async () => {
 
-      try {
+        try {
 
-        const s = await api(
-          '/api/generate/status',
-          {
-            provider,
+          const s =
+            await api(
+              '/api/generate/status',
+              {
+                provider,
 
-            operationName:
-              id,
+                operationName:
+                  id,
 
-            taskId:
-              id,
+                taskId:
+                  id,
 
-            id
-          }
-        );
-
-
-        /* COMPLETED */
-
-        if (
-          s.status === 'completed' &&
-          s.videoUrl
-        ) {
-
-          let url =
-            s.videoUrl;
+                id
+              }
+            );
 
 
-          /*
-            Video internal API membutuhkan
-            Authorization header.
-          */
+          /* ===============================================
+             COMPLETED
+          =============================================== */
 
           if (
-            url.startsWith(
-              '/api/video'
-            )
+            s.status === 'completed' &&
+            s.videoUrl
           ) {
 
-            const t =
-              await token();
+            let url =
+              s.videoUrl;
 
-            const r =
-              await fetch(
-                url,
-                {
-                  headers: {
-                    Authorization:
-                      `Bearer ${t}`
+
+            /*
+              Video internal API membutuhkan
+              Authorization header.
+            */
+
+            if (
+              url.startsWith(
+                '/api/video'
+              )
+            ) {
+
+              const t =
+                await token();
+
+              const r =
+                await fetch(
+                  url,
+                  {
+                    headers: {
+                      Authorization:
+                        `Bearer ${t}`
+                    }
                   }
-                }
-              );
+                );
 
-            if (!r.ok) {
-              throw Error(
-                'Gagal mengambil file video.'
+              if (!r.ok) {
+                throw Error(
+                  'Gagal mengambil file video.'
+                );
+              }
+
+              const blob =
+                await r.blob();
+
+              url =
+                URL.createObjectURL(
+                  blob
+                );
+            }
+
+
+            /* VIDEO PREVIEW */
+
+            const video =
+              $('video');
+
+            if (video) {
+
+              video.src =
+                url;
+
+              video.classList.remove(
+                'hidden'
               );
             }
 
-            const blob =
-              await r.blob();
 
-            url =
-              URL.createObjectURL(
-                blob
+            /* DOWNLOAD */
+
+            const download =
+              $('download');
+
+            if (download) {
+
+              download.href =
+                url;
+
+              download.classList.remove(
+                'hidden'
               );
+            }
+
+
+            $('status').textContent =
+              'Video selesai.';
+
+            generate.disabled =
+              false;
+
+            await refresh();
+
+            return;
           }
 
 
-          /* VIDEO PREVIEW */
+          /* ===============================================
+             FAILED
+          =============================================== */
 
-          $('video').src =
-            url;
+          if (
+            s.status === 'failed' ||
+            s.status === 'error' ||
+            s.status === 'cancelled'
+          ) {
 
-          $('video').classList.remove(
-            'hidden'
-          );
+            $('status').textContent =
+              s.error ||
+              s.message ||
+              'Generation gagal.';
+
+            generate.disabled =
+              false;
+
+            await refresh();
+
+            return;
+          }
 
 
-          /* DOWNLOAD */
-
-          $('download').href =
-            url;
-
-          $('download').classList.remove(
-            'hidden'
-          );
-
+          /* ===============================================
+             STILL PROCESSING
+          =============================================== */
 
           $('status').textContent =
-            'Video selesai.';
+            'Processing...';
+
+          poll =
+            setTimeout(
+              run,
+              7000
+            );
+
+        } catch (e) {
+
+          console.error(
+            '[GEN-Z.AI] Polling error:',
+            e
+          );
+
+          $('status').textContent =
+            e.message ||
+            'Gagal mengecek status video.';
 
           generate.disabled =
             false;
-
-          await refresh();
-
-          return;
         }
-
-
-        /* FAILED */
-
-        if (
-          s.status === 'failed' ||
-          s.status === 'error' ||
-          s.status === 'cancelled'
-        ) {
-
-          $('status').textContent =
-            s.error ||
-            s.message ||
-            'Generation gagal.';
-
-          generate.disabled =
-            false;
-
-          await refresh();
-
-          return;
-        }
-
-
-        /* STILL PROCESSING */
-
-        $('status').textContent =
-          'Processing...';
-
-        poll =
-          setTimeout(
-            run,
-            7000
-          );
-
-      } catch (e) {
-
-        $('status').textContent =
-          e.message ||
-          'Gagal mengecek status video.';
-
-        generate.disabled =
-          false;
-      }
-    };
+      };
 
 
     run();
 
   } catch (e) {
+
+    console.error(
+      '[GEN-Z.AI] Generation error:',
+      e
+    );
 
     $('status').textContent =
       e.message ||
@@ -1667,42 +1430,27 @@ async function generateVideo() {
 ========================================================= */
 
 function setupEvents() {
-    /* LOGIN */
 
-  $('login')?.addEventListener(
-    'click',
-    login
-  );
+  /*
+    AUTENTIKASI
 
-  /* REGISTER */
+    Login, register, forgot password,
+    dan logout dikelola oleh auth.js.
 
-  $('register')?.addEventListener(
-    'click',
-    register
-  );
+    Jangan memasang handler auth kedua
+    di sini agar satu tombol tidak
+    menjalankan dua proses sekaligus.
+  */
 
 
-  /* FORGOT PASSWORD */
-
-  $('forgotPassword')?.addEventListener(
-    'click',
-    forgotPassword
-  );
-
-
-  /* LOGOUT */
-
-  $('logout')?.addEventListener(
-    'click',
-    logout
-  );
-
-
-  /* ACCOUNT MENU */
+  /* =======================================================
+     ACCOUNT MENU
+  ======================================================= */
 
   $('accountBtn')?.addEventListener(
     'click',
     () => {
+
       $('accountMenu')?.classList.toggle(
         'hidden'
       );
@@ -1710,7 +1458,9 @@ function setupEvents() {
   );
 
 
-  /* ACCOUNT PAGES */
+  /* =======================================================
+     ACCOUNT PAGES
+  ======================================================= */
 
   document
     .querySelectorAll(
@@ -1733,28 +1483,36 @@ function setupEvents() {
     });
 
 
-  /* ADMIN */
+  /* =======================================================
+     ADMIN
+  ======================================================= */
 
   $('adminPanel')?.addEventListener(
     'click',
     () => {
+
       location.href =
         '/admin.html';
     }
   );
 
 
-  /* CONTACT ADMIN */
+  /* =======================================================
+     CONTACT ADMIN
+  ======================================================= */
 
   $('contactAdmin')?.addEventListener(
     'click',
     () => {
+
       showPage('contact');
     }
   );
 
 
-  /* BACK TO STUDIO */
+  /* =======================================================
+     BACK TO STUDIO
+  ======================================================= */
 
   $('backToStudio')?.addEventListener(
     'click',
@@ -1768,60 +1526,49 @@ function setupEvents() {
   );
 
 
-  /* IMAGE */
+  /* =======================================================
+     IMAGE
+  ======================================================= */
 
   setupImageUpload();
 
 
-  /* GENERATE */
+  /* =======================================================
+     GENERATE
+  ======================================================= */
 
   $('generate')?.addEventListener(
     'click',
     generateVideo
   );
-
-
-  /* ENTER KEY LOGIN */
-
-  $('password')?.addEventListener(
-    'keydown',
-    e => {
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        login();
-      }
-
-    }
-  );
-
-
-  $('email')?.addEventListener(
-    'keydown',
-    e => {
-
-      if (
-        e.key === 'Enter' &&
-        $('password')
-      ) {
-        e.preventDefault();
-        $('password').focus();
-      }
-
-    }
-  );
 }
+
+
+/* =========================================================
+   AUTH EVENTS FROM auth.js
+========================================================= */
 
 window.addEventListener(
   'genz-auth-login',
-  async function () {
+  async () => {
+
     console.log(
       '[GEN-Z.AI] Login event diterima.'
     );
 
+    /*
+      auth.js berhasil login.
+      app.js sekarang membaca session
+      dari Supabase dan memindahkan UI
+      dari Login ke Studio.
+    */
+
     try {
+
       await refresh();
+
     } catch (error) {
+
       console.error(
         '[GEN-Z.AI] Refresh setelah login gagal:',
         error
@@ -1830,16 +1577,23 @@ window.addEventListener(
   }
 );
 
+
 window.addEventListener(
   'genz-auth-logout',
-  async function () {
+  async () => {
+
     console.log(
       '[GEN-Z.AI] Logout event diterima.'
     );
 
     try {
+
+      showStudio();
+
       await refresh();
+
     } catch (error) {
+
       console.error(
         '[GEN-Z.AI] Refresh setelah logout gagal:',
         error
@@ -1847,6 +1601,58 @@ window.addEventListener(
     }
   }
 );
+
+
+/* =========================================================
+   SUPABASE AUTH STATE
+========================================================= */
+
+function setupAuthStateListener() {
+
+  if (!supabase) {
+    return;
+  }
+
+  supabase.auth.onAuthStateChange(
+    async (
+      event,
+      session
+    ) => {
+
+      console.log(
+        '[GEN-Z.AI] Auth state:',
+        event
+      );
+
+      /*
+        SIGNED_IN:
+        tampilkan Studio.
+
+        SIGNED_OUT:
+        kembali ke Login.
+      */
+
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED'
+      ) {
+
+        await refresh();
+
+      } else if (
+        event === 'SIGNED_OUT'
+      ) {
+
+        showStudio();
+
+        await refresh();
+      }
+    }
+  );
+}
+
+
 /* =========================================================
    SUPABASE BOOTSTRAP
 ========================================================= */
@@ -1854,6 +1660,10 @@ window.addEventListener(
 async function bootstrap() {
 
   try {
+
+    /*
+      Ambil konfigurasi dari Worker.
+    */
 
     const r =
       await fetch(
@@ -1880,33 +1690,46 @@ async function bootstrap() {
 
 
     /*
-      Buat Supabase client.
+      Pastikan Supabase library tersedia.
+    */
+
+    const supabaseLibrary =
+      window.supabaseJs ||
+      window.supabase;
+
+    if (
+      !supabaseLibrary ||
+      typeof supabaseLibrary.createClient !==
+        'function'
+    ) {
+
+      throw Error(
+        'Supabase library belum siap.'
+      );
+    }
+
+
+    /*
+      Buat satu client Supabase
+      untuk seluruh app.js.
     */
 
     supabase =
-      supabaseJs.createClient(
+      supabaseLibrary.createClient(
         c.supabaseUrl,
         c.supabasePublishableKey
       );
 
 
     /*
-      Listener perubahan autentikasi.
-
-      Penting:
-      Jangan memanggil refresh() terlalu
-      banyak dari beberapa tempat sekaligus.
+      Auth state listener.
     */
 
-    supabase.auth.onAuthStateChange(
-      async () => {
-        await refresh();
-      }
-    );
+    setupAuthStateListener();
 
 
     /*
-      Pasang event setelah Supabase siap.
+      Pasang event Studio.
     */
 
     setupEvents();
@@ -1920,9 +1743,8 @@ async function bootstrap() {
 
 
     /*
-      Provider tetap dimuat walaupun
-      belum login agar konfigurasi
-      provider tersedia.
+      Provider dimuat setelah aplikasi
+      siap.
     */
 
     await loadProviders();
