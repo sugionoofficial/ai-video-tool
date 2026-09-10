@@ -45,9 +45,6 @@ export default {
           lumaBackupConfigured:
             Boolean(env.LUMA_API_KEY1),
 
-          testBindingConfigured:
-            Boolean(env.TEST_BINDING),
-
           timestamp:
             new Date().toISOString()
         });
@@ -66,32 +63,24 @@ export default {
 
       // ===================================================
       // STATUS POST
-      // API key dikirim melalui JSON body.
       // ===================================================
 
       if (
         url.pathname === "/api/generate/status" &&
         request.method === "POST"
       ) {
-        return await handleStatusPost(
-          request,
-          env
-        );
+        return await handleStatusPost(request, env);
       }
 
       // ===================================================
       // STATUS LEGACY GET
-      // Dipertahankan untuk kompatibilitas.
       // ===================================================
 
       if (
         url.pathname === "/api/generate" &&
         request.method === "GET"
       ) {
-        return await handleStatus(
-          request,
-          env
-        );
+        return await handleStatus(request, env);
       }
 
       // ===================================================
@@ -102,10 +91,7 @@ export default {
         url.pathname === "/api/video" &&
         request.method === "GET"
       ) {
-        return await handleVideoProxy(
-          request,
-          env
-        );
+        return await handleVideoProxy(request, env);
       }
 
       // ===================================================
@@ -117,7 +103,7 @@ export default {
     } catch (error) {
       console.error(
         "Worker error:",
-        error
+        error?.message || error
       );
 
       return json({
@@ -135,95 +121,67 @@ export default {
 // GENERATE ROUTER
 // =========================================================
 
-async function handleGenerate(
-  request,
-  env
-) {
+async function handleGenerate(request, env) {
   let body;
 
   try {
-    body =
-      await request.json();
-
+    body = await request.json();
   } catch {
     return json({
       success: false,
-      error:
-        "Request JSON tidak valid."
+      error: "Request JSON tidak valid."
     }, 400);
   }
 
-  if (
-    !body ||
-    typeof body !== "object"
-  ) {
+  if (!body || typeof body !== "object") {
     return json({
       success: false,
-      error:
-        "Request tidak valid."
+      error: "Request tidak valid."
     }, 400);
   }
 
   const provider =
-    String(
-      body.provider || ""
-    )
+    String(body.provider || "")
       .trim()
       .toLowerCase();
 
   const prompt =
-    String(
-      body.prompt || ""
-    ).trim();
+    String(body.prompt || "").trim();
 
   if (!provider) {
     return json({
       success: false,
-      error:
-        "Provider wajib dipilih."
+      error: "Provider wajib dipilih."
     }, 400);
   }
 
   if (!prompt) {
     return json({
       success: false,
-      error:
-        "Prompt wajib diisi."
+      error: "Prompt wajib diisi."
     }, 400);
   }
 
   if (prompt.length > 2000) {
     return json({
       success: false,
-      error:
-        "Prompt maksimal 2000 karakter."
+      error: "Prompt maksimal 2000 karakter."
     }, 400);
   }
 
   switch (provider) {
-
     case "veo":
-      return await generateVeo(
-        body,
-        env
-      );
+      return await generateVeo(body, env);
 
     case "minimax":
-      return await generateMiniMax(
-        body,
-        env
-      );
+      return await generateMiniMax(body, env);
 
     case "luma":
-      return await generateLuma(
-        body,
-        env
-      );
+      return await generateLuma(body, env);
 
     case "pollinations":
     case "fal":
     case "runway":
-
       return json({
         success: false,
         error:
@@ -231,7 +189,6 @@ async function handleGenerate(
       }, 501);
 
     default:
-
       return json({
         success: false,
         error:
@@ -245,18 +202,9 @@ async function handleGenerate(
 // GOOGLE VEO
 // =========================================================
 
-async function generateVeo(
-  body,
-  env
-) {
-  // Prioritas:
-  // 1. API key akun
-  // 2. Environment Secret lama
-
+async function generateVeo(body, env) {
   const apiKey =
-    String(
-      body.apiKey || ""
-    ).trim() ||
+    String(body.apiKey || "").trim() ||
     env.GEMINI_API_KEY ||
     env.GEMINI_API_KEY1;
 
@@ -280,44 +228,34 @@ async function generateVeo(
       "veo-3.1-fast-generate-preview"
     );
 
-  if (
-    !allowedModels.includes(model)
-  ) {
+  if (!allowedModels.includes(model)) {
     return json({
       success: false,
-      error:
-        "Model Veo tidak valid."
+      error: "Model Veo tidak valid."
     }, 400);
   }
 
   let duration =
-    Number(
-      body.duration || 8
-    );
+    Number(body.duration || 8);
 
   let resolution =
     String(
-      body.resolution ||
-      "720p"
+      body.resolution || "720p"
     ).toLowerCase();
 
   const aspectRatio =
     String(
-      body.aspectRatio ||
-      "16:9"
+      body.aspectRatio || "16:9"
     );
 
   const imageData =
-    body.imageData ||
-    null;
+    body.imageData || null;
 
   // -------------------------------------------------------
   // Duration
   // -------------------------------------------------------
 
-  if (
-    ![4, 6, 8].includes(duration)
-  ) {
+  if (![4, 6, 8].includes(duration)) {
     return json({
       success: false,
       error:
@@ -326,15 +264,10 @@ async function generateVeo(
   }
 
   // -------------------------------------------------------
-  // Aspect ratio
+  // Aspect
   // -------------------------------------------------------
 
-  if (
-    ![
-      "16:9",
-      "9:16"
-    ].includes(aspectRatio)
-  ) {
+  if (!["16:9", "9:16"].includes(aspectRatio)) {
     return json({
       success: false,
       error:
@@ -346,13 +279,7 @@ async function generateVeo(
   // Resolution
   // -------------------------------------------------------
 
-  if (
-    ![
-      "720p",
-      "1080p",
-      "4k"
-    ].includes(resolution)
-  ) {
+  if (!["720p", "1080p", "4k"].includes(resolution)) {
     return json({
       success: false,
       error:
@@ -361,12 +288,11 @@ async function generateVeo(
   }
 
   // -------------------------------------------------------
-  // Veo Lite tidak mendukung 4K
+  // Lite tidak mendukung 4K
   // -------------------------------------------------------
 
   if (
-    model ===
-      "veo-3.1-lite-generate-preview" &&
+    model === "veo-3.1-lite-generate-preview" &&
     resolution === "4k"
   ) {
     return json({
@@ -377,7 +303,7 @@ async function generateVeo(
   }
 
   // -------------------------------------------------------
-  // 1080p / 4K wajib 8 detik
+  // 1080p / 4K harus 8 detik
   // -------------------------------------------------------
 
   if (
@@ -391,25 +317,20 @@ async function generateVeo(
   }
 
   // -------------------------------------------------------
-  // Image-to-video membutuhkan 8 detik
+  // Image-to-video harus 8 detik
   // -------------------------------------------------------
 
-  if (
-    imageData &&
-    duration !== 8
-  ) {
+  if (imageData && duration !== 8) {
     duration = 8;
   }
 
   // -------------------------------------------------------
-  // Build instance
+  // Instance
   // -------------------------------------------------------
 
   const instance = {
     prompt:
-      String(
-        body.prompt
-      ).trim()
+      String(body.prompt || "").trim()
   };
 
   // -------------------------------------------------------
@@ -417,11 +338,8 @@ async function generateVeo(
   // -------------------------------------------------------
 
   if (imageData) {
-
     const parsed =
-      parseDataUrl(
-        imageData
-      );
+      parseDataUrl(imageData);
 
     if (!parsed) {
       return json({
@@ -450,7 +368,12 @@ async function generateVeo(
     aspectRatio,
     durationSeconds:
       String(duration),
-    resolution
+    resolution,
+
+    personGeneration:
+      imageData
+        ? "allow_adult"
+        : "allow_all"
   };
 
   // -------------------------------------------------------
@@ -462,7 +385,6 @@ async function generateVeo(
     body.seed !== null &&
     String(body.seed).trim() !== ""
   ) {
-
     const seed =
       Number(body.seed);
 
@@ -477,18 +399,8 @@ async function generateVeo(
       }, 400);
     }
 
-    parameters.seed =
-      seed;
+    parameters.seed = seed;
   }
-
-  // -------------------------------------------------------
-  // Person generation
-  // -------------------------------------------------------
-
-  parameters.personGeneration =
-    imageData
-      ? "allow_adult"
-      : "allow_all";
 
   // -------------------------------------------------------
   // Google API
@@ -498,34 +410,29 @@ async function generateVeo(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predictLongRunning`;
 
   const response =
-    await fetch(
-      endpoint,
-      {
-        method: "POST",
+    await fetch(endpoint, {
+      method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json",
+      headers: {
+        "Content-Type":
+          "application/json",
 
-          "x-goog-api-key":
-            apiKey
-        },
+        "x-goog-api-key":
+          apiKey
+      },
 
-        body:
-          JSON.stringify({
-            instances: [
-              instance
-            ],
+      body:
+        JSON.stringify({
+          instances: [
+            instance
+          ],
 
-            parameters
-          })
-      }
-    );
+          parameters
+        })
+    });
 
   const data =
-    await safeJson(
-      response
-    );
+    await safeJson(response);
 
   if (!response.ok) {
     return json({
@@ -562,28 +469,20 @@ async function generateVeo(
       operationName,
 
     duration,
-
     resolution,
-
     aspectRatio,
-
     model
   });
 }
 
 
 // =========================================================
-// MINIMAX HAILUO
+// MINIMAX
 // =========================================================
 
-async function generateMiniMax(
-  body,
-  env
-) {
+async function generateMiniMax(body, env) {
   const apiKey =
-    String(
-      body.apiKey || ""
-    ).trim() ||
+    String(body.apiKey || "").trim() ||
     env.MINIMAX_API_KEY ||
     env.MINIMAX_API_KEY1;
 
@@ -607,9 +506,7 @@ async function generateMiniMax(
       "MiniMax-Hailuo-2.3"
     );
 
-  if (
-    !allowedModels.includes(model)
-  ) {
+  if (!allowedModels.includes(model)) {
     return json({
       success: false,
       error:
@@ -618,37 +515,23 @@ async function generateMiniMax(
   }
 
   let duration =
-    Number(
-      body.duration || 6
-    );
+    Number(body.duration || 6);
 
   const resolution =
     String(
-      body.resolution ||
-      "768P"
+      body.resolution || "768P"
     ).toUpperCase();
 
   const imageData =
-    body.imageData ||
-    null;
+    body.imageData || null;
 
-  // -------------------------------------------------------
-  // Duration
-  // -------------------------------------------------------
-
-  if (
-    ![6, 10].includes(duration)
-  ) {
+  if (![6, 10].includes(duration)) {
     return json({
       success: false,
       error:
         "Durasi MiniMax harus 6 atau 10 detik."
     }, 400);
   }
-
-  // -------------------------------------------------------
-  // Resolution
-  // -------------------------------------------------------
 
   if (
     ![
@@ -664,10 +547,7 @@ async function generateMiniMax(
     }, 400);
   }
 
-  // -------------------------------------------------------
   // 1080P hanya 6 detik
-  // -------------------------------------------------------
-
   if (
     resolution === "1080P" &&
     duration !== 6
@@ -675,19 +555,11 @@ async function generateMiniMax(
     duration = 6;
   }
 
-  // -------------------------------------------------------
-  // Image reference
-  // -------------------------------------------------------
-
-  let firstFrameImage =
-    null;
+  let firstFrameImage = null;
 
   if (imageData) {
-
     const parsed =
-      parseDataUrl(
-        imageData
-      );
+      parseDataUrl(imageData);
 
     if (!parsed) {
       return json({
@@ -701,21 +573,13 @@ async function generateMiniMax(
       `data:${parsed.mimeType};base64,${parsed.base64}`;
   }
 
-  // -------------------------------------------------------
-  // Payload
-  // -------------------------------------------------------
-
   const payload = {
-
     model,
 
     prompt:
-      String(
-        body.prompt
-      ).trim(),
+      String(body.prompt || "").trim(),
 
     duration,
-
     resolution
   };
 
@@ -723,10 +587,6 @@ async function generateMiniMax(
     payload.first_frame_image =
       firstFrameImage;
   }
-
-  // -------------------------------------------------------
-  // API request
-  // -------------------------------------------------------
 
   const response =
     await fetch(
@@ -743,16 +603,12 @@ async function generateMiniMax(
         },
 
         body:
-          JSON.stringify(
-            payload
-          )
+          JSON.stringify(payload)
       }
     );
 
   const data =
-    await safeJson(
-      response
-    );
+    await safeJson(response);
 
   if (!response.ok) {
     return json({
@@ -785,31 +641,22 @@ async function generateMiniMax(
     status: "processing",
 
     taskId,
-
-    id:
-      taskId,
+    id: taskId,
 
     model,
-
     duration,
-
     resolution
   });
 }
 
 
 // =========================================================
-// LUMA DREAM MACHINE
+// LUMA
 // =========================================================
 
-async function generateLuma(
-  body,
-  env
-) {
+async function generateLuma(body, env) {
   const apiKey =
-    String(
-      body.apiKey || ""
-    ).trim() ||
+    String(body.apiKey || "").trim() ||
     env.LUMA_API_KEY ||
     env.LUMA_API_KEY1;
 
@@ -823,8 +670,7 @@ async function generateLuma(
 
   const model =
     String(
-      body.model ||
-      "ray-flash-2"
+      body.model || "ray-flash-2"
     );
 
   const allowedModels = [
@@ -832,9 +678,7 @@ async function generateLuma(
     "ray-flash-2"
   ];
 
-  if (
-    !allowedModels.includes(model)
-  ) {
+  if (!allowedModels.includes(model)) {
     return json({
       success: false,
       error:
@@ -842,10 +686,8 @@ async function generateLuma(
     }, 400);
   }
 
-  // -------------------------------------------------------
-  // Luma image-to-video membutuhkan public URL.
-  // -------------------------------------------------------
-
+  // Luma membutuhkan URL publik
+  // untuk image-to-video.
   if (body.imageData) {
     return json({
       success: false,
@@ -866,8 +708,7 @@ async function generateLuma(
 
   const aspectRatio =
     String(
-      body.aspectRatio ||
-      "16:9"
+      body.aspectRatio || "16:9"
     );
 
   if (
@@ -883,13 +724,10 @@ async function generateLuma(
   }
 
   const payload = {
-    generation_type:
-      "video",
+    generation_type: "video",
 
     prompt:
-      String(
-        body.prompt
-      ).trim(),
+      String(body.prompt || "").trim(),
 
     model,
 
@@ -897,62 +735,35 @@ async function generateLuma(
       aspectRatio
   };
 
-  // -------------------------------------------------------
-  // Optional loop
-  // -------------------------------------------------------
-
-  if (
-    body.loop !== undefined
-  ) {
+  // Loop
+  if (body.loop !== undefined) {
     payload.loop =
-      Boolean(
-        body.loop
-      );
+      Boolean(body.loop);
   }
 
-  // -------------------------------------------------------
-  // Optional duration
-  // -------------------------------------------------------
-
+  // Duration
   if (
     body.duration !== undefined &&
     body.duration !== null &&
     String(body.duration).trim() !== ""
   ) {
-
     const duration =
-      Number(
-        body.duration
-      );
+      Number(body.duration);
 
-    if (
-      Number.isFinite(
-        duration
-      )
-    ) {
-      payload.duration =
-        duration;
+    if (Number.isFinite(duration)) {
+      payload.duration = duration;
     }
   }
 
-  // -------------------------------------------------------
-  // Optional resolution
-  // -------------------------------------------------------
-
+  // Resolution
   if (
     body.resolution !== undefined &&
     body.resolution !== null &&
     String(body.resolution).trim() !== ""
   ) {
     payload.resolution =
-      String(
-        body.resolution
-      );
+      String(body.resolution);
   }
-
-  // -------------------------------------------------------
-  // API request
-  // -------------------------------------------------------
 
   const response =
     await fetch(
@@ -969,16 +780,12 @@ async function generateLuma(
         },
 
         body:
-          JSON.stringify(
-            payload
-          )
+          JSON.stringify(payload)
       }
     );
 
   const data =
-    await safeJson(
-      response
-    );
+    await safeJson(response);
 
   if (!response.ok) {
     return json({
@@ -1010,12 +817,9 @@ async function generateLuma(
     status: "processing",
 
     id,
-
-    generationId:
-      id,
+    generationId: id,
 
     model,
-
     aspectRatio
   });
 }
@@ -1025,16 +829,12 @@ async function generateLuma(
 // STATUS POST
 // =========================================================
 
-async function handleStatusPost(
-  request,
-  env
-) {
+async function handleStatusPost(request, env) {
   let body;
 
   try {
     body =
       await request.json();
-
   } catch {
     return json({
       success: false,
@@ -1043,10 +843,7 @@ async function handleStatusPost(
     }, 400);
   }
 
-  if (
-    !body ||
-    typeof body !== "object"
-  ) {
+  if (!body || typeof body !== "object") {
     return json({
       success: false,
       error:
@@ -1061,7 +858,7 @@ async function handleStatusPost(
       .trim()
       .toLowerCase();
 
-  const apiKey =
+  let apiKey =
     String(
       body.apiKey || ""
     ).trim();
@@ -1074,39 +871,31 @@ async function handleStatusPost(
     }, 400);
   }
 
-  // -------------------------------------------------------
-  // API key boleh berasal dari body.
-  // Jika kosong, gunakan Environment Secret lama.
-  // -------------------------------------------------------
-
-  let resolvedApiKey =
-    apiKey;
-
-  if (!resolvedApiKey) {
-
+  // Fallback environment
+  if (!apiKey) {
     if (provider === "veo") {
-      resolvedApiKey =
+      apiKey =
         env.GEMINI_API_KEY ||
         env.GEMINI_API_KEY1 ||
         "";
     }
 
     if (provider === "minimax") {
-      resolvedApiKey =
+      apiKey =
         env.MINIMAX_API_KEY ||
         env.MINIMAX_API_KEY1 ||
         "";
     }
 
     if (provider === "luma") {
-      resolvedApiKey =
+      apiKey =
         env.LUMA_API_KEY ||
         env.LUMA_API_KEY1 ||
         "";
     }
   }
 
-  if (!resolvedApiKey) {
+  if (!apiKey) {
     return json({
       success: false,
       error:
@@ -1115,35 +904,27 @@ async function handleStatusPost(
   }
 
   switch (provider) {
-
     case "veo":
-
       return await statusVeo(
         body.operationName ||
         body.id,
-
-        resolvedApiKey
+        apiKey
       );
 
     case "minimax":
-
       return await statusMiniMax(
         body.taskId ||
         body.id,
-
-        resolvedApiKey
+        apiKey
       );
 
     case "luma":
-
       return await statusLuma(
         body.id,
-
-        resolvedApiKey
+        apiKey
       );
 
     default:
-
       return json({
         success: false,
         error:
@@ -1157,38 +938,25 @@ async function handleStatusPost(
 // STATUS LEGACY GET
 // =========================================================
 
-async function handleStatus(
-  request,
-  env
-) {
+async function handleStatus(request, env) {
   const url =
-    new URL(
-      request.url
-    );
+    new URL(request.url);
 
   const provider =
     String(
-      url.searchParams.get(
-        "provider"
-      ) || ""
+      url.searchParams.get("provider") || ""
     )
       .trim()
       .toLowerCase();
 
   const operationName =
-    url.searchParams.get(
-      "operationName"
-    );
+    url.searchParams.get("operationName");
 
   const taskId =
-    url.searchParams.get(
-      "taskId"
-    );
+    url.searchParams.get("taskId");
 
   const id =
-    url.searchParams.get(
-      "id"
-    );
+    url.searchParams.get("id");
 
   if (!provider) {
     return json({
@@ -1199,39 +967,31 @@ async function handleStatus(
   }
 
   switch (provider) {
-
     case "veo":
-
       return await statusVeo(
         operationName || id,
-
         env.GEMINI_API_KEY ||
         env.GEMINI_API_KEY1 ||
         ""
       );
 
     case "minimax":
-
       return await statusMiniMax(
         taskId || id,
-
         env.MINIMAX_API_KEY ||
         env.MINIMAX_API_KEY1 ||
         ""
       );
 
     case "luma":
-
       return await statusLuma(
         id,
-
         env.LUMA_API_KEY ||
         env.LUMA_API_KEY1 ||
         ""
       );
 
     default:
-
       return json({
         success: false,
         error:
@@ -1266,34 +1026,24 @@ async function statusVeo(
   }
 
   const cleanName =
-    String(
-      operationName
-    )
-      .replace(
-        /^\/+/,
-        ""
-      );
+    String(operationName)
+      .replace(/^\/+/, "");
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/${cleanName}`;
 
   const response =
-    await fetch(
-      endpoint,
-      {
-        method: "GET",
+    await fetch(endpoint, {
+      method: "GET",
 
-        headers: {
-          "x-goog-api-key":
-            apiKey
-        }
+      headers: {
+        "x-goog-api-key":
+          apiKey
       }
-    );
+    });
 
   const data =
-    await safeJson(
-      response
-    );
+    await safeJson(response);
 
   if (!response.ok) {
     return json({
@@ -1306,10 +1056,6 @@ async function statusVeo(
     }, response.status);
   }
 
-  // -------------------------------------------------------
-  // Masih diproses
-  // -------------------------------------------------------
-
   if (!data?.done) {
     return json({
       success: true,
@@ -1318,10 +1064,6 @@ async function statusVeo(
       operationName
     });
   }
-
-  // -------------------------------------------------------
-  // Operation error
-  // -------------------------------------------------------
 
   if (data?.error) {
     return json({
@@ -1335,10 +1077,6 @@ async function statusVeo(
         )
     }, 500);
   }
-
-  // -------------------------------------------------------
-  // Video URL
-  // -------------------------------------------------------
 
   const videoUri =
     data?.response
@@ -1356,17 +1094,11 @@ async function statusVeo(
     }, 502);
   }
 
-  // -------------------------------------------------------
-  // PENTING:
-  // API key TIDAK dimasukkan ke URL.
-  // -------------------------------------------------------
-
   return json({
     success: true,
     status: "completed",
     provider: "veo",
-    videoUrl:
-      videoUri
+    videoUrl: videoUri
   });
 }
 
@@ -1399,22 +1131,17 @@ async function statusMiniMax(
     `https://api.minimax.io/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`;
 
   const response =
-    await fetch(
-      endpoint,
-      {
-        method: "GET",
+    await fetch(endpoint, {
+      method: "GET",
 
-        headers: {
-          "Authorization":
-            `Bearer ${apiKey}`
-        }
+      headers: {
+        "Authorization":
+          `Bearer ${apiKey}`
       }
-    );
+    });
 
   const data =
-    await safeJson(
-      response
-    );
+    await safeJson(response);
 
   if (!response.ok) {
     return json({
@@ -1434,10 +1161,6 @@ async function statusMiniMax(
       ""
     ).toLowerCase();
 
-  // -------------------------------------------------------
-  // Processing
-  // -------------------------------------------------------
-
   if (
     [
       "pending",
@@ -1455,10 +1178,6 @@ async function statusMiniMax(
       taskId
     });
   }
-
-  // -------------------------------------------------------
-  // Failed
-  // -------------------------------------------------------
 
   if (
     [
@@ -1479,10 +1198,6 @@ async function statusMiniMax(
     }, 500);
   }
 
-  // -------------------------------------------------------
-  // Video URL
-  // -------------------------------------------------------
-
   const downloadUrl =
     data?.file?.download_url ||
     data?.download_url ||
@@ -1495,14 +1210,9 @@ async function statusMiniMax(
       success: true,
       status: "completed",
       provider: "minimax",
-      videoUrl:
-        downloadUrl
+      videoUrl: downloadUrl
     });
   }
-
-  // -------------------------------------------------------
-  // File ID fallback
-  // -------------------------------------------------------
 
   const fileId =
     data?.file?.file_id ||
@@ -1565,22 +1275,17 @@ async function statusLuma(
     `https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(id)}`;
 
   const response =
-    await fetch(
-      endpoint,
-      {
-        method: "GET",
+    await fetch(endpoint, {
+      method: "GET",
 
-        headers: {
-          "Authorization":
-            `Bearer ${apiKey}`
-        }
+      headers: {
+        "Authorization":
+          `Bearer ${apiKey}`
       }
-    );
+    });
 
   const data =
-    await safeJson(
-      response
-    );
+    await safeJson(response);
 
   if (!response.ok) {
     return json({
@@ -1599,10 +1304,6 @@ async function statusLuma(
       data?.status ||
       ""
     ).toLowerCase();
-
-  // -------------------------------------------------------
-  // Failed
-  // -------------------------------------------------------
 
   if (
     [
@@ -1623,30 +1324,13 @@ async function statusLuma(
     }, 500);
   }
 
-  // -------------------------------------------------------
-  // Completed
-  // -------------------------------------------------------
-
   const videoUrl =
     data?.assets?.video ||
     data?.video?.url ||
     data?.video_url ||
     null;
 
-  if (
-    videoUrl ||
-    state === "completed"
-  ) {
-    if (!videoUrl) {
-      return json({
-        success: false,
-        status: "failed",
-        provider: "luma",
-        error:
-          "Luma selesai tetapi URL video tidak ditemukan."
-      }, 502);
-    }
-
+  if (videoUrl) {
     return json({
       success: true,
       status: "completed",
@@ -1655,9 +1339,15 @@ async function statusLuma(
     });
   }
 
-  // -------------------------------------------------------
-  // Processing
-  // -------------------------------------------------------
+  if (state === "completed") {
+    return json({
+      success: false,
+      status: "failed",
+      provider: "luma",
+      error:
+        "Luma selesai tetapi URL video tidak ditemukan."
+    }, 502);
+  }
 
   return json({
     success: true,
@@ -1678,29 +1368,20 @@ async function handleVideoProxy(
   env
 ) {
   const url =
-    new URL(
-      request.url
-    );
+    new URL(request.url);
 
   const provider =
     String(
-      url.searchParams.get(
-        "provider"
-      ) || ""
-    )
-      .toLowerCase();
+      url.searchParams.get("provider") || ""
+    ).toLowerCase();
 
   // =======================================================
   // VEO
   // =======================================================
 
-  if (
-    provider === "veo"
-  ) {
+  if (provider === "veo") {
     const target =
-      url.searchParams.get(
-        "url"
-      );
+      url.searchParams.get("url");
 
     if (!target) {
       return json({
@@ -1715,7 +1396,6 @@ async function handleVideoProxy(
     try {
       targetUrl =
         new URL(target);
-
     } catch {
       return json({
         success: false,
@@ -1723,10 +1403,6 @@ async function handleVideoProxy(
           "URL video Veo tidak valid."
       }, 400);
     }
-
-    // -----------------------------------------------------
-    // Host validation
-    // -----------------------------------------------------
 
     const allowedHosts = [
       "generativelanguage.googleapis.com",
@@ -1745,11 +1421,6 @@ async function handleVideoProxy(
       }, 403);
     }
 
-    // -----------------------------------------------------
-    // API key dari request header.
-    // Tidak disimpan dalam URL.
-    // -----------------------------------------------------
-
     const apiKey =
       String(
         request.headers.get(
@@ -1765,13 +1436,7 @@ async function handleVideoProxy(
       }, 400);
     }
 
-    // -----------------------------------------------------
-    // Jangan pernah menambahkan key ke query string.
-    // -----------------------------------------------------
-
-    targetUrl.searchParams.delete(
-      "key"
-    );
+    targetUrl.searchParams.delete("key");
 
     const response =
       await fetch(
@@ -1809,8 +1474,7 @@ async function handleVideoProxy(
     return new Response(
       response.body,
       {
-        status:
-          response.status,
+        status: 200,
 
         headers: {
           ...corsHeaders(),
@@ -1832,13 +1496,9 @@ async function handleVideoProxy(
   // MINIMAX
   // =======================================================
 
-  if (
-    provider === "minimax"
-  ) {
+  if (provider === "minimax") {
     const fileId =
-      url.searchParams.get(
-        "fileId"
-      );
+      url.searchParams.get("fileId");
 
     if (!fileId) {
       return json({
@@ -1847,11 +1507,6 @@ async function handleVideoProxy(
           "fileId MiniMax tidak diberikan."
       }, 400);
     }
-
-    // -----------------------------------------------------
-    // API key dari header.
-    // Fallback Environment Secret tetap tersedia.
-    // -----------------------------------------------------
 
     const apiKey =
       String(
@@ -1869,10 +1524,6 @@ async function handleVideoProxy(
           "API key MiniMax belum tersedia."
       }, 400);
     }
-
-    // -----------------------------------------------------
-    // Retrieve file metadata
-    // -----------------------------------------------------
 
     const metadataUrl =
       `https://api.minimax.io/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`;
@@ -1919,14 +1570,16 @@ async function handleVideoProxy(
       }, 502);
     }
 
+    // -----------------------------------------------------
+    // Redirect ke URL file sementara MiniMax.
+    // API key tidak diteruskan ke URL.
+    // -----------------------------------------------------
+
     let targetUrl;
 
     try {
       targetUrl =
-        new URL(
-          downloadUrl
-        );
-
+        new URL(downloadUrl);
     } catch {
       return json({
         success: false,
@@ -1935,66 +1588,28 @@ async function handleVideoProxy(
       }, 502);
     }
 
-    if (
-      targetUrl.hostname !==
-      "api.minimax.io"
-    ) {
+    if (targetUrl.protocol !== "https:") {
       return json({
         success: false,
         error:
-          "Host download MiniMax tidak diizinkan."
+          "Download URL MiniMax tidak aman."
       }, 403);
     }
 
-    const videoResponse =
-      await fetch(
-        targetUrl.toString()
-      );
+    return new Response(null, {
+      status: 302,
 
-    if (!videoResponse.ok) {
-      return new Response(
-        await videoResponse.arrayBuffer(),
-        {
-          status:
-            videoResponse.status,
+      headers: {
+        ...corsHeaders(),
 
-          headers: {
-            ...corsHeaders(),
+        "Location":
+          targetUrl.toString(),
 
-            "Content-Type":
-              videoResponse.headers.get(
-                "Content-Type"
-              ) ||
-              "application/octet-stream"
-          }
-        }
-      );
-    }
-
-    return new Response(
-      videoResponse.body,
-      {
-        status: 200,
-
-        headers: {
-          ...corsHeaders(),
-
-          "Content-Type":
-            videoResponse.headers.get(
-              "Content-Type"
-            ) ||
-            "video/mp4",
-
-          "Cache-Control":
-            "public, max-age=3600"
-        }
+        "Cache-Control":
+          "no-store"
       }
-    );
+    });
   }
-
-  // =======================================================
-  // UNSUPPORTED
-  // =======================================================
 
   return json({
     success: false,
@@ -2008,12 +1623,9 @@ async function handleVideoProxy(
 // DATA URL PARSER
 // =========================================================
 
-function parseDataUrl(
-  dataUrl
-) {
+function parseDataUrl(dataUrl) {
   if (
-    typeof dataUrl !==
-    "string"
+    typeof dataUrl !== "string"
   ) {
     return null;
   }
@@ -2032,19 +1644,14 @@ function parseDataUrl(
 
   const base64 =
     match[2]
-      .replace(
-        /\s/g,
-        ""
-      );
+      .replace(/\s/g, "");
 
   if (!base64) {
     return null;
   }
 
   if (
-    !mimeType.startsWith(
-      "image/"
-    )
+    !mimeType.startsWith("image/")
   ) {
     return null;
   }
@@ -2060,9 +1667,7 @@ function parseDataUrl(
 // SAFE JSON
 // =========================================================
 
-async function safeJson(
-  response
-) {
+async function safeJson(response) {
   const text =
     await response.text();
 
@@ -2071,10 +1676,7 @@ async function safeJson(
   }
 
   try {
-    return JSON.parse(
-      text
-    );
-
+    return JSON.parse(text);
   } catch {
     return {
       raw: text
@@ -2084,7 +1686,7 @@ async function safeJson(
 
 
 // =========================================================
-// API ERROR EXTRACTOR
+// API ERROR
 // =========================================================
 
 function extractApiError(
@@ -2096,24 +1698,19 @@ function extractApiError(
   }
 
   if (
-    typeof data ===
-    "string"
+    typeof data === "string"
   ) {
     return data;
   }
 
   if (data.error) {
-
     if (
-      typeof data.error ===
-      "string"
+      typeof data.error === "string"
     ) {
       return data.error;
     }
 
-    if (
-      data.error.message
-    ) {
+    if (data.error.message) {
       return String(
         data.error.message
       );
@@ -2123,7 +1720,6 @@ function extractApiError(
       return JSON.stringify(
         data.error
       );
-
     } catch {
       return fallback;
     }
