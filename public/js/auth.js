@@ -6,6 +6,10 @@
 
   const $ = (id) => document.getElementById(id);
 
+  /* =========================================================
+     MESSAGE
+  ========================================================= */
+
   function message(text) {
     const el = $('authMsg');
 
@@ -15,6 +19,11 @@
 
     console.log('[GEN-Z AUTH]', text);
   }
+
+
+  /* =========================================================
+     LOADING
+  ========================================================= */
 
   function setLoading(loading) {
     const login = $('login');
@@ -37,7 +46,13 @@
     }
   }
 
+
+  /* =========================================================
+     SUPABASE CLIENT
+  ========================================================= */
+
   async function getClient() {
+
     if (authClient) {
       return authClient;
     }
@@ -54,7 +69,11 @@
     const response = await fetch(
       '/api/config',
       {
-        cache: 'no-store'
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json'
+        }
       }
     );
 
@@ -66,44 +85,83 @@
 
     const config = await response.json();
 
+    const supabaseUrl =
+      String(config.supabaseUrl || '').trim();
+
+    const supabaseKey =
+      String(
+        config.supabasePublishableKey || ''
+      ).trim();
+
+    if (!supabaseUrl) {
+      throw new Error(
+        'Supabase URL belum tersedia.'
+      );
+    }
+
+    if (!supabaseKey) {
+      throw new Error(
+        'Supabase Publishable Key belum tersedia.'
+      );
+    }
+
     if (
-      !config.supabaseUrl ||
-      !config.supabasePublishableKey
+      !/^https:\/\/[a-z0-9-]+\.supabase\.co/i.test(
+        supabaseUrl
+      )
     ) {
       throw new Error(
-        'Konfigurasi Supabase belum lengkap.'
+        'Supabase URL tidak valid.'
       );
     }
 
     authClient =
       window.supabase.createClient(
-        config.supabaseUrl,
-        config.supabasePublishableKey
+        supabaseUrl,
+        supabaseKey
       );
 
-    window.GENZ_AUTH_CLIENT = authClient;
+    window.GENZ_AUTH_CLIENT =
+      authClient;
 
     return authClient;
   }
 
+
+  /* =========================================================
+     LOGIN
+  ========================================================= */
+
   async function login() {
+
     const email =
       $('email')?.value.trim() || '';
 
     const password =
       $('password')?.value || '';
 
-    if (!email || !password) {
+    if (!email) {
       message(
-        'Email dan password wajib diisi.'
+        'Email wajib diisi.'
+      );
+      return;
+    }
+
+    if (!password) {
+      message(
+        'Password wajib diisi.'
       );
       return;
     }
 
     setLoading(true);
-    message('Memproses login...');
+
+    message(
+      'Memproses login...'
+    );
 
     try {
+
       const client =
         await getClient();
 
@@ -112,8 +170,8 @@
         error
       } =
         await client.auth.signInWithPassword({
-          email,
-          password
+          email: email,
+          password: password
         });
 
       if (error) {
@@ -126,26 +184,28 @@
         );
       }
 
-      message('Login berhasil.');
+      message(
+        'Login berhasil.'
+      );
 
       /*
-       * Jangan mengubah halaman langsung di sini.
-       * app.js akan menjalankan refresh()
-       * agar seluruh data akun dan studio
-       * dimuat dengan benar.
+       * app.js menangani perubahan
+       * tampilan dan refresh akun.
        */
       window.dispatchEvent(
         new CustomEvent(
           'genz-auth-login',
           {
             detail: {
-              user: data.user
+              user: data.user,
+              session: data.session || null
             }
           }
         )
       );
 
     } catch (error) {
+
       console.error(
         '[GEN-Z AUTH] Login error:',
         error
@@ -157,20 +217,35 @@
       );
 
     } finally {
+
       setLoading(false);
+
     }
   }
 
+
+  /* =========================================================
+     REGISTER
+  ========================================================= */
+
   async function register() {
+
     const email =
       $('email')?.value.trim() || '';
 
     const password =
       $('password')?.value || '';
 
-    if (!email || !password) {
+    if (!email) {
       message(
-        'Email dan password wajib diisi.'
+        'Email wajib diisi.'
+      );
+      return;
+    }
+
+    if (!password) {
+      message(
+        'Password wajib diisi.'
       );
       return;
     }
@@ -183,9 +258,13 @@
     }
 
     setLoading(true);
-    message('Mendaftarkan akun...');
+
+    message(
+      'Mendaftarkan akun...'
+    );
 
     try {
+
       const client =
         await getClient();
 
@@ -194,15 +273,20 @@
         error
       } =
         await client.auth.signUp({
-          email,
-          password
+          email: email,
+          password: password
         });
 
       if (error) {
         throw error;
       }
 
-      if (data?.session) {
+      /*
+       * Jika Supabase langsung memberikan session,
+       * user langsung masuk ke studio.
+       */
+      if (data?.session && data?.user) {
+
         message(
           'Pendaftaran berhasil.'
         );
@@ -212,19 +296,23 @@
             'genz-auth-login',
             {
               detail: {
-                user: data.user
+                user: data.user,
+                session: data.session
               }
             }
           )
         );
 
       } else {
+
         message(
           'Pendaftaran berhasil. Periksa email untuk verifikasi akun.'
         );
+
       }
 
     } catch (error) {
+
       console.error(
         '[GEN-Z AUTH] Register error:',
         error
@@ -236,11 +324,19 @@
       );
 
     } finally {
+
       setLoading(false);
+
     }
   }
 
+
+  /* =========================================================
+     FORGOT PASSWORD
+  ========================================================= */
+
   async function forgotPassword() {
+
     const email =
       $('email')?.value.trim() || '';
 
@@ -252,23 +348,26 @@
     }
 
     setLoading(true);
+
     message(
       'Mengirim email reset password...'
     );
 
     try {
+
       const client =
         await getClient();
 
-      const { error } =
-        await client.auth
-          .resetPasswordForEmail(
-            email,
-            {
-              redirectTo:
-                window.location.origin
-            }
-          );
+      const {
+        error
+      } =
+        await client.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo:
+              window.location.origin
+          }
+        );
 
       if (error) {
         throw error;
@@ -279,6 +378,7 @@
       );
 
     } catch (error) {
+
       console.error(
         '[GEN-Z AUTH] Reset password error:',
         error
@@ -290,16 +390,32 @@
       );
 
     } finally {
+
       setLoading(false);
+
     }
   }
 
+
+  /* =========================================================
+     LOGOUT
+  ========================================================= */
+
   async function logout() {
+
     try {
+
       const client =
         await getClient();
 
-      await client.auth.signOut();
+      const {
+        error
+      } =
+        await client.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
 
       window.dispatchEvent(
         new CustomEvent(
@@ -308,47 +424,97 @@
       );
 
     } catch (error) {
+
       console.error(
         '[GEN-Z AUTH] Logout error:',
         error
       );
+
+      message(
+        error?.message ||
+        'Logout gagal.'
+      );
     }
   }
 
+
+  /* =========================================================
+     EVENT LISTENER
+  ========================================================= */
+
   function setupButtons() {
+
     if (initialized) {
       return;
     }
 
-    $('login')?.addEventListener(
-      'click',
-      login
-    );
+    const loginButton =
+      $('login');
 
-    $('register')?.addEventListener(
-      'click',
-      register
-    );
+    const registerButton =
+      $('register');
 
-    $('forgotPassword')?.addEventListener(
-      'click',
-      forgotPassword
-    );
+    const forgotButton =
+      $('forgotPassword');
 
-    $('logout')?.addEventListener(
-      'click',
-      logout
-    );
+    const logoutButton =
+      $('logout');
 
-    $('password')?.addEventListener(
-      'keydown',
-      function (event) {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          login();
+
+    if (loginButton) {
+      loginButton.addEventListener(
+        'click',
+        login
+      );
+    }
+
+
+    if (registerButton) {
+      registerButton.addEventListener(
+        'click',
+        register
+      );
+    }
+
+
+    if (forgotButton) {
+      forgotButton.addEventListener(
+        'click',
+        forgotPassword
+      );
+    }
+
+
+    if (logoutButton) {
+      logoutButton.addEventListener(
+        'click',
+        logout
+      );
+    }
+
+
+    const password =
+      $('password');
+
+    if (password) {
+
+      password.addEventListener(
+        'keydown',
+        function (event) {
+
+          if (event.key === 'Enter') {
+
+            event.preventDefault();
+
+            login();
+
+          }
+
         }
-      }
-    );
+      );
+
+    }
+
 
     initialized = true;
 
@@ -357,38 +523,104 @@
     );
   }
 
+
+  /* =========================================================
+     INITIALIZE
+  ========================================================= */
+
   async function initialize() {
+
     setupButtons();
 
     try {
+
       const client =
         await getClient();
 
       const {
-        data
+        data,
+        error
       } =
         await client.auth.getSession();
 
+      if (error) {
+        throw error;
+      }
+
       /*
-       * Jangan mengatur #auth/#studio di sini.
+       * Jangan mengubah #auth dan #studio
+       * secara langsung.
+       *
        * app.js adalah pengendali utama UI.
        */
 
-      if (data?.session) {
+      if (data?.session?.user) {
+
         window.dispatchEvent(
           new CustomEvent(
             'genz-auth-login',
             {
               detail: {
                 user:
-                  data.session.user
+                  data.session.user,
+
+                session:
+                  data.session
               }
             }
           )
         );
+
       }
 
+      /*
+       * Pantau perubahan session.
+       */
+
+      client.auth.onAuthStateChange(
+        function (event, session) {
+
+          console.log(
+            '[GEN-Z AUTH] Auth event:',
+            event
+          );
+
+          if (event === 'SIGNED_IN') {
+
+            window.dispatchEvent(
+              new CustomEvent(
+                'genz-auth-login',
+                {
+                  detail: {
+                    user:
+                      session?.user || null,
+
+                    session:
+                      session || null
+                  }
+                }
+              )
+            );
+
+          }
+
+          if (
+            event === 'SIGNED_OUT'
+          ) {
+
+            window.dispatchEvent(
+              new CustomEvent(
+                'genz-auth-logout'
+              )
+            );
+
+          }
+
+        }
+      );
+
     } catch (error) {
+
       console.error(
         '[GEN-Z AUTH] Initialization error:',
         error
@@ -401,6 +633,11 @@
     }
   }
 
+
+  /* =========================================================
+     PUBLIC API
+  ========================================================= */
+
   window.GENZ_AUTH = {
     login,
     register,
@@ -409,16 +646,27 @@
     initialize
   };
 
+
+  /* =========================================================
+     START
+  ========================================================= */
+
   if (
     document.readyState === 'loading'
   ) {
+
     document.addEventListener(
       'DOMContentLoaded',
       initialize,
-      { once: true }
+      {
+        once: true
+      }
     );
+
   } else {
+
     initialize();
+
   }
 
 })();
