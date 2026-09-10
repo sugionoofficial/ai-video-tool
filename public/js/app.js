@@ -1,22 +1,1573 @@
-let supabase=null;const $=id=>document.getElementById(id);const cfg={veo:{name:'Gemini / Veo',models:['veo-3.1-fast-generate-preview','veo-3.1-generate-preview','veo-3.1-lite-generate-preview'],durations:[4,6,8],aspects:['16:9','9:16'],res:['720p','1080p','4k']},minimax:{name:'MiniMax',models:['MiniMax-Hailuo-2.3','MiniMax-Hailuo-2.3-Fast','MiniMax-Hailuo-02'],durations:[6,10],aspects:['16:9','9:16'],res:['512P','768P','1080P']},luma:{name:'Luma',models:['ray-2','ray-flash-2'],durations:['5s','9s'],aspects:['1:1','16:9','9:16','4:3','3:4','21:9','9:21'],res:['720p','1080p','4k']}};let provider=null,imageData=null,poll=null,providers=[],account=null;
-function opts(el,a){el.innerHTML=a.map(x=>`<option value="${x}">${x}</option>`).join('')}
-function selectProvider(p){provider=p;document.querySelectorAll('.provider').forEach(b=>b.classList.toggle('active',b.dataset.provider===p));const c=cfg[p]||providers.find(x=>x.id===p)?.capabilities;if(!c)return;opts($('model'),c.models||[]);opts($('duration'),c.durations||[]);opts($('aspect'),c.aspects||[]);opts($('resolution'),c.resolutions||c.res||[])}
-function renderProviders(){const box=$('providers');box.innerHTML='';providers.forEach(p=>{const b=document.createElement('button');b.className='provider';b.dataset.provider=p.id;b.innerHTML=`${escapeHtml(p.name)}<small>${escapeHtml(p.adapter)}</small>`;b.onclick=()=>selectProvider(p.id);box.append(b)});if(providers[0])selectProvider(providers[0].id);else{$('status').textContent='Belum ada provider aktif.';$('generate').disabled=true}}
-function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-async function loadProviders(){const r=await fetch('/api/providers',{cache:'no-store'});const d=await r.json();if(!r.ok||d.success===false)throw Error(d.error||'Gagal memuat provider');providers=d.providers||[];renderProviders()}
-async function token(){const {data,error}=await supabase.auth.getSession();if(error||!data.session)throw Error('Silakan login.');return data.session.access_token}
-async function api(path,body,method='POST',extraHeaders={}){const t=await token();const r=await fetch(path,{method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`,...extraHeaders},body:body===undefined?undefined:JSON.stringify(body)});const d=await r.json();if(!r.ok||d.success===false)throw Error(d.error||'Request gagal');return d}
-async function refresh(){const {data}=await supabase.auth.getUser();if(!data.user){account=null;$('auth').classList.remove('hidden');$('studio').classList.add('hidden');$('accountBtn').classList.add('hidden');$('accountMenu').classList.add('hidden');return}$('auth').classList.add('hidden');$('studio').classList.remove('hidden');$('accountBtn').classList.remove('hidden');$('userEmail').textContent=data.user.email||'';$('menuEmail').textContent=data.user.email||'';try{const d=await api('/api/account/credits',undefined,'GET');account=d;$('credits').textContent=`${d.credits??0} credit`;$('adminPanel').classList.toggle('hidden',!d.isAdmin);$('contactAdmin').classList.toggle('hidden',Boolean(d.isAdmin))}catch(e){$('credits').textContent='— credit'}}
-function closeMenu(){ $('accountMenu').classList.add('hidden') }
-function showStudio(){ $('accountPage').classList.add('hidden');$('studio').classList.remove('hidden');$('backToStudio').classList.add('hidden');$('pageBack').classList.add('hidden');closeMenu() }
-async function loadCreditHistory(){try{const d=await api('/api/account/transactions?limit=30',undefined,'GET');const box=$('creditHistory');if(!box)return;if(!d.transactions?.length){box.innerHTML='<p>Belum ada transaksi credit.</p>';return}box.innerHTML='<h3>Riwayat Credit</h3>'+d.transactions.map(t=>{const sign=Number(t.amount)>0?'+':'';const label={generation:'Generation',refund:'Refund',admin_adjustment:'Penyesuaian Admin',topup:'Top-up'}[t.type]||t.type;return `<div class="credit-history-row"><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(t.note||'')}</small></div><span>${sign}${Number(t.amount)} · ${Number(t.balance_after??0)} saldo</span></div>`}).join('')}catch(e){const box=$('creditHistory');if(box)box.innerHTML='<p>Riwayat credit belum dapat dimuat.</p>'}}
+let supabase = null;
 
-async function loadTopups(){const box=$('topupState');if(!box)return;try{const d=await api('/api/account/topup-requests?limit=20',undefined,'GET');if(!d.requests?.length){box.innerHTML='<p>Belum ada request top-up.</p>'}else{box.innerHTML='<h3>Request Terakhir</h3>'+d.requests.map(r=>`<div class="credit-history-row"><div><strong>${Number(r.amount)} credit · ${escapeHtml(r.status)}</strong><small>${escapeHtml(r.note||'')}${r.admin_note?' · '+escapeHtml(r.admin_note):''}</small></div><span>${new Date(r.created_at).toLocaleString()}</span></div>`).join('')}}catch(e){box.innerHTML='<p>Request belum dapat dimuat.</p>'}const btn=$('submitTopup');if(btn)btn.onclick=async()=>{const amount=Number($('topupAmount').value);const note=$('topupNote').value.trim();if(!Number.isInteger(amount)||amount<=0||amount>1000000)return alert('Jumlah harus integer 1–1.000.000.');try{btn.disabled=true;await api('/api/account/topup-requests',{amount,note});alert('Request top-up berhasil dikirim.');showPage('topup')}catch(e){alert(e.message)}finally{btn.disabled=false}}}
-function showPage(page){$('studio').classList.add('hidden');$('accountPage').classList.remove('hidden');$('backToStudio').classList.remove('hidden');$('pageBack').classList.remove('hidden');closeMenu();const title=$('pageTitle'),content=$('pageContent');const email=escapeHtml(account?.user?.email||'');const credits=Number(account?.credits||0);if(page==='profile'){title.textContent='Profil';content.innerHTML=`<div class="profile-card"><div class="avatar">${email.charAt(0).toUpperCase()||'U'}</div><div><h3>${email}</h3><p>Akun ${account?.isAdmin?'Administrator':'User'}</p></div></div>`}else if(page==='credit'){title.textContent='Kredit';content.innerHTML=`<div class="credit-big">${credits}<span>credit</span></div><p>Credit digunakan setiap kali membuat video. Setiap perubahan credit tercatat di riwayat.</p><button class="primary" data-page="topup">Top-up Kredit</button><div id="creditHistory" class="credit-history"><p>Memuat riwayat...</p></div>`;loadCreditHistory()}else if(page==='topup'){title.textContent='Top-up Kredit';content.innerHTML=`<div class="topup-box"><h3>Ajukan Top-up</h3><p>Masukkan jumlah kredit. Admin akan memeriksa dan menyetujui atau menolak permintaan Anda.</p><label>Jumlah credit<input id="topupAmount" type="number" min="1" max="1000000" step="1" placeholder="Contoh: 100"></label><label>Catatan (opsional)<textarea id="topupNote" maxlength="500" placeholder="Keterangan pembayaran atau kebutuhan"></textarea></label><button class="primary" id="submitTopup">Kirim Request Top-up</button><div id="topupState" class="credit-history"><p>Memuat request...</p></div></div>`;loadTopups()}else if(page==='contact'){title.textContent='Kontak Admin';const contact=account?.adminContactUrl;content.innerHTML=contact?`<p>Gunakan kontak berikut untuk bantuan, top-up, atau kendala akun.</p><a class="contact-btn" href="${escapeAttr(contact)}" target="_blank" rel="noopener">Hubungi Admin</a>`:'<p>Kontak admin belum dikonfigurasi.</p>'}}
-function escapeAttr(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-$('login').onclick=async()=>{const {error}=await supabase.auth.signInWithPassword({email:$('email').value,password:$('password').value});$('authMsg').textContent=error?.message||'Login berhasil';if(!error)await refresh()};
-$('logout').onclick=async()=>{closeMenu();await supabase.auth.signOut();showStudio();await refresh()};
-$('accountBtn').onclick=()=>$('accountMenu').classList.toggle('hidden');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>showPage(b.dataset.page));$('adminPanel').onclick=()=>location.href='/admin.html';$('contactAdmin').onclick=()=>showPage('contact');$('backToStudio').onclick=showStudio;$('pageBack').onclick=showStudio;
-$('image').onchange=e=>{const f=e.target.files?.[0];if(!f){imageData=null;return}if(f.size>12*1024*1024)return $('status').textContent='Gambar maksimal 12 MB.';const r=new FileReader();r.onload=()=>imageData=r.result;r.readAsDataURL(f)};
-$('generate').onclick=async()=>{try{$('generate').disabled=true;$('status').textContent='Memulai generation...';const idem=crypto.randomUUID();const d=await api('/api/generate',{provider,model:$('model').value,duration:$('duration').value,aspectRatio:$('aspect').value,resolution:$('resolution').value,prompt:$('prompt').value,imageData},'POST',{'Idempotency-Key':idem});$('status').textContent='Processing...';const id=d.externalId;clearTimeout(poll);const run=async()=>{try{const s=await api('/api/generate/status',{provider,operationName:id,taskId:id,id});if(s.status==='completed'&&s.videoUrl){let url=s.videoUrl;if(url.startsWith('/api/video')){const t=await token();const r=await fetch(url,{headers:{Authorization:`Bearer ${t}`}});const blob=await r.blob();url=URL.createObjectURL(blob)}$('video').src=url;$('video').classList.remove('hidden');$('download').href=url;$('download').classList.remove('hidden');$('status').textContent='Video selesai.';$('generate').disabled=false;refresh();return}$('status').textContent='Processing...';poll=setTimeout(run,7000)}catch(e){$('status').textContent=e.message;$('generate').disabled=false}};run()}catch(e){$('status').textContent=e.message;$('generate').disabled=false}};
-async function bootstrap(){try{const r=await fetch('/api/config',{cache:'no-store'});const c=await r.json();if(!r.ok||!c.supabaseUrl||!c.supabasePublishableKey)throw Error('Konfigurasi Supabase belum lengkap.');supabase=supabaseJs.createClient(c.supabaseUrl,c.supabasePublishableKey);supabase.auth.onAuthStateChange(()=>refresh());await refresh();await loadProviders()}catch(e){$('status').textContent=e.message;$('authMsg').textContent=e.message}}bootstrap();
+const $ = id => document.getElementById(id);
+
+const cfg = {
+  veo: {
+    name: 'Gemini / Veo',
+    models: [
+      'veo-3.1-fast-generate-preview',
+      'veo-3.1-generate-preview',
+      'veo-3.1-lite-generate-preview'
+    ],
+    durations: [4, 6, 8],
+    aspects: ['16:9', '9:16'],
+    res: ['720p', '1080p', '4k']
+  },
+
+  minimax: {
+    name: 'MiniMax',
+    models: [
+      'MiniMax-Hailuo-2.3',
+      'MiniMax-Hailuo-2.3-Fast',
+      'MiniMax-Hailuo-02'
+    ],
+    durations: [6, 10],
+    aspects: ['16:9', '9:16'],
+    res: ['512P', '768P', '1080P']
+  },
+
+  luma: {
+    name: 'Luma',
+    models: [
+      'ray-2',
+      'ray-flash-2'
+    ],
+    durations: ['5s', '9s'],
+    aspects: [
+      '1:1',
+      '16:9',
+      '9:16',
+      '4:3',
+      '3:4',
+      '21:9',
+      '9:21'
+    ],
+    res: ['720p', '1080p', '4k']
+  }
+};
+
+let provider = null;
+let imageData = null;
+let poll = null;
+let providers = [];
+let account = null;
+
+
+/* =========================================================
+   UTILITY
+========================================================= */
+
+function opts(el, arr) {
+  if (!el) return;
+
+  el.innerHTML = (arr || [])
+    .map(x => `<option value="${escapeAttr(x)}">${escapeHtml(x)}</option>`)
+    .join('');
+}
+
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(
+    /[&<>'"]/g,
+    c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[c])
+  );
+}
+
+
+function escapeAttr(s) {
+  return String(s ?? '').replace(
+    /[&<>'"]/g,
+    c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[c])
+  );
+}
+
+
+/* =========================================================
+   PROVIDER
+========================================================= */
+
+function selectProvider(p) {
+  provider = p;
+
+  document
+    .querySelectorAll('.provider')
+    .forEach(b => {
+      b.classList.toggle(
+        'active',
+        b.dataset.provider === p
+      );
+    });
+
+  const c =
+    cfg[p] ||
+    providers.find(x => x.id === p)?.capabilities;
+
+  if (!c) return;
+
+  opts($('model'), c.models || []);
+  opts($('duration'), c.durations || []);
+  opts($('aspect'), c.aspects || []);
+  opts(
+    $('resolution'),
+    c.resolutions || c.res || []
+  );
+}
+
+
+function renderProviders() {
+  const box = $('providers');
+
+  if (!box) return;
+
+  box.innerHTML = '';
+
+  providers.forEach(p => {
+    const b = document.createElement('button');
+
+    b.className = 'provider';
+    b.dataset.provider = p.id;
+
+    b.innerHTML = `
+      ${escapeHtml(p.name)}
+      <small>${escapeHtml(p.adapter)}</small>
+    `;
+
+    b.onclick = () => selectProvider(p.id);
+
+    box.append(b);
+  });
+
+  if (providers[0]) {
+    selectProvider(providers[0].id);
+  } else {
+    if ($('status')) {
+      $('status').textContent =
+        'Belum ada provider aktif.';
+    }
+
+    if ($('generate')) {
+      $('generate').disabled = true;
+    }
+  }
+}
+
+
+async function loadProviders() {
+  const r = await fetch('/api/providers', {
+    cache: 'no-store'
+  });
+
+  const d = await r.json();
+
+  if (!r.ok || d.success === false) {
+    throw Error(
+      d.error || 'Gagal memuat provider'
+    );
+  }
+
+  providers = d.providers || [];
+
+  renderProviders();
+}
+
+
+/* =========================================================
+   AUTH SESSION
+========================================================= */
+
+async function token() {
+  if (!supabase) {
+    throw Error('Supabase belum siap.');
+  }
+
+  const {
+    data,
+    error
+  } = await supabase.auth.getSession();
+
+  if (error || !data.session) {
+    throw Error('Silakan login.');
+  }
+
+  return data.session.access_token;
+}
+
+
+async function api(
+  path,
+  body,
+  method = 'POST',
+  extraHeaders = {}
+) {
+  const t = await token();
+
+  const r = await fetch(path, {
+    method,
+
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${t}`,
+      ...extraHeaders
+    },
+
+    body:
+      body === undefined
+        ? undefined
+        : JSON.stringify(body)
+  });
+
+  let d;
+
+  try {
+    d = await r.json();
+  } catch {
+    throw Error(
+      `Server mengembalikan respons tidak valid (${r.status}).`
+    );
+  }
+
+  if (!r.ok || d.success === false) {
+    throw Error(
+      d.error || 'Request gagal'
+    );
+  }
+
+  return d;
+}
+
+
+/* =========================================================
+   REFRESH UI
+========================================================= */
+
+async function refresh() {
+  if (!supabase) return;
+
+  const {
+    data
+  } = await supabase.auth.getUser();
+
+  const user = data?.user;
+
+  if (!user) {
+    account = null;
+
+    $('auth')?.classList.remove('hidden');
+    $('studio')?.classList.add('hidden');
+
+    $('accountBtn')?.classList.add('hidden');
+    $('accountMenu')?.classList.add('hidden');
+
+    return;
+  }
+
+  $('auth')?.classList.add('hidden');
+  $('studio')?.classList.remove('hidden');
+
+  $('accountBtn')?.classList.remove('hidden');
+
+  if ($('userEmail')) {
+    $('userEmail').textContent =
+      user.email || '';
+  }
+
+  if ($('menuEmail')) {
+    $('menuEmail').textContent =
+      user.email || '';
+  }
+
+  try {
+    const d = await api(
+      '/api/account/credits',
+      undefined,
+      'GET'
+    );
+
+    account = d;
+
+    if ($('credits')) {
+      $('credits').textContent =
+        `${d.credits ?? 0} credit`;
+    }
+
+    $('adminPanel')?.classList.toggle(
+      'hidden',
+      !d.isAdmin
+    );
+
+    $('contactAdmin')?.classList.toggle(
+      'hidden',
+      Boolean(d.isAdmin)
+    );
+
+  } catch (e) {
+    if ($('credits')) {
+      $('credits').textContent =
+        '— credit';
+    }
+  }
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function login() {
+  if (!supabase) {
+    $('authMsg').textContent =
+      'Supabase belum siap.';
+    return;
+  }
+
+  const email =
+    $('email')?.value.trim() || '';
+
+  const password =
+    $('password')?.value || '';
+
+  if (!email || !password) {
+    $('authMsg').textContent =
+      'Email dan password wajib diisi.';
+    return;
+  }
+
+  const button = $('login');
+
+  if (button) {
+    button.disabled = true;
+  }
+
+  $('authMsg').textContent =
+    'Memproses login...';
+
+  try {
+    const {
+      error
+    } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      $('authMsg').textContent =
+        error.message;
+      return;
+    }
+
+    $('authMsg').textContent =
+      'Login berhasil.';
+
+    await refresh();
+
+  } catch (e) {
+    $('authMsg').textContent =
+      e.message ||
+      'Login gagal.';
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
+
+
+/* =========================================================
+   REGISTER
+========================================================= */
+
+async function register() {
+  if (!supabase) {
+    $('authMsg').textContent =
+      'Supabase belum siap.';
+    return;
+  }
+
+  const email =
+    $('email')?.value.trim() || '';
+
+  const password =
+    $('password')?.value || '';
+
+  if (!email) {
+    $('authMsg').textContent =
+      'Masukkan email terlebih dahulu.';
+    return;
+  }
+
+  if (!password) {
+    $('authMsg').textContent =
+      'Masukkan password terlebih dahulu.';
+    return;
+  }
+
+  if (password.length < 6) {
+    $('authMsg').textContent =
+      'Password minimal 6 karakter.';
+    return;
+  }
+
+  const button = $('register');
+
+  if (button) {
+    button.disabled = true;
+  }
+
+  $('authMsg').textContent =
+    'Mendaftarkan akun...';
+
+  try {
+    const {
+      data,
+      error
+    } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) {
+      $('authMsg').textContent =
+        error.message;
+      return;
+    }
+
+    /*
+      Jika email confirmation aktif di Supabase,
+      session biasanya belum tersedia.
+    */
+
+    if (data?.session) {
+      $('authMsg').textContent =
+        'Pendaftaran berhasil. Anda sudah login.';
+
+      await refresh();
+
+    } else {
+      $('authMsg').textContent =
+        'Pendaftaran berhasil. Silakan cek email untuk verifikasi akun.';
+    }
+
+  } catch (e) {
+    $('authMsg').textContent =
+      e.message ||
+      'Pendaftaran gagal.';
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
+
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+async function forgotPassword() {
+  if (!supabase) {
+    $('authMsg').textContent =
+      'Supabase belum siap.';
+    return;
+  }
+
+  const email =
+    $('email')?.value.trim() || '';
+
+  if (!email) {
+    $('authMsg').textContent =
+      'Masukkan email terlebih dahulu.';
+    return;
+  }
+
+  const button = $('forgotPassword');
+
+  if (button) {
+    button.disabled = true;
+  }
+
+  $('authMsg').textContent =
+    'Mengirim email reset password...';
+
+  try {
+    const redirectTo =
+      `${window.location.origin}/`;
+
+    const {
+      error
+    } = await supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo
+      }
+    );
+
+    if (error) {
+      $('authMsg').textContent =
+        error.message;
+      return;
+    }
+
+    $('authMsg').textContent =
+      'Link reset password telah dikirim ke email Anda.';
+
+  } catch (e) {
+    $('authMsg').textContent =
+      e.message ||
+      'Gagal mengirim email reset password.';
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+async function logout() {
+  closeMenu();
+
+  if (!supabase) return;
+
+  await supabase.auth.signOut();
+
+  showStudio();
+
+  await refresh();
+}
+
+
+/* =========================================================
+   ACCOUNT MENU
+========================================================= */
+
+function closeMenu() {
+  $('accountMenu')?.classList.add(
+    'hidden'
+  );
+}
+
+
+function showStudio() {
+  $('accountPage')?.classList.add(
+    'hidden'
+  );
+
+  $('studio')?.classList.remove(
+    'hidden'
+  );
+
+  $('backToStudio')?.classList.add(
+    'hidden'
+  );
+
+  $('pageBack')?.classList.add(
+    'hidden'
+  );
+
+  closeMenu();
+}
+
+
+/* =========================================================
+   CREDIT HISTORY
+========================================================= */
+
+async function loadCreditHistory() {
+  try {
+    const d = await api(
+      '/api/account/transactions?limit=30',
+      undefined,
+      'GET'
+    );
+
+    const box =
+      $('creditHistory');
+
+    if (!box) return;
+
+    if (!d.transactions?.length) {
+      box.innerHTML =
+        '<p>Belum ada transaksi credit.</p>';
+
+      return;
+    }
+
+    box.innerHTML =
+      '<h3>Riwayat Credit</h3>' +
+
+      d.transactions
+        .map(t => {
+          const sign =
+            Number(t.amount) > 0
+              ? '+'
+              : '';
+
+          const label = {
+            generation: 'Generation',
+            refund: 'Refund',
+            admin_adjustment:
+              'Penyesuaian Admin',
+            topup: 'Top-up'
+          }[t.type] || t.type;
+
+          return `
+            <div class="credit-history-row">
+              <div>
+                <strong>
+                  ${escapeHtml(label)}
+                </strong>
+
+                <small>
+                  ${escapeHtml(t.note || '')}
+                </small>
+              </div>
+
+              <span>
+                ${sign}${Number(t.amount)}
+                · ${Number(t.balance_after ?? 0)}
+                saldo
+              </span>
+            </div>
+          `;
+        })
+        .join('');
+
+  } catch (e) {
+    const box =
+      $('creditHistory');
+
+    if (box) {
+      box.innerHTML =
+        '<p>Riwayat credit belum dapat dimuat.</p>';
+    }
+  }
+}
+
+
+/* =========================================================
+   TOP UP
+========================================================= */
+
+async function loadTopups() {
+  const box =
+    $('topupState');
+
+  if (!box) return;
+
+  try {
+    const d = await api(
+      '/api/account/topup-requests?limit=20',
+      undefined,
+      'GET'
+    );
+
+    if (!d.requests?.length) {
+
+      box.innerHTML =
+        '<p>Belum ada request top-up.</p>';
+
+    } else {
+
+      box.innerHTML =
+        '<h3>Request Terakhir</h3>' +
+
+        d.requests
+          .map(r => `
+            <div class="credit-history-row">
+              <div>
+                <strong>
+                  ${Number(r.amount)}
+                  credit ·
+                  ${escapeHtml(r.status)}
+                </strong>
+
+                <small>
+                  ${escapeHtml(r.note || '')}
+                  ${
+                    r.admin_note
+                      ? ' · ' +
+                        escapeHtml(r.admin_note)
+                      : ''
+                  }
+                </small>
+              </div>
+
+              <span>
+                ${new Date(
+                  r.created_at
+                ).toLocaleString()}
+              </span>
+            </div>
+          `)
+          .join('');
+    }
+
+  } catch (e) {
+
+    box.innerHTML =
+      '<p>Request belum dapat dimuat.</p>';
+  }
+
+  const btn =
+    $('submitTopup');
+
+  if (!btn) return;
+
+  btn.onclick = async () => {
+
+    const amount =
+      Number(
+        $('topupAmount')?.value
+      );
+
+    const note =
+      $('topupNote')?.value.trim() ||
+      '';
+
+    if (
+      !Number.isInteger(amount) ||
+      amount <= 0 ||
+      amount > 1000000
+    ) {
+      alert(
+        'Jumlah harus integer 1–1.000.000.'
+      );
+
+      return;
+    }
+
+    try {
+
+      btn.disabled = true;
+
+      await api(
+        '/api/account/topup-requests',
+        {
+          amount,
+          note
+        }
+      );
+
+      alert(
+        'Request top-up berhasil dikirim.'
+      );
+
+      showPage('topup');
+
+    } catch (e) {
+
+      alert(
+        e.message
+      );
+
+    } finally {
+
+      btn.disabled = false;
+    }
+  };
+}
+
+
+/* =========================================================
+   ACCOUNT PAGES
+========================================================= */
+
+function showPage(page) {
+
+  $('studio')?.classList.add(
+    'hidden'
+  );
+
+  $('accountPage')?.classList.remove(
+    'hidden'
+  );
+
+  $('backToStudio')?.classList.remove(
+    'hidden'
+  );
+
+  $('pageBack')?.classList.remove(
+    'hidden'
+  );
+
+  closeMenu();
+
+  const title =
+    $('pageTitle');
+
+  const content =
+    $('pageContent');
+
+  if (!title || !content) {
+    return;
+  }
+
+  const email =
+    escapeHtml(
+      account?.user?.email || ''
+    );
+
+  const credits =
+    Number(
+      account?.credits || 0
+    );
+
+
+  /* PROFILE */
+
+  if (page === 'profile') {
+
+    title.textContent =
+      'Profil';
+
+    content.innerHTML = `
+      <div class="profile-card">
+
+        <div class="avatar">
+          ${
+            email.charAt(0).toUpperCase() ||
+            'U'
+          }
+        </div>
+
+        <div>
+          <h3>${email}</h3>
+
+          <p>
+            Akun ${
+              account?.isAdmin
+                ? 'Administrator'
+                : 'User'
+            }
+          </p>
+        </div>
+
+      </div>
+    `;
+
+    return;
+  }
+
+
+  /* CREDIT */
+
+  if (page === 'credit') {
+
+    title.textContent =
+      'Kredit';
+
+    content.innerHTML = `
+      <div class="credit-big">
+        ${credits}
+        <span>credit</span>
+      </div>
+
+      <p>
+        Credit digunakan setiap kali
+        membuat video. Setiap perubahan
+        credit tercatat di riwayat.
+      </p>
+
+      <button
+        class="primary"
+        data-page="topup"
+      >
+        Top-up Kredit
+      </button>
+
+      <div
+        id="creditHistory"
+        class="credit-history"
+      >
+        <p>Memuat riwayat...</p>
+      </div>
+    `;
+
+    const topupButton =
+      content.querySelector(
+        '[data-page="topup"]'
+      );
+
+    if (topupButton) {
+      topupButton.onclick =
+        () => showPage('topup');
+    }
+
+    loadCreditHistory();
+
+    return;
+  }
+
+
+  /* TOP UP */
+
+  if (page === 'topup') {
+
+    title.textContent =
+      'Top-up Kredit';
+
+    content.innerHTML = `
+      <div class="topup-box">
+
+        <h3>
+          Ajukan Top-up
+        </h3>
+
+        <p>
+          Masukkan jumlah kredit.
+          Admin akan memeriksa dan
+          menyetujui atau menolak
+          permintaan Anda.
+        </p>
+
+        <label>
+          Jumlah credit
+
+          <input
+            id="topupAmount"
+            type="number"
+            min="1"
+            max="1000000"
+            step="1"
+            placeholder="Contoh: 100"
+          >
+        </label>
+
+        <label>
+          Catatan (opsional)
+
+          <textarea
+            id="topupNote"
+            maxlength="500"
+            placeholder="Keterangan pembayaran atau kebutuhan"
+          ></textarea>
+        </label>
+
+        <button
+          class="primary"
+          id="submitTopup"
+        >
+          Kirim Request Top-up
+        </button>
+
+        <div
+          id="topupState"
+          class="credit-history"
+        >
+          <p>Memuat request...</p>
+        </div>
+
+      </div>
+    `;
+
+    loadTopups();
+
+    return;
+  }
+
+
+  /* CONTACT ADMIN */
+
+  if (page === 'contact') {
+
+    title.textContent =
+      'Kontak Admin';
+
+    const contact =
+      account?.adminContactUrl;
+
+    content.innerHTML =
+      contact
+
+        ? `
+          <p>
+            Gunakan kontak berikut untuk
+            bantuan, top-up, atau
+            kendala akun.
+          </p>
+
+          <a
+            class="contact-btn"
+            href="${escapeAttr(contact)}"
+            target="_blank"
+            rel="noopener"
+          >
+            Hubungi Admin
+          </a>
+        `
+
+        : `
+          <p>
+            Kontak admin belum
+            dikonfigurasi.
+          </p>
+        `;
+
+    return;
+  }
+}
+
+
+/* =========================================================
+   IMAGE UPLOAD
+========================================================= */
+
+function setupImageUpload() {
+
+  const input =
+    $('image');
+
+  if (!input) return;
+
+  input.onchange = e => {
+
+    const f =
+      e.target.files?.[0];
+
+    if (!f) {
+      imageData = null;
+      return;
+    }
+
+    if (
+      f.size >
+      12 * 1024 * 1024
+    ) {
+
+      imageData = null;
+
+      if ($('status')) {
+        $('status').textContent =
+          'Gambar maksimal 12 MB.';
+      }
+
+      input.value = '';
+
+      return;
+    }
+
+    const reader =
+      new FileReader();
+
+    reader.onload = () => {
+      imageData =
+        reader.result;
+    };
+
+    reader.onerror = () => {
+
+      imageData = null;
+
+      if ($('status')) {
+        $('status').textContent =
+          'Gagal membaca gambar.';
+      }
+    };
+
+    reader.readAsDataURL(f);
+  };
+}
+
+
+/* =========================================================
+   VIDEO GENERATION
+========================================================= */
+
+async function generateVideo() {
+
+  const generate =
+    $('generate');
+
+  if (!generate) return;
+
+  try {
+
+    generate.disabled = true;
+
+    $('status').textContent =
+      'Memulai generation...';
+
+    const idem =
+      crypto.randomUUID();
+
+    const d = await api(
+      '/api/generate',
+      {
+        provider,
+
+        model:
+          $('model')?.value,
+
+        duration:
+          $('duration')?.value,
+
+        aspectRatio:
+          $('aspect')?.value,
+
+        resolution:
+          $('resolution')?.value,
+
+        prompt:
+          $('prompt')?.value,
+
+        imageData
+      },
+      'POST',
+      {
+        'Idempotency-Key':
+          idem
+      }
+    );
+
+    $('status').textContent =
+      'Processing...';
+
+    const id =
+      d.externalId;
+
+    clearTimeout(poll);
+
+
+    /* POLLING */
+
+    const run = async () => {
+
+      try {
+
+        const s = await api(
+          '/api/generate/status',
+          {
+            provider,
+
+            operationName:
+              id,
+
+            taskId:
+              id,
+
+            id
+          }
+        );
+
+
+        /* COMPLETED */
+
+        if (
+          s.status === 'completed' &&
+          s.videoUrl
+        ) {
+
+          let url =
+            s.videoUrl;
+
+
+          /*
+            Video internal API membutuhkan
+            Authorization header.
+          */
+
+          if (
+            url.startsWith(
+              '/api/video'
+            )
+          ) {
+
+            const t =
+              await token();
+
+            const r =
+              await fetch(
+                url,
+                {
+                  headers: {
+                    Authorization:
+                      `Bearer ${t}`
+                  }
+                }
+              );
+
+            if (!r.ok) {
+              throw Error(
+                'Gagal mengambil file video.'
+              );
+            }
+
+            const blob =
+              await r.blob();
+
+            url =
+              URL.createObjectURL(
+                blob
+              );
+          }
+
+
+          /* VIDEO PREVIEW */
+
+          $('video').src =
+            url;
+
+          $('video').classList.remove(
+            'hidden'
+          );
+
+
+          /* DOWNLOAD */
+
+          $('download').href =
+            url;
+
+          $('download').classList.remove(
+            'hidden'
+          );
+
+
+          $('status').textContent =
+            'Video selesai.';
+
+          generate.disabled =
+            false;
+
+          await refresh();
+
+          return;
+        }
+
+
+        /* FAILED */
+
+        if (
+          s.status === 'failed' ||
+          s.status === 'error' ||
+          s.status === 'cancelled'
+        ) {
+
+          $('status').textContent =
+            s.error ||
+            s.message ||
+            'Generation gagal.';
+
+          generate.disabled =
+            false;
+
+          await refresh();
+
+          return;
+        }
+
+
+        /* STILL PROCESSING */
+
+        $('status').textContent =
+          'Processing...';
+
+        poll =
+          setTimeout(
+            run,
+            7000
+          );
+
+      } catch (e) {
+
+        $('status').textContent =
+          e.message ||
+          'Gagal mengecek status video.';
+
+        generate.disabled =
+          false;
+      }
+    };
+
+
+    run();
+
+  } catch (e) {
+
+    $('status').textContent =
+      e.message ||
+      'Generation gagal.';
+
+    generate.disabled =
+      false;
+  }
+}
+
+
+/* =========================================================
+   EVENT LISTENERS
+========================================================= */
+
+function setupEvents() {
+
+  /* LOGIN */
+
+  $('login')?.addEventListener(
+    'click',
+    login
+  );
+
+
+  /* REGISTER */
+
+  $('register')?.addEventListener(
+    'click',
+    register
+  );
+
+
+  /* FORGOT PASSWORD */
+
+  $('forgotPassword')?.addEventListener(
+    'click',
+    forgotPassword
+  );
+
+
+  /* LOGOUT */
+
+  $('logout')?.addEventListener(
+    'click',
+    logout
+  );
+
+
+  /* ACCOUNT MENU */
+
+  $('accountBtn')?.addEventListener(
+    'click',
+    () => {
+      $('accountMenu')?.classList.toggle(
+        'hidden'
+      );
+    }
+  );
+
+
+  /* ACCOUNT PAGES */
+
+  document
+    .querySelectorAll(
+      '[data-page]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          const page =
+            button.dataset.page;
+
+          if (page) {
+            showPage(page);
+          }
+        }
+      );
+    });
+
+
+  /* ADMIN */
+
+  $('adminPanel')?.addEventListener(
+    'click',
+    () => {
+      location.href =
+        '/admin.html';
+    }
+  );
+
+
+  /* CONTACT ADMIN */
+
+  $('contactAdmin')?.addEventListener(
+    'click',
+    () => {
+      showPage('contact');
+    }
+  );
+
+
+  /* BACK TO STUDIO */
+
+  $('backToStudio')?.addEventListener(
+    'click',
+    showStudio
+  );
+
+
+  $('pageBack')?.addEventListener(
+    'click',
+    showStudio
+  );
+
+
+  /* IMAGE */
+
+  setupImageUpload();
+
+
+  /* GENERATE */
+
+  $('generate')?.addEventListener(
+    'click',
+    generateVideo
+  );
+
+
+  /* ENTER KEY LOGIN */
+
+  $('password')?.addEventListener(
+    'keydown',
+    e => {
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        login();
+      }
+
+    }
+  );
+
+
+  $('email')?.addEventListener(
+    'keydown',
+    e => {
+
+      if (
+        e.key === 'Enter' &&
+        $('password')
+      ) {
+        e.preventDefault();
+        $('password').focus();
+      }
+
+    }
+  );
+}
+
+
+/* =========================================================
+   SUPABASE BOOTSTRAP
+========================================================= */
+
+async function bootstrap() {
+
+  try {
+
+    const r =
+      await fetch(
+        '/api/config',
+        {
+          cache: 'no-store'
+        }
+      );
+
+    const c =
+      await r.json();
+
+
+    if (
+      !r.ok ||
+      !c.supabaseUrl ||
+      !c.supabasePublishableKey
+    ) {
+
+      throw Error(
+        'Konfigurasi Supabase belum lengkap.'
+      );
+    }
+
+
+    /*
+      Buat Supabase client.
+    */
+
+    supabase =
+      supabaseJs.createClient(
+        c.supabaseUrl,
+        c.supabasePublishableKey
+      );
+
+
+    /*
+      Listener perubahan autentikasi.
+
+      Penting:
+      Jangan memanggil refresh() terlalu
+      banyak dari beberapa tempat sekaligus.
+    */
+
+    supabase.auth.onAuthStateChange(
+      async () => {
+        await refresh();
+      }
+    );
+
+
+    /*
+      Pasang event setelah Supabase siap.
+    */
+
+    setupEvents();
+
+
+    /*
+      Cek session yang sudah ada.
+    */
+
+    await refresh();
+
+
+    /*
+      Provider tetap dimuat walaupun
+      belum login agar konfigurasi
+      provider tersedia.
+    */
+
+    await loadProviders();
+
+
+  } catch (e) {
+
+    console.error(
+      'GEN-Z.AI bootstrap error:',
+      e
+    );
+
+    if ($('status')) {
+      $('status').textContent =
+        e.message;
+    }
+
+    if ($('authMsg')) {
+      $('authMsg').textContent =
+        e.message;
+    }
+  }
+}
+
+
+/* =========================================================
+   START APPLICATION
+========================================================= */
+
+bootstrap();
