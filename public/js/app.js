@@ -18,7 +18,6 @@
 
   let started = false;
   let authBound = false;
-  let authSubscription = null;
 
 
   /* =======================================================
@@ -64,10 +63,6 @@
     }
 
 
-    /*
-     * Main application shell
-     */
-
     app.innerHTML = `
 
       <div id="header-container"></div>
@@ -84,10 +79,6 @@
     `;
 
 
-    /* -----------------------------------------------------
-       HEADER
-    ----------------------------------------------------- */
-
     if (
       typeof GENZ.loadComponent !==
       'function'
@@ -99,6 +90,10 @@
 
     }
 
+
+    /* -----------------------------------------------------
+       HEADER
+    ----------------------------------------------------- */
 
     await GENZ.loadComponent(
       '#header-container',
@@ -114,9 +109,11 @@
       $('main-container');
 
     if (!main) {
+
       throw new Error(
         'Element #main-container tidak ditemukan'
       );
+
     }
 
 
@@ -133,11 +130,6 @@
         'Gagal memuat generator.html:',
         componentError
       );
-
-      /*
-       * Jangan membuat aplikasi berhenti total hanya
-       * karena component generator gagal dimuat.
-       */
 
       main.innerHTML = `
 
@@ -196,35 +188,73 @@
 
 
   /* =======================================================
-     AUTH STATE
+     AUTH SESSION SYNC
+     
+     auth.js adalah pemilik utama Supabase auth state.
+     app.js hanya melakukan pengecekan session awal.
   ======================================================= */
 
   async function syncAuth() {
 
-    const client =
-      window.GENZ_AUTH_CLIENT;
-
-
-    if (!client) {
-
-      console.warn(
-        '[GEN-Z.AI] Auth client belum tersedia'
-      );
-
-      return false;
-
-    }
-
-
     try {
 
-      const result =
-        await client.auth.getSession();
+      let session = null;
 
 
-      const session =
-        result?.data?.session;
+      /* ---------------------------------------------------
+         Gunakan API auth.js jika tersedia
+      --------------------------------------------------- */
 
+      if (
+        window.GENZ_AUTH &&
+        typeof window.GENZ_AUTH.getSession ===
+        'function'
+      ) {
+
+        session =
+          await window.GENZ_AUTH.getSession();
+
+      }
+
+
+      /* ---------------------------------------------------
+         Fallback ke client langsung
+      --------------------------------------------------- */
+
+      else {
+
+        const client =
+          window.GENZ_AUTH_CLIENT;
+
+        if (
+          !client ||
+          !client.auth ||
+          typeof client.auth.getSession !==
+          'function'
+        ) {
+
+          console.warn(
+            '[GEN-Z.AI] Auth client belum tersedia'
+          );
+
+          return false;
+
+        }
+
+
+        const result =
+          await client.auth.getSession();
+
+        session =
+          result?.data?.session ||
+          null;
+
+      }
+
+
+      /* ---------------------------------------------------
+         SESSION AKTIF
+      --------------------------------------------------- */
 
       if (
         session &&
@@ -248,6 +278,10 @@
 
       }
 
+
+      /* ---------------------------------------------------
+         TIDAK LOGIN
+      --------------------------------------------------- */
 
       GENZ.state.loggedIn =
         false;
@@ -284,8 +318,12 @@
 
   async function handleLogin(
     user,
-    emitEvent = true
+    emitEvent = false
   ) {
+
+    /*
+     * Pastikan state user benar.
+     */
 
     if (user) {
 
@@ -299,8 +337,22 @@
 
 
     /*
-     * Pastikan account UI tersedia.
+     * Jika user tidak tersedia,
+     * jangan jalankan proses login.
      */
+
+    if (
+      !GENZ.state.user
+    ) {
+
+      return;
+
+    }
+
+
+    /* -----------------------------------------------------
+       ACCOUNT UI
+    ----------------------------------------------------- */
 
     if (
       GENZ.account &&
@@ -324,9 +376,9 @@
     }
 
 
-    /*
-     * Update email/user pada account menu.
-     */
+    /* -----------------------------------------------------
+       UPDATE USER
+    ----------------------------------------------------- */
 
     if (
       GENZ.account &&
@@ -352,9 +404,39 @@
     }
 
 
-    /*
-     * Refresh kredit + role dari backend.
-     */
+    /* -----------------------------------------------------
+       RESET PRIVILEGE SEBELUM VALIDASI SERVER
+    ----------------------------------------------------- */
+
+    if (
+      GENZ.state.account &&
+      typeof GENZ.state.account ===
+      'object'
+    ) {
+
+      GENZ.state.account.isAdmin =
+        false;
+
+      GENZ.state.account.roleValidated =
+        false;
+
+    } else {
+
+      GENZ.state.account = {
+
+        isAdmin: false,
+
+        roleValidated: false
+
+      };
+
+    }
+
+
+    /* -----------------------------------------------------
+       REFRESH ACCOUNT
+       Kredit dan role berasal dari server.
+    ----------------------------------------------------- */
 
     if (
       GENZ.account &&
@@ -378,9 +460,9 @@
     }
 
 
-    /*
-     * Provider.
-     */
+    /* -----------------------------------------------------
+       PROVIDERS
+    ----------------------------------------------------- */
 
     if (
       GENZ.providers &&
@@ -404,9 +486,9 @@
     }
 
 
-    /*
-     * Pastikan upload module siap.
-     */
+    /* -----------------------------------------------------
+       UPLOAD MODULE
+    ----------------------------------------------------- */
 
     if (
       GENZ.upload &&
@@ -430,9 +512,9 @@
     }
 
 
-    /*
-     * Generator event.
-     */
+    /* -----------------------------------------------------
+       GENERATOR MODULE
+    ----------------------------------------------------- */
 
     if (
       GENZ.generator &&
@@ -456,14 +538,24 @@
     }
 
 
-    /*
-     * Tampilkan Studio.
-     */
+    /* -----------------------------------------------------
+       TAMPILKAN STUDIO
+    ----------------------------------------------------- */
 
     showStudio();
 
 
-    if (emitEvent) {
+    /*
+     * Event internal hanya jika memang diminta.
+     *
+     * auth.js tetap menjadi sumber event autentikasi.
+     */
+
+    if (
+      emitEvent &&
+      typeof GENZ.emit ===
+      'function'
+    ) {
 
       GENZ.emit(
         'auth-login',
@@ -480,7 +572,7 @@
   ======================================================= */
 
   async function handleLogout(
-    emitEvent = true
+    emitEvent = false
   ) {
 
     GENZ.state.loggedIn =
@@ -489,13 +581,24 @@
     GENZ.state.user =
       null;
 
-    GENZ.state.account =
-      GENZ.state.account || {};
-
 
     /*
-     * Hentikan polling video.
+     * Jangan mempertahankan privilege admin
+     * setelah logout.
      */
+
+    GENZ.state.account = {
+
+      isAdmin: false,
+
+      roleValidated: false
+
+    };
+
+
+    /* -----------------------------------------------------
+       HENTIKAN POLLING VIDEO
+    ----------------------------------------------------- */
 
     if (
       GENZ.video &&
@@ -504,15 +607,17 @@
     ) {
 
       try {
+
         GENZ.video.stopPolling();
+
       } catch (_) {}
 
     }
 
 
-    /*
-     * Bersihkan video.
-     */
+    /* -----------------------------------------------------
+       BERSIHKAN VIDEO
+    ----------------------------------------------------- */
 
     if (
       GENZ.video &&
@@ -521,15 +626,17 @@
     ) {
 
       try {
+
         GENZ.video.clear();
+
       } catch (_) {}
 
     }
 
 
-    /*
-     * Tutup account menu.
-     */
+    /* -----------------------------------------------------
+       TUTUP ACCOUNT MENU
+    ----------------------------------------------------- */
 
     if (
       GENZ.account &&
@@ -538,15 +645,17 @@
     ) {
 
       try {
+
         GENZ.account.close();
+
       } catch (_) {}
 
     }
 
 
-    /*
-     * Kembali ke halaman login/auth.
-     */
+    /* -----------------------------------------------------
+       UI LOGOUT
+    ----------------------------------------------------- */
 
     if (
       GENZ.auth &&
@@ -555,13 +664,23 @@
     ) {
 
       try {
+
         GENZ.auth.showLoggedOutUI();
+
       } catch (_) {}
 
     }
 
 
-    if (emitEvent) {
+    /* -----------------------------------------------------
+       EVENT INTERNAL
+    ----------------------------------------------------- */
+
+    if (
+      emitEvent &&
+      typeof GENZ.emit ===
+      'function'
+    ) {
 
       GENZ.emit(
         'auth-logout'
@@ -574,6 +693,10 @@
 
   /* =======================================================
      BIND AUTH EVENTS
+     
+     TIDAK ADA lagi Supabase listener di app.js.
+     
+     Supabase listener hanya dimiliki auth.js.
   ======================================================= */
 
   function bindAuth() {
@@ -585,28 +708,53 @@
     authBound = true;
 
 
-    /*
-     * Custom login event dari auth.js
-     */
+    /* -----------------------------------------------------
+       LOGIN EVENT DARI auth.js
+    ----------------------------------------------------- */
 
     window.addEventListener(
       'genz-auth-login',
       function (event) {
 
+        /*
+         * auth.js mengirim:
+         *
+         * detail: {
+         *   user,
+         *   session
+         * }
+         */
+
+        const detail =
+          event?.detail || {};
+
+
         const user =
-          event?.detail ||
-          GENZ.state.user;
+          detail?.user ||
+          (
+            detail?.email ||
+            detail?.id
+              ? detail
+              : GENZ.state.user
+          );
+
+
+        if (!user) {
+          return;
+        }
 
 
         handleLogin(
           user,
-          true
+          false
         ).catch(
           authError => {
+
             error(
               'Login handler error:',
               authError
             );
+
           }
         );
 
@@ -614,127 +762,29 @@
     );
 
 
-    /*
-     * Custom logout event dari auth.js
-     */
+    /* -----------------------------------------------------
+       LOGOUT EVENT DARI auth.js
+    ----------------------------------------------------- */
 
     window.addEventListener(
       'genz-auth-logout',
       function () {
 
         handleLogout(
-          true
+          false
         ).catch(
           authError => {
+
             error(
               'Logout handler error:',
               authError
             );
+
           }
         );
 
       }
     );
-
-
-    /*
-     * Supabase auth listener.
-     *
-     * Hanya dibuat jika client tersedia.
-     */
-
-    const client =
-      window.GENZ_AUTH_CLIENT;
-
-
-    if (
-      client &&
-      client.auth &&
-      typeof client.auth.onAuthStateChange ===
-      'function'
-    ) {
-
-      try {
-
-        const result =
-          client.auth.onAuthStateChange(
-            function (
-              event,
-              session
-            ) {
-
-              /*
-               * Supaya event awal tidak men-trigger
-               * proses login dua kali, state hanya
-               * diperbarui di sini.
-               */
-
-              if (
-                event === 'SIGNED_IN' ||
-                event === 'TOKEN_REFRESHED'
-              ) {
-
-                if (
-                  session &&
-                  session.user
-                ) {
-
-                  GENZ.state.loggedIn =
-                    true;
-
-                  GENZ.state.user =
-                    session.user;
-
-                }
-
-              }
-
-
-              if (
-                event === 'SIGNED_OUT'
-              ) {
-
-                GENZ.state.loggedIn =
-                  false;
-
-                GENZ.state.user =
-                  null;
-
-                handleLogout(
-                  true
-                ).catch(
-                  authError => {
-                    error(
-                      'Supabase logout error:',
-                      authError
-                    );
-                  }
-                );
-
-              }
-
-            }
-          );
-
-
-        /*
-         * Simpan subscription agar tidak hilang.
-         */
-
-        authSubscription =
-          result?.data?.subscription ||
-          null;
-
-      } catch (listenerError) {
-
-        error(
-          'Auth listener error:',
-          listenerError
-        );
-
-      }
-
-    }
 
   }
 
@@ -773,11 +823,6 @@
     GENZ.state.currentPage =
       'studio';
 
-
-    /*
-     * Header back button tidak diperlukan
-     * pada halaman Studio.
-     */
 
     const back =
       $('backToStudio');
@@ -951,11 +996,15 @@
           </button>
 
           <div>
-            <h2>Chat Admin</h2>
+
+            <h2>
+              Chat Admin
+            </h2>
 
             <p>
               Hubungi administrator GEN-Z.AI
             </p>
+
           </div>
 
         </div>
@@ -997,9 +1046,10 @@
 
   function bindNavigation() {
 
-    /*
-     * Account menu menggunakan data-page.
-     */
+
+    /* -----------------------------------------------------
+       ACCOUNT MENU
+    ----------------------------------------------------- */
 
     document.addEventListener(
       'click',
@@ -1032,10 +1082,12 @@
           page
         ).catch(
           pageError => {
+
             error(
               'Page loading error:',
               pageError
             );
+
           }
         );
 
@@ -1043,9 +1095,9 @@
     );
 
 
-    /*
-     * Back to studio.
-     */
+    /* -----------------------------------------------------
+       DATA BACK STUDIO
+    ----------------------------------------------------- */
 
     document.addEventListener(
       'click',
@@ -1070,9 +1122,9 @@
     );
 
 
-    /*
-     * Header back button.
-     */
+    /* -----------------------------------------------------
+       HEADER BACK BUTTON
+    ----------------------------------------------------- */
 
     document.addEventListener(
       'click',
@@ -1097,33 +1149,42 @@
     );
 
 
-    /*
-     * Event bus.
-     */
+    /* -----------------------------------------------------
+       EVENT BUS
+    ----------------------------------------------------- */
 
-    GENZ.on(
-      'show-studio',
-      showStudio
-    );
+    if (
+      typeof GENZ.on ===
+      'function'
+    ) {
+
+      GENZ.on(
+        'show-studio',
+        showStudio
+      );
 
 
-    GENZ.on(
-      'show-page',
-      function (page) {
+      GENZ.on(
+        'show-page',
+        function (page) {
 
-        showPage(
-          page
-        ).catch(
-          pageError => {
-            error(
-              'show-page error:',
-              pageError
-            );
-          }
-        );
+          showPage(
+            page
+          ).catch(
+            pageError => {
 
-      }
-    );
+              error(
+                'show-page error:',
+                pageError
+              );
+
+            }
+          );
+
+        }
+      );
+
+    }
 
   }
 
@@ -1156,14 +1217,14 @@
 
 
       /*
-       * Load HTML components.
+       * Load seluruh component.
        */
 
       await loadComponents();
 
 
       /*
-       * Sinkronisasi login.
+       * Sinkronisasi session.
        */
 
       await syncAuth();
@@ -1182,11 +1243,6 @@
 
     } catch (startupError) {
 
-      /*
-       * Jangan mengunci initialized=true
-       * jika startup gagal.
-       */
-
       GENZ.state.initialized =
         false;
 
@@ -1200,7 +1256,22 @@
       const app =
         $('app');
 
+
       if (app) {
+
+        const errorMessage =
+          startupError?.message ||
+          'Unknown error';
+
+
+        const safeMessage =
+          typeof GENZ.escapeHtml ===
+          'function'
+            ? GENZ.escapeHtml(
+                errorMessage
+              )
+            : errorMessage;
+
 
         app.innerHTML = `
 
@@ -1216,16 +1287,7 @@
             </p>
 
             <small>
-              ${GENZ.escapeHtml
-                ? GENZ.escapeHtml(
-                    startupError.message ||
-                    'Unknown error'
-                  )
-                : (
-                    startupError.message ||
-                    'Unknown error'
-                  )
-              }
+              ${safeMessage}
             </small>
 
           </section>
@@ -1246,8 +1308,10 @@
   GENZ.start =
     start;
 
+
   GENZ.showStudio =
     showStudio;
+
 
   GENZ.showPage =
     showPage;
@@ -1268,10 +1332,12 @@
 
         start().catch(
           startupError => {
+
             error(
               'Unhandled startup error:',
               startupError
             );
+
           }
         );
 
@@ -1285,10 +1351,12 @@
 
     start().catch(
       startupError => {
+
         error(
           'Unhandled startup error:',
           startupError
         );
+
       }
     );
 
