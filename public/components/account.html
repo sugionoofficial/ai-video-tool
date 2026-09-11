@@ -1,73 +1,313 @@
 <style>
-  .account { position:relative; display:flex; align-items:center; }
+  .account {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
   .account-btn {
-    display:flex; align-items:center; justify-content:center;
-    width:44px; height:44px; padding:0;
-    border:1px solid rgba(145,180,210,.22);
-    border-radius:13px;
-    background:rgba(12,31,49,.72);
-    color:#fff;
-    box-shadow:0 6px 22px rgba(0,0,0,.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(145,180,210,.22);
+    border-radius: 13px;
+    background: rgba(12,31,49,.72);
+    color: #fff;
+    box-shadow: 0 6px 22px rgba(0,0,0,.22);
   }
-  .account-btn:hover { background:rgba(23,49,72,.9); border-color:rgba(130,200,240,.45); }
-  .hamburger { display:flex; flex-direction:column; gap:5px; width:22px; }
-  .hamburger i { display:block; width:22px; height:2px; border-radius:2px; background:#fff; }
+
+  .account-btn:hover {
+    background: rgba(23,49,72,.9);
+    border-color: rgba(130,200,240,.45);
+  }
+
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 22px;
+  }
+
+  .hamburger i {
+    display: block;
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: #fff;
+  }
+
   .account-menu {
-    position:absolute; top:calc(100% + 10px); right:0; z-index:1000;
-    width:235px; padding:8px;
-    border:1px solid rgba(145,180,210,.18); border-radius:15px;
-    background:linear-gradient(145deg,rgba(13,31,47,.98),rgba(4,10,16,.98));
-    box-shadow:0 24px 65px rgba(0,0,0,.55);
-    backdrop-filter:blur(22px);
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 1000;
+
+    width: 235px;
+    padding: 8px;
+
+    border: 1px solid rgba(145,180,210,.18);
+    border-radius: 15px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(13,31,47,.98),
+        rgba(4,10,16,.98)
+      );
+
+    box-shadow: 0 24px 65px rgba(0,0,0,.55);
+    backdrop-filter: blur(22px);
   }
-  .account-menu.hidden { display:none!important; }
+
+  .account-menu.hidden {
+    display: none !important;
+  }
+
   .account-menu > button {
-    width:100%; min-height:43px; padding:0 12px; border:0; border-radius:10px;
-    background:transparent; color:rgba(241,246,250,.82); text-align:left;
-    font-size:13px; font-weight:700;
+    width: 100%;
+    min-height: 43px;
+    padding: 0 12px;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: transparent;
+    color: rgba(241,246,250,.82);
+
+    text-align: left;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
   }
-  .account-menu > button:hover { background:rgba(75,145,190,.13); color:#fff; }
-  .account-menu-divider { height:1px; margin:6px 0; background:rgba(255,255,255,.08); }
-  .account-menu .danger { color:#fca5a5; }
-  #userEmail,#menuEmail,#credits { display:none!important; }
+
+  .account-menu > button:hover {
+    background: rgba(75,145,190,.13);
+    color: #fff;
+  }
+
+  .account-menu-divider {
+    height: 1px;
+    margin: 6px 0;
+    background: rgba(255,255,255,.08);
+  }
+
+  .account-menu .danger {
+    color: #fca5a5;
+  }
+
+  .account-menu-email {
+    padding: 8px 12px 10px;
+
+    color: #fff;
+
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.4;
+
+    word-break: break-word;
+  }
+
+  .account-menu-role {
+    display: block;
+    margin-top: 3px;
+
+    color: rgba(255,255,255,.42);
+
+    font-size: 9px;
+    font-weight: 700;
+
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .account-menu-admin-only {
+    display: none;
+  }
+
+  .account-menu-user-only {
+    display: none;
+  }
+
+  .account-menu-user {
+    display: block;
+  }
+
+  .account-menu-membership {
+    display: block;
+  }
+
+  /*
+   * Elemen lama tetap dipertahankan
+   * agar tidak merusak modul account.js
+   */
+  #userEmail,
+  #credits {
+    display: none !important;
+  }
+
+  #menuEmail {
+    display: block !important;
+  }
 </style>
 
+
 <div class="account">
-  <button id="accountBtn" class="account-btn" type="button"
-          aria-label="Menu" aria-expanded="false">
+
+  <button
+    id="accountBtn"
+    class="account-btn"
+    type="button"
+    aria-label="Menu"
+    aria-expanded="false"
+  >
     <span class="hamburger" aria-hidden="true">
-      <i></i><i></i><i></i>
+      <i></i>
+      <i></i>
+      <i></i>
     </span>
   </button>
 
-  <div id="accountMenu" class="account-menu hidden">
-    <button type="button" data-page="studio">Dashboard</button>
-    <button type="button" data-page="profile">Riwayat</button>
-    <button type="button" data-page="topup">Top-up</button>
 
-    <button id="adminPanel" class="hidden" type="button" data-page="admin">
-      Admin Panel
-    </button>
+  <div
+    id="accountMenu"
+    class="account-menu hidden"
+  >
 
-    <button id="contactAdmin" class="hidden" type="button" data-page="contact">
-      Hub Admin
-    </button>
+    <!-- EMAIL -->
+    <div class="account-menu-email">
 
-    <button id="membershipMenu" type="button" data-page="membership">
-      Membership
-    </button>
+      <span id="menuEmail">
+        User
+      </span>
 
-    <button id="affiliateMenu" type="button" data-page="affiliate">
-      Affiliate
-    </button>
+      <span
+        id="accountMenuRole"
+        class="account-menu-role"
+      >
+        USER
+      </span>
+
+    </div>
+
 
     <div class="account-menu-divider"></div>
 
-    <button id="logout" class="danger" type="button">Log out</button>
+
+    <!-- DASHBOARD -->
+    <button
+      type="button"
+      data-page="studio"
+    >
+      Dashboard
+    </button>
+
+
+    <!-- RIWAYAT -->
+    <button
+      type="button"
+      data-page="profile"
+    >
+      Riwayat
+    </button>
+
+
+    <!-- TOP UP -->
+    <button
+      type="button"
+      data-page="topup"
+    >
+      Top up
+    </button>
+
+
+    <!-- HUB ADMIN
+         USER ONLY -->
+    <button
+      id="contactAdmin"
+      class="account-menu-user-only"
+      type="button"
+      data-page="contact"
+    >
+      Hub Admin
+    </button>
+
+
+    <!-- MEMBERSHIP
+         USER ONLY -->
+    <button
+      id="membershipMenu"
+      class="account-menu-membership"
+      type="button"
+      data-page="membership"
+    >
+      Membership
+    </button>
+
+
+    <!-- TOP UP SETTING
+         ADMIN ONLY -->
+    <button
+      id="topupSettingMenu"
+      class="account-menu-admin-only"
+      type="button"
+      data-page="topup-settings"
+    >
+      Top up Setting
+    </button>
+
+
+    <!-- ADMIN PANEL
+         ADMIN ONLY -->
+    <button
+      id="adminMenu"
+      class="account-menu-admin-only"
+      type="button"
+      data-page="admin"
+    >
+      Admin Panel
+    </button>
+
+
+    <!-- AFFILIATE
+         USER + ADMIN -->
+    <button
+      id="affiliateMenu"
+      type="button"
+      data-page="affiliate"
+    >
+      Affiliate
+    </button>
+
+
+    <div class="account-menu-divider"></div>
+
+
+    <!-- LOG OUT -->
+    <button
+      id="logout"
+      class="danger"
+      type="button"
+    >
+      Log out
+    </button>
+
   </div>
 
-  <!-- Kept hidden for compatibility with the existing account.js module. -->
-  <span id="userEmail" aria-hidden="true"></span>
-  <span id="menuEmail" aria-hidden="true"></span>
-  <span id="credits" aria-hidden="true"></span>
+
+  <!-- Legacy elements -->
+  <span
+    id="userEmail"
+    aria-hidden="true"
+  ></span>
+
+  <span
+    id="credits"
+    aria-hidden="true"
+  ></span>
+
 </div>
