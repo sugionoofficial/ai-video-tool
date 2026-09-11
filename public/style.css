@@ -1457,3 +1457,607 @@ left: 15px !important;
 #auth .auth-password-fixed .auth-fixed-toggle svg circle {
   stroke: #a78bfa !important;
 }
+
+/* =========================================================
+   GEN-Z.AI — HEADER FINAL OVERRIDE
+   Jangan letakkan sebelum CSS lama.
+   Letakkan PALING BAWAH public/style.css
+   ========================================================= */
+
+/* ---------- TOPBAR ---------- */
+
+.topbar {
+  position: relative;
+  z-index: 1000;
+
+  width: 100%;
+  min-height: 92px;
+  height: 92px;
+
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+
+  background:
+    linear-gradient(
+      180deg,
+      #071a2b 0%,
+      #061522 100%
+    );
+
+  border-bottom: 1px solid rgba(130, 170, 200, 0.18);
+
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+
+/* ---------- HEADER INNER ---------- */
+
+.topbar-inner {
+  width: 100%;
+  max-width: none;
+
+  height: 100%;
+
+  margin: 0;
+
+  padding: 0 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   LOGO KIRI
+   ========================================================= */
+
+.brand {
+  display: flex;
+  align-items: center;
+
+  margin: 0;
+  padding: 0;
+
+  gap: 0;
+
+  color: #fff;
+}
+
+
+/* Pastikan logo icon lama tidak muncul */
+
+.brand-mark {
+  display: none !important;
+}
+
+
+/* Container logo */
+
+.brand-info {
+  display: flex;
+
+  flex-direction: column;
+  align-items: flex-start;
+
+  justify-content: center;
+
+  min-width: 0;
+
+  gap: 0;
+
+  margin: 0;
+  padding: 0;
+}
+
+
+/* GEN-Z.AI */
+
+.brand-info h1 {
+  display: block;
+
+  margin: 0;
+  padding: 0;
+
+  color: #ffffff;
+
+  font-size: 34px;
+
+  line-height: 1;
+
+  font-weight: 900;
+
+  font-style: italic;
+
+  letter-spacing: -1.8px;
+
+  white-space: nowrap;
+}
+
+
+/* AI Creative Engine */
+
+.brand-info p {
+  display: block;
+
+  margin: 7px 0 0;
+  padding: 0;
+
+  color: #ef4055 !important;
+
+  font-size: 12px !important;
+
+  line-height: 1 !important;
+
+  font-weight: 800 !important;
+
+  letter-spacing: 0 !important;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   BAGIAN KANAN
+   ========================================================= */
+
+.header-actions {
+  display: flex;
+
+  align-items: center;
+  justify-content: flex-end;
+
+  margin-left: auto;
+
+  gap: 18px;
+}
+
+
+/* =========================================================
+   CREDIT
+   ========================================================= */
+
+.credit-display {
+  height: 48px;
+
+  min-width: 132px;
+
+  padding: 0 15px 0 10px;
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border: 1px solid rgba(115, 170, 210, 0.12);
+
+  border-radius: 26px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(20, 43, 65, 0.96),
+      rgba(10, 27, 43, 0.96)
+    );
+
+  color: #ffffff;
+
+  font-size: 20px;
+
+  font-weight: 800;
+
+  line-height: 1;
+
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.20);
+}
+
+
+/* Huruf C */
+
+.credit-icon {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  width: 31px;
+  height: 31px;
+
+  margin: 0;
+
+  color: #5fc8f4;
+
+  font-size: 29px;
+
+  line-height: 1;
+
+  font-weight: 900;
+
+  text-shadow:
+    0 0 12px rgba(74, 194, 242, 0.30);
+}
+
+
+/* =========================================================
+   ACCOUNT CONTAINER
+   ========================================================= */
+
+#account-container {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin: 0;
+  padding: 0;
+}
+
+
+/* =========================================================
+   ACCOUNT
+   ========================================================= */
+
+.account {
+  position: relative;
+
+  display: flex;
+
+  align-items: center;
+
+  margin: 0;
+  padding: 0;
+
+  gap: 0;
+}
+
+
+/* =========================================================
+   HAMBURGER BUTTON
+   ========================================================= */
+
+#accountBtn {
+  width: 40px;
+  height: 44px;
+
+  min-height: 44px;
+
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+
+  border-radius: 8px;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  box-shadow: none;
+
+  transform: none;
+
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+
+#accountBtn:hover {
+  background: transparent;
+
+  border-color: transparent;
+
+  transform: none;
+
+  opacity: 0.75;
+}
+
+
+#accountBtn:focus {
+  outline: none;
+}
+
+
+#accountBtn:focus-visible {
+  outline: 2px solid rgba(100, 200, 245, 0.65);
+
+  outline-offset: 3px;
+}
+
+
+/* =========================================================
+   TIGA GARIS VERTIKAL
+   Screenshot menggunakan |||
+   ========================================================= */
+
+.hamburger {
+  width: 22px;
+  height: 27px;
+
+  display: flex;
+
+  flex-direction: row;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+}
+
+
+.hamburger i {
+  display: block;
+
+  width: 3px;
+  height: 25px;
+
+  margin: 0;
+  padding: 0;
+
+  border-radius: 3px;
+
+  background: #ffffff;
+
+  opacity: 0.96;
+}
+
+
+/* =========================================================
+   HIDDEN ACCOUNT INFORMATION
+   Tidak boleh muncul di header
+   ========================================================= */
+
+#userEmail,
+#menuEmail,
+#credits {
+  display: none !important;
+}
+
+
+/* =========================================================
+   MENU
+   ========================================================= */
+
+.account-menu {
+  position: absolute;
+
+  top: calc(100% + 10px);
+
+  right: 0;
+
+  z-index: 2000;
+
+  width: 235px;
+
+  min-width: 235px;
+
+  padding: 8px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(125, 175, 205, 0.18);
+
+  border-radius: 15px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 34, 52, 0.98),
+      rgba(4, 12, 19, 0.99)
+    );
+
+  box-shadow:
+    0 24px 65px rgba(0, 0, 0, 0.55);
+
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+
+.account-menu.hidden {
+  display: none !important;
+}
+
+
+.account-menu > button {
+  width: 100%;
+
+  min-height: 43px;
+
+  margin: 0;
+
+  padding: 0 13px;
+
+  border: 0;
+
+  border-radius: 10px;
+
+  background: transparent;
+
+  color: rgba(241, 246, 250, 0.85);
+
+  font-size: 13px;
+
+  font-weight: 700;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.account-menu > button:hover {
+  background: rgba(75, 145, 190, 0.13);
+
+  color: #ffffff;
+}
+
+
+.account-menu-divider {
+  width: 100%;
+
+  height: 1px;
+
+  margin: 6px 0;
+
+  background: rgba(255, 255, 255, 0.08);
+}
+
+
+.account-menu .danger {
+  color: #fca5a5;
+}
+
+
+/* =========================================================
+   MOBILE — 857px / SCREENSHOT
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .topbar {
+    min-height: 92px;
+    height: 92px;
+  }
+
+  .topbar-inner {
+    padding-left: 38px;
+    padding-right: 38px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE KECIL
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .topbar {
+    min-height: 82px;
+    height: 82px;
+  }
+
+
+  .topbar-inner {
+    padding-left: 38px;
+    padding-right: 38px;
+  }
+
+
+  .brand-info h1 {
+    font-size: 30px;
+
+    letter-spacing: -1.5px;
+  }
+
+
+  .brand-info p {
+    margin-top: 6px;
+
+    font-size: 11px !important;
+  }
+
+
+  .header-actions {
+    gap: 12px;
+  }
+
+
+  .credit-display {
+    height: 42px;
+
+    min-width: 112px;
+
+    padding: 0 12px 0 8px;
+
+    gap: 6px;
+
+    border-radius: 23px;
+
+    font-size: 18px;
+  }
+
+
+  .credit-icon {
+    width: 27px;
+    height: 27px;
+
+    font-size: 26px;
+  }
+
+
+  #accountBtn {
+    width: 36px;
+    height: 42px;
+  }
+
+
+  .hamburger {
+    width: 20px;
+    height: 26px;
+
+    gap: 4px;
+  }
+
+
+  .hamburger i {
+    width: 3px;
+    height: 24px;
+  }
+
+}
+
+
+/* =========================================================
+   EXTRA SMALL
+   ========================================================= */
+
+@media (max-width: 390px) {
+
+  .topbar-inner {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+
+  .brand-info h1 {
+    font-size: 27px;
+  }
+
+
+  .brand-info p {
+    font-size: 10px !important;
+  }
+
+
+  .credit-display {
+    min-width: 100px;
+
+    padding-left: 7px;
+    padding-right: 10px;
+
+    font-size: 17px;
+  }
+
+
+  .header-actions {
+    gap: 7px;
+  }
+
+}
