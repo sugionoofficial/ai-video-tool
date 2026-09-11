@@ -309,7 +309,6 @@
     .account-menu-role {
       font-size: 8px;
     }
-
   }
 
   /* =========================================================
@@ -322,202 +321,214 @@
     .account-menu > button {
       transition: none;
     }
-
   }
-</style><!-- =========================================================
+</style>
+
+
+<!-- =========================================================
      ACCOUNT
-     ========================================================= --><div class="account">  <!-- ACCOUNT BUTTON --><button
-id="accountBtn"
-class="account-btn"
-type="button"
-aria-label="Menu akun"
-aria-expanded="false"
-aria-controls="accountMenu"
+     ========================================================= -->
 
-«»
+<div class="account">
 
-<span
-  class="hamburger"
-  aria-hidden="true"
->
-  <i></i>
-  <i></i>
-  <i></i>
-</span>
+  <!-- ACCOUNT BUTTON -->
 
-  </button>  <!-- =======================================================
+  <button
+    id="accountBtn"
+    class="account-btn"
+    type="button"
+    aria-label="Menu akun"
+    aria-expanded="false"
+    aria-controls="accountMenu"
+  >
+    <span
+      class="hamburger"
+      aria-hidden="true"
+    >
+      <i></i>
+      <i></i>
+      <i></i>
+    </span>
+  </button>
+
+
+  <!-- =======================================================
        ACCOUNT MENU
-       ======================================================= -->  <div
+       ======================================================= -->
+
+  <div
     id="accountMenu"
     class="account-menu hidden"
     aria-hidden="true"
-  ><!-- EMAIL + ROLE -->
+  >
 
-<div class="account-menu-email">
+    <!-- EMAIL + ROLE -->
 
-  <span id="menuEmail">
-    User
-  </span>
+    <div class="account-menu-email">
+
+      <span id="menuEmail">
+        User
+      </span>
+
+      <span
+        id="accountMenuRole"
+        class="account-menu-role"
+      >
+        USER
+      </span>
+
+    </div>
+
+
+    <div class="account-menu-divider"></div>
+
+
+    <!-- =====================================================
+         DASHBOARD
+         USER + ADMIN
+         ===================================================== -->
+
+    <button
+      type="button"
+      data-page="studio"
+    >
+      Dashboard
+    </button>
+
+
+    <!-- =====================================================
+         RIWAYAT
+         USER + ADMIN
+         ===================================================== -->
+
+    <button
+      type="button"
+      data-page="profile"
+    >
+      Riwayat
+    </button>
+
+
+    <!-- =====================================================
+         TOP UP
+         USER + ADMIN
+         
+         Membuka halaman Credit.
+         ===================================================== -->
+
+    <button
+      type="button"
+      data-page="credit"
+    >
+      Top up
+    </button>
+
+
+    <!-- =====================================================
+         HUB ADMIN
+         USER ONLY
+         ===================================================== -->
+
+    <button
+      id="contactAdmin"
+      class="account-menu-user-only"
+      type="button"
+      data-page="contact"
+    >
+      Hub Admin
+    </button>
+
+
+    <!-- =====================================================
+         MEMBERSHIP
+         USER ONLY
+         ===================================================== -->
+
+    <button
+      id="membershipMenu"
+      class="account-menu-membership account-menu-user-only"
+      type="button"
+      data-page="membership"
+    >
+      Membership
+    </button>
+
+
+    <!-- =====================================================
+         TOP UP SETTING
+         ADMIN ONLY
+         ===================================================== -->
+
+    <button
+      id="topupSettingMenu"
+      class="account-menu-admin-only"
+      type="button"
+      data-page="topup-settings"
+    >
+      Top up Setting
+    </button>
+
+
+    <!-- =====================================================
+         ADMIN PANEL
+         ADMIN ONLY
+         ===================================================== -->
+
+    <button
+      id="adminMenu"
+      class="account-menu-admin-only"
+      type="button"
+      data-page="admin"
+    >
+      Admin Panel
+    </button>
+
+
+    <!-- =====================================================
+         AFFILIATE
+         USER + ADMIN
+         ===================================================== -->
+
+    <button
+      id="affiliateMenu"
+      type="button"
+      data-page="affiliate"
+    >
+      Affiliate
+    </button>
+
+
+    <div class="account-menu-divider"></div>
+
+
+    <!-- =====================================================
+         LOG OUT
+         USER + ADMIN
+         ===================================================== -->
+
+    <button
+      id="logout"
+      class="danger"
+      type="button"
+    >
+      Log out
+    </button>
+
+  </div>
+
+
+  <!-- =======================================================
+       LEGACY ELEMENTS
+       ======================================================= -->
 
   <span
-    id="accountMenuRole"
-    class="account-menu-role"
-  >
-    USER
-  </span>
+    id="userEmail"
+    aria-hidden="true"
+  ></span>
 
-</div>
-
-
-<div class="account-menu-divider"></div>
-
-
-<!-- =====================================================
-     DASHBOARD
-     USER + ADMIN
-     ===================================================== -->
-
-<button
-  type="button"
-  data-page="studio"
->
-  Dashboard
-</button>
-
-
-<!-- =====================================================
-     RIWAYAT
-     USER + ADMIN
-     ===================================================== -->
-
-<button
-  type="button"
-  data-page="profile"
->
-  Riwayat
-</button>
-
-
-<!-- =====================================================
-     TOP UP
-     USER + ADMIN
-
-     Top up sekarang membuka halaman Kredit.
-     Dari halaman Kredit:
-     USER  → Pembayaran
-     ADMIN → Top Up Setting
-     ===================================================== -->
-
-<button
-  type="button"
-  data-page="credit"
->
-  Top up
-</button>
-
-
-<!-- =====================================================
-     HUB ADMIN
-     USER ONLY
-     ===================================================== -->
-
-<button
-  id="contactAdmin"
-  class="account-menu-user-only"
-  type="button"
-  data-page="contact"
->
-  Hub Admin
-</button>
-
-
-<!-- =====================================================
-     MEMBERSHIP
-     USER ONLY
-     ===================================================== -->
-
-<button
-  id="membershipMenu"
-  class="account-menu-membership account-menu-user-only"
-  type="button"
-  data-page="membership"
->
-  Membership
-</button>
-
-
-<!-- =====================================================
-     TOP UP SETTING
-     ADMIN ONLY
-     ===================================================== -->
-
-<button
-  id="topupSettingMenu"
-  class="account-menu-admin-only"
-  type="button"
-  data-page="topup-settings"
->
-  Top up Setting
-</button>
-
-
-<!-- =====================================================
-     ADMIN PANEL
-     ADMIN ONLY
-     ===================================================== -->
-
-<button
-  id="adminMenu"
-  class="account-menu-admin-only"
-  type="button"
-  data-page="admin"
->
-  Admin Panel
-</button>
-
-
-<!-- =====================================================
-     AFFILIATE
-     USER + ADMIN
-     ===================================================== -->
-
-<button
-  id="affiliateMenu"
-  type="button"
-  data-page="affiliate"
->
-  Affiliate
-</button>
-
-
-<div class="account-menu-divider"></div>
-
-
-<!-- =====================================================
-     LOG OUT
-     USER + ADMIN
-     ===================================================== -->
-
-<button
-  id="logout"
-  class="danger"
-  type="button"
->
-  Log out
-</button>
-
-  </div>  <!-- =======================================================
-       LEGACY ELEMENTS
-       ======================================================= --><span
-id="userEmail"
-aria-hidden="true"
-
-«</span>»
-
-<span
-id="credits"
-aria-hidden="true"
-
-«</span>»
+  <span
+    id="credits"
+    aria-hidden="true"
+  ></span>
 
 </div>
