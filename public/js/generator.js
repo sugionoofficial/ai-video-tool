@@ -1,5 +1,3 @@
-/* GEN-Z.AI - Generator Dispatcher */
-
 (function () {
   'use strict';
 
@@ -10,8 +8,7 @@
 
   GENZ.generator.busy = false;
 
-  const MODULES = {
-
+  const PROVIDER_MODULES = {
     veo:
       '/js/providers/veo.js',
 
@@ -20,14 +17,12 @@
 
     luma:
       '/js/providers/luma.js'
-
   };
 
   function getValue(
     id,
     fallback = ''
   ) {
-
     const element =
       document.getElementById(id);
 
@@ -39,26 +34,14 @@
   }
 
   function getImageData() {
-
-    if (
-      GENZ.state &&
-      GENZ.state.imageData
-    ) {
-      return GENZ.state.imageData;
-    }
-
-    if (
-      GENZ.upload &&
-      GENZ.upload.imageData
-    ) {
-      return GENZ.upload.imageData;
-    }
-
-    return null;
+    return (
+      GENZ.state?.imageData ||
+      GENZ.upload?.imageData ||
+      null
+    );
   }
 
   function collectInput() {
-
     const provider =
       getValue(
         'provider',
@@ -75,18 +58,22 @@
       );
 
     return {
-
       provider,
 
       prompt:
-        getValue('prompt')
-          .trim(),
+        getValue(
+          'prompt'
+        ).trim(),
 
       model:
-        getValue('model'),
+        getValue(
+          'model'
+        ),
 
       duration:
-        getValue('duration'),
+        getValue(
+          'duration'
+        ),
 
       aspectRatio:
         aspect,
@@ -99,45 +86,37 @@
 
       imageData:
         getImageData()
-
     };
   }
 
   async function loadProvider(
     provider
   ) {
-
     const modulePath =
-      MODULES[provider];
+      PROVIDER_MODULES[provider];
 
     if (!modulePath) {
-
       throw new Error(
         'Provider tidak didukung: ' +
         provider
       );
     }
 
-    /*
-     * Jangan load ulang module
-     * yang sudah tersedia.
-     */
+    GENZ.videoProviders =
+      GENZ.videoProviders || {};
+
     if (
-      !GENZ.videoProviders ||
       !GENZ.videoProviders[provider]
     ) {
-
       await import(
         modulePath
       );
     }
 
     const adapter =
-      GENZ.videoProviders &&
       GENZ.videoProviders[provider];
 
     if (!adapter) {
-
       throw new Error(
         'Provider ' +
         provider +
@@ -149,12 +128,10 @@
   }
 
   async function getToken() {
-
     if (
       !GENZ.auth ||
       !GENZ.auth.token
     ) {
-
       throw new Error(
         'Sistem autentikasi belum siap.'
       );
@@ -164,7 +141,6 @@
       await GENZ.auth.token();
 
     if (!token) {
-
       throw new Error(
         'Sesi login tidak valid.'
       );
@@ -176,7 +152,6 @@
   async function requestGenerate(
     payload
   ) {
-
     const token =
       await getToken();
 
@@ -184,34 +159,31 @@
       await fetch(
         '/api/generate',
         {
-
           method: 'POST',
 
           headers: {
-
             'Content-Type':
               'application/json',
 
             Authorization:
               'Bearer ' + token
-
           },
 
           body:
             JSON.stringify(
               payload
             )
-
         }
       );
 
     const data =
       await response
         .json()
-        .catch(() => ({}));
+        .catch(
+          () => ({})
+        );
 
     if (!response.ok) {
-
       throw new Error(
         data.error ||
         data.message ||
@@ -225,7 +197,6 @@
   async function pollJob(
     jobId
   ) {
-
     const token =
       await getToken();
 
@@ -252,34 +223,31 @@
         await fetch(
           '/api/generate/status',
           {
-
             method: 'POST',
 
             headers: {
-
               'Content-Type':
                 'application/json',
 
               Authorization:
                 'Bearer ' + token
-
             },
 
             body:
               JSON.stringify({
                 jobId
               })
-
           }
         );
 
       const data =
         await response
           .json()
-          .catch(() => ({}));
+          .catch(
+            () => ({})
+          );
 
       if (!response.ok) {
-
         throw new Error(
           data.error ||
           'Gagal memeriksa status video.'
@@ -295,7 +263,6 @@
         status === 'failed' ||
         status === 'error'
       ) {
-
         throw new Error(
           data.error ||
           data.message ||
@@ -321,20 +288,20 @@
         const videoResponse =
           await fetch(
             '/api/video?jobId=' +
-            encodeURIComponent(jobId),
+            encodeURIComponent(
+              jobId
+            ),
             {
-
               headers: {
-
                 Authorization:
                   'Bearer ' + token
-
               }
-
             }
           );
 
-        if (videoResponse.ok) {
+        if (
+          videoResponse.ok
+        ) {
 
           const contentType =
             videoResponse
@@ -369,7 +336,6 @@
             body.url ||
             body.videoUrl
           ) {
-
             return (
               body.url ||
               body.videoUrl
@@ -392,9 +358,6 @@
     url
   ) {
 
-    /*
-     * Protected video endpoint.
-     */
     if (
       GENZ.video &&
       GENZ.video.fetchProtected &&
@@ -402,20 +365,21 @@
     ) {
 
       await GENZ.video
-        .fetchProtected(url);
+        .fetchProtected(
+          url
+        );
 
       return url;
     }
 
-    /*
-     * Direct URL.
-     */
     if (
       GENZ.video &&
       GENZ.video.show
     ) {
 
-      GENZ.video.show(url);
+      GENZ.video.show(
+        url
+      );
     }
 
     return url;
@@ -433,7 +397,6 @@
       collectInput();
 
     if (!input.prompt) {
-
       throw new Error(
         'Prompt wajib diisi.'
       );
@@ -445,7 +408,7 @@
     try {
 
       /*
-       * 1. Load adapter provider.
+       * Load provider yang dipilih.
        */
       const adapter =
         await loadProvider(
@@ -453,8 +416,8 @@
         );
 
       /*
-       * 2. Provider sendiri
-       * menentukan payload.
+       * Provider membuat
+       * payload-nya sendiri.
        */
       const payload =
         await adapter.generate(
@@ -462,7 +425,7 @@
         );
 
       /*
-       * 3. Kirim ke Worker.
+       * Kirim payload ke Worker.
        */
       const result =
         await requestGenerate(
@@ -470,8 +433,8 @@
         );
 
       /*
-       * 4. Jika Worker langsung
-       * mengembalikan URL video.
+       * Server dapat langsung
+       * memberikan URL.
        */
       const directUrl =
         result.videoUrl ||
@@ -479,14 +442,13 @@
         result.outputUrl;
 
       if (directUrl) {
-
         return showVideo(
           directUrl
         );
       }
 
       /*
-       * 5. Ambil Job ID.
+       * Ambil job ID.
        */
       const jobId =
         result.jobId ||
@@ -494,14 +456,13 @@
         result.job?.id;
 
       if (!jobId) {
-
         throw new Error(
           'Server tidak mengembalikan job ID atau URL video.'
         );
       }
 
       /*
-       * 6. Poll sampai selesai.
+       * Poll status.
        */
       const videoUrl =
         await pollJob(
@@ -509,7 +470,7 @@
         );
 
       /*
-       * 7. Tampilkan video.
+       * Tampilkan video.
        */
       return showVideo(
         videoUrl
@@ -523,7 +484,7 @@
   }
 
   /*
-   * Event delegation.
+   * Tombol Generate.
    */
   document.addEventListener(
     'click',
@@ -539,45 +500,28 @@
       }
 
       generate()
-        .catch(error => {
+        .catch(
+          error => {
 
-          console.error(
-            'GEN-Z.AI generate error:',
-            error
-          );
+            console.error(
+              'GEN-Z.AI:',
+              error
+            );
 
-          alert(
-            error.message ||
-            'Generate video gagal.'
-          );
-        });
-
+            alert(
+              error.message ||
+              'Generate video gagal.'
+            );
+          }
+        );
     }
   );
 
   /*
-   * Compatibility API lama.
+   * API kompatibilitas.
    */
   window.generateVideo =
     generate;
-
-  /*
-   * GEN-Z event bus.
-   */
-  if (GENZ.on) {
-
-    GENZ.on(
-      'generate-video',
-      () => {
-
-        generate()
-          .catch(
-            console.error
-          );
-
-      }
-    );
-  }
 
   GENZ.generator.generate =
     generate;
