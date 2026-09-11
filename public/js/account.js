@@ -6,6 +6,7 @@
 
   "use strict";
 
+
   const GENZ =
     window.GENZ ||
     (window.GENZ = {});
@@ -54,6 +55,209 @@
 
 
   /* =======================================================
+     UPDATE MENU ROLE
+  ======================================================= */
+
+  function updateMenuVisibility(isAdmin) {
+
+    const adminMenu =
+      getElement("adminMenu");
+
+    const topupSetting =
+      getElement("topupSettingMenu");
+
+    const contactAdmin =
+      getElement("contactAdmin");
+
+    const membership =
+      getElement("membershipMenu");
+
+    const roleElement =
+      getElement("accountMenuRole");
+
+
+    const adminState =
+      isAdmin === true;
+
+
+    /*
+     * ADMIN
+     */
+
+    if (adminState) {
+
+      if (adminMenu) {
+
+        adminMenu.classList.remove(
+          "hidden"
+        );
+
+        adminMenu.style.setProperty(
+          "display",
+          "block",
+          "important"
+        );
+
+      }
+
+
+      if (topupSetting) {
+
+        topupSetting.classList.remove(
+          "hidden"
+        );
+
+        topupSetting.style.setProperty(
+          "display",
+          "block",
+          "important"
+        );
+
+      }
+
+
+      /*
+       * Admin tidak melihat Hub Admin
+       */
+
+      if (contactAdmin) {
+
+        contactAdmin.classList.add(
+          "hidden"
+        );
+
+        contactAdmin.style.setProperty(
+          "display",
+          "none",
+          "important"
+        );
+
+      }
+
+
+      /*
+       * Admin tidak melihat Membership
+       */
+
+      if (membership) {
+
+        membership.classList.add(
+          "hidden"
+        );
+
+        membership.style.setProperty(
+          "display",
+          "none",
+          "important"
+        );
+
+      }
+
+
+      if (roleElement) {
+
+        roleElement.textContent =
+          "ADMIN / OWNER";
+
+      }
+
+    }
+
+    /*
+     * USER BIASA
+     */
+
+    else {
+
+      /*
+       * Admin Panel disembunyikan
+       */
+
+      if (adminMenu) {
+
+        adminMenu.classList.add(
+          "hidden"
+        );
+
+        adminMenu.style.setProperty(
+          "display",
+          "none",
+          "important"
+        );
+
+      }
+
+
+      /*
+       * Top up Setting disembunyikan
+       */
+
+      if (topupSetting) {
+
+        topupSetting.classList.add(
+          "hidden"
+        );
+
+        topupSetting.style.setProperty(
+          "display",
+          "none",
+          "important"
+        );
+
+      }
+
+
+      /*
+       * Hub Admin tampil
+       */
+
+      if (contactAdmin) {
+
+        contactAdmin.classList.remove(
+          "hidden"
+        );
+
+        contactAdmin.style.setProperty(
+          "display",
+          "block",
+          "important"
+        );
+
+      }
+
+
+      /*
+       * Membership tampil
+       */
+
+      if (membership) {
+
+        membership.classList.remove(
+          "hidden"
+        );
+
+        membership.style.setProperty(
+          "display",
+          "block",
+          "important"
+        );
+
+      }
+
+
+      if (roleElement) {
+
+        roleElement.textContent =
+          "USER";
+
+      }
+
+    }
+
+  }
+
+
+  /* =======================================================
      ENSURE ACCOUNT UI
   ======================================================= */
 
@@ -61,6 +265,7 @@
 
     const container =
       getElement("account-container");
+
 
     if (!container) {
 
@@ -121,9 +326,14 @@
     }
 
 
-    button.classList.remove("hidden");
+    button.classList.remove(
+      "hidden"
+    );
 
-    button.removeAttribute("hidden");
+    button.removeAttribute(
+      "hidden"
+    );
+
 
     button.style.setProperty(
       "display",
@@ -141,6 +351,20 @@
       "opacity",
       "1",
       "important"
+    );
+
+
+    /*
+     * Terapkan role terakhir yang diketahui.
+     */
+
+    const currentAccount =
+      GENZ.state.account || {};
+
+
+    updateMenuVisibility(
+      currentAccount.isAdmin === true &&
+      currentAccount.roleValidated === true
     );
 
 
@@ -173,6 +397,7 @@
     const menu =
       getElement("accountMenu");
 
+
     if (!menu) {
       return;
     }
@@ -200,6 +425,7 @@
 
     const menu =
       getElement("accountMenu");
+
 
     if (!menu) {
       return;
@@ -264,6 +490,7 @@
     const emailElement =
       getElement("userEmail");
 
+
     const menuEmail =
       getElement("menuEmail");
 
@@ -295,6 +522,7 @@
     const element =
       getElement("credits");
 
+
     if (!element) {
       return;
     }
@@ -312,19 +540,9 @@
 
   /* =======================================================
      UPDATE ROLE
-     
-     Hanya Boolean true dari server
-     yang dianggap sebagai admin.
   ======================================================= */
 
   function updateRole(isAdmin) {
-
-    const admin =
-      getElement("adminPanel");
-
-    const contact =
-      getElement("contactAdmin");
-
 
     const adminState =
       isAdmin === true;
@@ -338,45 +556,10 @@
       adminState;
 
 
-    if (adminState) {
-
-      if (admin) {
-
-        admin.classList.remove(
-          "hidden"
-        );
-
-      }
-
-
-      if (contact) {
-
-        contact.classList.add(
-          "hidden"
-        );
-
-      }
-
-    } else {
-
-      if (admin) {
-
-        admin.classList.add(
-          "hidden"
-        );
-
-      }
-
-
-      if (contact) {
-
-        contact.classList.remove(
-          "hidden"
-        );
-
-      }
-
-    }
+    updateMenuVisibility(
+      adminState &&
+      GENZ.state.account.roleValidated === true
+    );
 
   }
 
@@ -394,33 +577,12 @@
     GENZ.state.account.isAdmin =
       false;
 
+
     GENZ.state.account.roleValidated =
       false;
 
 
-    const admin =
-      getElement("adminPanel");
-
-    const contact =
-      getElement("contactAdmin");
-
-
-    if (admin) {
-
-      admin.classList.add(
-        "hidden"
-      );
-
-    }
-
-
-    if (contact) {
-
-      contact.classList.remove(
-        "hidden"
-      );
-
-    }
+    updateMenuVisibility(false);
 
   }
 
@@ -492,9 +654,17 @@
       }
 
 
+      /*
+       * Simpan data account
+       */
+
       GENZ.state.account =
         data;
 
+
+      /*
+       * Credit
+       */
 
       updateCredits(
         data.credits ??
@@ -506,20 +676,34 @@
       /*
        * Server adalah sumber kebenaran.
        *
-       * Hanya:
-       *
-       * data.isAdmin === true
-       *
-       * yang boleh membuka Admin.
+       * Hanya data.isAdmin === true
+       * yang boleh dianggap admin.
        */
 
-      updateRole(
-        data.isAdmin === true
-      );
+      const serverIsAdmin =
+        data.isAdmin === true;
 
+
+      GENZ.state.account.isAdmin =
+        serverIsAdmin;
+
+
+      /*
+       * Tandai role sudah divalidasi
+       * setelah response server berhasil.
+       */
 
       GENZ.state.account.roleValidated =
         true;
+
+
+      /*
+       * Terapkan menu.
+       */
+
+      updateMenuVisibility(
+        serverIsAdmin
+      );
 
 
     } catch (error) {
@@ -542,9 +726,6 @@
 
   /* =======================================================
      HAS ADMIN ACCESS
-     
-     Frontend guard saja.
-     Backend tetap menjadi otoritas utama.
   ======================================================= */
 
   function hasAdminAccess() {
@@ -609,6 +790,10 @@
       "click",
       function (event) {
 
+        /*
+         * ACCOUNT BUTTON
+         */
+
         const button =
           event.target.closest(
             "#accountBtn"
@@ -626,6 +811,10 @@
         }
 
 
+        /*
+         * PAGE BUTTON
+         */
+
         const pageButton =
           event.target.closest(
             "[data-page]"
@@ -639,9 +828,10 @@
 
 
           /*
-           * Admin hanya boleh dibuka
-           * setelah server memvalidasi
-           * isAdmin === true.
+           * ADMIN PAGE
+           *
+           * Frontend guard.
+           * Backend tetap otoritas utama.
            */
 
           if (
@@ -660,12 +850,62 @@
           }
 
 
+          /*
+           * TOP UP SETTING
+           *
+           * Hanya admin.
+           */
+
+          if (
+            page === "topup-settings" &&
+            !hasAdminAccess()
+          ) {
+
+            closeMenu();
+
+            console.warn(
+              "[ACCOUNT] Top up Setting access denied"
+            );
+
+            return;
+
+          }
+
+
+          /*
+           * Membership dan Hub Admin
+           * hanya tersedia pada menu user.
+           */
+
+          if (
+            (
+              page === "membership" ||
+              page === "contact"
+            ) &&
+            hasAdminAccess()
+          ) {
+
+            closeMenu();
+
+            console.warn(
+              "[ACCOUNT] User-only page access denied"
+            );
+
+            return;
+
+          }
+
+
           navigate(page);
 
           return;
 
         }
 
+
+        /*
+         * CLICK DI LUAR MENU
+         */
 
         if (
           !event.target.closest(
@@ -680,6 +920,10 @@
       }
     );
 
+
+    /*
+     * AUTH LOGIN
+     */
 
     if (
       typeof GENZ.on ===
@@ -705,7 +949,9 @@
 
           updateUser(user);
 
+
           await ensureUI();
+
 
           await refresh();
 
@@ -713,12 +959,17 @@
       );
 
 
+      /*
+       * AUTH LOGOUT
+       */
+
       GENZ.on(
         "auth-logout",
         function () {
 
           GENZ.state.loggedIn =
             false;
+
 
           GENZ.state.user =
             null;
@@ -731,6 +982,11 @@
             roleValidated: false
 
           };
+
+
+          updateMenuVisibility(
+            false
+          );
 
 
           closeMenu();
@@ -750,6 +1006,7 @@
   async function init() {
 
     await ensureUI();
+
 
     bindEvents();
 
@@ -777,29 +1034,38 @@
   GENZ.account.init =
     init;
 
+
   GENZ.account.refresh =
     refresh;
+
 
   GENZ.account.ensureUI =
     ensureUI;
 
+
   GENZ.account.open =
     openMenu;
+
 
   GENZ.account.close =
     closeMenu;
 
+
   GENZ.account.updateUser =
     updateUser;
+
 
   GENZ.account.updateCredits =
     updateCredits;
 
+
   GENZ.account.updateRole =
     updateRole;
 
+
   GENZ.account.hasAdminAccess =
     hasAdminAccess;
+
 
   GENZ.account.invalidateAdmin =
     invalidateAdmin;
