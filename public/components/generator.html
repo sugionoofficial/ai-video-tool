@@ -1,5 +1,6 @@
 <section id="studio" class="generator-page">
   <div class="generator-shell">
+
     <div class="generator-hero">
       <h2>AI Video Generator</h2>
       <p>Create realistic AI videos with the Engine of Your Choice</p>
@@ -8,14 +9,14 @@
     <div class="generator-form">
       <div class="form-group">
         <label for="provider">PROVIDER</label>
-        <select id="provider" class="genz-status-select">
+        <select id="provider">
           <option value="">Pilih provider</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="model">MODEL</label>
-        <select id="model" class="genz-status-select">
+        <select id="model">
           <option value="">Pilih model</option>
         </select>
       </div>
@@ -24,12 +25,15 @@
         <label>Reference Image</label>
         <div class="reference-row">
           <div id="imagePreview" class="image-preview hidden"></div>
+
           <label class="image-add-tile" for="image" aria-label="Tambah reference image">
             <span>+</span>
           </label>
         </div>
+
         <input id="image" class="image-file-input" type="file"
-          accept="image/png,image/jpeg,image/webp">
+               accept="image/png,image/jpeg,image/webp">
+
         <div id="imageFileStatus" class="image-file-status" aria-live="polite">
           Tidak ada file dipilih
         </div>
@@ -37,35 +41,38 @@
 
       <div class="form-group prompt-group">
         <label for="prompt">Video Prompt</label>
-        <textarea id="prompt" rows="5" placeholder=""></textarea>
+        <textarea id="prompt" rows="4" placeholder="Enter you want"></textarea>
       </div>
 
-      <div class="setting-row">
-        <label for="ratio">Ratio</label>
-        <select id="ratio"><option value="">Pilih</option></select>
+      <div class="settings-grid">
+        <div class="setting-field">
+          <label for="ratio">Ratio</label>
+          <select id="ratio"><option value="">Pilih</option></select>
+        </div>
+
+        <div class="setting-field">
+          <label for="duration">Duration</label>
+          <select id="duration"><option value="">Pilih</option></select>
+        </div>
       </div>
 
-      <div class="setting-row">
-        <label for="duration">Duration</label>
-        <select id="duration"><option value="">Pilih</option></select>
-      </div>
-
-      <div class="setting-row resolution-row">
+      <div class="setting-field resolution-field">
         <label for="resolution">Resolution</label>
         <select id="resolution"><option value="">Pilih</option></select>
       </div>
 
-      <button id="generateVideo" type="button" class="generate-btn">Generate Video</button>
+      <button id="generateVideo" type="button" class="generate-btn">
+        Generate Video
+      </button>
+
       <div id="status" class="generator-status" aria-live="polite"></div>
     </div>
 
     <section id="videoResult" class="video-result hidden">
       <video id="video" controls playsinline></video>
-      <div class="video-actions">
-        <a id="downloadVideo" class="download-btn" href="#" download="gen-z-ai-video.mp4">
-          Download Video
-        </a>
-      </div>
+      <a id="downloadVideo" class="download-btn" href="#" download="gen-z-ai-video.mp4">
+        Download Video
+      </a>
     </section>
   </div>
 </section>
