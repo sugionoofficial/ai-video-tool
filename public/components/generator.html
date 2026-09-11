@@ -1,50 +1,33 @@
-<!-- =========================================================
-     GEN-Z.AI - GENERATOR COMPONENT
-========================================================= -->
-
 <section id="studio" class="generator-page">
 
   <div class="generator-card">
 
     <div class="generator-header">
       <h2>AI Video Generator</h2>
-      <p>
-        Buat video realistis menggunakan AI
-      </p>
+      <p>Buat video realistis menggunakan AI</p>
     </div>
 
-
-    <!-- =====================================================
-         PROVIDER
-    ====================================================== -->
-
+    <!-- PROVIDER -->
     <div class="form-group">
-
-      <label for="provider">
-        AI Engine
-      </label>
+      <label for="provider">AI Engine</label>
 
       <select id="provider">
-        <option value="veo">
-          Veo
-        </option>
-
-        <option value="minimax">
-          MiniMax
-        </option>
-
-        <option value="luma">
-          Luma
-        </option>
+        <option value="veo">Veo</option>
+        <option value="minimax">MiniMax</option>
+        <option value="luma">Luma</option>
       </select>
-
     </div>
 
+    <!-- MODEL -->
+    <div class="form-group">
+      <label for="model">Model</label>
 
-    <!-- =====================================================
-         IMAGE REFERENCE
-    ====================================================== -->
+      <select id="model">
+        <option value="">Pilih model</option>
+      </select>
+    </div>
 
+    <!-- IMAGE -->
     <div class="form-group">
 
       <label for="image">
@@ -68,11 +51,7 @@
 
     </div>
 
-
-    <!-- =====================================================
-         PROMPT
-    ====================================================== -->
-
+    <!-- PROMPT -->
     <div class="form-group">
 
       <label for="prompt">
@@ -87,11 +66,7 @@
 
     </div>
 
-
-    <!-- =====================================================
-         RATIO
-    ====================================================== -->
-
+    <!-- RATIO + DURATION -->
     <div class="form-row">
 
       <div class="form-group">
@@ -101,7 +76,6 @@
         </label>
 
         <select id="ratio">
-
           <option value="9:16">
             9:16 Portrait
           </option>
@@ -113,15 +87,9 @@
           <option value="1:1">
             1:1 Square
           </option>
-
         </select>
 
       </div>
-
-
-      <!-- ===================================================
-           DURATION
-      ==================================================== -->
 
       <div class="form-group">
 
@@ -130,32 +98,43 @@
         </label>
 
         <select id="duration">
-
-          <option value="5">
-            5 detik
-          </option>
-
-          <option value="8" selected>
-            8 detik
-          </option>
-
-          <option value="10">
-            10 detik
-          </option>
-
+          <option value="4">4 detik</option>
+          <option value="5">5 detik</option>
+          <option value="6">6 detik</option>
+          <option value="8">8 detik</option>
+          <option value="9">9 detik</option>
+          <option value="10">10 detik</option>
         </select>
 
       </div>
 
     </div>
 
+    <!-- RESOLUTION -->
+    <div class="form-group">
 
-    <!-- =====================================================
-         GENERATE BUTTON
-    ====================================================== -->
+      <label for="resolution">
+        Resolusi
+      </label>
 
+      <select id="resolution">
+        <option value="720p">720p</option>
+        <option value="768P">768P</option>
+        <option value="1080p">1080p</option>
+        <option value="4k">4K</option>
+      </select>
+
+    </div>
+
+    <!-- PROVIDER BUTTONS -->
+    <div
+      class="provider-buttons"
+      data-providers>
+    </div>
+
+    <!-- GENERATE -->
     <button
-      id="generateBtn"
+      id="generateVideo"
       type="button"
       class="generate-btn">
 
@@ -163,40 +142,26 @@
 
     </button>
 
-
-    <!-- =====================================================
-         STATUS
-    ====================================================== -->
-
+    <!-- STATUS -->
     <div
       id="status"
       class="generator-status">
     </div>
 
-
-    <!-- =====================================================
-         VIDEO RESULT
-    ====================================================== -->
-
+    <!-- RESULT -->
     <section
       id="videoResult"
       class="video-result hidden">
 
       <div class="result-header">
-
-        <h3>
-          Hasil Video
-        </h3>
-
+        <h3>Hasil Video</h3>
       </div>
-
 
       <video
         id="video"
         controls
         playsinline>
       </video>
-
 
       <div class="video-actions">
 
