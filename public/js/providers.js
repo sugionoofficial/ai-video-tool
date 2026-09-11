@@ -1,11 +1,38 @@
+/* =========================================================
+   GEN-Z.AI
+   DYNAMIC PROVIDER UI
+
+   File:
+   public/js/providers.js
+
+   Fungsi:
+   - Memuat provider dari backend
+   - Tidak menyimpan API key
+   - Tidak menentukan adapter
+   - Tidak hardcode provider instance
+   - Menampilkan provider aktif dari database
+   - Mengambil capability dari backend bila tersedia
+========================================================= */
+
 (function () {
+
   'use strict';
 
   window.GENZ = window.GENZ || {};
+
+  const GENZ = window.GENZ;
+
   GENZ.state = GENZ.state || {};
   GENZ.videoProviders = GENZ.videoProviders || {};
 
-  const CONFIG = {
+  /* =======================================================
+     DEFAULT CAPABILITIES
+     
+     Dipakai sebagai fallback apabila backend belum
+     mengirim capability provider.
+  ======================================================= */
+
+  const FALLBACK = {
 
     veo: {
       name: 'Gemini / Veo',
@@ -16,7 +43,11 @@
         'veo-3.1-lite-generate-preview'
       ],
 
-      durations: [4, 6, 8],
+      durations: [
+        4,
+        6,
+        8
+      ],
 
       aspects: [
         '16:9',
@@ -39,7 +70,10 @@
         'MiniMax-Hailuo-02'
       ],
 
-      durations: [6, 10],
+      durations: [
+        6,
+        10
+      ],
 
       aspects: [
         '16:9',
@@ -85,43 +119,308 @@
 
   };
 
+  /* =======================================================
+     HELPERS
+  ======================================================= */
+
   function get(id) {
     return document.getElementById(id);
   }
 
-  function setOptions(id, values) {
+  function normalizeText(value) {
 
-    const element = get(id);
+    return String(value || '')
+      .trim()
+      .toLowerCase();
+
+  }
+
+  function normalizeProviderId(value) {
+
+    return normalizeText(value)
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+  }
+
+  /* =======================================================
+     PROVIDER TYPE DETECTION
+     
+     Hanya untuk mengetahui capability fallback.
+     Adapter generation tetap ditentukan Worker.
+  ======================================================= */
+
+  function detectType(provider) {
+
+    const values = [
+
+      provider?.adapter,
+
+      provider?.id,
+
+      provider?.name
+
+    ];
+
+    const text =
+      values
+        .filter(Boolean)
+        .map(normalizeText)
+        .join(' ');
+
+    if (
+      text.includes('gemini') ||
+      text.includes('veo')
+    ) {
+      return 'veo';
+    }
+
+    if (
+      text.includes('minimax') ||
+      text.includes('mini max')
+    ) {
+      return 'minimax';
+    }
+
+    if (
+      text.includes('luma')
+    ) {
+      return 'luma';
+    }
+
+    return null;
+  }
+
+  /* =======================================================
+     CAPABILITY NORMALIZER
+  ======================================================= */
+
+  function normalizeCapabilities(
+    provider
+  ) {
+
+    const type =
+      detectType(provider);
+
+    const fallback =
+      type
+        ? FALLBACK[type]
+        : null;
+
+    const source =
+      provider?.capabilities ||
+      provider?.config?.capabilities ||
+      {};
+
+    return {
+
+      name:
+        provider?.name ||
+        fallback?.name ||
+        provider?.id ||
+        'Provider',
+
+      models:
+        Array.isArray(source.models) &&
+        source.models.length
+          ? source.models
+          : (
+              Array.isArray(provider?.models) &&
+              provider.models.length
+                ? provider.models
+                : (
+                    fallback?.models || []
+                  )
+            ),
+
+      durations:
+        Array.isArray(source.durations) &&
+        source.durations.length
+          ? source.durations
+          : (
+              Array.isArray(provider?.durations) &&
+              provider.durations.length
+                ? provider.durations
+                : (
+                    fallback?.durations || []
+                  )
+            ),
+
+      aspects:
+        Array.isArray(source.aspects) &&
+        source.aspects.length
+          ? source.aspects
+          : (
+              Array.isArray(provider?.aspects) &&
+              provider.aspects.length
+                ? provider.aspects
+                : (
+                    fallback?.aspects || []
+                  )
+            ),
+
+      resolutions:
+        Array.isArray(source.resolutions) &&
+        source.resolutions.length
+          ? source.resolutions
+          : (
+              Array.isArray(provider?.resolutions) &&
+              provider.resolutions.length
+                ? provider.resolutions
+                : (
+                    fallback?.resolutions || []
+                  )
+            )
+
+    };
+
+  }
+
+  /* =======================================================
+     PROVIDER COLLECTION
+  ======================================================= */
+
+  function normalizeProviderList(
+    providers
+  ) {
+
+    if (!Array.isArray(providers)) {
+      return [];
+    }
+
+    return providers
+      .filter(provider => {
+
+        if (!provider) {
+          return false;
+        }
+
+        if (
+          provider.enabled === false
+        ) {
+          return false;
+        }
+
+        return Boolean(
+          provider.id ||
+          provider.name
+        );
+
+      })
+      .map(provider => {
+
+        const id =
+          String(
+            provider.id ||
+            provider.name ||
+            ''
+          ).trim();
+
+        const capabilities =
+          normalizeCapabilities(
+            provider
+          );
+
+        return {
+
+          ...provider,
+
+          id,
+
+          name:
+            provider.name ||
+            capabilities.name,
+
+          capabilities
+
+        };
+
+      });
+
+  }
+
+  /* =======================================================
+     OPTIONS
+  ======================================================= */
+
+  function setOptions(
+    id,
+    values
+  ) {
+
+    const element =
+      get(id);
 
     if (!element) {
       return;
     }
 
+    const current =
+      String(
+        element.value || ''
+      );
+
     element.innerHTML = '';
 
-    values.forEach(value => {
+    (
+      Array.isArray(values)
+        ? values
+        : []
+    ).forEach(value => {
 
       const option =
-        document.createElement('option');
+        document.createElement(
+          'option'
+        );
 
-      option.value = value;
-      option.textContent = value;
+      option.value =
+        String(value);
 
-      element.appendChild(option);
+      option.textContent =
+        String(value);
+
+      element.appendChild(
+        option
+      );
 
     });
+
+    if (
+      current &&
+      values
+        .map(value => String(value))
+        .includes(current)
+    ) {
+
+      element.value =
+        current;
+
+    }
+
   }
 
-  function setValue(id, value) {
+  function setValue(
+    id,
+    value
+  ) {
 
-    const element = get(id);
+    const element =
+      get(id);
 
     if (element) {
-      element.value = value;
+      element.value =
+        String(value ?? '');
     }
+
   }
 
-  function updateGenerateButton(provider) {
+  /* =======================================================
+     GENERATE BUTTON
+  ======================================================= */
+
+  function updateGenerateButton(
+    provider
+  ) {
 
     const button =
       get('generateVideo') ||
@@ -131,134 +430,186 @@
       return;
     }
 
-    const config = CONFIG[provider];
+    const config =
+      provider?.capabilities;
+
+    const name =
+      provider?.name ||
+      config?.name ||
+      provider?.id ||
+      'Provider';
 
     button.textContent =
-      'Generate Video • ' +
-      config.name;
+      `Generate Video • ${name}`;
+
   }
 
-  function updateImageAvailability(provider) {
+  /* =======================================================
+     IMAGE INPUT
+  ======================================================= */
 
-    const imageInput = get('image');
+  function updateImageAvailability(
+    provider
+  ) {
+
+    const imageInput =
+      get('image');
 
     if (!imageInput) {
       return;
     }
 
     /*
-     * Semua provider tetap menggunakan
-     * input gambar yang sama.
-     *
-     * Validasi khusus provider dilakukan
-     * oleh file provider masing-masing.
-     */
+      Jangan mengunci upload berdasarkan nama provider.
 
-    imageInput.disabled = false;
+      Validasi final dilakukan di provider adapter.
+    */
+
+    imageInput.disabled =
+      false;
+
   }
 
-  function updateProviderUI(provider) {
+  /* =======================================================
+     PROVIDER UI
+  ======================================================= */
 
-    const config = CONFIG[provider];
+  function updateProviderUI(
+    provider
+  ) {
 
-    if (!config) {
+    if (!provider) {
       return;
     }
 
+    const capabilities =
+      provider.capabilities ||
+      normalizeCapabilities(
+        provider
+      );
+
     /*
-     * Provider
-     */
+      Provider ID database.
+    */
+
     setValue(
       'provider',
-      provider
+      provider.id
     );
 
     /*
-     * Model
-     */
+      Model.
+    */
+
     setOptions(
       'model',
-      config.models
+      capabilities.models
     );
 
     /*
-     * Durasi
-     */
+      Duration.
+    */
+
     setOptions(
       'duration',
-      config.durations
+      capabilities.durations
     );
 
     /*
-     * Ratio.
-     *
-     * generator.html menggunakan #ratio,
-     * bukan #aspect.
-     */
+      Ratio.
+    */
+
     setOptions(
       'ratio',
-      config.aspects
+      capabilities.aspects
     );
 
     /*
-     * Kompatibilitas apabila nanti
-     * #aspect ditambahkan.
-     */
+      Compatibility dengan UI lama.
+    */
+
     setOptions(
       'aspect',
-      config.aspects
+      capabilities.aspects
     );
 
     /*
-     * Resolusi
-     */
+      Resolution.
+    */
+
     setOptions(
       'resolution',
-      config.resolutions
+      capabilities.resolutions
     );
 
     /*
-     * Simpan provider aktif.
-     */
+      State.
+    */
+
     GENZ.state.provider =
-      provider;
+      provider.id;
 
     GENZ.providers =
       GENZ.providers || {};
 
     GENZ.providers.current =
+      provider.id;
+
+    GENZ.providers.currentProvider =
       provider;
+
+    /*
+      Button.
+    */
 
     updateGenerateButton(
       provider
     );
 
+    /*
+      Image.
+    */
+
     updateImageAvailability(
       provider
     );
 
+    /*
+      Active state.
+    */
+
     updateActiveButton(
-      provider
+      provider.id
     );
 
     /*
-     * Beri event agar komponen lain
-     * dapat mengetahui provider berubah.
-     */
+      Event.
+    */
+
     document.dispatchEvent(
       new CustomEvent(
         'genz-provider-change',
         {
           detail: {
             provider,
-            config
+            id: provider.id,
+            name: provider.name,
+            adapter: provider.adapter || null,
+            capabilities
           }
         }
       )
     );
+
   }
 
-  function updateActiveButton(provider) {
+  /* =======================================================
+     ACTIVE BUTTON
+  ======================================================= */
+
+  function updateActiveButton(
+    providerId
+  ) {
 
     document
       .querySelectorAll(
@@ -268,13 +619,23 @@
 
         button.classList.toggle(
           'active',
-          button.dataset.provider === provider
+          String(
+            button.dataset.provider
+          ) ===
+          String(providerId)
         );
 
       });
+
   }
 
-  function renderButtons() {
+  /* =======================================================
+     RENDER PROVIDER BUTTONS
+  ======================================================= */
+
+  function renderButtons(
+    providers
+  ) {
 
     const container =
       document.querySelector(
@@ -285,34 +646,36 @@
       return;
     }
 
-    container.innerHTML = '';
+    container.innerHTML =
+      '';
 
-    Object.entries(CONFIG)
-      .forEach(
-        ([provider, config]) => {
+    providers.forEach(
+      provider => {
 
-          const button =
-            document.createElement(
-              'button'
-            );
-
-          button.type = 'button';
-
-          button.className =
-            'provider-button';
-
-          button.dataset.provider =
-            provider;
-
-          button.textContent =
-            config.name;
-
-          container.appendChild(
-            button
+        const button =
+          document.createElement(
+            'button'
           );
 
-        }
-      );
+        button.type =
+          'button';
+
+        button.className =
+          'provider-button';
+
+        button.dataset.provider =
+          provider.id;
+
+        button.textContent =
+          provider.name ||
+          provider.id;
+
+        container.appendChild(
+          button
+        );
+
+      }
+    );
 
     if (
       container.dataset.listenerAttached ===
@@ -337,72 +700,433 @@
           return;
         }
 
-        updateProviderUI(
-          button.dataset.provider
+        const providerId =
+          button.dataset.provider;
+
+        selectProvider(
+          providerId
         );
 
       }
     );
+
   }
 
-  function selectProvider(provider) {
+  /* =======================================================
+     PROVIDER LOOKUP
+  ======================================================= */
 
-    if (!CONFIG[provider]) {
+  function findProvider(
+    providerId
+  ) {
 
-      console.warn(
-        'GEN-Z.AI: provider tidak dikenal:',
-        provider
+    const providers =
+      GENZ.providers?.list ||
+      [];
+
+    const normalized =
+      normalizeProviderId(
+        providerId
       );
 
-      provider = 'veo';
+    return providers.find(
+      provider => {
+
+        return (
+          normalizeProviderId(
+            provider.id
+          ) ===
+          normalized
+        );
+
+      }
+    ) || null;
+
+  }
+
+  /* =======================================================
+     SELECT PROVIDER
+  ======================================================= */
+
+  function selectProvider(
+    providerId
+  ) {
+
+    const provider =
+      findProvider(
+        providerId
+      );
+
+    if (!provider) {
+
+      console.warn(
+        '[GEN-Z.AI] Provider tidak ditemukan:',
+        providerId
+      );
+
+      return null;
     }
 
     updateProviderUI(
       provider
     );
 
-    return CONFIG[provider];
+    return provider;
+
   }
+
+  /* =======================================================
+     LOAD PROVIDERS FROM BACKEND
+     
+     Endpoint utama:
+       GET /api/providers
+
+     Fallback:
+       GET /api/admin/providers
+     
+     Fallback kedua:
+       provider yang sudah ada di state.
+  ======================================================= */
+
+  async function fetchProviderData() {
+
+    /*
+      Endpoint publik.
+    */
+
+    try {
+
+      const response =
+        await fetch(
+          '/api/providers',
+          {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              Accept:
+                'application/json'
+            }
+          }
+        );
+
+      if (response.ok) {
+
+        const data =
+          await response.json();
+
+        if (
+          Array.isArray(
+            data?.providers
+          )
+        ) {
+          return data.providers;
+        }
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        '[GEN-Z.AI] Public provider endpoint error:',
+        error
+      );
+
+    }
+
+    /*
+      Endpoint admin.
+      Dipakai hanya sebagai fallback.
+    */
+
+    try {
+
+      const token =
+        GENZ.auth &&
+        typeof GENZ.auth.token ===
+        'function'
+          ? await GENZ.auth.token()
+          : null;
+
+      const headers = {
+        Accept:
+          'application/json'
+      };
+
+      if (token) {
+        headers.Authorization =
+          `Bearer ${token}`;
+      }
+
+      const response =
+        await fetch(
+          '/api/admin/providers',
+          {
+            method: 'GET',
+            credentials: 'include',
+            headers
+          }
+        );
+
+      if (response.ok) {
+
+        const data =
+          await response.json();
+
+        if (
+          Array.isArray(
+            data?.providers
+          )
+        ) {
+          return data.providers;
+        }
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        '[GEN-Z.AI] Admin provider endpoint error:',
+        error
+      );
+
+    }
+
+    return [];
+
+  }
+
+  /* =======================================================
+     LOAD PROVIDERS
+  ======================================================= */
 
   async function loadProviders() {
 
-    renderButtons();
+    const rawProviders =
+      await fetchProviderData();
 
-    const current =
-      GENZ.state.provider ||
-      get('provider')?.value ||
-      'veo';
+    let providers =
+      normalizeProviderList(
+        rawProviders
+      );
 
-    const provider =
-      CONFIG[current]
-        ? current
-        : 'veo';
+    /*
+      Jika backend belum mempunyai
+      endpoint public provider,
+      jangan langsung membuat provider
+      palsu di database.
 
-    selectProvider(
-      provider
+      Fallback hanya untuk menjaga UI
+      tetap dapat digunakan ketika backend
+      belum mengirim data.
+    */
+
+    if (!providers.length) {
+
+      providers =
+        Object.entries(
+          FALLBACK
+        ).map(
+          ([id, config]) => {
+
+            return {
+              id,
+
+              name:
+                config.name,
+
+              enabled:
+                true,
+
+              adapter:
+                id,
+
+              capabilities:
+                config
+
+            };
+
+          }
+        );
+
+    }
+
+    /*
+      Simpan list provider.
+    */
+
+    GENZ.providers =
+      GENZ.providers || {};
+
+    GENZ.providers.list =
+      providers;
+
+    /*
+      Render button.
+    */
+
+    renderButtons(
+      providers
     );
 
-    return CONFIG;
+    /*
+      Tentukan provider aktif.
+    */
+
+    const requested =
+      GENZ.state.provider ||
+      get('provider')?.value ||
+      '';
+
+    let selected =
+      providers.find(
+        provider =>
+          String(provider.id) ===
+          String(requested)
+      );
+
+    /*
+      Kalau provider lama tidak ditemukan,
+      pilih provider pertama yang aktif.
+    */
+
+    if (!selected) {
+      selected =
+        providers[0] ||
+        null;
+    }
+
+    if (selected) {
+
+      updateProviderUI(
+        selected
+      );
+
+    }
+
+    /*
+      Beri tahu komponen lain.
+    */
+
+    document.dispatchEvent(
+      new CustomEvent(
+        'genz-providers-loaded',
+        {
+          detail: {
+            providers,
+            current:
+              selected?.id ||
+              null
+          }
+        }
+      )
+    );
+
+    return providers;
+
   }
 
-  GENZ.providers = {
+  /* =======================================================
+     PUBLIC API
+  ======================================================= */
 
-    config: CONFIG,
+  GENZ.videoProviders = {
+
+    fallback:
+      FALLBACK,
+
+    list:
+      GENZ.providers?.list ||
+      [],
 
     current:
       GENZ.state.provider ||
-      'veo',
+      null,
+
+    load:
+      loadProviders,
+
+    loadProviders,
+
+    select:
+      selectProvider,
 
     selectProvider,
 
-    loadProviders
+    find:
+      findProvider,
+
+    normalize:
+      normalizeProviderList,
+
+    detectType,
+
+    normalizeCapabilities
 
   };
+
+  GENZ.providers =
+    GENZ.providers || {};
+
+  GENZ.providers.config =
+    FALLBACK;
+
+  GENZ.providers.load =
+    loadProviders;
+
+  GENZ.providers.loadProviders =
+    loadProviders;
+
+  GENZ.providers.select =
+    selectProvider;
+
+  GENZ.providers.selectProvider =
+    selectProvider;
+
+  /*
+    Compatibility global functions.
+  */
 
   window.selectProvider =
     selectProvider;
 
   window.loadProviders =
     loadProviders;
+
+  /* =======================================================
+     INITIALIZE
+  ======================================================= */
+
+  function initialize() {
+
+    loadProviders()
+      .catch(error => {
+
+        console.error(
+          '[GEN-Z.AI] Provider initialization error:',
+          error
+        );
+
+      });
+
+  }
+
+  if (
+    document.readyState ===
+    'loading'
+  ) {
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      initialize,
+      {
+        once: true
+      }
+    );
+
+  } else {
+
+    initialize();
+
+  }
 
 })();
