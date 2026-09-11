@@ -1,146 +1,343 @@
 <section class="page-card credit-page" id="creditPage">
+
+  <!-- =====================================================
+       HEADER
+       ===================================================== -->
   <div class="page-header">
-    <button type="button" class="back-btn" id="creditBack" aria-label="Kembali">←</button>
+
+    <button
+      type="button"
+      class="back-btn"
+      id="creditBack"
+      aria-label="Kembali">
+      ←
+    </button>
 
     <div>
       <h2>Kredit</h2>
       <p>Kelola saldo credit dan pilih paket credit Anda</p>
     </div>
+
   </div>
 
-  <!-- SALDO -->
+
+  <!-- =====================================================
+       SALDO CREDIT
+       ===================================================== -->
   <div class="credit-balance-card">
-    <div class="credit-balance-icon">C</div>
+
+    <div
+      class="credit-balance-icon"
+      aria-hidden="true">
+      C
+    </div>
 
     <div class="credit-balance-content">
+
       <span>Credit Anda</span>
-      <strong id="creditBalance">0</strong>
-      <small id="creditUserEmail">-</small>
+
+      <strong id="creditBalance">
+        0
+      </strong>
+
+      <small id="creditUserEmail">
+        -
+      </small>
+
     </div>
+
   </div>
 
-  <!-- DAFTAR HARGA -->
+
+  <!-- =====================================================
+       DAFTAR HARGA
+       ===================================================== -->
   <div class="credit-section">
+
     <div class="credit-section-title">
-      <span class="highlight">DAFTAR HARGA CREDIT</span>
+      <span class="highlight">
+        DAFTAR HARGA CREDIT
+      </span>
     </div>
 
-    <div class="credit-packages" id="creditPackages">
 
+    <div
+      class="credit-packages"
+      id="creditPackages">
+
+
+      <!-- C 10 -->
       <button
         type="button"
         class="credit-package"
         data-credit="10"
-        data-price="10000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">10</span>
-        <span class="package-price">Rp 10.000</span>
-        <span class="package-button">BELI</span>
+        data-price="10000"
+        aria-label="Beli 10 Credit seharga Rp 10.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          10
+        </span>
+
+        <span class="package-price">
+          Rp 10.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
+
+      <!-- C 50 -->
       <button
         type="button"
         class="credit-package"
         data-credit="50"
-        data-price="50000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">50</span>
-        <span class="package-price">Rp 50.000</span>
-        <span class="package-button">BELI</span>
+        data-price="50000"
+        aria-label="Beli 50 Credit seharga Rp 50.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          50
+        </span>
+
+        <span class="package-price">
+          Rp 50.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
+
+      <!-- C 100 -->
       <button
         type="button"
         class="credit-package"
         data-credit="100"
-        data-price="100000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">100</span>
-        <span class="package-price">Rp 100.000</span>
-        <span class="package-button">BELI</span>
+        data-price="100000"
+        aria-label="Beli 100 Credit seharga Rp 100.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          100
+        </span>
+
+        <span class="package-price">
+          Rp 100.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
+
+      <!-- C 200 -->
       <button
         type="button"
         class="credit-package"
         data-credit="200"
-        data-price="200000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">200</span>
-        <span class="package-price">Rp 200.000</span>
-        <span class="package-button">BELI</span>
+        data-price="200000"
+        aria-label="Beli 200 Credit seharga Rp 200.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          200
+        </span>
+
+        <span class="package-price">
+          Rp 200.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
+
+      <!-- C 300 -->
       <button
         type="button"
         class="credit-package"
         data-credit="300"
-        data-price="300000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">300</span>
-        <span class="package-price">Rp 300.000</span>
-        <span class="package-button">BELI</span>
+        data-price="300000"
+        aria-label="Beli 300 Credit seharga Rp 300.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          300
+        </span>
+
+        <span class="package-price">
+          Rp 300.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
+
+      <!-- C 400 -->
       <button
         type="button"
         class="credit-package"
         data-credit="400"
-        data-price="400000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">400</span>
-        <span class="package-price">Rp 400.000</span>
-        <span class="package-button">BELI</span>
+        data-price="400000"
+        aria-label="Beli 400 Credit seharga Rp 400.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          400
+        </span>
+
+        <span class="package-price">
+          Rp 400.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
+
+      <!-- C 500 -->
       <button
         type="button"
         class="credit-package"
         data-credit="500"
-        data-price="500000">
-        <span class="package-logo">C</span>
-        <span class="package-credit">500</span>
-        <span class="package-price">Rp 500.000</span>
-        <span class="package-button">BELI</span>
+        data-price="500000"
+        aria-label="Beli 500 Credit seharga Rp 500.000">
+
+        <span
+          class="package-logo"
+          aria-hidden="true">
+          C
+        </span>
+
+        <span class="package-credit">
+          500
+        </span>
+
+        <span class="package-price">
+          Rp 500.000
+        </span>
+
+        <span class="package-button">
+          BELI
+        </span>
+
       </button>
 
     </div>
+
   </div>
 
-  <!-- STATUS -->
+
+  <!-- =====================================================
+       STATUS
+       ===================================================== -->
   <div
     id="creditStatus"
     class="credit-status"
     aria-live="polite">
   </div>
 
-  <!-- INFO -->
+
+  <!-- =====================================================
+       INFORMASI
+       ===================================================== -->
   <div class="credit-info-card">
-    <strong>Informasi Credit</strong>
+
+    <strong>
+      Informasi Credit
+    </strong>
 
     <p>
-      Credit digunakan untuk menjalankan fitur AI Video Generator.
-      Pilih paket credit sesuai kebutuhan Anda.
+      Credit digunakan untuk menjalankan fitur
+      AI Video Generator. Pilih paket credit
+      sesuai kebutuhan Anda.
     </p>
+
   </div>
 
-  <!-- RIWAYAT -->
+
+  <!-- =====================================================
+       RIWAYAT CREDIT
+       ===================================================== -->
   <div class="credit-history-section">
+
     <div class="credit-section-title">
-      <span class="highlight">RIWAYAT CREDIT</span>
+      <span class="highlight">
+        RIWAYAT CREDIT
+      </span>
     </div>
 
-    <div id="creditHistory" class="credit-history">
+    <div
+      id="creditHistory"
+      class="credit-history">
+
       <div class="credit-history-empty">
         Belum ada riwayat transaksi.
       </div>
+
     </div>
+
   </div>
 
+
+  <!-- =====================================================
+       STYLE
+       ===================================================== -->
   <style>
+
     .credit-page {
       width: 100%;
     }
+
+
+    /* ===============================
+       SALDO
+       =============================== */
 
     .credit-balance-card {
       display: flex;
@@ -148,203 +345,349 @@
       gap: 14px;
       padding: 18px;
       margin-bottom: 22px;
+
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 18px;
+
       background: rgba(255,255,255,.035);
     }
+
 
     .credit-balance-icon {
       width: 48px;
       height: 48px;
-      border-radius: 14px;
+
+      flex-shrink: 0;
+
       display: flex;
       align-items: center;
       justify-content: center;
+
+      border-radius: 14px;
+
       background: #facc15;
       color: #111827;
+
       font-size: 21px;
       font-weight: 900;
     }
 
+
     .credit-balance-content {
+      min-width: 0;
+
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
+
     .credit-balance-content span {
       color: rgba(255,255,255,.55);
+
       font-size: 10px;
       font-weight: 700;
+
       letter-spacing: .08em;
       text-transform: uppercase;
     }
 
+
     .credit-balance-content strong {
       color: #fff;
+
       font-size: 30px;
       line-height: 1;
+
       font-weight: 900;
     }
 
+
     .credit-balance-content small {
       color: rgba(255,255,255,.45);
+
       font-size: 10px;
+
       margin-top: 4px;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+
+
+    /* ===============================
+       SECTION
+       =============================== */
 
     .credit-section {
       margin-top: 20px;
     }
 
+
     .credit-section-title {
       margin-bottom: 12px;
     }
 
+
     .highlight {
       display: inline-block;
+
       padding: 3px 7px;
+
       background: #facc15;
       color: #111827;
+
       font-size: 10px;
       font-weight: 900;
+
       letter-spacing: .08em;
     }
 
+
+    /* ===============================
+       PACKAGES
+       =============================== */
+
     .credit-packages {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
       gap: 10px;
     }
 
+
     .credit-package {
       appearance: none;
+
+      width: 100%;
+
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 16px;
+
       background: rgba(255,255,255,.035);
+
       color: #fff;
+
       padding: 15px 12px;
+
       display: flex;
       flex-direction: column;
       align-items: center;
+
       gap: 5px;
+
       cursor: pointer;
+
       transition:
         transform .15s ease,
         background .15s ease,
         border-color .15s ease;
+
+      font-family: inherit;
+
+      -webkit-tap-highlight-color:
+        transparent;
     }
 
-    .credit-package:active {
-      transform: scale(.97);
-    }
 
     .credit-package:hover {
-      background: rgba(255,255,255,.065);
-      border-color: rgba(250,204,21,.45);
+      background:
+        rgba(255,255,255,.065);
+
+      border-color:
+        rgba(250,204,21,.45);
     }
+
+
+    .credit-package:active {
+      transform:
+        scale(.97);
+    }
+
+
+    .credit-package:focus-visible {
+      outline:
+        2px solid #facc15;
+
+      outline-offset:
+        2px;
+    }
+
 
     .package-logo {
       width: 34px;
       height: 34px;
+
       border-radius: 10px;
+
       display: flex;
       align-items: center;
       justify-content: center;
+
       background: #facc15;
       color: #111827;
+
       font-size: 15px;
       font-weight: 900;
     }
 
+
     .package-credit {
       font-size: 22px;
       line-height: 1;
+
       font-weight: 900;
     }
+
 
     .package-price {
       color: rgba(255,255,255,.75);
+
       font-size: 11px;
       font-weight: 700;
     }
+
 
     .package-button {
       margin-top: 7px;
+
       padding: 6px 14px;
+
       border-radius: 999px;
+
       background: #fff;
       color: #111827;
+
       font-size: 9px;
       font-weight: 900;
+
       letter-spacing: .06em;
     }
 
+
+    /* ===============================
+       STATUS
+       =============================== */
+
     .credit-status {
       min-height: 18px;
+
       margin: 14px 0;
+
       text-align: center;
+
       font-size: 11px;
       font-weight: 700;
     }
+
 
     .credit-status.success {
       color: #86efac;
     }
 
+
     .credit-status.error {
       color: #fca5a5;
     }
+
 
     .credit-status.info {
       color: rgba(255,255,255,.55);
     }
 
+
+    /* ===============================
+       INFO
+       =============================== */
+
     .credit-info-card {
       margin-top: 20px;
+
       padding: 15px;
+
       border-radius: 15px;
-      background: rgba(255,255,255,.03);
-      border: 1px solid rgba(255,255,255,.06);
+
+      background:
+        rgba(255,255,255,.03);
+
+      border:
+        1px solid rgba(255,255,255,.06);
     }
+
 
     .credit-info-card strong {
       display: block;
+
       color: #fff;
+
       font-size: 12px;
+
       margin-bottom: 6px;
     }
 
+
     .credit-info-card p {
       margin: 0;
-      color: rgba(255,255,255,.48);
+
+      color:
+        rgba(255,255,255,.48);
+
       font-size: 10px;
+
       line-height: 1.6;
     }
+
+
+    /* ===============================
+       HISTORY
+       =============================== */
 
     .credit-history-section {
       margin-top: 24px;
     }
 
+
     .credit-history {
       display: flex;
       flex-direction: column;
+
       gap: 8px;
     }
 
+
     .credit-history-empty {
       padding: 16px;
+
       border-radius: 12px;
-      background: rgba(255,255,255,.025);
-      color: rgba(255,255,255,.4);
+
+      background:
+        rgba(255,255,255,.025);
+
+      color:
+        rgba(255,255,255,.4);
+
       text-align: center;
+
       font-size: 10px;
     }
 
+
+    /* ===============================
+       DESKTOP
+       =============================== */
+
     @media (min-width: 600px) {
+
       .credit-packages {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns:
+          repeat(3, minmax(0, 1fr));
       }
+
     }
+
   </style>
+
 </section>
