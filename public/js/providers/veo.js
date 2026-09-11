@@ -1,7 +1,8 @@
-/* GEN-Z.AI - Veo Provider */
-
 (function () {
   'use strict';
+
+  window.GENZ = window.GENZ || {};
+  GENZ.videoProviders = GENZ.videoProviders || {};
 
   const CONFIG = {
     name: 'Gemini / Veo',
@@ -34,28 +35,17 @@
     }
 
     if (!CONFIG.durations.includes(duration)) {
-      throw new Error(
-        'Durasi Veo harus 4, 6, atau 8 detik.'
-      );
+      throw new Error('Durasi Veo harus 4, 6, atau 8 detik.');
     }
 
     if (!CONFIG.aspects.includes(input.aspectRatio)) {
-      throw new Error(
-        'Rasio Veo harus 16:9 atau 9:16.'
-      );
+      throw new Error('Rasio Veo harus 16:9 atau 9:16.');
     }
 
     if (!CONFIG.resolutions.includes(input.resolution)) {
-      throw new Error(
-        'Resolusi Veo tidak valid.'
-      );
+      throw new Error('Resolusi Veo tidak valid.');
     }
 
-    /*
-     * Veo:
-     * - Gambar referensi membutuhkan 8 detik.
-     * - Resolusi selain 720p membutuhkan 8 detik.
-     */
     if (
       (input.resolution !== '720p' || input.imageData) &&
       duration !== 8
@@ -65,9 +55,6 @@
       );
     }
 
-    /*
-     * Veo Lite tidak mendukung 4K.
-     */
     if (
       input.model === 'veo-3.1-lite-generate-preview' &&
       input.resolution === '4k'
@@ -83,25 +70,14 @@
 
     return {
       provider: 'veo',
-
       prompt: input.prompt,
-
       model: input.model,
-
       duration: Number(input.duration),
-
       aspectRatio: input.aspectRatio,
-
       resolution: input.resolution,
-
       imageData: input.imageData || null
     };
   }
-
-  window.GENZ = window.GENZ || {};
-
-  GENZ.videoProviders =
-    GENZ.videoProviders || {};
 
   GENZ.videoProviders.veo = {
     CONFIG,
