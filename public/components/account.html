@@ -1,95 +1,125 @@
-<div class="account"><button
-id="accountBtn"
-class="account-btn"
-type="button"
-aria-label="Menu akun"
+<div class="account">
 
-«»
+  <button
+    id="accountBtn"
+    class="account-btn"
+    type="button"
+    aria-label="Menu akun"
+    aria-expanded="false"
+  >
 
-<span id="userEmail">—</span>
-<strong id="credits">— credit</strong>
-<span aria-hidden="true">⌄</span>
+    <span
+      class="account-avatar"
+      aria-hidden="true"
+    >
+      <span>G</span>
+    </span>
 
-  </button>  <div
+    <span class="account-user-info">
+
+      <span
+        id="userEmail"
+        class="account-email"
+      >
+        —
+      </span>
+
+      <strong
+        id="credits"
+        class="account-credits"
+      >
+        — credit
+      </strong>
+
+    </span>
+
+    <span
+      class="account-chevron"
+      aria-hidden="true"
+    >
+      ⌄
+    </span>
+
+  </button>
+
+
+  <div
     id="accountMenu"
     class="account-menu hidden"
-  ><div
-  class="menu-email"
-  id="menuEmail"
->
-  —
+  >
+
+    <div
+      class="menu-email"
+      id="menuEmail"
+    >
+      —
+    </div>
+
+
+    <div class="account-menu-divider"></div>
+
+
+    <button
+      type="button"
+      data-page="profile"
+    >
+      <span aria-hidden="true">◉</span>
+      <span>Profil</span>
+    </button>
+
+
+    <button
+      type="button"
+      data-page="credit"
+    >
+      <span aria-hidden="true">◆</span>
+      <span>Kredit</span>
+    </button>
+
+
+    <button
+      type="button"
+      data-page="topup"
+    >
+      <span aria-hidden="true">+</span>
+      <span>Top-up</span>
+    </button>
+
+
+    <button
+      id="adminPanel"
+      class="hidden"
+      type="button"
+      data-page="admin"
+    >
+      <span aria-hidden="true">◇</span>
+      <span>Panel Admin</span>
+    </button>
+
+
+    <button
+      id="contactAdmin"
+      class="hidden"
+      type="button"
+      data-page="contact"
+    >
+      <span aria-hidden="true">?</span>
+      <span>Chat Admin</span>
+    </button>
+
+
+    <div class="account-menu-divider"></div>
+
+
+    <button
+      id="logout"
+      class="danger"
+      type="button"
+    >
+      <span aria-hidden="true">↪</span>
+      <span>Log out</span>
+    </button>
+
+  </div>
+
 </div>
-
-
-<button
-  type="button"
-  data-page="profile"
->
-  Profil
-</button>
-
-
-<button
-  type="button"
-  data-page="credit"
->
-  Kredit
-</button>
-
-
-<button
-  type="button"
-  data-page="topup"
->
-  Top-up
-</button>
-
-
-<!--
-  PANEL ADMIN
-
-  Tombol ini hanya akan terlihat
-  apabila server mengembalikan:
-
-  data.isAdmin === true
-
-  data-page="admin" digunakan oleh
-  account.js untuk membuka halaman
-  admin melalui app.js.
--->
-<button
-  id="adminPanel"
-  class="hidden"
-  type="button"
-  data-page="admin"
->
-  Panel Admin
-</button>
-
-
-<!--
-  CHAT ADMIN
-
-  Untuk user biasa.
-  Akan disembunyikan apabila
-  user adalah administrator.
--->
-<button
-  id="contactAdmin"
-  class="hidden"
-  type="button"
-  data-page="contact"
->
-  Chat Admin
-</button>
-
-
-<button
-  id="logout"
-  class="danger"
-  type="button"
->
-  Log out
-</button>
-
-  </div></div>
