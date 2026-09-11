@@ -35,8 +35,16 @@
   };
 
   function validate(input) {
+    if (!input.prompt) {
+      throw new Error(
+        'Prompt wajib diisi.'
+      );
+    }
+
     if (!CONFIG.models.includes(input.model)) {
-      throw new Error('Model Luma tidak valid.');
+      throw new Error(
+        'Model Luma tidak valid.'
+      );
     }
 
     if (!CONFIG.durations.includes(input.duration)) {
@@ -67,6 +75,7 @@
       model: input.model,
       duration: input.duration,
       aspectRatio: input.aspectRatio,
+      resolution: input.resolution,
       imageData: null
     };
   }
