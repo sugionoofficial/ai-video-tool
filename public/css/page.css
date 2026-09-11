@@ -1,7 +1,7 @@
 /* =========================================================
    GEN-Z.AI
    INTERNAL PAGES
-   Profile / Credit / Top-up / Contact / Admin
+   Profile / Credit / Top-up / Top-up Setting / Contact / Admin
    ========================================================= */
 
 
@@ -530,6 +530,16 @@
   outline-offset: 2px;
 }
 
+.primary-btn:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+
+  filter: none;
+}
+
 
 /* =========================================================
    TOP-UP STATUS
@@ -617,6 +627,285 @@
 
 
 /* =========================================================
+   TOP-UP SETTING
+   ========================================================= */
+
+.topup-settings-page {
+  width: 100%;
+}
+
+.topup-settings-card {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  max-width: 560px;
+
+  margin: 20px auto 0;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.035),
+      rgba(255, 255, 255, 0.012)
+    ),
+    rgba(0, 0, 0, 0.16);
+
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.18);
+}
+
+
+/* ---------------------------------------------------------
+   TOP-UP SETTING FIELD
+--------------------------------------------------------- */
+
+.topup-field {
+  margin-bottom: 18px;
+}
+
+.topup-field label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #facc15;
+
+  font-size: 10px;
+  font-weight: 850;
+
+  letter-spacing: 0.08em;
+}
+
+.topup-field input,
+.topup-field select,
+.topup-field textarea {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 12px 13px;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+
+  background:
+    rgba(0, 0, 0, 0.35);
+
+  color: #fff;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.topup-field input::placeholder,
+.topup-field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.topup-field input:focus,
+.topup-field select:focus,
+.topup-field textarea:focus {
+  border-color: rgba(250, 204, 21, 0.45);
+
+  background:
+    rgba(0, 0, 0, 0.48);
+
+  box-shadow:
+    0 0 0 3px rgba(250, 204, 21, 0.055);
+}
+
+.topup-field select {
+  appearance: auto;
+
+  cursor: pointer;
+}
+
+.topup-field select option {
+  background: #111;
+
+  color: #fff;
+}
+
+.topup-field textarea {
+  min-height: 95px;
+
+  resize: vertical;
+
+  line-height: 1.55;
+}
+
+.topup-field small {
+  display: block;
+
+  margin-top: 7px;
+
+  color: rgba(255, 255, 255, 0.38);
+
+  font-size: 9px;
+
+  line-height: 1.5;
+}
+
+
+/* ---------------------------------------------------------
+   SELECTED USER INFORMATION
+--------------------------------------------------------- */
+
+.topup-user-info {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+
+  gap: 10px;
+
+  margin:
+    0 0 20px;
+}
+
+.topup-user-info > div {
+  min-width: 0;
+
+  padding: 13px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 12px;
+
+  background:
+    rgba(255, 255, 255, 0.025);
+}
+
+.topup-user-info span {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: rgba(255, 255, 255, 0.38);
+
+  font-size: 9px;
+  font-weight: 750;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.06em;
+}
+
+.topup-user-info strong {
+  display: block;
+
+  min-width: 0;
+
+  color: rgba(255, 255, 255, 0.9);
+
+  font-size: 11px;
+  font-weight: 800;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+#topupCurrentCredit {
+  color: #86efac;
+
+  font-size: 16px;
+}
+
+
+/* ---------------------------------------------------------
+   TOP-UP SETTING BUTTON
+--------------------------------------------------------- */
+
+.topup-submit-btn {
+  width: 100%;
+
+  margin-top: 4px;
+}
+
+
+/* ---------------------------------------------------------
+   TOP-UP SETTING STATUS
+--------------------------------------------------------- */
+
+.topup-settings-status {
+  position: relative;
+  z-index: 1;
+
+  min-height: 18px;
+
+  margin: 12px 0;
+
+  font-size: 10px;
+
+  line-height: 1.5;
+}
+
+.topup-settings-status:empty {
+  display: none;
+}
+
+.topup-settings-status.info {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.topup-settings-status.success {
+  color: #86efac;
+}
+
+.topup-settings-status.error {
+  color: #fca5a5;
+}
+
+
+/* =========================================================
+   ADMIN STATUS
+   ========================================================= */
+
+.admin-status-message {
+  min-height: 20px;
+
+  margin: 10px 0;
+
+  font-size: 10px;
+
+  line-height: 1.5;
+}
+
+.admin-status-message.success {
+  color: #86efac;
+}
+
+.admin-status-message.error {
+  color: #fca5a5;
+}
+
+.admin-status-message.info {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+
+/* =========================================================
    HIDDEN
    ========================================================= */
 
@@ -690,6 +979,18 @@
     font-size: 36px;
   }
 
+  .topup-settings-card {
+    margin-top: 15px;
+
+    padding: 16px;
+
+    border-radius: 15px;
+  }
+
+  .topup-user-info {
+    grid-template-columns: 1fr;
+  }
+
 }
 
 
@@ -703,7 +1004,10 @@
   .transaction-row,
   .primary-btn,
   #topupForm input,
-  #topupForm textarea {
+  #topupForm textarea,
+  .topup-field input,
+  .topup-field select,
+  .topup-field textarea {
     transition: none;
   }
 
