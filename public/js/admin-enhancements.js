@@ -2,25 +2,26 @@
    GEN-Z.AI
    ADMIN PANEL ENHANCEMENTS
 
-   Fitur:
-   - ADD PROVIDER
-   - Provider deployment
-   - Provider active/inactive
-   - ADD ADMIN
-   - Admin active/inactive
+   Provider:
+   - Dynamic provider ID
+   - Adapter ditentukan oleh Worker/Provider Registry
+   - Tidak menyimpan API key di frontend
+   - Mendukung Gemini/Veo, MiniMax, Luma
+
+   Admin:
+   - Add admin
+   - Active / inactive admin
 
    File:
    public/js/admin-enhancements.js
 ========================================================= */
 
 (function () {
-
   'use strict';
 
   const GENZ =
     window.GENZ ||
     (window.GENZ = {});
-
 
   /* =======================================================
      HELPERS
@@ -30,16 +31,12 @@
     return document.getElementById(id);
   }
 
-
   function esc(value) {
-
     if (
       GENZ.escapeHtml &&
       typeof GENZ.escapeHtml === 'function'
     ) {
-      return GENZ.escapeHtml(
-        String(value ?? '')
-      );
+      return GENZ.escapeHtml(String(value ?? ''));
     }
 
     return String(value ?? '')
@@ -48,12 +45,9 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
-
   }
 
-
   async function getToken() {
-
     if (
       GENZ.auth &&
       typeof GENZ.auth.token === 'function'
@@ -62,17 +56,10 @@
     }
 
     return null;
-
   }
 
-
-  async function api(
-    path,
-    options = {}
-  ) {
-
-    const accessToken =
-      await getToken();
+  async function api(path, options = {}) {
+    const accessToken = await getToken();
 
     const headers = {
       ...(options.headers || {})
@@ -82,8 +69,7 @@
       options.body &&
       !headers['Content-Type']
     ) {
-      headers['Content-Type'] =
-        'application/json';
+      headers['Content-Type'] = 'application/json';
     }
 
     if (accessToken) {
@@ -91,46 +77,33 @@
         `Bearer ${accessToken}`;
     }
 
-    const response =
-      await fetch(
-        path,
-        {
-          ...options,
-          headers
-        }
-      );
+    const response = await fetch(path, {
+      ...options,
+      headers,
+      credentials: 'include'
+    });
 
     let data = {};
 
     try {
-      data =
-        await response.json();
+      data = await response.json();
     } catch (_) {
       data = {};
     }
 
     if (!response.ok) {
-
       throw new Error(
         data?.error ||
         data?.message ||
         `Request gagal (${response.status})`
       );
-
     }
 
     return data;
-
   }
 
-
-  function message(
-    text,
-    type = ''
-  ) {
-
-    const element =
-      $('adminStatus');
+  function message(text, type = '') {
+    const element = $('adminStatus');
 
     if (!element) {
       return;
@@ -141,118 +114,129 @@
 
     element.textContent =
       text || '';
-
   }
 
+  /* =======================================================
+     PROVIDER RESOLVER
+  ======================================================= */
 
-  function normalizeProvider(
-    value
-  ) {
-
+  function normalizeProvider(value) {
     const text =
       String(value || '')
         .trim()
         .toLowerCase();
 
     if (
-      text === 'gemini' ||
-      text === 'veo' ||
       text.includes('gemini') ||
       text.includes('veo')
     ) {
-
       return {
-        id: 'veo',
         adapter: 'veo',
-        name: 'Gemini / Veo'
+        label: 'Gemini / Veo'
       };
-
     }
 
     if (
-      text === 'minimax' ||
       text.includes('minimax') ||
       text.includes('mini max')
     ) {
-
       return {
-        id: 'minimax',
         adapter: 'minimax',
-        name: 'MiniMax'
+        label: 'MiniMax'
       };
-
     }
 
-    if (
-      text === 'luma' ||
-      text.includes('luma')
-    ) {
-
+    if (text.includes('luma')) {
       return {
-        id: 'luma',
         adapter: 'luma',
-        name: 'Luma'
+        label: 'Luma'
       };
-
     }
 
     return null;
-
   }
 
+  function slugifyProviderId(value) {
+    let id =
+      String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 
-  function providerStatus(
-    enabled
+    if (!id) {
+      id = 'provider';
+    }
+
+    return id;
+  }
+
+  function makeUniqueProviderId(
+    baseId,
+    providers
   ) {
+    const used = new Set(
+      (providers || [])
+        .map(item =>
+          String(item?.id || '')
+            .trim()
+            .toLowerCase()
+        )
+        .filter(Boolean)
+    );
 
-    if (enabled) {
+    if (!used.has(baseId)) {
+      return baseId;
+    }
 
-      return `
+    let counter = 2;
+
+    while (
+      used.has(`${baseId}-${counter}`)
+    ) {
+      counter++;
+    }
+
+    return `${baseId}-${counter}`;
+  }
+
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  function providerStatus(enabled) {
+    return enabled
+      ? `
         <span class="genz-admin-badge active">
           Aktif
         </span>
+      `
+      : `
+        <span class="genz-admin-badge inactive">
+          Non Aktif
+        </span>
       `;
-
-    }
-
-    return `
-      <span class="genz-admin-badge inactive">
-        Non Aktif
-      </span>
-    `;
-
   }
 
-
-  function adminStatus(
-    active
-  ) {
-
-    if (active) {
-
-      return `
+  function adminStatus(active) {
+    return active
+      ? `
         <span class="genz-admin-badge active">
           Aktif
         </span>
+      `
+      : `
+        <span class="genz-admin-badge inactive">
+          Non Aktif
+        </span>
       `;
-
-    }
-
-    return `
-      <span class="genz-admin-badge inactive">
-        Non Aktif
-      </span>
-    `;
-
   }
-
 
   /* =======================================================
      STYLE
   ======================================================= */
 
   function injectStyle() {
-
     if (
       document.getElementById(
         'genz-admin-enhancement-style'
@@ -268,7 +252,6 @@
       'genz-admin-enhancement-style';
 
     style.textContent = `
-
       .genz-admin-enhancement {
         display: flex;
         flex-direction: column;
@@ -336,7 +319,10 @@
 
       .genz-admin-row {
         display: grid;
-        grid-template-columns: minmax(0,1fr) auto auto;
+        grid-template-columns:
+          minmax(0,1fr)
+          auto
+          auto;
         gap: 12px;
         align-items: center;
         padding: 12px;
@@ -417,44 +403,39 @@
       }
 
       @media (max-width: 650px) {
-
         .genz-admin-row {
           grid-template-columns: 1fr;
           align-items: stretch;
         }
 
-        .genz-admin-row .genz-admin-badge,
-        .genz-admin-row .genz-admin-toggle {
+        .genz-admin-row
+        .genz-admin-badge,
+        .genz-admin-row
+        .genz-admin-toggle {
           width: 100%;
         }
-
       }
-
     `;
 
     document.head.appendChild(style);
-
   }
 
-
   /* =======================================================
-     PROVIDER
+     PROVIDER LOAD
   ======================================================= */
 
   async function loadProviders() {
-
     const response =
-      await api(
-        '/api/admin/providers'
-      );
+      await api('/api/admin/providers');
 
     return response.providers || [];
-
   }
 
+  /* =======================================================
+     PROVIDER RENDER
+  ======================================================= */
 
   async function renderProviderManager() {
-
     const content =
       $('adminContent');
 
@@ -466,7 +447,6 @@
       await loadProviders();
 
     content.innerHTML = `
-
       <div class="genz-admin-enhancement">
 
         <div class="genz-admin-box">
@@ -485,7 +465,7 @@
             <input
               id="genzProviderName"
               type="text"
-              placeholder="Gemini, MiniMax, atau Luma"
+              placeholder="Gemini Production"
               autocomplete="off"
               required
             >
@@ -513,13 +493,14 @@
           </form>
 
           <div class="genz-admin-note">
-            Nama Gemini/Veo otomatis menggunakan adapter Gemini/Veo.
-            MiniMax dan Luma juga dikenali otomatis.
-            API key tidak ditampilkan kembali di halaman.
+            Nama provider menentukan adapter secara
+            otomatis. Contoh: Gemini Production,
+            Gemini Backup, MiniMax Production,
+            atau Luma Production.
+            API key tidak ditampilkan kembali.
           </div>
 
         </div>
-
 
         <div class="genz-admin-box">
 
@@ -529,140 +510,111 @@
             id="genzProviderList"
             class="genz-admin-table"
           >
-
-            ${renderProviderRows(
-              providers
-            )}
-
+            ${renderProviderRows(providers)}
           </div>
 
         </div>
 
       </div>
-
     `;
-
 
     const form =
       $('genzAddProviderForm');
 
     if (form) {
-
       form.addEventListener(
         'submit',
         deployProvider
       );
-
     }
 
-
     bindProviderToggles();
-
   }
-
 
   function renderProviderRows(
     providers
   ) {
-
     if (!providers.length) {
-
       return `
         <div class="genz-admin-empty">
           Belum ada provider.
         </div>
       `;
-
     }
 
-
     return providers
-      .map(
-        provider => {
+      .map(provider => {
+        const enabled =
+          provider.enabled === true;
 
-          const enabled =
-            provider.enabled === true;
+        const name =
+          provider.name ||
+          provider.id ||
+          'Provider';
 
-          return `
+        const adapter =
+          provider.adapter ||
+          normalizeProvider(name)?.adapter ||
+          provider.id ||
+          '-';
 
-            <div
-              class="genz-admin-row"
-              data-provider-id="${esc(
-                provider.id
-              )}"
-            >
+        return `
+          <div
+            class="genz-admin-row"
+            data-provider-id="${esc(provider.id)}"
+          >
 
-              <div class="genz-admin-row-name">
+            <div class="genz-admin-row-name">
 
-                <strong>
-                  ${esc(
-                    provider.name ||
-                    provider.id
-                  )}
-                </strong>
+              <strong>
+                ${esc(name)}
+              </strong>
 
-                <small>
-                  ${esc(
-                    provider.adapter ||
-                    provider.id
-                  )}
-                </small>
-
-              </div>
-
-              ${providerStatus(
-                enabled
-              )}
-
-              <button
-                type="button"
-                class="genz-admin-toggle"
-                data-provider-toggle="${esc(
-                  provider.id
-                )}"
-              >
-                ${
-                  enabled
-                    ? 'NON AKTIFKAN'
-                    : 'AKTIFKAN'
-                }
-              </button>
+              <small>
+                ID:
+                ${esc(provider.id || '-')}
+                · Adapter:
+                ${esc(adapter)}
+              </small>
 
             </div>
 
-          `;
+            ${providerStatus(enabled)}
 
-        }
-      )
+            <button
+              type="button"
+              class="genz-admin-toggle"
+              data-provider-toggle="${esc(
+                provider.id
+              )}"
+            >
+              ${
+                enabled
+                  ? 'NON AKTIFKAN'
+                  : 'AKTIFKAN'
+              }
+            </button>
+
+          </div>
+        `;
+      })
       .join('');
-
   }
 
-
   function bindProviderToggles() {
-
     document
       .querySelectorAll(
         '[data-provider-toggle]'
       )
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            'click',
-            toggleProvider
-          );
-
-        }
-      );
-
+      .forEach(button => {
+        button.addEventListener(
+          'click',
+          toggleProvider
+        );
+      });
   }
 
-
-  async function toggleProvider(
-    event
-  ) {
-
+  async function toggleProvider(event) {
     const button =
       event.currentTarget;
 
@@ -673,9 +625,6 @@
       return;
     }
 
-    button.disabled =
-      true;
-
     const current =
       button.textContent
         .trim()
@@ -684,8 +633,9 @@
     const enabled =
       current === 'AKTIFKAN';
 
-    try {
+    button.disabled = true;
 
+    try {
       await api(
         `/api/admin/providers/${encodeURIComponent(id)}/toggle`,
         {
@@ -709,7 +659,6 @@
       await renderProviderManager();
 
     } catch (error) {
-
       console.error(
         '[GEN-Z.AI] Provider toggle error:',
         error
@@ -721,18 +670,15 @@
         'error'
       );
 
-      button.disabled =
-        false;
-
+      button.disabled = false;
     }
-
   }
 
+  /* =======================================================
+     PROVIDER DEPLOYMENT
+  ======================================================= */
 
-  async function deployProvider(
-    event
-  ) {
-
+  async function deployProvider(event) {
     event.preventDefault();
 
     const form =
@@ -758,112 +704,134 @@
       ).trim();
 
     if (!name) {
-
       message(
         'Nama provider wajib diisi.',
         'error'
       );
-
       return;
-
     }
 
     if (!apiKey) {
-
       message(
         'API key wajib diisi.',
         'error'
       );
-
       return;
-
     }
 
-    const provider =
+    /*
+      Hanya digunakan untuk validasi nama.
+      Adapter TIDAK dikirim dari frontend.
+      Worker akan menentukan adapter melalui
+      provider registry.
+    */
+    const providerType =
       normalizeProvider(name);
 
-    if (!provider) {
-
+    if (!providerType) {
       message(
         'Provider tidak dikenali. Gunakan Gemini, Veo, MiniMax, atau Luma.',
         'error'
       );
-
       return;
-
     }
 
-    deployButton.disabled =
-      true;
-
+    deployButton.disabled = true;
     deployButton.textContent =
       'DEPLOYING...';
 
     try {
-
       const providers =
         await loadProviders();
 
-      const exists =
-        providers.find(
-          item =>
-            String(item.id) ===
-            String(provider.id)
+      const baseId =
+        slugifyProviderId(name);
+
+      /*
+        Jika ID dasar sama persis sudah ada,
+        update provider tersebut.
+
+        Contoh:
+        Gemini
+        -> gemini
+
+        Jika belum ada:
+        Gemini Production
+        -> gemini-production
+
+        Jika sudah ada:
+        Gemini Production
+        -> gemini-production-2
+      */
+
+      const existing =
+        providers.find(item =>
+          String(item?.id || '')
+            .trim()
+            .toLowerCase() ===
+          baseId
         );
 
-      const payload = {
+      let providerId;
+      let method;
+      let endpoint;
 
-        id: provider.id,
+      if (existing) {
+        providerId =
+          String(existing.id);
 
-        name:
-          name,
+        method = 'PUT';
 
-        adapter:
-          provider.adapter,
-
-        api_key:
-          apiKey,
-
-        enabled:
-          true,
-
-        config:
-          {}
-
-      };
-
-
-      if (exists) {
-
-        await api(
-          `/api/admin/providers/${encodeURIComponent(provider.id)}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify(
-              payload
-            )
-          }
-        );
+        endpoint =
+          `/api/admin/providers/${encodeURIComponent(
+            providerId
+          )}`;
 
       } else {
+        providerId =
+          makeUniqueProviderId(
+            baseId,
+            providers
+          );
 
-        await api(
-          '/api/admin/providers',
-          {
-            method: 'POST',
-            body: JSON.stringify(
-              payload
-            )
-          }
-        );
+        method = 'POST';
 
+        endpoint =
+          '/api/admin/providers';
       }
 
+      /*
+        PERHATIKAN:
+        Tidak ada adapter di sini.
+
+        Worker:
+        name/id
+           ↓
+        Provider Registry
+           ↓
+        veo / minimax / luma
+      */
+
+      const payload = {
+        id: providerId,
+        name,
+        api_key: apiKey,
+        enabled: true,
+        config: {}
+      };
+
+      await api(
+        endpoint,
+        {
+          method,
+          body: JSON.stringify(payload)
+        }
+      );
 
       form.reset();
 
       message(
-        exists
+        existing
           ? 'Provider berhasil diperbarui dan diaktifkan.'
           : 'Provider berhasil ditambahkan dan diaktifkan.',
         'success'
@@ -872,7 +840,6 @@
       await renderProviderManager();
 
     } catch (error) {
-
       console.error(
         '[GEN-Z.AI] Provider deployment error:',
         error
@@ -884,47 +851,31 @@
         'error'
       );
 
-      deployButton.disabled =
-        false;
-
+      deployButton.disabled = false;
       deployButton.textContent =
         'DEPLOYMENT';
-
     }
-
   }
-
 
   /* =======================================================
      ADMIN
   ======================================================= */
 
   async function loadAdmins() {
-
     const response =
-      await api(
-        '/api/admin/admins'
-      );
+      await api('/api/admin/admins');
 
     return response.admins || [];
-
   }
-
 
   async function loadUsers() {
-
     const response =
-      await api(
-        '/api/admin/users'
-      );
+      await api('/api/admin/users');
 
     return response.users || [];
-
   }
 
-
   async function renderAdminManager() {
-
     const content =
       $('adminContent');
 
@@ -940,27 +891,26 @@
       loadUsers()
     ]);
 
-
     const activeMap =
-      new Map(
-        admins.map(
-          admin => [
-            String(admin.user_id),
-            true
-          ]
-        )
-      );
+      new Map();
 
+    admins.forEach(admin => {
+      const id =
+        String(
+          admin.user_id ||
+          admin.id ||
+          ''
+        );
 
-    const rows =
-      users.filter(
-        user =>
-          user.email
-      );
-
+      if (id) {
+        activeMap.set(
+          id,
+          true
+        );
+      }
+    });
 
     content.innerHTML = `
-
       <div class="genz-admin-enhancement">
 
         <div class="genz-admin-box">
@@ -973,13 +923,13 @@
           >
 
             <label for="genzAdminEmail">
-              Email admin
+              Email
             </label>
 
             <input
               id="genzAdminEmail"
               type="email"
-              placeholder="admin@example.com"
+              placeholder="admin@email.com"
               autocomplete="off"
               required
             >
@@ -991,9 +941,8 @@
             <input
               id="genzAdminPassword"
               type="password"
-              placeholder="Minimal 6 karakter"
+              placeholder="Password akun admin"
               autocomplete="new-password"
-              minlength="6"
               required
             >
 
@@ -1002,18 +951,17 @@
               class="genz-admin-submit"
               type="submit"
             >
-              TAMBAH ADMIN
+              ADD ADMIN
             </button>
 
           </form>
 
           <div class="genz-admin-note">
-            Akun dibuat melalui Supabase Auth.
-            Password tidak disimpan oleh panel admin.
+            Akun dibuat melalui Supabase Auth,
+            kemudian ditambahkan sebagai admin aplikasi.
           </div>
 
         </div>
-
 
         <div class="genz-admin-box">
 
@@ -1023,155 +971,138 @@
             id="genzAdminList"
             class="genz-admin-table"
           >
-
-            ${
-              renderAdminRows(
-                rows,
-                activeMap
-              )
-            }
-
+            ${renderAdminRows(
+              users,
+              activeMap
+            )}
           </div>
 
         </div>
 
       </div>
-
     `;
-
 
     const form =
       $('genzAddAdminForm');
 
     if (form) {
-
       form.addEventListener(
         'submit',
         createAdmin
       );
-
     }
 
-
     bindAdminToggles();
-
   }
-
 
   function renderAdminRows(
     users,
     activeMap
   ) {
-
     if (!users.length) {
-
       return `
         <div class="genz-admin-empty">
           Belum ada user.
         </div>
       `;
-
     }
 
+    const currentUserId =
+      String(
+        GENZ.state?.user?.id ||
+        ''
+      );
 
     return users
-      .map(
-        user => {
+      .map(user => {
+        const userId =
+          String(
+            user.id ||
+            user.user_id ||
+            ''
+          );
 
-          const userId =
-            String(
-              user.id ||
-              user.user_id ||
-              ''
-            );
+        const email =
+          user.email ||
+          user.user_metadata?.email ||
+          'User';
 
-          const active =
-            activeMap.has(
-              userId
-            );
+        const active =
+          activeMap.has(userId);
 
-          return `
+        const current =
+          currentUserId &&
+          currentUserId === userId;
 
-            <div
-              class="genz-admin-row"
-              data-admin-id="${esc(
-                userId
-              )}"
-            >
+        return `
+          <div
+            class="genz-admin-row"
+            data-admin-id="${esc(userId)}"
+          >
 
-              <div class="genz-admin-row-name">
+            <div class="genz-admin-row-name">
 
-                <strong>
-                  ${esc(
-                    user.email
-                  )}
-                </strong>
+              <strong>
+                ${esc(email)}
+              </strong>
 
-                <small>
-                  ${active
-                    ? 'Administrator'
-                    : 'User / non aktif'}
-                </small>
-
-              </div>
-
-              ${adminStatus(
-                active
-              )}
-
-              <button
-                type="button"
-                class="genz-admin-toggle"
-                data-admin-toggle="${esc(
-                  userId
-                )}"
-                data-admin-active="${active
-                  ? 'true'
-                  : 'false'}"
-              >
-                ${
-                  active
-                    ? 'NON AKTIFKAN'
-                    : 'AKTIFKAN'
-                }
-              </button>
+              <small>
+                ${current
+                  ? 'Akun yang sedang digunakan'
+                  : 'User ID: ' +
+                    esc(userId || '-')}
+              </small>
 
             </div>
 
-          `;
+            ${adminStatus(active)}
 
-        }
-      )
+            <button
+              type="button"
+              class="genz-admin-toggle"
+              data-admin-toggle="${esc(
+                userId
+              )}"
+              data-admin-email="${esc(
+                email
+              )}"
+              ${current ? 'disabled' : ''}
+            >
+              ${
+                active
+                  ? 'NON AKTIFKAN'
+                  : 'AKTIFKAN'
+              }
+            </button>
+
+          </div>
+        `;
+      })
       .join('');
-
   }
 
-
   function bindAdminToggles() {
-
     document
       .querySelectorAll(
         '[data-admin-toggle]'
       )
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            'click',
-            toggleAdmin
-          );
-
-        }
-      );
-
+      .forEach(button => {
+        button.addEventListener(
+          'click',
+          toggleAdmin
+        );
+      });
   }
 
+  /* =======================================================
+     CREATE ADMIN
+  ======================================================= */
 
-  async function createAdmin(
-    event
-  ) {
-
+  async function createAdmin(event) {
     event.preventDefault();
+
+    const form =
+      event.currentTarget;
 
     const emailInput =
       $('genzAdminEmail');
@@ -1179,15 +1110,13 @@
     const passwordInput =
       $('genzAdminPassword');
 
-    const button =
+    const createButton =
       $('genzAdminCreate');
 
     const email =
       String(
         emailInput?.value || ''
-      )
-      .trim()
-      .toLowerCase();
+      ).trim().toLowerCase();
 
     const password =
       String(
@@ -1195,109 +1124,55 @@
       );
 
     if (!email) {
-
       message(
         'Email admin wajib diisi.',
         'error'
       );
-
       return;
-
     }
 
     if (!password) {
-
       message(
         'Password admin wajib diisi.',
         'error'
       );
-
       return;
-
     }
 
-    if (password.length < 6) {
-
-      message(
-        'Password minimal 6 karakter.',
-        'error'
-      );
-
-      return;
-
-    }
-
-    button.disabled =
-      true;
-
-    button.textContent =
-      'MEMBUAT...';
-
+    createButton.disabled = true;
+    createButton.textContent =
+      'CREATING...';
 
     try {
-
-      /*
-       * Ambil konfigurasi Supabase
-       * tanpa menyentuh session admin.
-       */
-
       const configResponse =
         await fetch(
           '/api/config',
           {
-            method: 'GET',
-            cache: 'no-store',
-            headers: {
-              Accept:
-                'application/json'
-            }
+            credentials: 'include'
           }
         );
-
-      if (!configResponse.ok) {
-
-        throw new Error(
-          'Gagal mengambil konfigurasi Supabase.'
-        );
-
-      }
 
       const config =
         await configResponse.json();
 
       const supabaseUrl =
-        String(
-          config.supabaseUrl || ''
-        ).trim();
+        config.supabaseUrl ||
+        config.supabase_url;
 
       const publishableKey =
-        String(
-          config.supabasePublishableKey || ''
-        ).trim();
+        config.supabasePublishableKey ||
+        config.supabase_publishable_key ||
+        config.supabaseAnonKey ||
+        config.supabase_anon_key;
 
-      if (!supabaseUrl) {
-
+      if (
+        !supabaseUrl ||
+        !publishableKey
+      ) {
         throw new Error(
-          'Supabase URL belum tersedia.'
+          'Konfigurasi Supabase tidak ditemukan.'
         );
-
       }
-
-      if (!publishableKey) {
-
-        throw new Error(
-          'Supabase Publishable Key belum tersedia.'
-        );
-
-      }
-
-
-      /*
-       * Buat user langsung melalui REST Auth.
-       * Tidak menggunakan signUp() dari client
-       * supaya session admin tidak tergantikan
-       * oleh akun baru.
-       */
 
       const signupResponse =
         await fetch(
@@ -1307,109 +1182,63 @@
             headers: {
               apikey:
                 publishableKey,
-              Authorization:
-                `Bearer ${publishableKey}`,
               'Content-Type':
                 'application/json'
             },
-            body:
-              JSON.stringify({
-                email,
-                password
-              })
+            body: JSON.stringify({
+              email,
+              password
+            })
           }
         );
-
 
       let signupData = {};
 
       try {
-
         signupData =
           await signupResponse.json();
-
       } catch (_) {
-
         signupData = {};
-
       }
 
-
       if (!signupResponse.ok) {
-
         throw new Error(
           signupData?.msg ||
           signupData?.message ||
           signupData?.error_description ||
-          'Gagal membuat akun admin.'
+          signupData?.error ||
+          `Gagal membuat akun (${signupResponse.status})`
         );
-
       }
-
-
-      const userId =
-        signupData?.user?.id ||
-        signupData?.id ||
-        null;
-
 
       /*
-       * Jika user sudah ada dan Supabase
-       * tidak mengembalikan user ID,
-       * backend akan menangani email tersebut.
-       */
+        Supabase signup dapat berhasil tetapi
+        user belum tentu langsung terautentikasi
+        apabila email confirmation aktif.
 
-      if (!userId) {
+        Yang penting akun sudah dibuat.
+      */
 
-        /*
-         * Coba endpoint admin lama.
-         * Endpoint ini mencari user berdasarkan email.
-         */
+      await api(
+        '/api/admin/admins/add',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email
+          })
+        }
+      );
 
-        await api(
-          '/api/admin/admins/add',
-          {
-            method: 'POST',
-            body:
-              JSON.stringify({
-                email
-              })
-          }
-        );
-
-      } else {
-
-        await api(
-          '/api/admin/admins/add',
-          {
-            method: 'POST',
-            body:
-              JSON.stringify({
-                email
-              })
-          }
-        );
-
-      }
-
-
-      if (emailInput) {
-        emailInput.value = '';
-      }
-
-      if (passwordInput) {
-        passwordInput.value = '';
-      }
+      form.reset();
 
       message(
-        'Admin berhasil dibuat dan diaktifkan.',
+        'Admin berhasil dibuat dan ditambahkan.',
         'success'
       );
 
       await renderAdminManager();
 
     } catch (error) {
-
       console.error(
         '[GEN-Z.AI] Create admin error:',
         error
@@ -1421,86 +1250,69 @@
         'error'
       );
 
-      button.disabled =
-        false;
-
-      button.textContent =
-        'TAMBAH ADMIN';
-
+    } finally {
+      createButton.disabled = false;
+      createButton.textContent =
+        'ADD ADMIN';
     }
-
   }
 
+  /* =======================================================
+     TOGGLE ADMIN
+  ======================================================= */
 
-  async function toggleAdmin(
-    event
-  ) {
-
+  async function toggleAdmin(event) {
     const button =
       event.currentTarget;
 
     const userId =
       button.dataset.adminToggle;
 
-    const currentlyActive =
-      button.dataset.adminActive ===
-      'true';
+    const email =
+      button.dataset.adminEmail || '';
 
     if (!userId) {
       return;
     }
 
-
-    /*
-     * Jangan izinkan admin menghapus
-     * role dirinya sendiri.
-     */
-
-    const currentUser =
-      GENZ.state?.user ||
-      {};
-
     const currentUserId =
       String(
-        currentUser.id ||
+        GENZ.state?.user?.id ||
         ''
       );
 
-
     if (
-      currentlyActive &&
       currentUserId &&
       currentUserId ===
-        String(userId)
+      String(userId)
     ) {
-
       message(
         'Admin yang sedang digunakan tidak dapat dinonaktifkan.',
         'error'
       );
 
       return;
-
     }
 
+    const current =
+      button.textContent
+        .trim()
+        .toUpperCase();
 
-    button.disabled =
-      true;
+    const active =
+      current === 'NON AKTIFKAN';
 
+    button.disabled = true;
 
     try {
-
-      if (currentlyActive) {
-
+      if (active) {
         await api(
           '/api/admin/admins/remove',
           {
             method: 'POST',
-            body:
-              JSON.stringify({
-                user_id:
-                  userId
-              })
+            body: JSON.stringify({
+              user_id: userId
+            })
           }
         );
 
@@ -1510,44 +1322,13 @@
         );
 
       } else {
-
-        /*
-         * Backend membutuhkan email,
-         * jadi ambil dari daftar user.
-         */
-
-        const users =
-          await loadUsers();
-
-        const user =
-          users.find(
-            item =>
-              String(
-                item.id ||
-                item.user_id ||
-                ''
-              ) ===
-              String(userId)
-          );
-
-        if (!user?.email) {
-
-          throw new Error(
-            'Email admin tidak ditemukan.'
-          );
-
-        }
-
-
         await api(
           '/api/admin/admins/add',
           {
             method: 'POST',
-            body:
-              JSON.stringify({
-                email:
-                  user.email
-              })
+            body: JSON.stringify({
+              email
+            })
           }
         );
 
@@ -1555,14 +1336,11 @@
           'Admin berhasil diaktifkan.',
           'success'
         );
-
       }
-
 
       await renderAdminManager();
 
     } catch (error) {
-
       console.error(
         '[GEN-Z.AI] Admin toggle error:',
         error
@@ -1574,24 +1352,18 @@
         'error'
       );
 
-      button.disabled =
-        false;
-
+      button.disabled = false;
     }
-
   }
 
-
   /* =======================================================
-     TAB INTERCEPTOR
+     ADMIN SECTION INTERCEPTOR
   ======================================================= */
 
   function setupInterceptor() {
-
     document.addEventListener(
       'click',
-      function (event) {
-
+      event => {
         const target =
           event.target.closest(
             '[data-admin-section]'
@@ -1612,105 +1384,72 @@
         }
 
         /*
-         * admin.js sudah lebih dulu menangani
-         * event click-nya. Kita tunggu sebentar,
-         * kemudian mengganti tampilan section
-         * dengan manager baru.
-         */
+          admin.js lebih dahulu memproses
+          perpindahan section.
+
+          Setelah DOM berubah, enhancement
+          merender manager yang sesuai.
+        */
 
         setTimeout(
-          function () {
+          async () => {
+            try {
+              if (
+                section ===
+                'providers'
+              ) {
+                await renderProviderManager();
+              }
 
-            if (
-              section === 'providers'
-            ) {
+              if (
+                section ===
+                'admins'
+              ) {
+                await renderAdminManager();
+              }
 
-              renderProviderManager()
-                .catch(
-                  error => {
+            } catch (error) {
+              console.error(
+                '[GEN-Z.AI] Admin section render error:',
+                error
+              );
 
-                    console.error(
-                      '[GEN-Z.AI] Provider manager error:',
-                      error
-                    );
-
-                    message(
-                      error.message ||
-                      'Gagal memuat provider.',
-                      'error'
-                    );
-
-                  }
-                );
-
+              message(
+                error.message ||
+                'Gagal memuat bagian admin.',
+                'error'
+              );
             }
-
-            if (
-              section === 'admins'
-            ) {
-
-              renderAdminManager()
-                .catch(
-                  error => {
-
-                    console.error(
-                      '[GEN-Z.AI] Admin manager error:',
-                      error
-                    );
-
-                    message(
-                      error.message ||
-                      'Gagal memuat admin.',
-                      'error'
-                    );
-
-                  }
-                );
-
-            }
-
           },
           80
         );
-
       },
       true
     );
-
   }
-
 
   /* =======================================================
      INITIALIZE
   ======================================================= */
 
   function initialize() {
-
     injectStyle();
-
     setupInterceptor();
-
-    console.log(
-      '[GEN-Z.AI] Admin enhancements aktif.'
-    );
-
   }
-
 
   if (
     document.readyState ===
     'loading'
   ) {
-
     document.addEventListener(
       'DOMContentLoaded',
-      initialize
+      initialize,
+      {
+        once: true
+      }
     );
-
   } else {
-
     initialize();
-
   }
 
 })();
