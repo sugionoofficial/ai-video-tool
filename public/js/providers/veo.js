@@ -30,20 +30,30 @@
   function validate(input) {
     const duration = Number(input.duration);
 
+    if (!input.prompt) {
+      throw new Error('Prompt wajib diisi.');
+    }
+
     if (!CONFIG.models.includes(input.model)) {
       throw new Error('Model Veo tidak valid.');
     }
 
     if (!CONFIG.durations.includes(duration)) {
-      throw new Error('Durasi Veo harus 4, 6, atau 8 detik.');
+      throw new Error(
+        'Durasi Veo harus 4, 6, atau 8 detik.'
+      );
     }
 
     if (!CONFIG.aspects.includes(input.aspectRatio)) {
-      throw new Error('Rasio Veo harus 16:9 atau 9:16.');
+      throw new Error(
+        'Rasio Veo harus 16:9 atau 9:16.'
+      );
     }
 
     if (!CONFIG.resolutions.includes(input.resolution)) {
-      throw new Error('Resolusi Veo tidak valid.');
+      throw new Error(
+        'Resolusi Veo tidak valid.'
+      );
     }
 
     if (
