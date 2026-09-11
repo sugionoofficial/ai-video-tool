@@ -1,301 +1,3962 @@
-const PROVIDER_ALIASES = { gemini: "veo", veo: "veo", minimax: "minimax", luma: "luma" };
-const ADAPTERS = {
-  veo: { name: "Gemini / Veo", models: ["veo-3.1-fast-generate-preview","veo-3.1-generate-preview","veo-3.1-lite-generate-preview"], durations: [4,6,8], aspects: ["16:9","9:16"], resolutions: ["720p","1080p","4k"] },
-  minimax: { name: "MiniMax", models: ["MiniMax-Hailuo-2.3","MiniMax-Hailuo-2.3-Fast","MiniMax-Hailuo-02"], durations: [6,10], aspects: ["16:9","9:16"], resolutions: ["512P","768P","1080P"] },
-  luma: { name: "Luma", models: ["ray-2","ray-flash-2"], durations: ["5s","9s"], aspects: ["1:1","16:9","9:16","4:3","3:4","21:9","9:21"], resolutions: ["720p","1080p","4k"] }
-};
+import {
+  getAdapter,
+  getAdapterInfo,
+  resolveAdapter,
+  adapterSupported,
+  normalizeProviderId
+} from "./providers/index.js";
+
+/*
+ * ============================================================
+ * GEN-Z.AI WORKER
+ * Provider logic berada di:
+ *   /providers/veo.js
+ *   /providers/minimax.js
+ *   /providers/luma.js
+ *   /providers/index.js
+ *
+ * Worker hanya menangani:
+ * - Auth
+ * - Credit
+ * - Job
+ * - Database
+ * - Provider routing
+ * - Admin
+ * - Topup
+ * - Video proxy
+ * ============================================================
+ */
 
 function canonicalProvider(value) {
-  const id = String(value || "").trim().toLowerCase();
-  return PROVIDER_ALIASES[id] || id;
+  const raw = String(value || "").trim().toLowerCase();
+
+  /*
+   * Alias hanya untuk kompatibilitas provider bawaan.
+   * ID custom seperti "veo-production" tetap dipertahankan.
+   */
+  const aliases = {
+    gemini: "veo",
+    veo: "veo",
+    minimax: "minimax",
+    luma: "luma"
+  };
+
+  return aliases[raw] || raw;
 }
-function providerId(value) { const id=String(value||"").trim().toLowerCase(); if(!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(id)) throw new HttpError("ID provider tidak valid.",400); if(PROVIDER_ALIASES[id]&&id!==PROVIDER_ALIASES[id]) throw new HttpError("ID provider reserved. Gunakan ID selain gemini.",400); return id; }
-function adapterInfo(adapter) { return ADAPTERS[String(adapter||"").toLowerCase()] || null; }
+
+function providerId(value) {
+  const id = String(value || "").trim().toLowerCase();
+
+  if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(id)) {
+    throw new HttpError("ID provider tidak valid.", 400);
+  }
+
+  /*
+   * "gemini" adalah alias internal.
+   * Gunakan "veo" untuk provider Gemini/Veo.
+   */
+  if (id === "gemini") {
+    throw new HttpError(
+      "ID provider reserved. Gunakan ID selain gemini.",
+      400
+    );
+  }
+
+  return id;
+}
+
+function adapterInfo(adapter) {
+  return getAdapterInfo(adapter);
+}
+
+function inferAdapter(value) {
+  if (!value) return null;
+
+  const adapter = getAdapter(value);
+
+  if (adapter) {
+    return adapter;
+  }
+
+  return null;
+}
+
+/*
+ * ============================================================
+ * HTTP / CORS
+ * ============================================================
+ */
 
 function corsHeaders(env) {
   const origin = String(env.ALLOWED_ORIGIN || "*").trim();
+
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key",
+    "Access-Control-Allow-Methods":
+      "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, Idempotency-Key",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
 }
-function json(data, status=200, env={}) {
-  return new Response(JSON.stringify(data, null, 2), { status, headers: { ...corsHeaders(env), "Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store", "X-Content-Type-Options":"nosniff", "Referrer-Policy":"no-referrer", "Permissions-Policy":"camera=(), microphone=(), geolocation=()" }});
-}
-async function safeJson(res) { const text=await res.text(); if(!text) return {}; try{return JSON.parse(text)}catch{return {raw:text}} }
-function requireJsonContentType(request){const ct=String(request.headers.get("content-type")||"").toLowerCase();if(!ct.includes("application/json"))throw new HttpError("Content-Type harus application/json.",415)}
-async function readJson(request,maxBytes=65536){requireJsonContentType(request);const len=Number(request.headers.get("content-length")||0);if(Number.isFinite(len)&&len>maxBytes)throw new HttpError("Request terlalu besar.",413);const text=await request.text();if(new TextEncoder().encode(text).byteLength>maxBytes)throw new HttpError("Request terlalu besar.",413);try{return JSON.parse(text)}catch{throw new HttpError("JSON tidak valid.",400)}}
-function apiError(data, fallback) { return typeof data?.error === "string" ? data.error : data?.error?.message || data?.message || data?.raw || fallback; }
 
-function sbHeaders(env) { return { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization:`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type":"application/json" }; }
-async function sb(path, options={}, env) { return fetch(`${env.SUPABASE_URL}${path}`, {...options, headers:{...sbHeaders(env), ...(options.headers||{})}}); }
+function json(data, status = 200, env = {}) {
+  return new Response(
+    JSON.stringify(data, null, 2),
+    {
+      status,
+      headers: {
+        ...corsHeaders(env),
+        "Content-Type":
+          "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy":
+          "camera=(), microphone=(), geolocation=()"
+      }
+    }
+  );
+}
+
+async function safeJson(res) {
+  const text = await res.text();
+
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      raw: text
+    };
+  }
+}
+
+function requireJsonContentType(request) {
+  const ct = String(
+    request.headers.get("content-type") || ""
+  ).toLowerCase();
+
+  if (!ct.includes("application/json")) {
+    throw new HttpError(
+      "Content-Type harus application/json.",
+      415
+    );
+  }
+}
+
+async function readJson(request, maxBytes = 65536) {
+  requireJsonContentType(request);
+
+  const len = Number(
+    request.headers.get("content-length") || 0
+  );
+
+  if (
+    Number.isFinite(len) &&
+    len > maxBytes
+  ) {
+    throw new HttpError(
+      "Request terlalu besar.",
+      413
+    );
+  }
+
+  const text = await request.text();
+
+  if (
+    new TextEncoder().encode(text).byteLength >
+    maxBytes
+  ) {
+    throw new HttpError(
+      "Request terlalu besar.",
+      413
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new HttpError(
+      "JSON tidak valid.",
+      400
+    );
+  }
+}
+
+function apiError(data, fallback) {
+  if (
+    typeof data?.error === "string"
+  ) {
+    return data.error;
+  }
+
+  return (
+    data?.error?.message ||
+    data?.message ||
+    data?.raw ||
+    fallback
+  );
+}
+
+/*
+ * ============================================================
+ * SUPABASE
+ * ============================================================
+ */
+
+function sbHeaders(env) {
+  return {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    Authorization:
+      `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json"
+  };
+}
+
+async function sb(path, options = {}, env) {
+  return fetch(
+    `${env.SUPABASE_URL}${path}`,
+    {
+      ...options,
+      headers: {
+        ...sbHeaders(env),
+        ...(options.headers || {})
+      }
+    }
+  );
+}
+
 async function currentUser(request, env) {
-  const auth=request.headers.get("Authorization")||"";
-  if(!auth.startsWith("Bearer ")) return null;
-  const token=auth.slice(7).trim(); if(!token) return null;
-  const res=await fetch(`${env.SUPABASE_URL}/auth/v1/user`,{headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${token}`}});
-  return res.ok ? await res.json() : null;
-}
-async function requireUser(request, env) { const user=await currentUser(request,env); if(!user?.id) throw new HttpError("Unauthorized",401); return user; }
-async function requireAdmin(request, env) {
-  const user=await requireUser(request,env);
-  const res=await sb(`/rest/v1/user_roles?user_id=eq.${encodeURIComponent(user.id)}&role=eq.admin&select=user_id`,{},env);
-  if(!res.ok) throw new HttpError("Gagal memeriksa role admin.",500);
-  const rows=await res.json(); if(!rows.length) throw new HttpError("Akses admin ditolak.",403); return user;
-}
-class HttpError extends Error { constructor(message,status){super(message);this.status=status} }
+  const auth =
+    request.headers.get("Authorization") || "";
 
-// Best-effort per-isolate abuse guard for generation requests. Durable enforcement remains in Supabase credit/job state.
-const GENERATE_LIMIT_WINDOW_MS = 60_000;
+  if (!auth.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token =
+    auth.slice(7).trim();
+
+  if (!token) {
+    return null;
+  }
+
+  const res = await fetch(
+    `${env.SUPABASE_URL}/auth/v1/user`,
+    {
+      headers: {
+        apikey:
+          env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization:
+          `Bearer ${token}`
+      }
+    }
+  );
+
+  return res.ok
+    ? await res.json()
+    : null;
+}
+
+async function requireUser(request, env) {
+  const user =
+    await currentUser(request, env);
+
+  if (!user?.id) {
+    throw new HttpError(
+      "Unauthorized",
+      401
+    );
+  }
+
+  return user;
+}
+
+async function requireAdmin(request, env) {
+  const user =
+    await requireUser(request, env);
+
+  const res = await sb(
+    `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
+      user.id
+    )}&role=eq.admin&select=user_id`,
+    {},
+    env
+  );
+
+  if (!res.ok) {
+    throw new HttpError(
+      "Gagal memeriksa role admin.",
+      500
+    );
+  }
+
+  const rows = await res.json();
+
+  if (!rows.length) {
+    throw new HttpError(
+      "Akses admin ditolak.",
+      403
+    );
+  }
+
+  return user;
+}
+
+class HttpError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/*
+ * ============================================================
+ * GENERATION RATE LIMIT
+ * ============================================================
+ */
+
+const GENERATE_LIMIT_WINDOW_MS =
+  60_000;
+
 const GENERATE_LIMIT_MAX = 5;
+
 const generateRate = new Map();
-function checkGenerateRate(userId){
-  const now=Date.now(); const key=String(userId); const hit=generateRate.get(key);
-  if(!hit || now-hit.startedAt>=GENERATE_LIMIT_WINDOW_MS){generateRate.set(key,{startedAt:now,count:1});return;}
-  if(hit.count>=GENERATE_LIMIT_MAX) throw new HttpError('Terlalu banyak request generate. Coba lagi dalam satu menit.',429);
+
+function checkGenerateRate(userId) {
+  const now = Date.now();
+
+  const key = String(userId);
+
+  const hit = generateRate.get(key);
+
+  if (
+    !hit ||
+    now - hit.startedAt >=
+      GENERATE_LIMIT_WINDOW_MS
+  ) {
+    generateRate.set(
+      key,
+      {
+        startedAt: now,
+        count: 1
+      }
+    );
+
+    return;
+  }
+
+  if (
+    hit.count >=
+    GENERATE_LIMIT_MAX
+  ) {
+    throw new HttpError(
+      "Terlalu banyak request generate. Coba lagi dalam satu menit.",
+      429
+    );
+  }
+
   hit.count++;
 }
 
-async function getProvider(provider, env, requireEnabled=true) {
-  const id=canonicalProvider(provider);
-  const res=await sb(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}&select=id,name,adapter,api_key,enabled,config`,{},env);
-  if(!res.ok) throw new HttpError("Gagal mengambil konfigurasi provider.",500);
-  const row=(await res.json())?.[0];
-  if(!row) throw new HttpError("Provider tidak ditemukan.",404);
-  if(requireEnabled && !row.enabled) throw new HttpError("Provider sedang nonaktif.",409);
-  if(!adapterInfo(row.adapter)) throw new HttpError(`Adapter provider ${id} belum didukung Worker.`,400);
-  if(!row.api_key) throw new HttpError(`API key ${id} belum dikonfigurasi admin.`,400);
+/*
+ * ============================================================
+ * PROVIDER DATABASE
+ * ============================================================
+ */
+
+async function getProvider(
+  provider,
+  env,
+  requireEnabled = true
+) {
+  const id =
+    canonicalProvider(provider);
+
+  if (!id) {
+    throw new HttpError(
+      "Provider wajib diberikan.",
+      400
+    );
+  }
+
+  const res = await sb(
+    `/rest/v1/providers?id=eq.${encodeURIComponent(
+      id
+    )}&select=id,name,adapter,api_key,enabled,config`,
+    {},
+    env
+  );
+
+  if (!res.ok) {
+    throw new HttpError(
+      "Gagal mengambil konfigurasi provider.",
+      500
+    );
+  }
+
+  const row =
+    (await res.json())?.[0];
+
+  if (!row) {
+    throw new HttpError(
+      "Provider tidak ditemukan.",
+      404
+    );
+  }
+
+  if (
+    requireEnabled &&
+    !row.enabled
+  ) {
+    throw new HttpError(
+      "Provider sedang nonaktif.",
+      409
+    );
+  }
+
+  const adapter =
+    resolveAdapter(row);
+
+  if (!adapter) {
+    throw new HttpError(
+      `Adapter provider ${id} belum didukung Worker.`,
+      400
+    );
+  }
+
+  if (!row.api_key) {
+    throw new HttpError(
+      `API key ${id} belum dikonfigurasi admin.`,
+      400
+    );
+  }
+
   return row;
 }
-async function providerConfigured(provider,env){try{const p=await getProvider(provider,env,false);return Boolean(p.api_key&&p.enabled&&adapterInfo(p.adapter))}catch{return false}}
-function publicProvider(p){const a=adapterInfo(p.adapter);return {id:p.id,name:p.name||a?.name||p.id,adapter:p.adapter,enabled:Boolean(p.enabled),configured:Boolean(p.api_key),capabilities:a||{}}}
 
-function parseDataUrl(value,maxBytes=12*1024*1024) {
-  if(typeof value!=="string") return null;
-  const m=value.match(/^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=\s]+)$/s); if(!m)return null;
-  const base64=m[2].replace(/\s/g,""); if(base64.length*0.75>maxBytes) return null; return {mimeType:m[1],base64};
-}
-function normalizeDuration(v, allowed, fallback){const n=Number(v||fallback); return allowed.includes(n)?n:null}
+async function providerConfigured(
+  provider,
+  env
+) {
+  try {
+    const p =
+      await getProvider(
+        provider,
+        env,
+        false
+      );
 
-async function reserveJob(userId, provider, cost, idempotencyKey, fingerprint, env) {
-  const res=await sb('/rest/v1/rpc/start_video_job',{method:'POST',body:JSON.stringify({p_user_id:userId,p_provider:provider,p_credit_cost:cost,p_idempotency_key:idempotencyKey,p_request_fingerprint:fingerprint})},env);
-  const data=await safeJson(res); if(!res.ok) throw new HttpError(apiError(data,"Credit tidak mencukupi."),402); return data;
-}
-async function updateJob(jobId, patch, env){const r=await sb(`/rest/v1/video_jobs?id=eq.${encodeURIComponent(jobId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({...patch,updated_at:new Date().toISOString()})},env);if(!r.ok)throw new HttpError('Gagal memperbarui status job.',500)}
-async function recordJobEvent(jobId,userId,eventType,extra,env){try{await sb('/rest/v1/rpc/record_video_job_event',{method:'POST',body:JSON.stringify({p_job_id:jobId,p_user_id:userId,p_event_type:eventType,p_provider_status:extra?.providerStatus||null,p_error_code:extra?.errorCode||null,p_message:extra?.message||'',p_metadata:extra?.metadata||{}})},env)}catch(err){console.error('job event logging failed',err)}}
-async function refundJob(jobId, env){const res=await sb('/rest/v1/rpc/refund_video_job',{method:'POST',body:JSON.stringify({p_job_id:jobId})},env); return res.ok}
-async function getJob(userId, provider, externalId, env){
-  const q=`/rest/v1/video_jobs?user_id=eq.${encodeURIComponent(userId)}&provider=eq.${encodeURIComponent(provider)}&external_id=eq.${encodeURIComponent(externalId)}&select=*`;
-  const res=await sb(q,{},env); if(!res.ok) throw new HttpError("Gagal membaca job video.",500); const rows=await res.json(); return rows?.[0]||null;
-}
-
-async function generateVeo(body, provider, env) {
-  const key=String(provider.api_key).trim();
-  const model=String(body.model||"veo-3.1-fast-generate-preview");
-  const allowed=["veo-3.1-fast-generate-preview","veo-3.1-generate-preview","veo-3.1-lite-generate-preview"];
-  if(!allowed.includes(model)) throw new HttpError("Model Veo tidak valid.",400);
-  const duration=normalizeDuration(body.duration,[4,6,8],8); if(!duration) throw new HttpError("Durasi Veo harus 4, 6, atau 8 detik.",400);
-  const aspect=String(body.aspectRatio||"16:9"); if(!["16:9","9:16"].includes(aspect)) throw new HttpError("Aspect ratio Veo tidak valid.",400);
-  const resolution=String(body.resolution||"720p"); if(!["720p","1080p","4k"].includes(resolution)) throw new HttpError("Resolusi Veo tidak valid.",400);
-  if((resolution!=="720p"||body.imageData)&&duration!==8) throw new HttpError("1080p/4K atau image-to-video Veo membutuhkan 8 detik.",400);
-  if(model.endsWith("lite-generate-preview")&&resolution==="4k") throw new HttpError("Veo Lite tidak mendukung 4K.",400);
-  const instances=[{prompt:String(body.prompt).trim()}];
-  if(body.imageData){const img=parseDataUrl(body.imageData); if(!img) throw new HttpError("Character reference tidak valid atau terlalu besar.",400); instances[0].image={inlineData:{mimeType:img.mimeType,data:img.base64}}}
-  const parameters={aspectRatio:aspect,resolution};
-  const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predictLongRunning`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({instances,parameters})});
-  const data=await safeJson(res); if(!res.ok) throw new HttpError(apiError(data,`Veo error (${res.status}).`),res.status);
-  const operationName=data?.name||data?.operationName; if(!operationName) throw new HttpError("Veo tidak mengembalikan operation name.",502);
-  return {externalId:operationName,provider:'veo',status:'processing',model,duration,aspectRatio:aspect,resolution};
-}
-async function generateMiniMax(body, provider, env) {
-  const key=String(provider.api_key).trim(); const model=String(body.model||'MiniMax-Hailuo-2.3');
-  const allowed=['MiniMax-Hailuo-2.3','MiniMax-Hailuo-2.3-Fast','MiniMax-Hailuo-02']; if(!allowed.includes(model)) throw new HttpError('Model MiniMax tidak valid.',400);
-  let duration=normalizeDuration(body.duration,[6,10],6); if(!duration) throw new HttpError('Durasi MiniMax harus 6 atau 10 detik.',400);
-  let resolution=String(body.resolution||'768P'); if(!['512P','768P','1080P'].includes(resolution)) throw new HttpError('Resolusi MiniMax tidak valid.',400);
-  if(resolution==='1080P'&&duration!==6) duration=6;
-  if(model!=='MiniMax-Hailuo-02'&&resolution==='512P') throw new HttpError('512P hanya tersedia untuk Hailuo 02.',400);
-  if(model==='MiniMax-Hailuo-2.3-Fast'&&body.imageData==null) throw new HttpError('Hailuo 2.3 Fast memerlukan image reference.',400);
-  const payload={model,prompt:String(body.prompt).trim(),duration,resolution,prompt_optimizer:true};
-  if(body.imageData){const img=parseDataUrl(body.imageData); if(!img) throw new HttpError('Character reference tidak valid atau terlalu besar.',400); payload.first_frame_image=`data:${img.mimeType};base64,${img.base64}`}
-  const res=await fetch('https://api.minimax.io/v1/video_generation',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  const data=await safeJson(res); if(!res.ok) throw new HttpError(apiError(data,`MiniMax error (${res.status}).`),res.status);
-  const taskId=data?.task_id||data?.taskId; if(!taskId) throw new HttpError('MiniMax tidak mengembalikan task ID.',502);
-  return {externalId:String(taskId),provider:'minimax',status:'processing',model,duration,resolution};
-}
-async function generateLuma(body, provider, env) {
-  const key=String(provider.api_key).trim(); const model=String(body.model||'ray-2'); if(!['ray-2','ray-flash-2'].includes(model)) throw new HttpError('Model Luma tidak valid.',400);
-  const aspect=String(body.aspectRatio||'16:9'); const aspects=['1:1','16:9','9:16','4:3','3:4','21:9','9:21']; if(!aspects.includes(aspect)) throw new HttpError('Aspect ratio Luma tidak valid.',400);
-  const duration=String(body.duration||'5s'); if(!['5s','9s'].includes(duration)) throw new HttpError('Durasi Luma harus 5s atau 9s.',400);
-  const payload={model,prompt:String(body.prompt).trim(),aspect_ratio:aspect,duration};
-  // Luma requires a public image URL for image-to-video. This build intentionally keeps local images on Veo/MiniMax.
-  if(body.imageData) throw new HttpError('Character reference Luma memerlukan public image URL; gunakan Veo atau MiniMax untuk gambar lokal.',400);
-  const res=await fetch('https://api.lumalabs.ai/dream-machine/v1/generations/video',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  const data=await safeJson(res); if(!res.ok) throw new HttpError(apiError(data,`Luma error (${res.status}).`),res.status);
-  const id=data?.id; if(!id) throw new HttpError('Luma tidak mengembalikan generation ID.',502);
-  return {externalId:String(id),provider:'luma',status:'processing',model,duration,aspectRatio:aspect};
-}
-
-async function handleGenerate(request,env){
-  const ct=String(request.headers.get('content-type')||'').toLowerCase();
-  if(!ct.includes('application/json'))throw new HttpError('Content-Type harus application/json.',415);
-  const user=await requireUser(request,env);
-  checkGenerateRate(user.id); let body; try{body=await readJson(request)}catch{throw new HttpError('JSON tidak valid.',400)}
-  const id=canonicalProvider(body?.provider); const provider=await getProvider(id,env,true);
-  const prompt=String(body?.prompt||'').trim(); if(prompt.length<3||prompt.length>2000) throw new HttpError('Prompt harus 3-2000 karakter.',400);
-  const cost=Math.max(1,Number(env.GENERATION_CREDIT_COST||1));
-  const idem=String(request.headers.get('Idempotency-Key')||'').trim();
-  if(!idem||idem.length>128) throw new HttpError('Idempotency-Key wajib diisi (1-128 karakter).',400);
-  const fingerprintSource=JSON.stringify({provider:id,model:body.model||null,duration:body.duration||null,aspectRatio:body.aspectRatio||null,resolution:body.resolution||null,prompt,imageData:Boolean(body.imageData)});
-  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(fingerprintSource));
-  const fingerprint=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  const reservation=await reserveJob(user.id,id,cost,idem,fingerprint,env); const jobId=reservation?.job_id||reservation?.id; if(!jobId) throw new HttpError('Gagal membuat job credit.',500);
-  if(reservation?.existing){
-    if(reservation.provider!==id) throw new HttpError('Idempotency key terkait provider berbeda.',409);
-    if(reservation.external_id){return json({success:true,idempotent:true,jobId,externalId:reservation.external_id,provider:id,status:reservation.status||'processing'},200,env)}
-    throw new HttpError('Request sebelumnya masih dalam proses inisialisasi. Gunakan status job setelah beberapa saat.',409);
+    return Boolean(
+      p.api_key &&
+      p.enabled &&
+      adapterSupported(p)
+    );
+  } catch {
+    return false;
   }
-  try{
-    await recordJobEvent(jobId,user.id,'created',{message:'Generation job created',metadata:{provider:id}},env);
-    const adapter=String(provider.adapter).toLowerCase();
-    const result=adapter==='veo'?await generateVeo(body,provider,env):adapter==='minimax'?await generateMiniMax(body,provider,env):adapter==='luma'?await generateLuma(body,provider,env):null;
-    if(!result) throw new HttpError('Adapter provider belum didukung.',400);
-    result.provider=id;
-    await updateJob(jobId,{external_id:result.externalId,status:'processing',attempt_count:1,provider_status:'processing',last_error:null,last_error_code:null,model:result.model||null,metadata:{...result,adapter}},env);
-    await recordJobEvent(jobId,user.id,'provider_submitted',{providerStatus:'processing',message:'Provider accepted generation request',metadata:{adapter,model:result.model||null}},env);
-    return json({success:true,jobId,...result,creditsRemaining:reservation.credits_remaining},200,env);
-  }catch(err){await updateJob(jobId,{last_error:String(err?.message||'Generation error'),last_error_code:String(err?.status||'provider_error'),provider_status:'failed'},env).catch(()=>{});await recordJobEvent(jobId,user.id,'error',{providerStatus:'failed',errorCode:String(err?.status||'provider_error'),message:String(err?.message||'Generation error')},env);await refundJob(jobId,env);await recordJobEvent(jobId,user.id,'refunded',{message:'Credit refunded after generation error'},env);throw err}
-}
-async function statusVeo(operationName,key){const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName.replace(/^\//,'')}`,{headers:{'x-goog-api-key':key}}); const data=await safeJson(res); if(!res.ok) throw new HttpError(apiError(data,`Veo status error (${res.status}).`),res.status); if(!data.done)return {success:true,status:'processing',provider:'veo'}; if(data.error)return {success:true,status:'failed',provider:'veo',error:apiError(data,'Veo generation gagal.')}; const uri=data?.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri||data?.response?.generateVideoResponse?.generatedVideos?.[0]?.video?.uri; if(!uri)return {success:true,status:'failed',provider:'veo',error:'Veo selesai tetapi URL video tidak ditemukan.'}; return {success:true,status:'completed',provider:'veo',videoUrl:uri};}
-async function statusMiniMax(taskId,key){const res=await fetch(`https://api.minimax.io/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`,{headers:{Authorization:`Bearer ${key}`}});const data=await safeJson(res);if(!res.ok)throw new HttpError(apiError(data,`MiniMax status error (${res.status}).`),res.status);const st=String(data?.status||data?.task_status||'').toLowerCase();if(['failed','failure','error'].includes(st))return {success:true,status:'failed',provider:'minimax',error:apiError(data,'MiniMax generation gagal.')};if(['success','succeeded','completed','finished'].includes(st)){const fileId=data?.file_id||data?.file?.file_id;if(fileId)return {success:true,status:'completed',provider:'minimax',fileId};const u=data?.file?.download_url||data?.download_url||data?.video_url;if(u)return {success:true,status:'completed',provider:'minimax',videoUrl:u};}return {success:true,status:'processing',provider:'minimax'};}
-async function statusLuma(id,key){const res=await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${key}`}});const data=await safeJson(res);if(!res.ok)throw new HttpError(apiError(data,`Luma status error (${res.status}).`),res.status);const st=String(data?.state||data?.status||'').toLowerCase();if(['failed','failure','error'].includes(st))return {success:true,status:'failed',provider:'luma',error:data?.failure_reason||'Luma generation gagal.'};const u=data?.assets?.video||data?.video?.url||data?.video_url;if(u)return {success:true,status:'completed',provider:'luma',videoUrl:u};return {success:true,status:'processing',provider:'luma'};}
-async function handleStatus(request,env){const user=await requireUser(request,env);requireJsonContentType(request);let body;try{body=await readJson(request)}catch{throw new HttpError('JSON status tidak valid.',400)}const id=canonicalProvider(body?.provider);if(!id)throw new HttpError('Provider wajib diberikan.',400);const externalId=String(body?.operationName||body?.taskId||body?.id||'').trim();if(!externalId)throw new HttpError('ID proses video wajib diberikan.',400);const job=await getJob(user.id,id,externalId,env);if(!job)throw new HttpError('Job tidak ditemukan.',404);try{const provider=await getProvider(id,env,false);const key=String(provider.api_key).trim();const adapter=String(provider.adapter).toLowerCase();const result=adapter==='veo'?await statusVeo(externalId,key):adapter==='minimax'?await statusMiniMax(externalId,key):adapter==='luma'?await statusLuma(externalId,key):null;if(!result)throw new HttpError('Adapter provider belum didukung.',400);result.provider=id;if(result.status==='completed'){const proxyUrl=`/api/video?provider=${encodeURIComponent(id)}&jobId=${encodeURIComponent(job.id)}`;const nextMetadata={...(job.metadata||{})};if(result.fileId)nextMetadata.provider_file_id=result.fileId;await updateJob(job.id,{status:'completed',provider_status:'completed',last_error:null,last_error_code:null,video_url:result.videoUrl||proxyUrl,metadata:nextMetadata},env);await recordJobEvent(job.id,user.id,'completed',{providerStatus:'completed',message:'Provider generation completed'},env);result.videoUrl=proxyUrl;delete result.fileId}else if(result.status==='failed'){await updateJob(job.id,{status:'failed',provider_status:'failed',last_error:result.error||'Provider reported failure',last_error_code:'provider_failed'},env);await recordJobEvent(job.id,user.id,'failed',{providerStatus:'failed',errorCode:'provider_failed',message:result.error||'Provider reported failure'},env);await refundJob(job.id,env);await recordJobEvent(job.id,user.id,'refunded',{message:'Credit refunded after provider failure'},env)}else{await updateJob(job.id,{attempt_count:Number(job.attempt_count||0)+1,provider_status:'processing'},env);await recordJobEvent(job.id,user.id,'poll_processing',{providerStatus:'processing',message:'Provider still processing'},env)}return json({jobId:job.id,...result},200,env)}catch(err){throw err}}
-async function handleVideo(request,env){
-  const user=await requireUser(request,env);
-  const url=new URL(request.url);
-  const id=canonicalProvider(url.searchParams.get('provider'));
-  const jobId=String(url.searchParams.get('jobId')||'').trim();
-  if(!jobId)throw new HttpError('jobId wajib.',400);
-  const jobRows=await sb(`/rest/v1/video_jobs?id=eq.${encodeURIComponent(jobId)}&user_id=eq.${encodeURIComponent(user.id)}&select=id,user_id,provider,status,video_url,metadata&limit=1`,{},env);
-  if(!jobRows.ok)throw new HttpError('Gagal memeriksa job video.',500);
-  const job=(await jobRows.json())?.[0];
-  if(!job)throw new HttpError('Job video tidak ditemukan.',404);
-  if(job.provider!==id)throw new HttpError('Provider job tidak cocok.',403);
-  if(job.status!=='completed')throw new HttpError('Video belum siap.',409);
-  const provider=await getProvider(id,env,false);
-  const adapter=String(provider.adapter).toLowerCase();
-  const key=String(provider.api_key).trim();
-  let response;
-  if(adapter==='minimax'){
-    const fileId=String(job?.metadata?.provider_file_id||'').trim();
-    if(!fileId)throw new HttpError('File video MiniMax tidak tersedia.',404);
-    response=await fetch(`https://api.minimax.io/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`,{headers:{Authorization:`Bearer ${key}`}});
-    const data=await safeJson(response);
-    if(!response.ok)throw new HttpError(apiError(data,'Gagal mengambil file MiniMax.'),response.status);
-    const downloadUrl=data?.file?.download_url;
-    if(!downloadUrl)throw new HttpError('URL download MiniMax tidak tersedia.',502);
-    const u=new URL(downloadUrl);
-    if(u.protocol!=='https:')throw new HttpError('URL download tidak aman.',403);
-    response=await fetch(u.toString());
-  }else if(adapter==='veo'||adapter==='luma'){
-    const target=String(job.video_url||'').trim();
-    if(!target||target.startsWith('/api/video'))throw new HttpError('URL video provider tidak tersedia.',404);
-    const u=new URL(target);
-    const allowed=adapter==='veo'?['generativelanguage.googleapis.com','storage.googleapis.com']:['storage.cdn-luma.com','api.lumalabs.ai'];
-    if(u.protocol!=='https:'||!allowed.includes(u.hostname))throw new HttpError('Host video tidak diizinkan.',403);
-    if(adapter==='veo'){u.searchParams.delete('key');response=await fetch(u.toString(),{headers:{'x-goog-api-key':key}})}
-    else response=await fetch(u.toString(),{headers:{Authorization:`Bearer ${key}`}});
-  }else throw new HttpError('Adapter provider belum didukung.',400);
-  if(!response.ok)throw new HttpError(`Gagal mengambil video (${response.status}).`,response.status);
-  return new Response(response.body,{status:200,headers:{...corsHeaders(env),'Content-Type':response.headers.get('Content-Type')||'video/mp4','Cache-Control':'private, no-store'}});
 }
 
-async function transactionApi(request,env){
-  const user=await requireUser(request,env);
-  const url=new URL(request.url);
-  const limit=Math.min(100,Math.max(1,Number(url.searchParams.get('limit')||30)));
-  const rows=await sb(`/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(user.id)}&select=id,amount,balance_after,type,note,job_id,created_at&order=created_at.desc&limit=${limit}`,{},env);
-  if(!rows.ok) throw new HttpError('Gagal mengambil riwayat credit.',500);
-  return json({success:true,transactions:await rows.json()},200,env);
+function publicProvider(p) {
+  const info =
+    adapterInfo(p.adapter);
+
+  return {
+    id: p.id,
+
+    name:
+      p.name ||
+      info?.name ||
+      p.id,
+
+    adapter:
+      p.adapter,
+
+    enabled:
+      Boolean(p.enabled),
+
+    configured:
+      Boolean(p.api_key),
+
+    capabilities:
+      info?.capabilities ||
+      {}
+  };
 }
 
-async function topupApi(request,env){
-  const user=await requireUser(request,env); const url=new URL(request.url);
-  if(request.method==='GET'){
-    const limit=Math.min(50,Math.max(1,Number(url.searchParams.get('limit')||20)));
-    const r=await sb(`/rest/v1/credit_topup_requests?user_id=eq.${encodeURIComponent(user.id)}&select=id,amount,note,status,admin_note,created_at,reviewed_at&order=created_at.desc&limit=${limit}`,{},env);
-    if(!r.ok)throw new HttpError('Gagal mengambil request top-up.',500);
-    return json({success:true,requests:await r.json()},200,env);
+/*
+ * ============================================================
+ * DATA URL
+ * ============================================================
+ *
+ * Tetap dipertahankan untuk kompatibilitas
+ * validasi request image reference.
+ */
+
+function parseDataUrl(
+  value,
+  maxBytes = 12 * 1024 * 1024
+) {
+  if (
+    typeof value !== "string"
+  ) {
+    return null;
   }
-  if(request.method==='POST'){
-    const ct=String(request.headers.get('content-type')||'').toLowerCase();
-    if(!ct.includes('application/json'))throw new HttpError('Content-Type harus application/json.',415);
-    const body=await readJson(request); const amount=Number(body.amount); const note=String(body.note||'').trim().slice(0,500);
-    if(!Number.isInteger(amount)||amount<=0||amount>1000000)throw new HttpError('Jumlah top-up harus integer antara 1 dan 1.000.000.',400);
-    const pending=await rows(`/rest/v1/credit_topup_requests?user_id=eq.${encodeURIComponent(user.id)}&status=eq.pending&select=id&limit=1`,env);
-    if(pending.length)throw new HttpError('Anda masih memiliki request top-up yang menunggu diproses.',409);
-    const r=await sb('/rest/v1/credit_topup_requests',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({user_id:user.id,amount,note})},env);
-    if(!r.ok)throw new HttpError(apiError(await safeJson(r),'Gagal membuat request top-up.'),r.status);
-    return json({success:true,request:(await r.json())?.[0]||null},201,env);
+
+  const m =
+    value.match(
+      /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=\s]+)$/s
+    );
+
+  if (!m) {
+    return null;
   }
-  throw new HttpError('Method tidak didukung.',405);
+
+  const base64 =
+    m[2].replace(/\s/g, "");
+
+  if (
+    base64.length * 0.75 >
+    maxBytes
+  ) {
+    return null;
+  }
+
+  return {
+    mimeType: m[1],
+    base64
+  };
 }
 
-async function accountApi(request,env){
-  const user=await requireUser(request,env);
-  const creditRows=await rowsForAccount(user.id,env);
-  const roleRows=await rows(`/rest/v1/user_roles?user_id=eq.${encodeURIComponent(user.id)}&role=eq.admin&select=user_id`,env);
-  const isAdmin=Array.isArray(roleRows)&&roleRows.length>0;
-  const contactRes=await sb('/rest/v1/app_settings?setting_key=eq.admin_contact_url&select=setting_value',{},env);
-  const contactRows=contactRes.ok?await contactRes.json():[];
-  return json({success:true,user:{id:user.id,email:user.email||null},credits:Number(creditRows?.[0]?.credits||0),isAdmin,adminContactUrl:contactRows?.[0]?.setting_value||''},200,env);
+function normalizeDuration(
+  value,
+  allowed,
+  fallback
+) {
+  const n =
+    Number(value || fallback);
+
+  return allowed.includes(n)
+    ? n
+    : null;
 }
-async function rowsForAccount(userId,env){
-  const res=await sb(`/rest/v1/user_credits?user_id=eq.${encodeURIComponent(userId)}&select=credits`,{},env);
-  if(!res.ok) throw new HttpError('Gagal mengambil credit.',500);
+
+/*
+ * ============================================================
+ * JOB MANAGEMENT
+ * ============================================================
+ */
+
+async function reserveJob(
+  userId,
+  provider,
+  cost,
+  idempotencyKey,
+  fingerprint,
+  env
+) {
+  const res = await sb(
+    "/rest/v1/rpc/start_video_job",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_user_id: userId,
+        p_provider: provider,
+        p_credit_cost: cost,
+        p_idempotency_key:
+          idempotencyKey,
+        p_request_fingerprint:
+          fingerprint
+      })
+    },
+    env
+  );
+
+  const data =
+    await safeJson(res);
+
+  if (!res.ok) {
+    throw new HttpError(
+      apiError(
+        data,
+        "Credit tidak mencukupi."
+      ),
+      402
+    );
+  }
+
+  return data;
+}
+
+async function updateJob(
+  jobId,
+  patch,
+  env
+) {
+  const r = await sb(
+    `/rest/v1/video_jobs?id=eq.${encodeURIComponent(
+      jobId
+    )}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer:
+          "return=minimal"
+      },
+      body: JSON.stringify({
+        ...patch,
+        updated_at:
+          new Date().toISOString()
+      })
+    },
+    env
+  );
+
+  if (!r.ok) {
+    throw new HttpError(
+      "Gagal memperbarui status job.",
+      500
+    );
+  }
+}
+
+async function recordJobEvent(
+  jobId,
+  userId,
+  eventType,
+  extra,
+  env
+) {
+  try {
+    await sb(
+      "/rest/v1/rpc/record_video_job_event",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          p_job_id: jobId,
+          p_user_id: userId,
+          p_event_type: eventType,
+          p_provider_status:
+            extra?.providerStatus ||
+            null,
+          p_error_code:
+            extra?.errorCode ||
+            null,
+          p_message:
+            extra?.message ||
+            "",
+          p_metadata:
+            extra?.metadata ||
+            {}
+        })
+      },
+      env
+    );
+  } catch (err) {
+    console.error(
+      "job event logging failed",
+      err
+    );
+  }
+}
+
+async function refundJob(
+  jobId,
+  env
+) {
+  const res = await sb(
+    "/rest/v1/rpc/refund_video_job",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_job_id: jobId
+      })
+    },
+    env
+  );
+
+  return res.ok;
+}
+
+async function getJob(
+  userId,
+  provider,
+  externalId,
+  env
+) {
+  const q =
+    `/rest/v1/video_jobs?user_id=eq.${encodeURIComponent(
+      userId
+    )}&provider=eq.${encodeURIComponent(
+      provider
+    )}&external_id=eq.${encodeURIComponent(
+      externalId
+    )}&select=*`;
+
+  const res =
+    await sb(q, {}, env);
+
+  if (!res.ok) {
+    throw new HttpError(
+      "Gagal membaca job video.",
+      500
+    );
+  }
+
+  const rows =
+    await res.json();
+
+  return rows?.[0] || null;
+}
+
+/*
+ * ============================================================
+ * GENERATE ROUTER
+ * ============================================================
+ *
+ * Tidak ada lagi:
+ * - generateVeo()
+ * - generateMiniMax()
+ * - generateLuma()
+ *
+ * Semua ditangani adapter provider.
+ * ============================================================
+ */
+
+async function handleGenerate(
+  request,
+  env
+) {
+  const ct =
+    String(
+      request.headers.get(
+        "content-type"
+      ) || ""
+    ).toLowerCase();
+
+  if (
+    !ct.includes("application/json")
+  ) {
+    throw new HttpError(
+      "Content-Type harus application/json.",
+      415
+    );
+  }
+
+  const user =
+    await requireUser(
+      request,
+      env
+    );
+
+  checkGenerateRate(user.id);
+
+  let body;
+
+  try {
+    body =
+      await readJson(request);
+  } catch {
+    throw new HttpError(
+      "JSON tidak valid.",
+      400
+    );
+  }
+
+  const id =
+    canonicalProvider(
+      body?.provider
+    );
+
+  if (!id) {
+    throw new HttpError(
+      "Provider wajib diberikan.",
+      400
+    );
+  }
+
+  const provider =
+    await getProvider(
+      id,
+      env,
+      true
+    );
+
+  const adapter =
+    resolveAdapter(provider);
+
+  if (!adapter) {
+    throw new HttpError(
+      `Adapter provider ${id} belum didukung Worker.`,
+      400
+    );
+  }
+
+  const prompt =
+    String(
+      body?.prompt || ""
+    ).trim();
+
+  if (
+    prompt.length < 3 ||
+    prompt.length > 2000
+  ) {
+    throw new HttpError(
+      "Prompt harus 3-2000 karakter.",
+      400
+    );
+  }
+
+  const cost =
+    Math.max(
+      1,
+      Number(
+        env.GENERATION_CREDIT_COST ||
+          1
+      )
+    );
+
+  const idem =
+    String(
+      request.headers.get(
+        "Idempotency-Key"
+      ) || ""
+    ).trim();
+
+  if (
+    !idem ||
+    idem.length > 128
+  ) {
+    throw new HttpError(
+      "Idempotency-Key wajib diisi (1-128 karakter).",
+      400
+    );
+  }
+
+  const fingerprintSource =
+    JSON.stringify({
+      provider: id,
+      model:
+        body.model || null,
+      duration:
+        body.duration || null,
+      aspectRatio:
+        body.aspectRatio ||
+        null,
+      resolution:
+        body.resolution ||
+        null,
+      prompt,
+      imageData:
+        Boolean(
+          body.imageData
+        )
+    });
+
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(
+        fingerprintSource
+      )
+    );
+
+  const fingerprint =
+    Array.from(
+      new Uint8Array(digest)
+    )
+      .map(b =>
+        b
+          .toString(16)
+          .padStart(2, "0")
+      )
+      .join("");
+
+  const reservation =
+    await reserveJob(
+      user.id,
+      id,
+      cost,
+      idem,
+      fingerprint,
+      env
+    );
+
+  const jobId =
+    reservation?.job_id ||
+    reservation?.id;
+
+  if (!jobId) {
+    throw new HttpError(
+      "Gagal membuat job credit.",
+      500
+    );
+  }
+
+  if (
+    reservation?.existing
+  ) {
+    if (
+      reservation.provider !== id
+    ) {
+      throw new HttpError(
+        "Idempotency key terkait provider berbeda.",
+        409
+      );
+    }
+
+    if (
+      reservation.external_id
+    ) {
+      return json(
+        {
+          success: true,
+          idempotent: true,
+          jobId,
+          externalId:
+            reservation.external_id,
+          provider: id,
+          status:
+            reservation.status ||
+            "processing"
+        },
+        200,
+        env
+      );
+    }
+
+    throw new HttpError(
+      "Request sebelumnya masih dalam proses inisialisasi. Gunakan status job setelah beberapa saat.",
+      409
+    );
+  }
+
+  try {
+    await recordJobEvent(
+      jobId,
+      user.id,
+      "created",
+      {
+        message:
+          "Generation job created",
+
+        metadata: {
+          provider: id,
+          adapter:
+            provider.adapter
+        }
+      },
+      env
+    );
+
+    /*
+     * Semua detail API provider sekarang
+     * ditangani file adapter masing-masing.
+     */
+    const result =
+      await adapter.generate(
+        body,
+        provider,
+        env
+      );
+
+    if (
+      !result ||
+      !result.externalId
+    ) {
+      throw new HttpError(
+        "Provider tidak mengembalikan ID proses.",
+        502
+      );
+    }
+
+    result.provider = id;
+
+    const metadata = {
+      ...result,
+      adapter:
+        provider.adapter
+    };
+
+    await updateJob(
+      jobId,
+      {
+        external_id:
+          result.externalId,
+
+        status:
+          result.status ||
+          "processing",
+
+        attempt_count: 1,
+
+        provider_status:
+          result.status ||
+          "processing",
+
+        last_error: null,
+
+        last_error_code: null,
+
+        model:
+          result.model ||
+          null,
+
+        metadata
+      },
+      env
+    );
+
+    await recordJobEvent(
+      jobId,
+      user.id,
+      "provider_submitted",
+      {
+        providerStatus:
+          result.status ||
+          "processing",
+
+        message:
+          "Provider accepted generation request",
+
+        metadata: {
+          adapter:
+            provider.adapter,
+
+          model:
+            result.model ||
+            null
+        }
+      },
+      env
+    );
+
+    return json(
+      {
+        success: true,
+        jobId,
+        ...result,
+        provider: id,
+        creditsRemaining:
+          reservation.credits_remaining
+      },
+      200,
+      env
+    );
+  } catch (err) {
+    await updateJob(
+      jobId,
+      {
+        last_error:
+          String(
+            err?.message ||
+              "Generation error"
+          ),
+
+        last_error_code:
+          String(
+            err?.status ||
+              "provider_error"
+          ),
+
+        provider_status:
+          "failed"
+      },
+      env
+    ).catch(() => {});
+
+    await recordJobEvent(
+      jobId,
+      user.id,
+      "error",
+      {
+        providerStatus:
+          "failed",
+
+        errorCode:
+          String(
+            err?.status ||
+              "provider_error"
+          ),
+
+        message:
+          String(
+            err?.message ||
+              "Generation error"
+          )
+      },
+      env
+    );
+
+    await refundJob(
+      jobId,
+      env
+    );
+
+    await recordJobEvent(
+      jobId,
+      user.id,
+      "refunded",
+      {
+        message:
+          "Credit refunded after generation error"
+      },
+      env
+    );
+
+    throw err;
+  }
+}
+
+/*
+ * ============================================================
+ * STATUS ROUTER
+ * ============================================================
+ */
+
+async function handleStatus(
+  request,
+  env
+) {
+  const user =
+    await requireUser(
+      request,
+      env
+    );
+
+  requireJsonContentType(
+    request
+  );
+
+  let body;
+
+  try {
+    body =
+      await readJson(request);
+  } catch {
+    throw new HttpError(
+      "JSON status tidak valid.",
+      400
+    );
+  }
+
+  const id =
+    canonicalProvider(
+      body?.provider
+    );
+
+  if (!id) {
+    throw new HttpError(
+      "Provider wajib diberikan.",
+      400
+    );
+  }
+
+  const externalId =
+    String(
+      body?.operationName ||
+        body?.taskId ||
+        body?.id ||
+        ""
+    ).trim();
+
+  if (!externalId) {
+    throw new HttpError(
+      "ID proses video wajib diberikan.",
+      400
+    );
+  }
+
+  const job =
+    await getJob(
+      user.id,
+      id,
+      externalId,
+      env
+    );
+
+  if (!job) {
+    throw new HttpError(
+      "Job tidak ditemukan.",
+      404
+    );
+  }
+
+  const provider =
+    await getProvider(
+      id,
+      env,
+      false
+    );
+
+  const adapter =
+    resolveAdapter(provider);
+
+  if (!adapter) {
+    throw new HttpError(
+      `Adapter provider ${id} belum didukung Worker.`,
+      400
+    );
+  }
+
+  try {
+    const result =
+      await adapter.status(
+        externalId,
+        provider,
+        env
+      );
+
+    if (!result) {
+      throw new HttpError(
+        "Provider tidak mengembalikan status.",
+        502
+      );
+    }
+
+    result.provider = id;
+
+    if (
+      result.status ===
+      "completed"
+    ) {
+      const proxyUrl =
+        `/api/video?provider=${encodeURIComponent(
+          id
+        )}&jobId=${encodeURIComponent(
+          job.id
+        )}`;
+
+      const nextMetadata = {
+        ...(job.metadata || {})
+      };
+
+      /*
+       * Adapter MiniMax mengembalikan
+       * provider file ID.
+       *
+       * Adapter lain biasanya mengembalikan
+       * URL provider.
+       */
+      if (result.fileId) {
+        nextMetadata.provider_file_id =
+          result.fileId;
+      }
+
+      await updateJob(
+        job.id,
+        {
+          status:
+            "completed",
+
+          provider_status:
+            "completed",
+
+          last_error: null,
+
+          last_error_code: null,
+
+          video_url:
+            result.videoUrl ||
+            proxyUrl,
+
+          metadata:
+            nextMetadata
+        },
+        env
+      );
+
+      await recordJobEvent(
+        job.id,
+        user.id,
+        "completed",
+        {
+          providerStatus:
+            "completed",
+
+          message:
+            "Provider generation completed",
+
+          metadata: {
+            adapter:
+              provider.adapter
+          }
+        },
+        env
+      );
+
+      result.videoUrl =
+        proxyUrl;
+
+      /*
+       * Jangan expose provider file ID
+       * ke frontend.
+       */
+      delete result.fileId;
+    } else if (
+      result.status ===
+      "failed"
+    ) {
+      await updateJob(
+        job.id,
+        {
+          status: "failed",
+
+          provider_status:
+            "failed",
+
+          last_error:
+            result.error ||
+            "Provider reported failure",
+
+          last_error_code:
+            "provider_failed"
+        },
+        env
+      );
+
+      await recordJobEvent(
+        job.id,
+        user.id,
+        "failed",
+        {
+          providerStatus:
+            "failed",
+
+          errorCode:
+            "provider_failed",
+
+          message:
+            result.error ||
+            "Provider reported failure"
+        },
+        env
+      );
+
+      await refundJob(
+        job.id,
+        env
+      );
+
+      await recordJobEvent(
+        job.id,
+        user.id,
+        "refunded",
+        {
+          message:
+            "Credit refunded after provider failure"
+        },
+        env
+      );
+    } else {
+      await updateJob(
+        job.id,
+        {
+          attempt_count:
+            Number(
+              job.attempt_count ||
+                0
+            ) + 1,
+
+          provider_status:
+            "processing"
+        },
+        env
+      );
+
+      await recordJobEvent(
+        job.id,
+        user.id,
+        "poll_processing",
+        {
+          providerStatus:
+            "processing",
+
+          message:
+            "Provider still processing",
+
+          metadata: {
+            adapter:
+              provider.adapter
+          }
+        },
+        env
+      );
+    }
+
+    return json(
+      {
+        jobId: job.id,
+        ...result
+      },
+      200,
+      env
+    );
+  } catch (err) {
+    throw err;
+  }
+}
+
+/*
+ * ============================================================
+ * VIDEO PROXY ROUTER
+ * ============================================================
+ *
+ * Worker tidak mengetahui URL/API provider.
+ * Adapter masing-masing menangani fetch video.
+ * ============================================================
+ */
+
+async function handleVideo(
+  request,
+  env
+) {
+  const user =
+    await requireUser(
+      request,
+      env
+    );
+
+  const url =
+    new URL(request.url);
+
+  const id =
+    canonicalProvider(
+      url.searchParams.get(
+        "provider"
+      )
+    );
+
+  const jobId =
+    String(
+      url.searchParams.get(
+        "jobId"
+      ) || ""
+    ).trim();
+
+  if (!jobId) {
+    throw new HttpError(
+      "jobId wajib.",
+      400
+    );
+  }
+
+  if (!id) {
+    throw new HttpError(
+      "Provider wajib.",
+      400
+    );
+  }
+
+  const jobRows =
+    await sb(
+      `/rest/v1/video_jobs?id=eq.${encodeURIComponent(
+        jobId
+      )}&user_id=eq.${encodeURIComponent(
+        user.id
+      )}&select=id,user_id,provider,status,video_url,metadata&limit=1`,
+      {},
+      env
+    );
+
+  if (!jobRows.ok) {
+    throw new HttpError(
+      "Gagal memeriksa job video.",
+      500
+    );
+  }
+
+  const job =
+    (await jobRows.json())?.[0];
+
+  if (!job) {
+    throw new HttpError(
+      "Job video tidak ditemukan.",
+      404
+    );
+  }
+
+  if (
+    job.provider !== id
+  ) {
+    throw new HttpError(
+      "Provider job tidak cocok.",
+      403
+    );
+  }
+
+  if (
+    job.status !==
+    "completed"
+  ) {
+    throw new HttpError(
+      "Video belum siap.",
+      409
+    );
+  }
+
+  const provider =
+    await getProvider(
+      id,
+      env,
+      false
+    );
+
+  const adapter =
+    resolveAdapter(provider);
+
+  if (!adapter) {
+    throw new HttpError(
+      `Adapter provider ${id} belum didukung Worker.`,
+      400
+    );
+  }
+
+  /*
+   * MiniMax menyimpan provider_file_id
+   * karena URL file-nya bersifat sementara.
+   *
+   * Adapter lain menggunakan video_url.
+   *
+   * Perbedaan ini adalah routing metadata,
+   * bukan logic API provider.
+   */
+  let target;
+
+  if (
+    String(
+      provider.adapter || ""
+    ).toLowerCase() ===
+    "minimax"
+  ) {
+    target =
+      String(
+        job?.metadata
+          ?.provider_file_id ||
+          ""
+      ).trim();
+
+    if (!target) {
+      throw new HttpError(
+        "File video MiniMax tidak tersedia.",
+        404
+      );
+    }
+  } else {
+    target =
+      String(
+        job.video_url || ""
+      ).trim();
+
+    if (
+      !target ||
+      target.startsWith(
+        "/api/video"
+      )
+    ) {
+      throw new HttpError(
+        "URL video provider tidak tersedia.",
+        404
+      );
+    }
+  }
+
+  /*
+   * Seluruh validasi host dan pengambilan
+   * video dilakukan adapter provider.
+   */
+  const response =
+    await adapter.fetchVideo(
+      target,
+      provider,
+      env
+    );
+
+  if (!response) {
+    throw new HttpError(
+      "Provider tidak mengembalikan response video.",
+      502
+    );
+  }
+
+  if (!response.ok) {
+    throw new HttpError(
+      `Gagal mengambil video (${response.status}).`,
+      response.status
+    );
+  }
+
+  return new Response(
+    response.body,
+    {
+      status: 200,
+
+      headers: {
+        ...corsHeaders(env),
+
+        "Content-Type":
+          response.headers.get(
+            "Content-Type"
+          ) ||
+          "video/mp4",
+
+        "Cache-Control":
+          "private, no-store"
+      }
+    }
+  );
+}
+
+/*
+ * ============================================================
+ * TRANSACTIONS
+ * ============================================================
+ */
+
+async function transactionApi(
+  request,
+  env
+) {
+  const user =
+    await requireUser(
+      request,
+      env
+    );
+
+  const url =
+    new URL(request.url);
+
+  const limit =
+    Math.min(
+      100,
+      Math.max(
+        1,
+        Number(
+          url.searchParams.get(
+            "limit"
+          ) || 30
+        )
+      )
+    );
+
+  const rows =
+    await sb(
+      `/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(
+        user.id
+      )}&select=id,amount,balance_after,type,note,job_id,created_at&order=created_at.desc&limit=${limit}`,
+      {},
+      env
+    );
+
+  if (!rows.ok) {
+    throw new HttpError(
+      "Gagal mengambil riwayat credit.",
+      500
+    );
+  }
+
+  return json(
+    {
+      success: true,
+      transactions:
+        await rows.json()
+    },
+    200,
+    env
+  );
+}
+
+/*
+ * ============================================================
+ * TOPUP
+ * ============================================================
+ */
+
+async function topupApi(
+  request,
+  env
+) {
+  const user =
+    await requireUser(
+      request,
+      env
+    );
+
+  const url =
+    new URL(request.url);
+
+  if (
+    request.method ===
+    "GET"
+  ) {
+    const limit =
+      Math.min(
+        50,
+        Math.max(
+          1,
+          Number(
+            url.searchParams.get(
+              "limit"
+            ) || 20
+          )
+        )
+      );
+
+    const r =
+      await sb(
+        `/rest/v1/credit_topup_requests?user_id=eq.${encodeURIComponent(
+          user.id
+        )}&select=id,amount,note,status,admin_note,created_at,reviewed_at&order=created_at.desc&limit=${limit}`,
+        {},
+        env
+      );
+
+    if (!r.ok) {
+      throw new HttpError(
+        "Gagal mengambil request top-up.",
+        500
+      );
+    }
+
+    return json(
+      {
+        success: true,
+        requests:
+          await r.json()
+      },
+      200,
+      env
+    );
+  }
+
+  if (
+    request.method ===
+    "POST"
+  ) {
+    const ct =
+      String(
+        request.headers.get(
+          "content-type"
+        ) || ""
+      ).toLowerCase();
+
+    if (
+      !ct.includes(
+        "application/json"
+      )
+    ) {
+      throw new HttpError(
+        "Content-Type harus application/json.",
+        415
+      );
+    }
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const amount =
+      Number(body.amount);
+
+    const note =
+      String(
+        body.note || ""
+      )
+        .trim()
+        .slice(0, 500);
+
+    if (
+      !Number.isInteger(
+        amount
+      ) ||
+      amount <= 0 ||
+      amount > 1000000
+    ) {
+      throw new HttpError(
+        "Jumlah top-up harus integer antara 1 dan 1.000.000.",
+        400
+      );
+    }
+
+    const pending =
+      await rows(
+        `/rest/v1/credit_topup_requests?user_id=eq.${encodeURIComponent(
+          user.id
+        )}&status=eq.pending&select=id&limit=1`,
+        env
+      );
+
+    if (pending.length) {
+      throw new HttpError(
+        "Anda masih memiliki request top-up yang menunggu diproses.",
+        409
+      );
+    }
+
+    const r =
+      await sb(
+        "/rest/v1/credit_topup_requests",
+        {
+          method: "POST",
+
+          headers: {
+            Prefer:
+              "return=representation"
+          },
+
+          body: JSON.stringify({
+            user_id:
+              user.id,
+
+            amount,
+
+            note
+          })
+        },
+        env
+      );
+
+    if (!r.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(r),
+          "Gagal membuat request top-up."
+        ),
+        r.status
+      );
+    }
+
+    return json(
+      {
+        success: true,
+
+        request:
+          (await r.json())?.[0] ||
+          null
+      },
+      201,
+      env
+    );
+  }
+
+  throw new HttpError(
+    "Method tidak didukung.",
+    405
+  );
+}
+
+/*
+ * ============================================================
+ * ACCOUNT
+ * ============================================================
+ */
+
+async function accountApi(
+  request,
+  env
+) {
+  const user =
+    await requireUser(
+      request,
+      env
+    );
+
+  const creditRows =
+    await rowsForAccount(
+      user.id,
+      env
+    );
+
+  const roleRows =
+    await rows(
+      `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
+        user.id
+      )}&role=eq.admin&select=user_id`,
+      env
+    );
+
+  const isAdmin =
+    Array.isArray(
+      roleRows
+    ) &&
+    roleRows.length > 0;
+
+  const contactRes =
+    await sb(
+      "/rest/v1/app_settings?setting_key=eq.admin_contact_url&select=setting_value",
+      {},
+      env
+    );
+
+  const contactRows =
+    contactRes.ok
+      ? await contactRes.json()
+      : [];
+
+  return json(
+    {
+      success: true,
+
+      user: {
+        id: user.id,
+
+        email:
+          user.email ||
+          null
+      },
+
+      credits:
+        Number(
+          creditRows?.[0]
+            ?.credits || 0
+        ),
+
+      isAdmin,
+
+      adminContactUrl:
+        contactRows?.[0]
+          ?.setting_value ||
+        ""
+    },
+    200,
+    env
+  );
+}
+
+async function rowsForAccount(
+  userId,
+  env
+) {
+  const res =
+    await sb(
+      `/rest/v1/user_credits?user_id=eq.${encodeURIComponent(
+        userId
+      )}&select=credits`,
+      {},
+      env
+    );
+
+  if (!res.ok) {
+    throw new HttpError(
+      "Gagal mengambil credit.",
+      500
+    );
+  }
+
   return await res.json();
 }
 
-async function adminApi(request,env){
-  const admin=await requireAdmin(request,env); const url=new URL(request.url);
-  if(url.pathname==='/api/admin/jobs'&&request.method==='GET'){const limit=Math.min(200,Math.max(1,Number(url.searchParams.get('limit')||50)));const status=url.searchParams.get('status');if(status&&!['reserved','processing','completed','failed'].includes(status))throw new HttpError('Status job tidak valid.',400);const qs=status?`&status=eq.${encodeURIComponent(status)}`:'';const r=await sb(`/rest/v1/video_jobs?select=id,user_id,provider,external_id,status,credit_cost,refunded,model,video_url,attempt_count,last_error,last_error_code,provider_status,created_at,updated_at&order=created_at.desc&limit=${limit}${qs}`,{},env);if(!r.ok)throw new HttpError('Gagal mengambil job log.',500);return json({success:true,jobs:await r.json()},200,env)}
-  if(url.pathname==='/api/admin/job-events'&&request.method==='GET'){const limit=Math.min(300,Math.max(1,Number(url.searchParams.get('limit')||100)));const jobId=url.searchParams.get('job_id');const qs=jobId?`&job_id=eq.${encodeURIComponent(jobId)}`:'';const r=await sb(`/rest/v1/video_job_events?select=id,job_id,user_id,event_type,provider_status,error_code,message,metadata,created_at&order=created_at.desc&limit=${limit}${qs}`,{},env);if(!r.ok)throw new HttpError('Gagal mengambil event log.',500);return json({success:true,events:await r.json()},200,env)}
-  if(url.pathname==='/api/admin/providers'&&request.method==='GET'){const res=await sb('/rest/v1/providers?select=id,name,adapter,enabled,config,api_key,created_at,updated_at&order=created_at.asc',{},env);if(!res.ok)throw new HttpError('Gagal mengambil provider.',500);const rows=await res.json();return json({success:true,providers:rows.map(p=>({...publicProvider(p),created_at:p.created_at,updated_at:p.updated_at,apiKeySet:Boolean(p.api_key),api_key_masked:p.api_key?'••••••••':''}))},200,env)}
-  if(url.pathname==='/api/admin/providers'&&request.method==='POST'){requireJsonContentType(request);const body=await readJson(request);const id=providerId(body.id);const name=String(body.name||id).trim().slice(0,100);if(!name)throw new HttpError('Nama provider wajib diisi.',400);const adapter=String(body.adapter||'').trim().toLowerCase();if(!adapterInfo(adapter))throw new HttpError('Adapter tidak didukung. Pilih adapter yang tersedia.',400);const key=String(body.api_key||'').trim();if(!key)throw new HttpError('API key wajib diisi.',400);const enabled=body.enabled!==false;const config=body.config&&typeof body.config==='object'&&!Array.isArray(body.config)?body.config:{};if(JSON.stringify(config).length>20000)throw new HttpError('Config provider terlalu besar.',400);const res=await sb('/rest/v1/providers',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id,name,adapter,api_key:key,enabled,config,updated_at:new Date().toISOString()})},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal menambahkan provider.'),res.status);return json({success:true,message:'Provider berhasil ditambahkan.'},201,env)}
-  const m=url.pathname.match(/^\/api\/admin\/providers\/([^/]+)$/);
-  if(m&&request.method==='PUT'){requireJsonContentType(request);const id=providerId(decodeURIComponent(m[1]));const body=await readJson(request);const patch={};if(body.name!==undefined)patch.name=String(body.name).trim().slice(0,100)||id;if(body.adapter!==undefined){patch.adapter=String(body.adapter).trim().toLowerCase();if(!adapterInfo(patch.adapter))throw new HttpError('Adapter tidak didukung.',400)}if(body.api_key!==undefined&&String(body.api_key).trim())patch.api_key=String(body.api_key).trim();if(body.enabled!==undefined)patch.enabled=Boolean(body.enabled);if(body.config!==undefined){if(!body.config||typeof body.config!=='object'||Array.isArray(body.config))throw new HttpError('Config provider harus berupa object JSON.',400);if(JSON.stringify(body.config).length>20000)throw new HttpError('Config provider terlalu besar.',400);patch.config=body.config;}patch.updated_at=new Date().toISOString();const res=await sb(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal memperbarui provider.'),res.status);return json({success:true},200,env)}
-  if(m&&request.method==='DELETE'){const id=providerId(decodeURIComponent(m[1]));const active=await rows(`/rest/v1/video_jobs?provider=eq.${encodeURIComponent(id)}&status=in.(reserved,processing)&select=id&limit=1`,env);if(active.length)throw new HttpError('Provider masih memiliki job aktif. Nonaktifkan provider dan tunggu job selesai sebelum menghapus.',409);const res=await sb(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`,{method:'DELETE'},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal menghapus provider.'),res.status);return json({success:true},200,env)}
-  const mt=url.pathname.match(/^\/api\/admin\/providers\/([^/]+)\/toggle$/);
-  if(mt&&request.method==='POST'){const id=providerId(decodeURIComponent(mt[1]));const current=await getProvider(id,env,false);const enabled=request.headers.get('x-enable')==='true'?true:request.headers.get('x-enable')==='false'?false:!current.enabled;const res=await sb(`/rest/v1/providers?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({enabled,updated_at:new Date().toISOString()})},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal mengubah status provider.'),res.status);return json({success:true,enabled},200,env)}
-  if(url.pathname==='/api/admin/topup-requests'&&request.method==='GET'){
-    const status=String(url.searchParams.get('status')||'pending').trim(); const limit=Math.min(200,Math.max(1,Number(url.searchParams.get('limit')||100)));
-    if(!['pending','approved','rejected','all'].includes(status))throw new HttpError('Status tidak valid.',400);
-    const q=status==='all'?'':`&status=eq.${encodeURIComponent(status)}`;
-    const tx=await sb(`/rest/v1/credit_topup_requests?select=id,user_id,amount,note,status,admin_note,admin_user_id,created_at,reviewed_at&order=created_at.desc&limit=${limit}${q}`,{},env);
-    if(!tx.ok)throw new HttpError('Gagal mengambil request top-up.',500);
-    return json({success:true,requests:await tx.json()},200,env);
-  }
-  const tr=url.pathname.match(/^\/api\/admin\/topup-requests\/([^/]+)\/(approve|reject)$/);
-  if(tr&&request.method==='POST'){
-    requireJsonContentType(request); const requestId=decodeURIComponent(tr[1]); const action=tr[2]; const body=await readJson(request);
-    const rpc=action==='approve'?'approve_topup_request':'reject_topup_request';
-    const r=await sb(`/rest/v1/rpc/${rpc}`,{method:'POST',body:JSON.stringify({p_admin_user_id:admin.id,p_request_id:requestId,p_admin_note:String(body.note||'').trim().slice(0,500)})},env);
-    if(!r.ok)throw new HttpError(apiError(await safeJson(r),`Gagal ${action==='approve'?'menyetujui':'menolak'} top-up.`),r.status);
-    return json({success:true,result:await safeJson(r)},200,env);
-  }
-  if(url.pathname==='/api/admin/contact'&&request.method==='GET'){const res=await sb('/rest/v1/app_settings?setting_key=eq.admin_contact_url&select=setting_value',{},env);const rows=res.ok?await res.json():[];return json({success:true,url:rows?.[0]?.setting_value||''},200,env)}
-  if(url.pathname==='/api/admin/contact'&&request.method==='POST'){requireJsonContentType(request);const body=await readJson(request);const contact=String(body.url||'').trim();if(contact){try{const u=new URL(contact);if(!['http:','https:'].includes(u.protocol))throw new Error()}catch{throw new HttpError('URL kontak admin tidak valid.',400)}}const res=await sb('/rest/v1/app_settings',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({setting_key:'admin_contact_url',setting_value:contact,updated_at:new Date().toISOString()})},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal menyimpan kontak admin.'),res.status);return json({success:true},200,env)}
-  if(url.pathname==='/api/admin/users'&&request.method==='GET'){const users=await listUsers(env);const roles=await rows('/rest/v1/user_roles?select=user_id,role',env);const credits=await rows('/rest/v1/user_credits?select=user_id,credits',env);const rm=new Map(roles.map(x=>[x.user_id,x.role]));const cm=new Map(credits.map(x=>[x.user_id,Number(x.credits||0)]));return json({success:true,users:users.map(u=>({id:u.id,email:u.email,role:rm.get(u.id)||'user',credits:cm.get(u.id)||0,created_at:u.created_at}))},200,env)}
-  if(url.pathname==='/api/admin/transactions'&&request.method==='GET'){const userId=String(url.searchParams.get('user_id')||'').trim();if(userId&&!/^[0-9a-f-]{36}$/i.test(userId))throw new HttpError('user_id tidak valid.',400);const limit=Math.min(200,Math.max(1,Number(url.searchParams.get('limit')||100)));if(!userId)throw new HttpError('user_id wajib.',400);const tx=await sb(`/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(userId)}&select=id,amount,balance_after,type,note,job_id,admin_user_id,created_at&order=created_at.desc&limit=${limit}`,{},env);if(!tx.ok)throw new HttpError('Gagal mengambil riwayat credit.',500);return json({success:true,transactions:await tx.json()},200,env)}
-  if(url.pathname==='/api/admin/credits/adjust'&&request.method==='POST'){requireJsonContentType(request);const body=await readJson(request);const userId=String(body.user_id||'').trim();if(!/^[0-9a-f-]{36}$/i.test(userId))throw new HttpError('user_id tidak valid.',400);const amount=Number(body.amount);if(!userId||!Number.isInteger(amount)||amount===0)throw new HttpError('user_id dan amount integer non-zero wajib.',400);const res=await sb('/rest/v1/rpc/admin_adjust_credit',{method:'POST',body:JSON.stringify({p_admin_user_id:admin.id,p_user_id:userId,p_amount:amount,p_note:String(body.note||'Admin adjustment')})},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal mengubah credit.'),res.status);return json({success:true},200,env)}
-  if(url.pathname==='/api/admin/admins'&&request.method==='GET'){const roles=await rows('/rest/v1/user_roles?role=eq.admin&select=user_id,role',env);const users=await listUsers(env);const um=new Map(users.map(u=>[u.id,u.email]));return json({success:true,admins:roles.map(r=>({user_id:r.user_id,email:um.get(r.user_id)||'',role:r.role}))},200,env)}
-  if(url.pathname==='/api/admin/admins/add'&&request.method==='POST'){requireJsonContentType(request);const body=await readJson(request);const email=String(body.email||'').trim().toLowerCase();const users=await listUsers(env);const u=users.find(x=>String(x.email||'').toLowerCase()===email);if(!u)throw new HttpError('User belum terdaftar.',404);const res=await sb('/rest/v1/user_roles',{method:'POST',headers:{Prefer:'resolution=merge-duplicates'},body:JSON.stringify({user_id:u.id,role:'admin'})},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal menambahkan admin.'),res.status);return json({success:true},200,env)}
-  if(url.pathname==='/api/admin/admins/remove'&&request.method==='POST'){requireJsonContentType(request);const body=await readJson(request);if(String(body.user_id)===admin.id)throw new HttpError('Tidak dapat menghapus diri sendiri.',400);const targetId=String(body.user_id||'').trim();if(!targetId)throw new HttpError('user_id wajib.',400);const res=await sb('/rest/v1/rpc/remove_admin',{method:'POST',body:JSON.stringify({p_admin_user_id:admin.id,p_user_id:targetId})},env);if(!res.ok)throw new HttpError(apiError(await safeJson(res),'Gagal menghapus admin.'),res.status);return json({success:true,result:await safeJson(res)},200,env)}
-  throw new HttpError('Admin endpoint tidak ditemukan.',404);
-}
-async function rows(path,env){const r=await sb(path,{},env);return r.ok?await r.json():[]}
-async function listUsers(env){const out=[];let page=1;while(page<=20){const r=await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=100`,{headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`}});if(!r.ok)break;const d=await r.json();const batch=d?.users||[];out.push(...batch);if(batch.length<100)break;page++}return out}
+/*
+ * ============================================================
+ * ADMIN API
+ * ============================================================
+ */
 
-export default {async scheduled(event,env,ctx){ctx.waitUntil(sb('/rest/v1/rpc/recover_stale_video_jobs',{method:'POST',body:JSON.stringify({p_max_age_minutes:1440})},env).catch(err=>console.error('stale job recovery failed',err)));},async fetch(request,env){if(request.method==='OPTIONS')return new Response(null,{status:204,headers:corsHeaders(env)});const url=new URL(request.url);try{if(url.pathname==='/api/config'&&request.method==='GET')return json({success:true,supabaseUrl:env.SUPABASE_URL||'',supabasePublishableKey:env.SUPABASE_PUBLISHABLE_KEY||''},200,env);if(url.pathname==='/api/diagnostic'&&request.method==='GET'){const ps=await rows('/rest/v1/providers?select=id,name,adapter,enabled,api_key',env);return json({success:true,worker:'GEN-Z.AI',supabaseConfigured:Boolean(env.SUPABASE_URL&&env.SUPABASE_SERVICE_ROLE_KEY),providers:ps.map(p=>({id:p.id,name:p.name,adapter:p.adapter,enabled:Boolean(p.enabled),configured:Boolean(p.api_key)})),timestamp:new Date().toISOString()},200,env)}if(url.pathname==='/api/providers'&&request.method==='GET'){const ps=await rows('/rest/v1/providers?enabled=eq.true&select=id,name,adapter,enabled,api_key&order=name.asc',env);return json({success:true,providers:ps.filter(p=>p.api_key&&adapterInfo(p.adapter)).map(publicProvider)},200,env);}if(url.pathname.startsWith('/api/admin/'))return await adminApi(request,env);if(url.pathname==='/api/account/credits'&&request.method==='GET')return await accountApi(request,env);if(url.pathname==='/api/account/transactions'&&request.method==='GET')return await transactionApi(request,env);if(url.pathname==='/api/account/topup-requests')return await topupApi(request,env);if(url.pathname==='/api/generate'&&request.method==='POST'){const len=Number(request.headers.get('content-length')||0);if(len>65536)throw new HttpError('Request generation terlalu besar.',413);return await handleGenerate(request,env);}if(url.pathname==='/api/generate/status'&&request.method==='POST')return await handleStatus(request,env);if(url.pathname==='/api/video'&&request.method==='GET')return await handleVideo(request,env);return env.ASSETS.fetch(request)}catch(err){console.error('request failed', Number(err?.status||500), String(err?.message||'unknown').slice(0,300));const status=Number(err?.status||500);const message=status>=500?'Internal Worker error.':(err?.message||'Request error.');return json({success:false,error:message},status,env)}}};
+async function adminApi(
+  request,
+  env
+) {
+  const admin =
+    await requireAdmin(
+      request,
+      env
+    );
+
+  const url =
+    new URL(request.url);
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN JOBS
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/jobs" &&
+    request.method ===
+      "GET"
+  ) {
+    const limit =
+      Math.min(
+        200,
+        Math.max(
+          1,
+          Number(
+            url.searchParams.get(
+              "limit"
+            ) || 50
+          )
+        )
+      );
+
+    const status =
+      url.searchParams.get(
+        "status"
+      );
+
+    if (
+      status &&
+      ![
+        "reserved",
+        "processing",
+        "completed",
+        "failed"
+      ].includes(status)
+    ) {
+      throw new HttpError(
+        "Status job tidak valid.",
+        400
+      );
+    }
+
+    const qs =
+      status
+        ? `&status=eq.${encodeURIComponent(
+            status
+          )}`
+        : "";
+
+    const r =
+      await sb(
+        `/rest/v1/video_jobs?select=id,user_id,provider,external_id,status,credit_cost,refunded,model,video_url,attempt_count,last_error,last_error_code,provider_status,created_at,updated_at&order=created_at.desc&limit=${limit}${qs}`,
+        {},
+        env
+      );
+
+    if (!r.ok) {
+      throw new HttpError(
+        "Gagal mengambil job log.",
+        500
+      );
+    }
+
+    return json(
+      {
+        success: true,
+        jobs:
+          await r.json()
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * JOB EVENTS
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/job-events" &&
+    request.method ===
+      "GET"
+  ) {
+    const limit =
+      Math.min(
+        300,
+        Math.max(
+          1,
+          Number(
+            url.searchParams.get(
+              "limit"
+            ) || 100
+          )
+        )
+      );
+
+    const jobId =
+      url.searchParams.get(
+        "job_id"
+      );
+
+    const qs =
+      jobId
+        ? `&job_id=eq.${encodeURIComponent(
+            jobId
+          )}`
+        : "";
+
+    const r =
+      await sb(
+        `/rest/v1/video_job_events?select=id,job_id,user_id,event_type,provider_status,error_code,message,metadata,created_at&order=created_at.desc&limit=${limit}${qs}`,
+        {},
+        env
+      );
+
+    if (!r.ok) {
+      throw new HttpError(
+        "Gagal mengambil event log.",
+        500
+      );
+    }
+
+    return json(
+      {
+        success: true,
+        events:
+          await r.json()
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN PROVIDERS GET
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/providers" &&
+    request.method ===
+      "GET"
+  ) {
+    const res =
+      await sb(
+        "/rest/v1/providers?select=id,name,adapter,enabled,config,api_key,created_at,updated_at&order=created_at.asc",
+        {},
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        "Gagal mengambil provider.",
+        500
+      );
+    }
+
+    const providerRows =
+      await res.json();
+
+    return json(
+      {
+        success: true,
+
+        providers:
+          providerRows.map(
+            p => ({
+              ...publicProvider(p),
+
+              created_at:
+                p.created_at,
+
+              updated_at:
+                p.updated_at,
+
+              apiKeySet:
+                Boolean(
+                  p.api_key
+                ),
+
+              api_key_masked:
+                p.api_key
+                  ? "••••••••"
+                  : ""
+            })
+          )
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN PROVIDER POST
+   * ----------------------------------------------------------
+   *
+   * Kompatibel dengan frontend lama:
+   * {
+   *   id,
+   *   name,
+   *   adapter,
+   *   api_key,
+   *   enabled,
+   *   config
+   * }
+   *
+   * Sekaligus mendukung:
+   * {
+   *   id,
+   *   name,
+   *   api_key
+   * }
+   *
+   * Adapter akan diinfer dari name/id.
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/providers" &&
+    request.method ===
+      "POST"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const id =
+      providerId(body.id);
+
+    const name =
+      String(
+        body.name || id
+      )
+        .trim()
+        .slice(0, 100);
+
+    if (!name) {
+      throw new HttpError(
+        "Nama provider wajib diisi.",
+        400
+      );
+    }
+
+    /*
+     * Prioritas:
+     * 1. adapter eksplisit
+     * 2. infer dari name
+     * 3. infer dari id
+     */
+    let adapterValue =
+      String(
+        body.adapter || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    if (!adapterValue) {
+      const inferred =
+        inferAdapter(name) ||
+        inferAdapter(id);
+
+      if (inferred) {
+        adapterValue =
+          inferred.id;
+      }
+    }
+
+    if (
+      !adapterInfo(
+        adapterValue
+      )
+    ) {
+      throw new HttpError(
+        "Adapter provider tidak dapat dikenali dari nama provider. Gunakan nama Gemini, Veo, MiniMax, atau Luma.",
+        400
+      );
+    }
+
+    const key =
+      String(
+        body.api_key || ""
+      ).trim();
+
+    if (!key) {
+      throw new HttpError(
+        "API key wajib diisi.",
+        400
+      );
+    }
+
+    const enabled =
+      body.enabled !== false;
+
+    const config =
+      body.config &&
+      typeof body.config ===
+        "object" &&
+      !Array.isArray(
+        body.config
+      )
+        ? body.config
+        : {};
+
+    if (
+      JSON.stringify(
+        config
+      ).length > 20000
+    ) {
+      throw new HttpError(
+        "Config provider terlalu besar.",
+        400
+      );
+    }
+
+    const res =
+      await sb(
+        "/rest/v1/providers",
+        {
+          method: "POST",
+
+          headers: {
+            Prefer:
+              "return=minimal"
+          },
+
+          body: JSON.stringify({
+            id,
+
+            name,
+
+            adapter:
+              adapterValue,
+
+            api_key: key,
+
+            enabled,
+
+            config,
+
+            updated_at:
+              new Date().toISOString()
+          })
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal menambahkan provider."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true,
+
+        message:
+          "Provider berhasil ditambahkan.",
+
+        provider: {
+          id,
+          name,
+          adapter:
+            adapterValue
+        }
+      },
+      201,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN PROVIDER PUT
+   * ----------------------------------------------------------
+   */
+
+  const m =
+    url.pathname.match(
+      /^\/api\/admin\/providers\/([^/]+)$/
+    );
+
+  if (
+    m &&
+    request.method ===
+      "PUT"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const id =
+      providerId(
+        decodeURIComponent(
+          m[1]
+        )
+      );
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const patch = {};
+
+    if (
+      body.name !==
+      undefined
+    ) {
+      patch.name =
+        String(
+          body.name
+        )
+          .trim()
+          .slice(0, 100) ||
+        id;
+    }
+
+    if (
+      body.adapter !==
+      undefined
+    ) {
+      const requested =
+        String(
+          body.adapter
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        !adapterInfo(
+          requested
+        )
+      ) {
+        throw new HttpError(
+          "Adapter tidak didukung.",
+          400
+        );
+      }
+
+      patch.adapter =
+        requested;
+    }
+
+    /*
+     * Jika nama diubah tetapi adapter
+     * tidak diberikan, kita tidak otomatis
+     * mengganti adapter provider yang sudah ada.
+     *
+     * Ini mencegah rename provider
+     * secara tidak sengaja memutus konfigurasi.
+     */
+
+    if (
+      body.api_key !==
+        undefined &&
+      String(
+        body.api_key
+      ).trim()
+    ) {
+      patch.api_key =
+        String(
+          body.api_key
+        ).trim();
+    }
+
+    if (
+      body.enabled !==
+      undefined
+    ) {
+      patch.enabled =
+        Boolean(
+          body.enabled
+        );
+    }
+
+    if (
+      body.config !==
+      undefined
+    ) {
+      if (
+        !body.config ||
+        typeof body.config !==
+          "object" ||
+        Array.isArray(
+          body.config
+        )
+      ) {
+        throw new HttpError(
+          "Config provider harus berupa object JSON.",
+          400
+        );
+      }
+
+      if (
+        JSON.stringify(
+          body.config
+        ).length > 20000
+      ) {
+        throw new HttpError(
+          "Config provider terlalu besar.",
+          400
+        );
+      }
+
+      patch.config =
+        body.config;
+    }
+
+    patch.updated_at =
+      new Date().toISOString();
+
+    const res =
+      await sb(
+        `/rest/v1/providers?id=eq.${encodeURIComponent(
+          id
+        )}`,
+        {
+          method: "PATCH",
+
+          headers: {
+            Prefer:
+              "return=minimal"
+          },
+
+          body: JSON.stringify(
+            patch
+          )
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal memperbarui provider."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN PROVIDER DELETE
+   * ----------------------------------------------------------
+   */
+
+  if (
+    m &&
+    request.method ===
+      "DELETE"
+  ) {
+    const id =
+      providerId(
+        decodeURIComponent(
+          m[1]
+        )
+      );
+
+    const active =
+      await rows(
+        `/rest/v1/video_jobs?provider=eq.${encodeURIComponent(
+          id
+        )}&status=in.(reserved,processing)&select=id&limit=1`,
+        env
+      );
+
+    if (
+      active.length
+    ) {
+      throw new HttpError(
+        "Provider masih memiliki job aktif. Nonaktifkan provider dan tunggu job selesai sebelum menghapus.",
+        409
+      );
+    }
+
+    const res =
+      await sb(
+        `/rest/v1/providers?id=eq.${encodeURIComponent(
+          id
+        )}`,
+        {
+          method:
+            "DELETE"
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal menghapus provider."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN PROVIDER TOGGLE
+   * ----------------------------------------------------------
+   */
+
+  const mt =
+    url.pathname.match(
+      /^\/api\/admin\/providers\/([^/]+)\/toggle$/
+    );
+
+  if (
+    mt &&
+    request.method ===
+      "POST"
+  ) {
+    const id =
+      providerId(
+        decodeURIComponent(
+          mt[1]
+        )
+      );
+
+    const current =
+      await getProvider(
+        id,
+        env,
+        false
+      );
+
+    const enableHeader =
+      request.headers.get(
+        "x-enable"
+      );
+
+    const enabled =
+      enableHeader === "true"
+        ? true
+        : enableHeader === "false"
+          ? false
+          : !current.enabled;
+
+    const res =
+      await sb(
+        `/rest/v1/providers?id=eq.${encodeURIComponent(
+          id
+        )}`,
+        {
+          method:
+            "PATCH",
+
+          headers: {
+            Prefer:
+              "return=minimal"
+          },
+
+          body: JSON.stringify({
+            enabled,
+
+            updated_at:
+              new Date().toISOString()
+          })
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal mengubah status provider."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true,
+        enabled
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN TOPUP LIST
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/topup-requests" &&
+    request.method ===
+      "GET"
+  ) {
+    const status =
+      String(
+        url.searchParams.get(
+          "status"
+        ) || "pending"
+      ).trim();
+
+    const limit =
+      Math.min(
+        200,
+        Math.max(
+          1,
+          Number(
+            url.searchParams.get(
+              "limit"
+            ) || 100
+          )
+        )
+      );
+
+    if (
+      ![
+        "pending",
+        "approved",
+        "rejected",
+        "all"
+      ].includes(status)
+    ) {
+      throw new HttpError(
+        "Status tidak valid.",
+        400
+      );
+    }
+
+    const q =
+      status === "all"
+        ? ""
+        : `&status=eq.${encodeURIComponent(
+            status
+          )}`;
+
+    const tx =
+      await sb(
+        `/rest/v1/credit_topup_requests?select=id,user_id,amount,note,status,admin_note,admin_user_id,created_at,reviewed_at&order=created_at.desc&limit=${limit}${q}`,
+        {},
+        env
+      );
+
+    if (!tx.ok) {
+      throw new HttpError(
+        "Gagal mengambil request top-up.",
+        500
+      );
+    }
+
+    return json(
+      {
+        success: true,
+
+        requests:
+          await tx.json()
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN TOPUP APPROVE / REJECT
+   * ----------------------------------------------------------
+   */
+
+  const tr =
+    url.pathname.match(
+      /^\/api\/admin\/topup-requests\/([^/]+)\/(approve|reject)$/
+    );
+
+  if (
+    tr &&
+    request.method ===
+      "POST"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const requestId =
+      decodeURIComponent(
+        tr[1]
+      );
+
+    const action =
+      tr[2];
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const rpc =
+      action ===
+      "approve"
+        ? "approve_topup_request"
+        : "reject_topup_request";
+
+    const r =
+      await sb(
+        `/rest/v1/rpc/${rpc}`,
+        {
+          method:
+            "POST",
+
+          body: JSON.stringify({
+            p_admin_user_id:
+              admin.id,
+
+            p_request_id:
+              requestId,
+
+            p_admin_note:
+              String(
+                body.note || ""
+              )
+                .trim()
+                .slice(
+                  0,
+                  500
+                )
+          })
+        },
+        env
+      );
+
+    if (!r.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(r),
+          `Gagal ${
+            action ===
+            "approve"
+              ? "menyetujui"
+              : "menolak"
+          } top-up.`
+        ),
+        r.status
+      );
+    }
+
+    return json(
+      {
+        success: true,
+
+        result:
+          await safeJson(r)
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN CONTACT GET
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/contact" &&
+    request.method ===
+      "GET"
+  ) {
+    const res =
+      await sb(
+        "/rest/v1/app_settings?setting_key=eq.admin_contact_url&select=setting_value",
+        {},
+        env
+      );
+
+    const rows =
+      res.ok
+        ? await res.json()
+        : [];
+
+    return json(
+      {
+        success: true,
+
+        url:
+          rows?.[0]
+            ?.setting_value ||
+          ""
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN CONTACT POST
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/contact" &&
+    request.method ===
+      "POST"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const contact =
+      String(
+        body.url || ""
+      ).trim();
+
+    if (contact) {
+      try {
+        const u =
+          new URL(
+            contact
+          );
+
+        if (
+          ![
+            "http:",
+            "https:"
+          ].includes(
+            u.protocol
+          )
+        ) {
+          throw new Error();
+        }
+      } catch {
+        throw new HttpError(
+          "URL kontak admin tidak valid.",
+          400
+        );
+      }
+    }
+
+    const res =
+      await sb(
+        "/rest/v1/app_settings",
+        {
+          method:
+            "POST",
+
+          headers: {
+            Prefer:
+              "resolution=merge-duplicates,return=minimal"
+          },
+
+          body: JSON.stringify({
+            setting_key:
+              "admin_contact_url",
+
+            setting_value:
+              contact,
+
+            updated_at:
+              new Date().toISOString()
+          })
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal menyimpan kontak admin."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN USERS
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/users" &&
+    request.method ===
+      "GET"
+  ) {
+    const users =
+      await listUsers(
+        env
+      );
+
+    const roles =
+      await rows(
+        "/rest/v1/user_roles?select=user_id,role",
+        env
+      );
+
+    const credits =
+      await rows(
+        "/rest/v1/user_credits?select=user_id,credits",
+        env
+      );
+
+    const rm =
+      new Map(
+        roles.map(
+          x => [
+            x.user_id,
+            x.role
+          ]
+        )
+      );
+
+    const cm =
+      new Map(
+        credits.map(
+          x => [
+            x.user_id,
+            Number(
+              x.credits || 0
+            )
+          ]
+        )
+      );
+
+    return json(
+      {
+        success: true,
+
+        users:
+          users.map(
+            u => ({
+              id: u.id,
+
+              email:
+                u.email,
+
+              role:
+                rm.get(
+                  u.id
+                ) ||
+                "user",
+
+              credits:
+                cm.get(
+                  u.id
+                ) ||
+                0,
+
+              created_at:
+                u.created_at
+            })
+          )
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN TRANSACTIONS
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/transactions" &&
+    request.method ===
+      "GET"
+  ) {
+    const userId =
+      String(
+        url.searchParams.get(
+          "user_id"
+        ) || ""
+      ).trim();
+
+    if (
+      userId &&
+      !/^[0-9a-f-]{36}$/i.test(
+        userId
+      )
+    ) {
+      throw new HttpError(
+        "user_id tidak valid.",
+        400
+      );
+    }
+
+    const limit =
+      Math.min(
+        200,
+        Math.max(
+          1,
+          Number(
+            url.searchParams.get(
+              "limit"
+            ) || 100
+          )
+        )
+      );
+
+    if (!userId) {
+      throw new HttpError(
+        "user_id wajib.",
+        400
+      );
+    }
+
+    const tx =
+      await sb(
+        `/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(
+          userId
+        )}&select=id,amount,balance_after,type,note,job_id,admin_user_id,created_at&order=created_at.desc&limit=${limit}`,
+        {},
+        env
+      );
+
+    if (!tx.ok) {
+      throw new HttpError(
+        "Gagal mengambil riwayat credit.",
+        500
+      );
+    }
+
+    return json(
+      {
+        success: true,
+
+        transactions:
+          await tx.json()
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN CREDIT ADJUSTMENT
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/credits/adjust" &&
+    request.method ===
+      "POST"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const userId =
+      String(
+        body.user_id || ""
+      ).trim();
+
+    if (
+      !/^[0-9a-f-]{36}$/i.test(
+        userId
+      )
+    ) {
+      throw new HttpError(
+        "user_id tidak valid.",
+        400
+      );
+    }
+
+    const amount =
+      Number(
+        body.amount
+      );
+
+    if (
+      !userId ||
+      !Number.isInteger(
+        amount
+      ) ||
+      amount === 0
+    ) {
+      throw new HttpError(
+        "user_id dan amount integer non-zero wajib.",
+        400
+      );
+    }
+
+    const res =
+      await sb(
+        "/rest/v1/rpc/admin_adjust_credit",
+        {
+          method:
+            "POST",
+
+          body: JSON.stringify({
+            p_admin_user_id:
+              admin.id,
+
+            p_user_id:
+              userId,
+
+            p_amount:
+              amount,
+
+            p_note:
+              String(
+                body.note ||
+                  "Admin adjustment"
+              )
+          })
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal mengubah credit."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN LIST
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/admins" &&
+    request.method ===
+      "GET"
+  ) {
+    const roles =
+      await rows(
+        "/rest/v1/user_roles?role=eq.admin&select=user_id,role",
+        env
+      );
+
+    const users =
+      await listUsers(
+        env
+      );
+
+    const um =
+      new Map(
+        users.map(
+          u => [
+            u.id,
+            u.email
+          ]
+        )
+      );
+
+    return json(
+      {
+        success: true,
+
+        admins:
+          roles.map(
+            r => ({
+              user_id:
+                r.user_id,
+
+              email:
+                um.get(
+                  r.user_id
+                ) || "",
+
+              role:
+                r.role
+            })
+          )
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN ADD
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/admins/add" &&
+    request.method ===
+      "POST"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const body =
+      await readJson(
+        request
+      );
+
+    const email =
+      String(
+        body.email || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    const users =
+      await listUsers(
+        env
+      );
+
+    const u =
+      users.find(
+        x =>
+          String(
+            x.email || ""
+          ).toLowerCase() ===
+          email
+      );
+
+    if (!u) {
+      throw new HttpError(
+        "User belum terdaftar.",
+        404
+      );
+    }
+
+    const res =
+      await sb(
+        "/rest/v1/user_roles",
+        {
+          method:
+            "POST",
+
+          headers: {
+            Prefer:
+              "resolution=merge-duplicates"
+          },
+
+          body: JSON.stringify({
+            user_id:
+              u.id,
+
+            role:
+              "admin"
+          })
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal menambahkan admin."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true
+      },
+      200,
+      env
+    );
+  }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN REMOVE
+   * ----------------------------------------------------------
+   */
+
+  if (
+    url.pathname ===
+      "/api/admin/admins/remove" &&
+    request.method ===
+      "POST"
+  ) {
+    requireJsonContentType(
+      request
+    );
+
+    const body =
+      await readJson(
+        request
+      );
+
+    if (
+      String(
+        body.user_id
+      ) ===
+      admin.id
+    ) {
+      throw new HttpError(
+        "Tidak dapat menghapus diri sendiri.",
+        400
+      );
+    }
+
+    const targetId =
+      String(
+        body.user_id || ""
+      ).trim();
+
+    if (!targetId) {
+      throw new HttpError(
+        "user_id wajib.",
+        400
+      );
+    }
+
+    const res =
+      await sb(
+        "/rest/v1/rpc/remove_admin",
+        {
+          method:
+            "POST",
+
+          body: JSON.stringify({
+            p_admin_user_id:
+              admin.id,
+
+            p_user_id:
+              targetId
+          })
+        },
+        env
+      );
+
+    if (!res.ok) {
+      throw new HttpError(
+        apiError(
+          await safeJson(res),
+          "Gagal menghapus admin."
+        ),
+        res.status
+      );
+    }
+
+    return json(
+      {
+        success: true,
+
+        result:
+          await safeJson(res)
+      },
+      200,
+      env
+    );
+  }
+
+  throw new HttpError(
+    "Admin endpoint tidak ditemukan.",
+    404
+  );
+}
+
+/*
+ * ============================================================
+ * GENERIC DATABASE HELPERS
+ * ============================================================
+ */
+
+async function rows(
+  path,
+  env
+) {
+  const r =
+    await sb(
+      path,
+      {},
+      env
+    );
+
+  return r.ok
+    ? await r.json()
+    : [];
+}
+
+async function listUsers(env) {
+  const out = [];
+
+  let page = 1;
+
+  while (
+    page <= 20
+  ) {
+    const r =
+      await fetch(
+        `${env.SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=100`,
+        {
+          headers: {
+            apikey:
+              env.SUPABASE_SERVICE_ROLE_KEY,
+
+            Authorization:
+              `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        }
+      );
+
+    if (!r.ok) {
+      break;
+    }
+
+    const d =
+      await r.json();
+
+    const batch =
+      d?.users || [];
+
+    out.push(
+      ...batch
+    );
+
+    if (
+      batch.length < 100
+    ) {
+      break;
+    }
+
+    page++;
+  }
+
+  return out;
+}
+
+/*
+ * ============================================================
+ * WORKER ENTRY
+ * ============================================================
+ */
+
+export default {
+  async scheduled(
+    event,
+    env,
+    ctx
+  ) {
+    ctx.waitUntil(
+      sb(
+        "/rest/v1/rpc/recover_stale_video_jobs",
+        {
+          method:
+            "POST",
+
+          body: JSON.stringify({
+            p_max_age_minutes:
+              1440
+          })
+        },
+        env
+      ).catch(
+        err =>
+          console.error(
+            "stale job recovery failed",
+            err
+          )
+      )
+    );
+  },
+
+  async fetch(
+    request,
+    env
+  ) {
+    if (
+      request.method ===
+      "OPTIONS"
+    ) {
+      return new Response(
+        null,
+        {
+          status: 204,
+
+          headers:
+            corsHeaders(
+              env
+            )
+        }
+      );
+    }
+
+    const url =
+      new URL(
+        request.url
+      );
+
+    try {
+      /*
+       * --------------------------------------------------------
+       * PUBLIC CONFIG
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/config" &&
+        request.method ===
+          "GET"
+      ) {
+        return json(
+          {
+            success: true,
+
+            supabaseUrl:
+              env.SUPABASE_URL ||
+              "",
+
+            supabasePublishableKey:
+              env.SUPABASE_PUBLISHABLE_KEY ||
+              ""
+          },
+          200,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * DIAGNOSTIC
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/diagnostic" &&
+        request.method ===
+          "GET"
+      ) {
+        const ps =
+          await rows(
+            "/rest/v1/providers?select=id,name,adapter,enabled,api_key",
+            env
+          );
+
+        return json(
+          {
+            success: true,
+
+            worker:
+              "GEN-Z.AI",
+
+            supabaseConfigured:
+              Boolean(
+                env.SUPABASE_URL &&
+                env.SUPABASE_SERVICE_ROLE_KEY
+              ),
+
+            providers:
+              ps.map(
+                p => ({
+                  id: p.id,
+
+                  name:
+                    p.name,
+
+                  adapter:
+                    p.adapter,
+
+                  enabled:
+                    Boolean(
+                      p.enabled
+                    ),
+
+                  configured:
+                    Boolean(
+                      p.api_key
+                    ),
+
+                  adapterSupported:
+                    Boolean(
+                      adapterInfo(
+                        p.adapter
+                      )
+                    )
+                })
+              ),
+
+            timestamp:
+              new Date().toISOString()
+          },
+          200,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * PUBLIC PROVIDERS
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/providers" &&
+        request.method ===
+          "GET"
+      ) {
+        const ps =
+          await rows(
+            "/rest/v1/providers?enabled=eq.true&select=id,name,adapter,enabled,api_key&order=name.asc",
+            env
+          );
+
+        return json(
+          {
+            success: true,
+
+            providers:
+              ps
+                .filter(
+                  p =>
+                    p.api_key &&
+                    adapterInfo(
+                      p.adapter
+                    )
+                )
+                .map(
+                  publicProvider
+                )
+          },
+          200,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * ADMIN
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname.startsWith(
+          "/api/admin/"
+        )
+      ) {
+        return await adminApi(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * ACCOUNT CREDIT
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/account/credits" &&
+        request.method ===
+          "GET"
+      ) {
+        return await accountApi(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * ACCOUNT TRANSACTIONS
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/account/transactions" &&
+        request.method ===
+          "GET"
+      ) {
+        return await transactionApi(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * ACCOUNT TOPUP
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+        "/api/account/topup-requests"
+      ) {
+        return await topupApi(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * GENERATE
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/generate" &&
+        request.method ===
+          "POST"
+      ) {
+        const len =
+          Number(
+            request.headers.get(
+              "content-length"
+            ) || 0
+          );
+
+        if (
+          len > 65536
+        ) {
+          throw new HttpError(
+            "Request generation terlalu besar.",
+            413
+          );
+        }
+
+        return await handleGenerate(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * GENERATE STATUS
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/generate/status" &&
+        request.method ===
+          "POST"
+      ) {
+        return await handleStatus(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * VIDEO PROXY
+       * --------------------------------------------------------
+       */
+
+      if (
+        url.pathname ===
+          "/api/video" &&
+        request.method ===
+          "GET"
+      ) {
+        return await handleVideo(
+          request,
+          env
+        );
+      }
+
+      /*
+       * --------------------------------------------------------
+       * FRONTEND ASSETS
+       * --------------------------------------------------------
+       */
+
+      return env.ASSETS.fetch(
+        request
+      );
+    } catch (err) {
+      console.error(
+        "request failed",
+        Number(
+          err?.status || 500
+        ),
+        String(
+          err?.message ||
+            "unknown"
+        ).slice(
+          0,
+          300
+        )
+      );
+
+      const status =
+        Number(
+          err?.status || 500
+        );
+
+      const message =
+        status >= 500
+          ? "Internal Worker error."
+          : (
+              err?.message ||
+              "Request error."
+            );
+
+      return json(
+        {
+          success: false,
+          error: message
+        },
+        status,
+        env
+      );
+    }
+  }
+};
