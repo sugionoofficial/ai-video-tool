@@ -37,31 +37,16 @@
   }
 
 
-  /*
-   * =========================================================
-   * AUTH MESSAGE
-   * =========================================================
-   *
-   * success = hijau
-   * error   = merah
-   * info    = warna netral
-   *
-   * CSS GEN-Z.AI sudah memiliki:
-   *
-   * .auth-message.success
-   * .auth-message.error
-   *
-   * sehingga kita cukup memasang class yang sesuai.
-   */
+  /* =========================================================
+     AUTH MESSAGE
+  ========================================================= */
 
-  function message(
-    text,
-    type = 'auto'
-  ) {
+  function message(text, type = 'auto') {
 
     const el = $('authMsg');
 
     if (!el) {
+
       if (text) {
         console.log(
           '[GEN-Z AUTH]',
@@ -74,13 +59,11 @@
 
 
     const value =
-      String(
-        text || ''
-      ).trim();
+      String(text || '').trim();
 
 
     /*
-     * Bersihkan status sebelumnya.
+     * Reset class sebelumnya.
      */
     el.classList.remove(
       'success',
@@ -90,7 +73,13 @@
 
 
     /*
-     * Kosongkan pesan.
+     * Reset inline color.
+     */
+    el.style.removeProperty('color');
+
+
+    /*
+     * Jika pesan kosong, bersihkan.
      */
     if (!value) {
 
@@ -103,16 +92,13 @@
     /*
      * Tentukan tipe pesan.
      */
-    let messageType =
-      type;
+    let messageType = type;
 
 
-    if (
-      messageType === 'auto'
-    ) {
+    if (messageType === 'auto') {
 
       /*
-       * Pesan sukses GEN-Z.AI.
+       * SUCCESS
        */
       if (
         /pendaftaran berhasil/i.test(value) ||
@@ -122,11 +108,11 @@
         /verifikasi/i.test(value)
       ) {
 
-        messageType =
-          'success';
+        messageType = 'success';
+
 
       /*
-       * Pesan error.
+       * ERROR
        */
       } else if (
         /gagal/i.test(value) ||
@@ -139,64 +125,88 @@
         /minimal/i.test(value)
       ) {
 
-        messageType =
-          'error';
+        messageType = 'error';
+
 
       /*
-       * Pesan informasi/proses.
+       * INFO
        */
       } else {
 
-        messageType =
-          'info';
-
+        messageType = 'info';
       }
     }
 
 
     /*
-     * Pasang class visual.
+     * =======================================================
+     * WARNA PESAN
+     * =======================================================
+     *
+     * Sengaja menggunakan style.setProperty dengan
+     * !important supaya tidak dikalahkan oleh selector CSS
+     * lain yang mungkin menggunakan specificity lebih tinggi.
      */
-    if (
-      messageType === 'success'
-    ) {
 
-      el.classList.add(
-        'success'
+    if (messageType === 'success') {
+
+      el.classList.add('success');
+
+      el.style.setProperty(
+        'color',
+        '#86efac',
+        'important'
       );
 
-    } else if (
-      messageType === 'error'
-    ) {
 
-      el.classList.add(
-        'error'
+    } else if (messageType === 'error') {
+
+      el.classList.add('error');
+
+      el.style.setProperty(
+        'color',
+        '#fca5a5',
+        'important'
       );
+
 
     } else {
 
-      el.classList.add(
-        'info'
+      el.classList.add('info');
+
+      el.style.setProperty(
+        'color',
+        'rgba(255,255,255,.55)',
+        'important'
       );
     }
 
 
-    el.textContent =
-      value;
+    /*
+     * Tampilkan pesan.
+     */
+    el.textContent = value;
 
 
     console.log(
       '[GEN-Z AUTH]',
-      value
+      value,
+      '| type:',
+      messageType
     );
   }
 
 
   function setLoading(loading) {
 
-    const login = $('login');
-    const register = $('register');
-    const forgot = $('forgotPassword');
+    const login =
+      $('login');
+
+    const register =
+      $('register');
+
+    const forgot =
+      $('forgotPassword');
 
 
     if (login) {
@@ -215,8 +225,6 @@
 
       /*
        * Jangan mengganti seluruh innerHTML tombol.
-       * UI login baru memiliki beberapa elemen
-       * seperti auth-btn-text dan auth-btn-arrow.
        */
 
       const buttonText =
@@ -238,6 +246,7 @@
             ? 'MEMPROSES...'
             : 'MASUK KE GEN-Z.AI';
 
+
       } else {
 
         login.textContent =
@@ -258,12 +267,14 @@
 
 
     if (register) {
+
       register.disabled =
         loading;
     }
 
 
     if (forgot) {
+
       forgot.disabled =
         loading;
     }
@@ -288,6 +299,7 @@
       !password ||
       !toggle
     ) {
+
       return;
     }
 
@@ -326,6 +338,7 @@
   async function getClient() {
 
     if (authClient) {
+
       return authClient;
     }
 
@@ -439,10 +452,6 @@
       );
 
 
-    /*
-     * Digunakan oleh app.js.
-     */
-
     window.GENZ_AUTH_CLIENT =
       authClient;
 
@@ -469,6 +478,7 @@
 
 
     if (error) {
+
       throw error;
     }
 
@@ -660,14 +670,10 @@
   ) {
 
     if (!user) {
+
       return;
     }
 
-
-    /*
-     * Hindari event login ganda
-     * untuk session user yang sama.
-     */
 
     if (
       lastSessionUserId ===
@@ -702,10 +708,6 @@
 
 
   function emitLogout() {
-
-    /*
-     * Jangan mengirim logout berkali-kali.
-     */
 
     if (
       lastSessionUserId === null &&
@@ -801,6 +803,7 @@
 
 
       if (error) {
+
         throw error;
       }
 
@@ -938,6 +941,7 @@
 
 
       if (error) {
+
         throw error;
       }
 
@@ -971,17 +975,12 @@
 
         /*
          * Confirm Email aktif.
-         *
-         * Pesan ini secara eksplisit
-         * diberi status success sehingga
-         * tampil HIJAU.
          */
 
         message(
           'Pendaftaran berhasil. Periksa email untuk verifikasi akun.',
           'success'
         );
-
       }
 
 
@@ -1063,6 +1062,7 @@
 
 
       if (error) {
+
         throw error;
       }
 
@@ -1127,6 +1127,7 @@
 
 
       if (error) {
+
         throw error;
       }
 
@@ -1163,12 +1164,12 @@
 
   /* =========================================================
      EVENT DELEGATION
-     Penting karena auth.html dimuat dinamis.
-  ========================================================= */
+     ========================================================= */
 
   function setupDelegatedEvents() {
 
     if (initialized) {
+
       return;
     }
 
@@ -1184,6 +1185,7 @@
 
 
         if (!target) {
+
           return;
         }
 
@@ -1196,6 +1198,7 @@
 
 
           if (!target.disabled) {
+
             login();
           }
 
@@ -1212,6 +1215,7 @@
 
 
           if (!target.disabled) {
+
             register();
           }
 
@@ -1228,6 +1232,7 @@
 
 
           if (!target.disabled) {
+
             forgotPassword();
           }
 
@@ -1244,6 +1249,7 @@
 
 
           if (!target.disabled) {
+
             togglePassword();
           }
 
@@ -1260,7 +1266,6 @@
 
 
           logout();
-
         }
 
       }
@@ -1294,9 +1299,9 @@
 
 
           if (!target.disabled) {
+
             login();
           }
-
         }
 
       }
@@ -1346,7 +1351,8 @@
 
 
         if (
-          event === 'SIGNED_IN'
+          event ===
+          'SIGNED_IN'
         ) {
 
           if (
@@ -1360,7 +1366,6 @@
               session.user,
               session
             );
-
           }
 
 
@@ -1369,7 +1374,8 @@
 
 
         if (
-          event === 'SIGNED_OUT'
+          event ===
+          'SIGNED_OUT'
         ) {
 
           showLoggedOutUI();
@@ -1381,11 +1387,6 @@
           return;
         }
 
-
-        /*
-         * TOKEN_REFRESHED tidak dianggap
-         * sebagai login baru.
-         */
 
         if (
           event ===
@@ -1402,18 +1403,12 @@
               session.user,
               session
             );
-
           }
 
 
           return;
         }
 
-
-        /*
-         * INITIAL_SESSION digunakan hanya
-         * untuk memastikan UI sesuai session.
-         */
 
         if (
           event ===
@@ -1436,9 +1431,7 @@
           } else {
 
             showLoggedOutUI();
-
           }
-
         }
 
       }
@@ -1452,11 +1445,6 @@
 
   async function initialize() {
 
-    /*
-     * Event delegation harus dipasang sekali.
-     * Tidak bergantung pada keberadaan HTML login.
-     */
-
     setupDelegatedEvents();
 
 
@@ -1465,10 +1453,6 @@
       const client =
         await getClient();
 
-
-      /*
-       * Ambil session yang sudah tersimpan.
-       */
 
       const session =
         await getSession();
@@ -1490,13 +1474,8 @@
       } else {
 
         showLoggedOutUI();
-
       }
 
-
-      /*
-       * Listener Supabase hanya satu.
-       */
 
       setupAuthStateListener(
         client
@@ -1516,7 +1495,6 @@
         'Sistem login gagal diinisialisasi.',
         'error'
       );
-
     }
   }
 
@@ -1550,22 +1528,12 @@
     showLoggedOutUI,
 
     togglePassword
-
   };
 
-
-  /*
-   * API utama.
-   */
 
   window.GENZ_AUTH =
     API;
 
-
-  /*
-   * Kompatibilitas dengan modul lama/pendukung
-   * yang memanggil GENZ.auth.
-   */
 
   window.GENZ =
     window.GENZ || {};
@@ -1596,7 +1564,6 @@
   } else {
 
     initialize();
-
   }
 
 })();
