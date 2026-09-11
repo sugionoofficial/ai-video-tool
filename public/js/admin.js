@@ -102,7 +102,8 @@
         path,
         {
           ...options,
-          headers
+          headers,
+          credentials: "include"
         }
       );
 
@@ -244,17 +245,23 @@
 
   /* =======================================================
      AUTH CHECK
+     
+     Admin hanya dianggap valid apabila:
+     1. Backend sudah mengembalikan isAdmin = true
+     2. Role tersebut sudah divalidasi server
+     
+     Tidak menggunakan email atau username.
   ======================================================= */
 
   function isAdmin() {
 
     const account =
-      GENZ.state.account || {};
+      GENZ.state?.account || {};
 
 
     return (
-      account.isAdmin === true ||
-      account.role === "admin"
+      account.isAdmin === true &&
+      account.roleValidated === true
     );
 
   }
@@ -265,6 +272,11 @@
   ======================================================= */
 
   async function load() {
+
+    /*
+     * Jangan pernah membuka Admin Panel
+     * sebelum role berhasil divalidasi.
+     */
 
     if (!isAdmin()) {
 
@@ -292,9 +304,10 @@
 
 
     container.innerHTML = `
+
       <section
         class="admin-page"
-        id="adminPanel">
+        id="adminPage">
 
         <div class="admin-header">
 
@@ -306,10 +319,15 @@
           </button>
 
           <div>
-            <h2>Panel Admin</h2>
+
+            <h2>
+              Panel Admin
+            </h2>
+
             <p>
               Kelola GEN-Z.AI
             </p>
+
           </div>
 
         </div>
@@ -375,6 +393,7 @@
         </div>
 
       </section>
+
     `;
 
 
@@ -418,10 +437,15 @@
           </button>
 
           <div>
-            <h2>Akses Ditolak</h2>
+
+            <h2>
+              Akses Ditolak
+            </h2>
+
             <p>
               Halaman ini hanya untuk administrator.
             </p>
+
           </div>
 
         </div>
@@ -439,7 +463,19 @@
 
       back.addEventListener(
         "click",
-        () => GENZ.emit("show-studio")
+        () => {
+
+          if (
+            typeof GENZ.emit === "function"
+          ) {
+
+            GENZ.emit(
+              "show-studio"
+            );
+
+          }
+
+        }
       );
 
     }
@@ -461,7 +497,19 @@
 
       back.addEventListener(
         "click",
-        () => GENZ.emit("show-studio")
+        () => {
+
+          if (
+            typeof GENZ.emit === "function"
+          ) {
+
+            GENZ.emit(
+              "show-studio"
+            );
+
+          }
+
+        }
       );
 
     }
@@ -499,6 +547,19 @@
     section
   ) {
 
+    /*
+     * Validasi ulang setiap perpindahan section.
+     */
+
+    if (!isAdmin()) {
+
+      renderDenied();
+
+      return;
+
+    }
+
+
     state.section =
       section;
 
@@ -530,9 +591,11 @@
 
 
     content.innerHTML = `
+
       <div class="admin-loading">
         Memuat...
       </div>
+
     `;
 
 
@@ -590,7 +653,10 @@
           </strong>
 
           <p>
-            ${esc(error.message)}
+            ${esc(
+              error?.message ||
+              "Terjadi kesalahan."
+            )}
           </p>
 
         </div>
@@ -693,27 +759,41 @@
         <div class="admin-stat-grid">
 
           <div class="admin-stat">
-            <span>Total User</span>
+
+            <span>
+              Total User
+            </span>
+
             <strong>
               ${formatNumber(
                 state.users.length
               )}
             </strong>
+
           </div>
 
 
           <div class="admin-stat">
-            <span>Total Kredit</span>
+
+            <span>
+              Total Kredit
+            </span>
+
             <strong>
               ${formatNumber(
                 credits
               )}
             </strong>
+
           </div>
 
 
           <div class="admin-stat">
-            <span>Provider Aktif</span>
+
+            <span>
+              Provider Aktif
+            </span>
+
             <strong>
               ${formatNumber(
                 state.providers.filter(
@@ -722,46 +802,67 @@
                 ).length
               )}
             </strong>
+
           </div>
 
 
           <div class="admin-stat">
-            <span>Top-up Pending</span>
+
+            <span>
+              Top-up Pending
+            </span>
+
             <strong>
               ${formatNumber(
                 state.topups.length
               )}
             </strong>
+
           </div>
 
 
           <div class="admin-stat">
-            <span>Job Berhasil</span>
+
+            <span>
+              Job Berhasil
+            </span>
+
             <strong>
               ${formatNumber(
                 completed
               )}
             </strong>
+
           </div>
 
 
           <div class="admin-stat">
-            <span>Job Diproses</span>
+
+            <span>
+              Job Diproses
+            </span>
+
             <strong>
               ${formatNumber(
                 processing
               )}
             </strong>
+
           </div>
 
 
           <div class="admin-stat">
-            <span>Job Gagal</span>
+
+            <span>
+              Job Gagal
+            </span>
+
             <strong>
               ${formatNumber(
                 failed
               )}
             </strong>
+
           </div>
 
         </div>
@@ -804,7 +905,9 @@
 
                           <small>
                             ${esc(
-                              provider.adapter
+                              provider.adapter ||
+                              provider.id ||
+                              "-"
                             )}
                           </small>
 
@@ -825,9 +928,11 @@
                     `
                   ).join("")
                 : `
+
                   <div class="admin-empty">
                     Belum ada provider.
                   </div>
+
                 `
             }
 
@@ -888,21 +993,20 @@
                     `
                   ).join("")
               : `
+
                 <div class="admin-empty">
                   Tidak ada top-up pending.
                 </div>
+
               `
           }
 
         </div>
 
       </div>
+
     `;
 
-
-    /*
-     * Dashboard buttons.
-     */
 
     $("adminContent")
       .querySelectorAll(
@@ -994,7 +1098,8 @@
 
                           <td>
                             ${esc(
-                              user.role
+                              user.role ||
+                              "user"
                             )}
                           </td>
 
@@ -1039,11 +1144,15 @@
                       `
                     ).join("")
                   : `
+
                     <tr>
+
                       <td colspan="5">
                         Tidak ada user.
                       </td>
+
                     </tr>
+
                   `
               }
 
@@ -1129,7 +1238,8 @@
     const user =
       state.users.find(
         item =>
-          item.id === userId
+          String(item.id) ===
+          String(userId)
       );
 
 
@@ -1224,7 +1334,7 @@
 
 
           const note =
-            $("creditNote")?.value ||
+            $("creditNote")?.value.trim() ||
             "Admin adjustment";
 
 
@@ -1238,8 +1348,10 @@
           ) {
 
             if (status) {
+
               status.textContent =
                 "Jumlah kredit harus integer dan bukan 0.";
+
             }
 
             return;
@@ -1250,8 +1362,10 @@
           try {
 
             if (status) {
+
               status.textContent =
                 "Menyimpan...";
+
             }
 
 
@@ -1269,8 +1383,10 @@
 
 
             if (status) {
+
               status.textContent =
                 "Kredit berhasil diperbarui.";
+
             }
 
 
@@ -1280,8 +1396,11 @@
           } catch (error) {
 
             if (status) {
+
               status.textContent =
-                error.message;
+                error?.message ||
+                "Gagal memperbarui kredit.";
+
             }
 
           }
@@ -1310,9 +1429,11 @@
 
 
     panel.innerHTML = `
+
       <div class="admin-card">
         Memuat riwayat...
       </div>
+
     `;
 
 
@@ -1380,9 +1501,11 @@
                   `
                 ).join("")
               : `
+
                 <div class="admin-empty">
                   Belum ada transaksi.
                 </div>
+
               `
           }
 
@@ -1395,7 +1518,12 @@
       panel.innerHTML = `
 
         <div class="admin-error">
-          ${esc(error.message)}
+
+          ${esc(
+            error?.message ||
+            "Gagal memuat transaksi."
+          )}
+
         </div>
 
       `;
@@ -1460,6 +1588,7 @@
                         </strong>
 
                         <small>
+
                           ID:
                           ${esc(
                             provider.id
@@ -1467,7 +1596,8 @@
 
                           · Adapter:
                           ${esc(
-                            provider.adapter
+                            provider.adapter ||
+                            "-"
                           )}
 
                           · API Key:
@@ -1476,6 +1606,7 @@
                               ? "tersedia"
                               : "belum ada"
                           }
+
                         </small>
 
                       </div>
@@ -1487,6 +1618,7 @@
                         ${
                           provider.enabled
                             ? `
+
                               <button
                                 type="button"
                                 data-provider-action="toggle"
@@ -1495,8 +1627,10 @@
                                 )}">
                                 Nonaktifkan
                               </button>
+
                             `
                             : `
+
                               <button
                                 type="button"
                                 data-provider-action="toggle"
@@ -1505,6 +1639,7 @@
                                 )}">
                                 Aktifkan
                               </button>
+
                             `
                         }
 
@@ -1535,9 +1670,11 @@
                   `
                 ).join("")
               : `
+
                 <div class="admin-empty">
                   Belum ada provider.
                 </div>
+
               `
           }
 
@@ -1560,7 +1697,7 @@
       );
 
 
-    document
+    $("adminContent")
       .querySelectorAll(
         "[data-provider-action]"
       )
@@ -1586,6 +1723,7 @@
 
               }
 
+
               if (
                 action === "edit"
               ) {
@@ -1593,6 +1731,7 @@
                 showProviderEditor(id);
 
               }
+
 
               if (
                 action === "delete"
@@ -1622,7 +1761,8 @@
     const provider =
       state.providers.find(
         item =>
-          item.id === providerId
+          String(item.id) ===
+          String(providerId)
       );
 
 
@@ -1640,37 +1780,49 @@
       <div class="admin-card">
 
         <h3>
+
           ${
             provider
               ? "Edit Provider"
               : "Tambah Provider"
           }
+
         </h3>
 
 
         <form id="providerForm">
 
+          ${
+            provider
+              ? `
+
+                <input
+                  type="hidden"
+                  id="providerId"
+                  value="${esc(
+                    provider.id
+                  )}"
+                >
+
+              `
+              : `
+
+                <label>
+                  ID Provider
+                </label>
+
+                <input
+                  id="providerId"
+                  placeholder="contoh: gemini-production"
+                  required
+                >
+
+              `
+          }
+
+
           <label>
-            ID Provider
-          </label>
-
-          <input
-            id="providerId"
-            value="${esc(
-              provider?.id || ""
-            )}"
-            ${
-              provider
-                ? "readonly"
-                : ""
-            }
-            placeholder="contoh: veo"
-            required
-          >
-
-
-          <label>
-            Nama
+            Nama Provider
           </label>
 
           <input
@@ -1697,7 +1849,7 @@
                   ? "selected"
                   : ""
               }>
-              Veo
+              Gemini / Veo
             </option>
 
             <option
@@ -1730,6 +1882,7 @@
           <input
             id="providerApiKey"
             type="password"
+            autocomplete="new-password"
             placeholder="${
               provider
                 ? "Kosongkan jika tidak diubah"
@@ -1808,7 +1961,9 @@
       ?.addEventListener(
         "click",
         () => {
+
           editor.innerHTML = "";
+
         }
       );
 
@@ -1839,27 +1994,70 @@
   ) {
 
     const id =
-      $("providerId")?.value.trim();
+      $("providerId")
+        ?.value
+        .trim();
+
 
     const name =
-      $("providerName")?.value.trim();
+      $("providerName")
+        ?.value
+        .trim();
+
 
     const adapter =
-      $("providerAdapter")?.value;
+      $("providerAdapter")
+        ?.value;
+
 
     const apiKey =
-      $("providerApiKey")?.value.trim();
+      $("providerApiKey")
+        ?.value
+        .trim();
+
 
     const enabled =
-      $("providerEnabled")?.checked;
+      $("providerEnabled")
+        ?.checked;
+
 
     const configText =
-      $("providerConfig")?.value.trim() ||
+      $("providerConfig")
+        ?.value
+        .trim() ||
       "{}";
 
 
     const status =
       $("providerFormStatus");
+
+
+    if (!id) {
+
+      if (status) {
+
+        status.textContent =
+          "ID provider wajib diisi.";
+
+      }
+
+      return;
+
+    }
+
+
+    if (!name) {
+
+      if (status) {
+
+        status.textContent =
+          "Nama provider wajib diisi.";
+
+      }
+
+      return;
+
+    }
 
 
     let config;
@@ -1875,8 +2073,28 @@
     } catch (_) {
 
       if (status) {
+
         status.textContent =
           "Config JSON tidak valid.";
+
+      }
+
+      return;
+
+    }
+
+
+    if (
+      !config ||
+      typeof config !== "object" ||
+      Array.isArray(config)
+    ) {
+
+      if (status) {
+
+        status.textContent =
+          "Config harus berupa object JSON.";
+
       }
 
       return;
@@ -1887,24 +2105,38 @@
     try {
 
       if (status) {
+
         status.textContent =
           "Menyimpan...";
+
       }
 
 
       if (existingId) {
 
         const body = {
+
           name,
+
           adapter,
+
           enabled,
+
           config
+
         };
 
 
+        /*
+         * API key hanya dikirim jika admin
+         * benar-benar memasukkan key baru.
+         */
+
         if (apiKey) {
+
           body.api_key =
             apiKey;
+
         }
 
 
@@ -1915,7 +2147,9 @@
           {
             method: "PUT",
             body:
-              JSON.stringify(body)
+              JSON.stringify(
+                body
+              )
           }
         );
 
@@ -1936,12 +2170,20 @@
             method: "POST",
             body:
               JSON.stringify({
+
                 id,
+
                 name,
+
                 adapter,
-                api_key: apiKey,
+
+                api_key:
+                  apiKey,
+
                 enabled,
+
                 config
+
               })
           }
         );
@@ -1954,8 +2196,11 @@
     } catch (error) {
 
       if (status) {
+
         status.textContent =
-          error.message;
+          error?.message ||
+          "Gagal menyimpan provider.";
+
       }
 
     }
@@ -1988,7 +2233,8 @@
     } catch (error) {
 
       alert(
-        error.message
+        error?.message ||
+        "Gagal mengubah status provider."
       );
 
     }
@@ -2009,7 +2255,9 @@
         `Hapus provider "${id}"?`
       )
     ) {
+
       return;
+
     }
 
 
@@ -2030,7 +2278,8 @@
     } catch (error) {
 
       alert(
-        error.message
+        error?.message ||
+        "Gagal menghapus provider."
       );
 
     }
@@ -2092,26 +2341,33 @@
                         </strong>
 
                         <small>
+
                           User:
                           ${esc(
                             topup.user_id
                           )}
 
                           ·
+
                           ${formatDate(
                             topup.created_at
                           )}
+
                         </small>
 
                         ${
                           topup.note
                             ? `
+
                               <small>
+
                                 Catatan:
                                 ${esc(
                                   topup.note
                                 )}
+
                               </small>
+
                             `
                             : ""
                         }
@@ -2161,9 +2417,11 @@
                   `
                 ).join("")
               : `
+
                 <div class="admin-empty">
                   Belum ada request top-up.
                 </div>
+
               `
           }
 
@@ -2181,7 +2439,7 @@
       );
 
 
-    document
+    $("adminContent")
       .querySelectorAll(
         "[data-topup-action]"
       )
@@ -2253,7 +2511,8 @@
     } catch (error) {
 
       alert(
-        error.message
+        error?.message ||
+        "Gagal memproses top-up."
       );
 
     }
@@ -2303,12 +2562,31 @@
             <thead>
 
               <tr>
-                <th>Provider</th>
-                <th>Status</th>
-                <th>Model</th>
-                <th>Credit</th>
-                <th>Created</th>
-                <th>Error</th>
+
+                <th>
+                  Provider
+                </th>
+
+                <th>
+                  Status
+                </th>
+
+                <th>
+                  Model
+                </th>
+
+                <th>
+                  Credit
+                </th>
+
+                <th>
+                  Created
+                </th>
+
+                <th>
+                  Error
+                </th>
+
               </tr>
 
             </thead>
@@ -2354,6 +2632,7 @@
                           </td>
 
                           <td>
+
                             ${
                               job.last_error
                                 ? esc(
@@ -2361,6 +2640,7 @@
                                   )
                                 : "-"
                             }
+
                           </td>
 
                         </tr>
@@ -2368,11 +2648,15 @@
                       `
                     ).join("")
                   : `
+
                     <tr>
+
                       <td colspan="6">
                         Belum ada job.
                       </td>
+
                     </tr>
+
                   `
               }
 
@@ -2477,7 +2761,8 @@
 
                         <small>
                           ${esc(
-                            admin.role
+                            admin.role ||
+                            "admin"
                           )}
                         </small>
 
@@ -2497,9 +2782,11 @@
                   `
                 ).join("")
               : `
+
                 <div class="admin-empty">
                   Belum ada admin.
                 </div>
+
               `
           }
 
@@ -2523,7 +2810,7 @@
       );
 
 
-    document
+    $("adminContent")
       .querySelectorAll(
         "[data-remove-admin]"
       )
@@ -2561,15 +2848,26 @@
 
 
     if (!email) {
+
+      if (status) {
+
+        status.textContent =
+          "Email wajib diisi.";
+
+      }
+
       return;
+
     }
 
 
     try {
 
       if (status) {
+
         status.textContent =
           "Menambahkan...";
+
       }
 
 
@@ -2590,8 +2888,11 @@
     } catch (error) {
 
       if (status) {
+
         status.textContent =
-          error.message;
+          error?.message ||
+          "Gagal menambahkan admin.";
+
       }
 
     }
@@ -2612,7 +2913,9 @@
         "Hapus akses admin user ini?"
       )
     ) {
+
       return;
+
     }
 
 
@@ -2635,7 +2938,8 @@
     } catch (error) {
 
       alert(
-        error.message
+        error?.message ||
+        "Gagal menghapus akses admin."
       );
 
     }
@@ -2732,7 +3036,8 @@
     const url =
       $("adminContactUrl")
         ?.value
-        .trim() || "";
+        .trim() ||
+      "";
 
 
     const status =
@@ -2742,8 +3047,10 @@
     try {
 
       if (status) {
+
         status.textContent =
           "Menyimpan...";
+
       }
 
 
@@ -2769,8 +3076,11 @@
     } catch (error) {
 
       if (status) {
+
         status.textContent =
-          error.message;
+          error?.message ||
+          "Gagal menyimpan kontak admin.";
+
       }
 
     }
@@ -2796,25 +3106,3 @@
 
 
 })();
-
-Endpoint yang digunakan modul ini sekarang persis mengikuti backend:
-
-Fitur| Endpoint
-Users| "/api/admin/users"
-Transaksi user| "/api/admin/transactions"
-Adjust kredit| "/api/admin/credits/adjust"
-Providers| "/api/admin/providers"
-Toggle provider| "/api/admin/providers/:id/toggle"
-Top-up| "/api/admin/topup-requests"
-Approve/reject| "/api/admin/topup-requests/:id/approve" / "reject"
-Jobs| "/api/admin/jobs"
-Admin| "/api/admin/admins"
-Tambah admin| "/api/admin/admins/add"
-Hapus admin| "/api/admin/admins/remove"
-Kontak| "/api/admin/contact"
-
-Semua endpoint tersebut memang tersedia di "worker.js", dan backend melakukan pemeriksaan "requireAdmin()" sebelum memprosesnya.
-
-Catatan penting: ada satu detail yang perlu diperbaiki dari "app.js" sebelumnya. "account.js" harus menetapkan "GENZ.state.account.isAdmin" berdasarkan "/api/account/credits", karena "admin.js" menggunakan nilai itu untuk membuka Panel Admin. Jangan mengandalkan email atau username untuk menentukan admin. Backend sendiri menggunakan tabel "user_roles" dengan role "admin".
-
-Setelah "admin.js", tahap berikutnya adalah "account.js" + "account.html" diselaraskan supaya menu Admin/User benar-benar muncul sesuai "isAdmin", lalu kita rapikan CSS admin.
