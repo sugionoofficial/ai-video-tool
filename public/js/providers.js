@@ -13,14 +13,18 @@
         'veo-3.1-lite-generate-preview'
       ],
 
-      durations: [4, 6, 8],
+      durations: [
+        4,
+        6,
+        8
+      ],
 
       aspects: [
         '16:9',
         '9:16'
       ],
 
-      res: [
+      resolutions: [
         '720p',
         '1080p',
         '4k'
@@ -36,14 +40,17 @@
         'MiniMax-Hailuo-02'
       ],
 
-      durations: [6, 10],
+      durations: [
+        6,
+        10
+      ],
 
       aspects: [
         '16:9',
         '9:16'
       ],
 
-      res: [
+      resolutions: [
         '512P',
         '768P',
         '1080P'
@@ -73,7 +80,7 @@
         '9:21'
       ],
 
-      res: [
+      resolutions: [
         '720p',
         '1080p',
         '4k'
@@ -102,6 +109,15 @@
     });
   }
 
+  function setValue(id, value) {
+    const element =
+      document.getElementById(id);
+
+    if (element) {
+      element.value = value;
+    }
+  }
+
   function selectProvider(provider) {
     const config = CONFIG[provider];
 
@@ -109,12 +125,10 @@
       return;
     }
 
-    const providerElement =
-      document.getElementById('provider');
-
-    if (providerElement) {
-      providerElement.value = provider;
-    }
+    setValue(
+      'provider',
+      provider
+    );
 
     setOptions(
       'model',
@@ -132,7 +146,7 @@
     );
 
     /*
-     * Kompatibilitas dengan UI lama.
+     * Kompatibilitas UI lama.
      */
     setOptions(
       'ratio',
@@ -141,10 +155,19 @@
 
     setOptions(
       'resolution',
-      config.res
+      config.resolutions
     );
 
+    GENZ.state =
+      GENZ.state || {};
+
     GENZ.state.provider =
+      provider;
+
+    GENZ.providers =
+      GENZ.providers || {};
+
+    GENZ.providers.current =
       provider;
   }
 
@@ -164,7 +187,9 @@
       ([key, config]) => {
 
         const button =
-          document.createElement('button');
+          document.createElement(
+            'button'
+          );
 
         button.type = 'button';
 
@@ -173,6 +198,9 @@
 
         button.textContent =
           config.name;
+
+        button.className =
+          'provider-button';
 
         container.appendChild(
           button
@@ -206,6 +234,19 @@
         selectProvider(
           button.dataset.provider
         );
+
+        container
+          .querySelectorAll(
+            '[data-provider]'
+          )
+          .forEach(
+            item => {
+              item.classList.toggle(
+                'active',
+                item === button
+              );
+            }
+          );
       }
     );
   }
@@ -213,17 +254,20 @@
   async function loadProviders() {
     renderButtons();
 
-    const current =
-      GENZ.state.provider ||
+    const selected =
+      GENZ.state?.provider ||
       document.getElementById(
         'provider'
       )?.value ||
       'veo';
 
+    const provider =
+      CONFIG[selected]
+        ? selected
+        : 'veo';
+
     selectProvider(
-      CONFIG[current]
-        ? current
-        : 'veo'
+      provider
     );
 
     return CONFIG;
@@ -231,6 +275,9 @@
 
   GENZ.providers = {
     config: CONFIG,
+    current:
+      GENZ.state?.provider ||
+      'veo',
     selectProvider,
     loadProviders
   };
