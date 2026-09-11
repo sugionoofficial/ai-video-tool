@@ -24,6 +24,10 @@
     null;
 
 
+  /* =======================================================
+     FILE STATUS
+  ======================================================= */
+
   function updateFileStatus(hasFile, text) {
 
     const status =
@@ -47,6 +51,65 @@
       'has-file',
       Boolean(hasFile)
     );
+
+  }
+
+
+  /* =======================================================
+     CREATE REMOVE BUTTON
+  ======================================================= */
+
+  function createRemoveButton() {
+
+    const button =
+      document.createElement(
+        'button'
+      );
+
+    button.type =
+      'button';
+
+    button.className =
+      'image-remove-btn';
+
+    button.setAttribute(
+      'aria-label',
+      'Hapus gambar referensi'
+    );
+
+    button.setAttribute(
+      'title',
+      'Hapus gambar'
+    );
+
+    button.innerHTML =
+      '&times;';
+
+
+    button.addEventListener(
+      'click',
+      event => {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        GENZ.upload.clear();
+
+        const status =
+          document.getElementById(
+            'status'
+          );
+
+        if (status) {
+          status.textContent =
+            '';
+        }
+
+      }
+    );
+
+
+    return button;
 
   }
 
@@ -270,45 +333,65 @@
 
               if (preview) {
 
-                if (
-                  preview.tagName
-                    .toLowerCase() ===
-                  'img'
-                ) {
+                /*
+                 * Bersihkan preview lama
+                 * supaya tombol × tidak menumpuk.
+                 */
+                preview.innerHTML =
+                  '';
 
-                  preview.src =
-                    result;
 
-                } else {
-
-                  preview.innerHTML =
-                    '';
-
-                  const image =
-                    document.createElement(
-                      'img'
-                    );
-
-                  image.src =
-                    result;
-
-                  image.alt =
-                    'Preview gambar referensi';
-
-                  image.style.maxWidth =
-                    '100%';
-
-                  image.style.display =
-                    'block';
-
-                  preview.appendChild(
-                    image
-                  );
-
-                }
-
+                /*
+                 * Pastikan preview menjadi
+                 * container untuk gambar + tombol.
+                 */
                 preview.classList.remove(
                   'hidden'
+                );
+
+
+                const image =
+                  document.createElement(
+                    'img'
+                  );
+
+                image.src =
+                  result;
+
+                image.alt =
+                  'Preview gambar referensi';
+
+                image.style.maxWidth =
+                  '100%';
+
+                image.style.width =
+                  '100%';
+
+                image.style.height =
+                  '100%';
+
+                image.style.objectFit =
+                  'cover';
+
+                image.style.display =
+                  'block';
+
+
+                preview.appendChild(
+                  image
+                );
+
+
+                /* -----------------------------------------
+                   REMOVE BUTTON
+                ----------------------------------------- */
+
+                const removeButton =
+                  createRemoveButton();
+
+
+                preview.appendChild(
+                  removeButton
                 );
 
               }
@@ -328,6 +411,10 @@
 
             };
 
+
+          /* -----------------------------------------------
+             READER ERROR
+          ----------------------------------------------- */
 
           reader.onerror =
             () => {
@@ -409,10 +496,6 @@
 
         input.value =
           '';
-
-        input.dataset
-          .uploadListenerAttached =
-          'false';
 
       }
 
