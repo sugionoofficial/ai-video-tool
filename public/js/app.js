@@ -63,17 +63,44 @@
     }
 
 
+    /*
+     * Auth harus berada di luar main-container.
+     *
+     * Dengan demikian:
+     *
+     * BELUM LOGIN
+     * -> auth-container terlihat
+     * -> login tampil
+     * -> generator disembunyikan
+     *
+     * SUDAH LOGIN
+     * -> auth-container disembunyikan
+     * -> generator tampil
+     */
+
     app.innerHTML = `
 
-      <div id="header-container"></div>
-
-      <main
-        id="main-container">
-      </main>
+      <div
+        id="auth-container">
+      </div>
 
       <div
-        id="pageContent"
+        id="application-container"
         class="hidden">
+
+        <div
+          id="header-container">
+        </div>
+
+        <main
+          id="main-container">
+        </main>
+
+        <div
+          id="pageContent"
+          class="hidden">
+        </div>
+
       </div>
 
     `;
@@ -87,6 +114,166 @@
       throw new Error(
         'GENZ.loadComponent tidak tersedia. Pastikan core.js dimuat.'
       );
+
+    }
+
+
+    /* -----------------------------------------------------
+       AUTH
+    ----------------------------------------------------- */
+
+    const authContainer =
+      $('auth-container');
+
+    if (!authContainer) {
+
+      throw new Error(
+        'Element #auth-container tidak ditemukan'
+      );
+
+    }
+
+
+    try {
+
+      await GENZ.loadComponent(
+        '#auth-container',
+        '/components/auth.html'
+      );
+
+    } catch (authComponentError) {
+
+      error(
+        'Gagal memuat auth.html:',
+        authComponentError
+      );
+
+
+      /*
+       * Fallback login.
+       *
+       * Ini menjaga aplikasi tetap mempunyai
+       * halaman login walaupun component gagal
+       * dimuat.
+       */
+
+      authContainer.innerHTML = `
+
+        <section
+          id="auth"
+          class="auth-page">
+
+          <div
+            class="auth-card">
+
+            <div
+              class="auth-header">
+
+              <div
+                class="auth-logo">
+                GEN-Z.AI
+              </div>
+
+              <h1>
+                Selamat Datang
+              </h1>
+
+              <p>
+                Login untuk menggunakan GEN-Z.AI
+              </p>
+
+            </div>
+
+
+            <form
+              id="authForm">
+
+              <div
+                class="form-group">
+
+                <label
+                  for="email">
+                  Email
+                </label>
+
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Masukkan email"
+                  autocomplete="email"
+                  required>
+
+              </div>
+
+
+              <div
+                class="form-group">
+
+                <label
+                  for="password">
+                  Password
+                </label>
+
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="Masukkan password"
+                  autocomplete="current-password"
+                  required>
+
+              </div>
+
+
+              <div
+                id="authMsg"
+                class="auth-message"
+                aria-live="polite">
+              </div>
+
+
+              <button
+                id="login"
+                type="submit"
+                class="auth-primary-btn">
+
+                LOGIN
+
+              </button>
+
+
+              <div
+                class="auth-actions">
+
+                <button
+                  id="register"
+                  type="button"
+                  class="auth-secondary-btn">
+
+                  DAFTAR
+
+                </button>
+
+
+                <button
+                  id="forgotPassword"
+                  type="button"
+                  class="auth-link-btn">
+
+                  LUPA PASSWORD?
+
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </section>
+
+      `;
 
     }
 
@@ -131,11 +318,15 @@
         componentError
       );
 
+
       main.innerHTML = `
 
-        <section class="page-card">
+        <section
+          class="page-card">
 
-          <h2>GEN-Z.AI</h2>
+          <h2>
+            GEN-Z.AI
+          </h2>
 
           <p>
             Generator belum dapat dimuat.
@@ -189,9 +380,6 @@
 
   /* =======================================================
      AUTH SESSION SYNC
-     
-     auth.js adalah pemilik utama Supabase auth state.
-     app.js hanya melakukan pengecekan session awal.
   ======================================================= */
 
   async function syncAuth() {
@@ -218,7 +406,7 @@
 
 
       /* ---------------------------------------------------
-         Fallback ke client langsung
+         Fallback ke Supabase client
       --------------------------------------------------- */
 
       else {
@@ -235,6 +423,10 @@
 
           console.warn(
             '[GEN-Z.AI] Auth client belum tersedia'
+          );
+
+          await handleLogout(
+            false
           );
 
           return false;
@@ -305,6 +497,12 @@
         authError
       );
 
+
+      await handleLogout(
+        false
+      );
+
+
       return false;
 
     }
@@ -321,10 +519,6 @@
     emitEvent = false
   ) {
 
-    /*
-     * Pastikan state user benar.
-     */
-
     if (user) {
 
       GENZ.state.loggedIn =
@@ -335,11 +529,6 @@
 
     }
 
-
-    /*
-     * Jika user tidak tersedia,
-     * jangan jalankan proses login.
-     */
 
     if (
       !GENZ.state.user
@@ -435,7 +624,6 @@
 
     /* -----------------------------------------------------
        REFRESH ACCOUNT
-       Kredit dan role berasal dari server.
     ----------------------------------------------------- */
 
     if (
@@ -545,11 +733,9 @@
     showStudio();
 
 
-    /*
-     * Event internal hanya jika memang diminta.
-     *
-     * auth.js tetap menjadi sumber event autentikasi.
-     */
+    /* -----------------------------------------------------
+       EVENT INTERNAL
+    ----------------------------------------------------- */
 
     if (
       emitEvent &&
@@ -582,10 +768,9 @@
       null;
 
 
-    /*
-     * Jangan mempertahankan privilege admin
-     * setelah logout.
-     */
+    /* -----------------------------------------------------
+       RESET ACCOUNT / ADMIN
+    ----------------------------------------------------- */
 
     GENZ.state.account = {
 
@@ -654,8 +839,36 @@
 
 
     /* -----------------------------------------------------
-       UI LOGOUT
+       SEMBUNYIKAN APPLICATION
     ----------------------------------------------------- */
+
+    const application =
+      $('application-container');
+
+    if (application) {
+
+      application.classList.add(
+        'hidden'
+      );
+
+    }
+
+
+    /* -----------------------------------------------------
+       TAMPILKAN LOGIN
+    ----------------------------------------------------- */
+
+    const authContainer =
+      $('auth-container');
+
+    if (authContainer) {
+
+      authContainer.classList.remove(
+        'hidden'
+      );
+
+    }
+
 
     if (
       GENZ.auth &&
@@ -668,6 +881,22 @@
         GENZ.auth.showLoggedOutUI();
 
       } catch (_) {}
+
+    } else {
+
+      const auth =
+        $('auth');
+
+      if (auth) {
+
+        auth.style.display =
+          'block';
+
+        auth.classList.remove(
+          'hidden'
+        );
+
+      }
 
     }
 
@@ -693,10 +922,6 @@
 
   /* =======================================================
      BIND AUTH EVENTS
-     
-     TIDAK ADA lagi Supabase listener di app.js.
-     
-     Supabase listener hanya dimiliki auth.js.
   ======================================================= */
 
   function bindAuth() {
@@ -705,25 +930,18 @@
       return;
     }
 
-    authBound = true;
+
+    authBound =
+      true;
 
 
     /* -----------------------------------------------------
-       LOGIN EVENT DARI auth.js
+       LOGIN EVENT
     ----------------------------------------------------- */
 
     window.addEventListener(
       'genz-auth-login',
       function (event) {
-
-        /*
-         * auth.js mengirim:
-         *
-         * detail: {
-         *   user,
-         *   session
-         * }
-         */
 
         const detail =
           event?.detail || {};
@@ -763,7 +981,7 @@
 
 
     /* -----------------------------------------------------
-       LOGOUT EVENT DARI auth.js
+       LOGOUT EVENT
     ----------------------------------------------------- */
 
     window.addEventListener(
@@ -795,11 +1013,54 @@
 
   function showStudio() {
 
+    const authContainer =
+      $('auth-container');
+
+    const application =
+      $('application-container');
+
     const main =
       $('main-container');
 
     const pages =
       $('pageContent');
+
+
+    /* -----------------------------------------------------
+       HIDE LOGIN
+    ----------------------------------------------------- */
+
+    if (authContainer) {
+
+      authContainer.classList.add(
+        'hidden'
+      );
+
+    }
+
+
+    const auth =
+      $('auth');
+
+    if (auth) {
+
+      auth.style.display =
+        'none';
+
+    }
+
+
+    /* -----------------------------------------------------
+       SHOW APPLICATION
+    ----------------------------------------------------- */
+
+    if (application) {
+
+      application.classList.remove(
+        'hidden'
+      );
+
+    }
 
 
     if (pages) {
@@ -845,6 +1106,22 @@
   async function showPage(
     page
   ) {
+
+    /*
+     * Jangan izinkan halaman internal
+     * dibuka tanpa login.
+     */
+
+    if (!GENZ.state.loggedIn) {
+
+      await handleLogout(
+        false
+      );
+
+      return;
+
+    }
+
 
     const main =
       $('main-container');
@@ -984,16 +1261,21 @@
 
     pages.innerHTML = `
 
-      <section class="page-card">
+      <section
+        class="page-card">
 
-        <div class="page-header">
+        <div
+          class="page-header">
 
           <button
             type="button"
             class="back-btn"
             id="contactBack">
+
             ←
+
           </button>
+
 
           <div>
 
@@ -1010,7 +1292,8 @@
         </div>
 
 
-        <div class="contact-admin">
+        <div
+          class="contact-admin">
 
           <p>
             Silakan hubungi admin untuk
@@ -1217,10 +1500,28 @@
 
 
       /*
-       * Load seluruh component.
+       * Load component.
        */
 
       await loadComponents();
+
+
+      /*
+       * Pastikan aplikasi internal
+       * tersembunyi sebelum session
+       * selesai diperiksa.
+       */
+
+      const application =
+        $('application-container');
+
+      if (application) {
+
+        application.classList.add(
+          'hidden'
+        );
+
+      }
 
 
       /*
@@ -1230,7 +1531,8 @@
       await syncAuth();
 
 
-      started = true;
+      started =
+        true;
 
       GENZ.state.initialized =
         true;
