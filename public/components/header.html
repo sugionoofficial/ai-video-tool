@@ -1,24 +1,72 @@
 <header class="topbar">
   <div class="topbar-inner">
 
-    <!-- KIRI -->
+    <!-- =====================================================
+         KIRI
+         ===================================================== -->
+
     <div class="brand">
       <div class="brand-info">
         <h1>GEN-Z.AI</h1>
-        <p>AI Creative Engine</p>
+
+        <p
+          style="
+            color:#ef4444 !important;
+            font-size:9px !important;
+            font-weight:800 !important;
+            letter-spacing:.08em !important;
+          "
+        >
+          AI Video Generator
+        </p>
       </div>
     </div>
 
-    <!-- KANAN -->
+
+    <!-- =====================================================
+         KANAN
+         ===================================================== -->
+
     <div class="header-actions">
 
-      <!-- CREDIT -->
-      <div class="credit-display" aria-label="Credit">
-        <span class="credit-icon">C</span>
-        <span id="headerCredits">1000</span>
-      </div>
+      <!-- ===================================================
+           CREDIT
 
-      <!-- MENU -->
+           C     = logo Credit
+           1000  = saldo Credit dari server
+
+           Jangan hardcode saldo.
+           credit.js akan memperbarui #headerCredits.
+           =================================================== -->
+
+      <button
+        type="button"
+        class="credit-display"
+        id="headerCreditButton"
+        data-page="credit"
+        aria-label="Buka halaman Kredit"
+      >
+
+        <span
+          class="credit-icon"
+          aria-hidden="true"
+        >
+          C
+        </span>
+
+        <span
+          id="headerCredits"
+        >
+          0
+        </span>
+
+      </button>
+
+
+      <!-- ===================================================
+           MENU AKUN
+           =================================================== -->
+
       <div id="account-container"></div>
 
     </div>
