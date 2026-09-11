@@ -6,11 +6,9 @@
 
   .account {
     position: relative;
-
     display: flex;
     align-items: center;
   }
-
 
   /* =========================================================
      ACCOUNT BUTTON
@@ -46,9 +44,7 @@
 
   .account-btn:hover {
     background: rgba(23, 49, 72, 0.9);
-
     border-color: rgba(130, 200, 240, 0.45);
-
     transform: translateY(-1px);
   }
 
@@ -57,7 +53,6 @@
     outline-offset: 2px;
   }
 
-
   /* =========================================================
      HAMBURGER
      ========================================================= */
@@ -65,9 +60,7 @@
   .hamburger {
     display: flex;
     flex-direction: column;
-
     gap: 5px;
-
     width: 22px;
   }
 
@@ -81,7 +74,6 @@
 
     background: #fff;
   }
-
 
   /* =========================================================
      ACCOUNT MENU
@@ -118,7 +110,6 @@
     -webkit-backdrop-filter: blur(22px);
   }
 
-
   /* =========================================================
      HIDDEN
      ========================================================= */
@@ -126,7 +117,6 @@
   .account-menu.hidden {
     display: none !important;
   }
-
 
   /* =========================================================
      MENU BUTTON
@@ -168,7 +158,6 @@
 
   .account-menu > button:hover {
     background: rgba(75, 145, 190, 0.13);
-
     color: #fff;
   }
 
@@ -176,7 +165,6 @@
     outline: 2px solid rgba(130, 200, 240, 0.55);
     outline-offset: -2px;
   }
-
 
   /* =========================================================
      DIVIDER
@@ -189,7 +177,6 @@
 
     background: rgba(255, 255, 255, 0.08);
   }
-
 
   /* =========================================================
      EMAIL
@@ -225,7 +212,6 @@
     overflow-wrap: anywhere;
   }
 
-
   /* =========================================================
      ROLE
      ========================================================= */
@@ -247,16 +233,9 @@
     text-transform: uppercase;
   }
 
-
   /* =========================================================
      ROLE BASED MENU
      ========================================================= */
-
-  /*
-   * Semua item khusus role disembunyikan secara default.
-   * account.js akan menampilkan item yang sesuai setelah
-   * role berhasil divalidasi dari server.
-   */
 
   .account-menu-admin-only,
   .account-menu-user-only,
@@ -264,19 +243,9 @@
     display: none !important;
   }
 
-
-  /*
-   * account.js menggunakan class/visibility untuk
-   * menentukan menu berdasarkan role.
-   *
-   * Class berikut disediakan agar kompatibel dengan
-   * implementasi account.js yang sedang digunakan.
-   */
-
   .account-menu-user {
     display: block;
   }
-
 
   /* =========================================================
      LOGOUT
@@ -288,34 +257,21 @@
 
   .account-menu .danger:hover {
     background: rgba(239, 68, 68, 0.09);
-
     color: #fecaca;
   }
-
 
   /* =========================================================
      LEGACY ELEMENTS
      ========================================================= */
-
-  /*
-   * Elemen lama tetap dipertahankan karena beberapa
-   * modul GEN-Z.AI masih dapat membacanya.
-   */
 
   #userEmail,
   #credits {
     display: none !important;
   }
 
-
-  /*
-   * Email yang tampil di menu berasal dari account.js.
-   */
-
   #menuEmail {
     display: block !important;
   }
-
 
   /* =========================================================
      MOBILE
@@ -326,47 +282,35 @@
     .account-btn {
       width: 42px;
       height: 42px;
-
       border-radius: 12px;
     }
 
-
     .account-menu {
       top: calc(100% + 8px);
-
       width: min(235px, calc(100vw - 24px));
-
       padding: 7px;
-
       border-radius: 14px;
     }
 
-
     .account-menu > button {
       min-height: 42px;
-
       padding: 0 11px;
-
       font-size: 12px;
     }
-
 
     .account-menu-email {
       padding: 8px 11px 9px;
     }
 
-
     #menuEmail {
       font-size: 11px;
     }
-
 
     .account-menu-role {
       font-size: 8px;
     }
 
   }
-
 
   /* =========================================================
      REDUCED MOTION
@@ -407,9 +351,7 @@ aria-controls="accountMenu"
     id="accountMenu"
     class="account-menu hidden"
     aria-hidden="true"
-  ><!-- =====================================================
-     EMAIL + ROLE
-     ===================================================== -->
+  ><!-- EMAIL + ROLE -->
 
 <div class="account-menu-email">
 
@@ -459,11 +401,16 @@ aria-controls="accountMenu"
 <!-- =====================================================
      TOP UP
      USER + ADMIN
+
+     Top up sekarang membuka halaman Kredit.
+     Dari halaman Kredit:
+     USER  → Pembayaran
+     ADMIN → Top Up Setting
      ===================================================== -->
 
 <button
   type="button"
-  data-page="topup"
+  data-page="credit"
 >
   Top up
 </button>
