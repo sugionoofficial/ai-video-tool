@@ -1,7 +1,8 @@
-/* GEN-Z.AI - Luma Provider */
-
 (function () {
   'use strict';
+
+  window.GENZ = window.GENZ || {};
+  GENZ.videoProviders = GENZ.videoProviders || {};
 
   const CONFIG = {
     name: 'Luma',
@@ -34,11 +35,8 @@
   };
 
   function validate(input) {
-
     if (!CONFIG.models.includes(input.model)) {
-      throw new Error(
-        'Model Luma tidak valid.'
-      );
+      throw new Error('Model Luma tidak valid.');
     }
 
     if (!CONFIG.durations.includes(input.duration)) {
@@ -53,10 +51,6 @@
       );
     }
 
-    /*
-     * Luma pada mode ini tidak menerima
-     * imageData dari generator.
-     */
     if (input.imageData) {
       throw new Error(
         'Luma tidak menggunakan gambar referensi pada mode ini.'
@@ -65,28 +59,17 @@
   }
 
   async function generate(input) {
-
     validate(input);
 
     return {
       provider: 'luma',
-
       prompt: input.prompt,
-
       model: input.model,
-
       duration: input.duration,
-
       aspectRatio: input.aspectRatio,
-
       imageData: null
     };
   }
-
-  window.GENZ = window.GENZ || {};
-
-  GENZ.videoProviders =
-    GENZ.videoProviders || {};
 
   GENZ.videoProviders.luma = {
     CONFIG,
