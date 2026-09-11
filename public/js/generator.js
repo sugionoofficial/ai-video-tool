@@ -77,6 +77,7 @@
 
       button.disabled = true;
       button.textContent = 'Generating...';
+
       button.setAttribute(
         'aria-busy',
         'true'
@@ -130,15 +131,30 @@
     return fallback;
   }
 
+  /*
+   * =========================================================
+   * COLLECT INPUT
+   * =========================================================
+   *
+   * Provider TIDAK boleh memiliki fallback "veo".
+   *
+   * Provider harus berasal dari:
+   *
+   * /api/providers
+   *
+   * dan dipilih oleh user.
+   *
+   * Jika kosong:
+   * generate() akan menolak request.
+   */
+
   function collectInput() {
     const provider = String(
       getValue(
         ['#provider'],
-        'veo'
+        ''
       )
-    )
-      .trim()
-      .toLowerCase();
+    ).trim();
 
     const prompt = String(
       getValue(
@@ -827,13 +843,29 @@
     const input =
       collectInput();
 
+    /*
+     * Provider wajib dipilih dari
+     * provider yang dikirim backend.
+     *
+     * Tidak ada fallback ke "veo".
+     */
     if (!input.provider) {
+      setStatus(
+        'Provider video belum dipilih.',
+        'error'
+      );
+
       throw new Error(
         'Provider video belum dipilih.'
       );
     }
 
     if (!input.prompt) {
+      setStatus(
+        'Prompt video wajib diisi.',
+        'error'
+      );
+
       throw new Error(
         'Prompt video wajib diisi.'
       );
@@ -851,25 +883,26 @@
     try {
       /*
        * =====================================================
-       * PENTING
+       * PROVIDER DISPATCHER
        * =====================================================
        *
-       * Tidak ada lagi:
+       * Browser TIDAK:
        *
-       * import('/js/providers/veo.js')
-       * import('/js/providers/minimax.js')
-       * import('/js/providers/luma.js')
+       * - memuat provider adapter
+       * - membaca API key
+       * - memanggil API Gemini
+       * - memanggil API MiniMax
+       * - memanggil API Luma
        *
-       * Browser hanya mengirim parameter generator.
+       * Browser hanya mengirim parameter.
        *
-       * Worker akan:
+       * Worker yang menentukan:
        *
-       * 1. Membaca provider
-       * 2. Mengambil konfigurasi provider dari database
-       * 3. Mengambil API key server-side
-       * 4. Memilih adapter provider
-       * 5. Menjalankan generate()
-       * 6. Membuat job
+       * 1. Provider
+       * 2. Database provider
+       * 3. API key
+       * 4. Adapter
+       * 5. Generate job
        */
 
       setStatus(
@@ -914,7 +947,8 @@
       );
 
       /*
-       * Jika backend langsung memberikan URL.
+       * Jika backend langsung
+       * memberikan URL video.
        */
       const directUrl =
         findVideoUrl(
@@ -956,8 +990,7 @@
       }
 
       /*
-       * Simpan Job ID agar modul lain
-       * dapat mengakses job aktif.
+       * Simpan Job ID.
        */
       if (GENZ.state) {
         GENZ.state.currentJobId =
