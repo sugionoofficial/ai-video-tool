@@ -1,156 +1,100 @@
 <section class="page-card topup-settings-page" id="topupSettingsPage">
 
   <div class="page-header">
-
     <button
       type="button"
       class="back-btn"
-      id="topupSettingsBack">
+      id="topupSettingsBack"
+      aria-label="Kembali">
       ←
     </button>
 
     <div>
-
-      <h2>
-        Top up Setting
-      </h2>
-
-      <p>
-        Kelola dan tambahkan kredit user.
-      </p>
-
+      <h2>Top Up Setting</h2>
+      <p>Tambah kredit pengguna secara manual</p>
     </div>
-
   </div>
-
 
   <div
     id="topupSettingsStatus"
-    class="admin-status-message"
+    class="topup-settings-status"
     aria-live="polite">
   </div>
 
+  <div class="topup-settings-card">
 
-  <div class="admin-card">
+    <div class="topup-field">
 
-    <div class="admin-card-header">
+      <label for="topupUser">
+        USER
+      </label>
 
-      <h3>
-        Tambah Kredit User
-      </h3>
-
-      <button
-        type="button"
-        id="topupSettingsRefresh">
-        Refresh
-      </button>
+      <select id="topupUser">
+        <option value="">Pilih user</option>
+      </select>
 
     </div>
 
+    <div
+      class="topup-user-info"
+      id="topupUserInfo"
+      hidden>
 
-    <form id="topupSettingsForm">
-
-      <label for="topupSettingsUser">
-        User
-      </label>
-
-      <select
-        id="topupSettingsUser"
-        required>
-
-        <option value="">
-          Pilih user
-        </option>
-
-      </select>
-
-
-      <div
-        id="topupSettingsBalance"
-        class="topup-settings-balance">
-
-        Saldo saat ini: -
-
+      <div class="topup-user-email">
+        <span>Email</span>
+        <strong id="topupSelectedEmail">-</strong>
       </div>
 
+      <div class="topup-user-credit">
+        <span>Kredit Saat Ini</span>
+        <strong id="topupCurrentCredit">0</strong>
+      </div>
 
-      <label for="topupSettingsAmount">
-        Jumlah Kredit
+    </div>
+
+    <div class="topup-field">
+
+      <label for="topupAmount">
+        TAMBAH KREDIT
       </label>
 
       <input
-        id="topupSettingsAmount"
         type="number"
+        id="topupAmount"
         min="1"
         step="1"
+        inputmode="numeric"
         placeholder="Contoh: 100"
-        required>
+        autocomplete="off">
 
+      <small>
+        Masukkan jumlah kredit yang ingin ditambahkan.
+      </small>
 
-      <label for="topupSettingsNote">
-        Catatan
+    </div>
+
+    <div class="topup-field">
+
+      <label for="topupNote">
+        CATATAN
       </label>
 
       <textarea
-        id="topupSettingsNote"
+        id="topupNote"
         rows="3"
-        placeholder="Contoh: Penambahan kredit manual oleh admin"></textarea>
-
-
-      <button
-        type="submit"
-        class="admin-primary-btn"
-        id="topupSettingsSubmit">
-
-        Tambahkan Kredit
-
-      </button>
-
-    </form>
-
-  </div>
-
-
-  <div class="admin-card">
-
-    <div class="admin-card-header">
-
-      <h3>
-        Daftar User
-      </h3>
+        maxlength="500"
+        placeholder="Contoh: Top up manual admin"></textarea>
 
     </div>
 
+    <button
+      type="button"
+      class="primary-btn topup-submit-btn"
+      id="topupSubmit">
 
-    <div class="admin-table-wrap">
+      Tambah Kredit
 
-      <table class="admin-table">
-
-        <thead>
-
-          <tr>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Kredit</th>
-            <th>Aksi</th>
-          </tr>
-
-        </thead>
-
-
-        <tbody id="topupSettingsUsers">
-
-          <tr>
-            <td colspan="4">
-              Memuat...
-            </td>
-          </tr>
-
-        </tbody>
-
-      </table>
-
-    </div>
+    </button>
 
   </div>
 
