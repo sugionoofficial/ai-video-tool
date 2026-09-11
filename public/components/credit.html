@@ -1,0 +1,665 @@
+<!-- =========================================================
+     GEN-Z.AI
+     CREDIT PAGE
+     public/components/credit.html
+     ========================================================= -->
+
+<section class="page-card credit-page" id="creditPage">
+
+  <div class="page-header">
+
+    <button
+      type="button"
+      class="back-btn"
+      id="creditBack"
+      aria-label="Kembali">
+      ←
+    </button>
+
+    <div>
+      <h2>Kredit</h2>
+
+      <p>
+        Kelola saldo kredit GEN-Z.AI
+      </p>
+    </div>
+
+  </div>
+
+
+  <!-- =======================================================
+       SALDO KREDIT
+       ======================================================= -->
+
+  <div class="credit-balance-card">
+
+    <div class="credit-balance-label">
+      KREDIT ANDA
+    </div>
+
+    <div
+      class="credit-balance-value"
+      id="creditBalance">
+      0
+    </div>
+
+    <div class="credit-balance-unit">
+      CREDIT
+    </div>
+
+  </div>
+
+
+  <!-- =======================================================
+       EMAIL USER
+       ======================================================= -->
+
+  <div class="credit-user-card">
+
+    <span>
+      Email
+    </span>
+
+    <strong id="creditUserEmail">
+      -
+    </strong>
+
+  </div>
+
+
+  <!-- =======================================================
+       TOP UP
+       ======================================================= -->
+
+  <div class="credit-action-card">
+
+    <div class="credit-action-content">
+
+      <strong>
+        Tambah Kredit
+      </strong>
+
+      <p>
+        Tambahkan kredit ke akun GEN-Z.AI
+        untuk menggunakan AI Video Generator.
+      </p>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="primary-btn credit-topup-btn"
+      id="creditTopupButton">
+
+      Top Up Kredit
+
+    </button>
+
+  </div>
+
+
+  <!-- =======================================================
+       INFORMASI
+       ======================================================= -->
+
+  <div class="credit-info-card">
+
+    <strong>
+      Informasi Kredit
+    </strong>
+
+    <p>
+      Kredit digunakan untuk proses
+      generate gambar dan video.
+    </p>
+
+    <p>
+      Setiap proses generate dapat
+      menggunakan jumlah kredit yang
+      berbeda.
+    </p>
+
+  </div>
+
+
+  <!-- =======================================================
+       RIWAYAT
+       ======================================================= -->
+
+  <div class="credit-history">
+
+    <div class="credit-section-title">
+
+      <div>
+        <h3>
+          Riwayat Kredit
+        </h3>
+
+        <span>
+          Aktivitas kredit akun
+        </span>
+      </div>
+
+    </div>
+
+
+    <div
+      id="creditHistory"
+      class="credit-history-list">
+
+      Memuat riwayat...
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<style>
+
+  /* =========================================================
+     CREDIT PAGE
+     ========================================================= */
+
+  .credit-page {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+
+  /* =========================================================
+     BALANCE
+     ========================================================= */
+
+  .credit-balance-card {
+    margin-top: 18px;
+
+    padding: 26px 24px;
+
+    border:
+      1px solid rgba(255,255,255,.08);
+
+    border-radius: 18px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(20,38,55,.96),
+        rgba(5,12,19,.98)
+      );
+
+    text-align: center;
+
+    box-shadow:
+      0 18px 50px rgba(0,0,0,.28);
+  }
+
+
+  .credit-balance-label {
+    color:
+      rgba(255,255,255,.45);
+
+    font-size: 10px;
+
+    font-weight: 800;
+
+    letter-spacing: .12em;
+  }
+
+
+  .credit-balance-value {
+    margin-top: 8px;
+
+    color: #fff;
+
+    font-size: 42px;
+
+    font-weight: 900;
+
+    line-height: 1;
+  }
+
+
+  .credit-balance-unit {
+    margin-top: 8px;
+
+    color:
+      rgba(255,255,255,.42);
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    letter-spacing: .08em;
+  }
+
+
+  /* =========================================================
+     USER
+     ========================================================= */
+
+  .credit-user-card {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-top: 12px;
+
+    padding: 15px 16px;
+
+    border:
+      1px solid rgba(255,255,255,.07);
+
+    border-radius: 13px;
+
+    background:
+      rgba(255,255,255,.025);
+  }
+
+
+  .credit-user-card span {
+    color:
+      rgba(255,255,255,.42);
+
+    font-size: 11px;
+
+    font-weight: 700;
+  }
+
+
+  .credit-user-card strong {
+    color: #fff;
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    overflow-wrap: anywhere;
+
+    text-align: right;
+  }
+
+
+  /* =========================================================
+     ACTION
+     ========================================================= */
+
+  .credit-action-card {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-top: 12px;
+
+    padding: 18px;
+
+    border:
+      1px solid rgba(255,255,255,.08);
+
+    border-radius: 15px;
+
+    background:
+      rgba(255,255,255,.025);
+  }
+
+
+  .credit-action-content {
+    min-width: 0;
+  }
+
+
+  .credit-action-content strong {
+    display: block;
+
+    color: #fff;
+
+    font-size: 14px;
+
+    font-weight: 850;
+  }
+
+
+  .credit-action-content p {
+    margin: 5px 0 0;
+
+    color:
+      rgba(255,255,255,.48);
+
+    font-size: 11px;
+
+    line-height: 1.5;
+  }
+
+
+  .credit-topup-btn {
+    flex: 0 0 auto;
+
+    min-height: 42px;
+
+    padding:
+      0 18px;
+
+    white-space: nowrap;
+  }
+
+
+  /* =========================================================
+     INFO
+     ========================================================= */
+
+  .credit-info-card {
+    margin-top: 12px;
+
+    padding: 16px;
+
+    border:
+      1px solid rgba(255,255,255,.06);
+
+    border-radius: 14px;
+
+    background:
+      rgba(255,255,255,.02);
+  }
+
+
+  .credit-info-card strong {
+    display: block;
+
+    color: #fff;
+
+    font-size: 12px;
+
+    font-weight: 800;
+  }
+
+
+  .credit-info-card p {
+    margin: 7px 0 0;
+
+    color:
+      rgba(255,255,255,.45);
+
+    font-size: 11px;
+
+    line-height: 1.55;
+  }
+
+
+  /* =========================================================
+     HISTORY
+     ========================================================= */
+
+  .credit-history {
+    margin-top: 24px;
+  }
+
+
+  .credit-section-title {
+    margin-bottom: 10px;
+  }
+
+
+  .credit-section-title h3 {
+    margin: 0;
+
+    color: #fff;
+
+    font-size: 14px;
+
+    font-weight: 850;
+  }
+
+
+  .credit-section-title span {
+    display: block;
+
+    margin-top: 4px;
+
+    color:
+      rgba(255,255,255,.38);
+
+    font-size: 10px;
+  }
+
+
+  .credit-history-list {
+    overflow: hidden;
+
+    border:
+      1px solid rgba(255,255,255,.07);
+
+    border-radius: 14px;
+
+    background:
+      rgba(255,255,255,.018);
+  }
+
+
+  .credit-history-empty {
+    padding: 22px 16px;
+
+    color:
+      rgba(255,255,255,.42);
+
+    font-size: 11px;
+
+    text-align: center;
+  }
+
+
+  .credit-transaction {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 14px;
+
+    padding: 14px 16px;
+
+    border-bottom:
+      1px solid rgba(255,255,255,.055);
+  }
+
+
+  .credit-transaction:last-child {
+    border-bottom: 0;
+  }
+
+
+  .credit-transaction-main {
+    min-width: 0;
+  }
+
+
+  .credit-transaction-type {
+    display: block;
+
+    color: #fff;
+
+    font-size: 11px;
+
+    font-weight: 750;
+  }
+
+
+  .credit-transaction-date {
+    display: block;
+
+    margin-top: 4px;
+
+    color:
+      rgba(255,255,255,.35);
+
+    font-size: 9px;
+  }
+
+
+  .credit-transaction-amount {
+    flex: 0 0 auto;
+
+    font-size: 12px;
+
+    font-weight: 850;
+  }
+
+
+  .credit-transaction-amount.plus {
+    color: #86efac;
+  }
+
+
+  .credit-transaction-amount.minus {
+    color: #fca5a5;
+  }
+
+
+  /* =========================================================
+     PAYMENT PLACEHOLDER
+     ========================================================= */
+
+  .credit-payment-placeholder {
+    margin-top: 20px;
+
+    padding: 40px 24px;
+
+    border:
+      1px solid rgba(255,255,255,.07);
+
+    border-radius: 17px;
+
+    background:
+      rgba(255,255,255,.025);
+
+    text-align: center;
+  }
+
+
+  .credit-payment-icon {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 52px;
+    height: 52px;
+
+    margin: 0 auto 16px;
+
+    border-radius: 14px;
+
+    background:
+      rgba(239,68,68,.10);
+
+    border:
+      1px solid rgba(239,68,68,.20);
+
+    color: #fca5a5;
+
+    font-size: 15px;
+
+    font-weight: 900;
+  }
+
+
+  .credit-payment-placeholder h3 {
+    margin: 0;
+
+    color: #fff;
+
+    font-size: 16px;
+
+    font-weight: 850;
+  }
+
+
+  .credit-payment-placeholder p {
+    margin: 8px 0 0;
+
+    color:
+      rgba(255,255,255,.52);
+
+    font-size: 11px;
+
+    line-height: 1.5;
+  }
+
+
+  .credit-payment-placeholder small {
+    display: block;
+
+    margin-top: 10px;
+
+    color:
+      rgba(255,255,255,.30);
+
+    font-size: 9px;
+  }
+
+
+  /* =========================================================
+     MOBILE
+     ========================================================= */
+
+  @media (max-width: 600px) {
+
+    .credit-balance-card {
+      padding: 24px 18px;
+    }
+
+
+    .credit-balance-value {
+      font-size: 36px;
+    }
+
+
+    .credit-user-card {
+      align-items: flex-start;
+
+      flex-direction: column;
+
+      gap: 5px;
+    }
+
+
+    .credit-user-card strong {
+      text-align: left;
+    }
+
+
+    .credit-action-card {
+      align-items: stretch;
+
+      flex-direction: column;
+    }
+
+
+    .credit-topup-btn {
+      width: 100%;
+    }
+
+  }
+
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .credit-topup-btn {
+      transition: none;
+    }
+
+  }
+
+</style>
