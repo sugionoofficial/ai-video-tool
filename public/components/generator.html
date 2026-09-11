@@ -1,541 +1,71 @@
-<section
-  id="studio"
-  class="generator-page"
->
-
-  <div class="generator-card">
-
-    <!-- =====================================================
-         HEADER
-    ====================================================== -->
-
-    <div class="generator-header">
-
-      <div class="generator-title-row">
-
-        <div class="generator-title-icon">
-          <span aria-hidden="true">✦</span>
-        </div>
-
-        <div>
-
-          <div
-            class="generator-eyebrow"
-            style="
-              color:#facc15 !important;
-              font-weight:900 !important;
-            "
-          >
-            AI CREATIV ENGINE
-          </div>
-
-          <h2>
-            AI Video Generator
-          </h2>
-
-          <p>
-            Buat video realistis dengan engine AI pilihanmu.
-          </p>
-
-        </div>
-
-      </div>
-
+<section id="studio" class="generator-page">
+  <div class="generator-shell">
+    <div class="generator-hero">
+      <h2>AI Video Generator</h2>
+      <p>Create realistic AI videos with the Engine of Your Choice</p>
     </div>
 
-
-    <!-- =====================================================
-         ENGINE
-    ====================================================== -->
-
-    <div class="studio-section">
-
-      <div class="studio-section-header">
-
-        <div class="studio-section-title">
-
-          <strong>
-            AI Engine
-          </strong>
-
-          <span>
-            Pilih provider dan model yang digunakan.
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <!-- PROVIDER -->
-
+    <div class="generator-form">
       <div class="form-group">
-
-        <label
-          for="provider"
-          style="
-            color:#facc15 !important;
-            font-weight:900 !important;
-          "
-        >
-          PROVIDER
-        </label>
-
-        <select
-          id="provider"
-          class="genz-status-select"
-        >
-
-          <option value="">
-            Tidak ada PROVIDER
-          </option>
-
+        <label for="provider">PROVIDER</label>
+        <select id="provider" class="genz-status-select">
+          <option value="">Pilih provider</option>
         </select>
-
       </div>
 
-
-      <!-- MODEL -->
-
       <div class="form-group">
-
-        <label
-          for="model"
-          style="
-            color:#facc15 !important;
-            font-weight:900 !important;
-          "
-        >
-          MODEL
-        </label>
-
-        <select
-          id="model"
-          class="genz-status-select"
-        >
-
-          <option value="">
-            Tidak ada MODEL
-          </option>
-
+        <label for="model">MODEL</label>
+        <select id="model" class="genz-status-select">
+          <option value="">Pilih model</option>
         </select>
-
       </div>
 
-
-      <!-- PROVIDER BUTTONS -->
-
-      <div
-        class="provider-buttons"
-        data-providers>
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         REFERENCE IMAGE
-    ====================================================== -->
-
-    <div class="studio-section">
-
-      <div class="studio-section-header">
-
-        <div class="studio-section-title">
-
-          <strong
-            style="
-              color:#facc15 !important;
-              font-weight:900 !important;
-            "
-          >
-            Gambar Referensi
-          </strong>
-
-          <span>
-            Gunakan gambar untuk image-to-video jika diperlukan.
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="image">
-          GAMBAR REFERENSI
-        </label>
-
-        <div class="upload-zone">
-
-          <div class="upload-zone-icon">
-            <span aria-hidden="true">↑</span>
-          </div>
-
-          <div class="upload-zone-content">
-
-            <strong>
-              Upload gambar
-            </strong>
-
-            <span>
-              PNG, JPG atau WEBP
-            </span>
-
-          </div>
-
-          <input
-            id="image"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-          >
-
-        </div>
-
-        <small>
-          Maksimal 12 MB
-        </small>
-
-        <div
-          id="imageFileStatus"
-          class="image-file-status"
-          aria-live="polite"
-        >
-          Tidak ada File yang di pilih
-        </div>
-
-
-        <div
-          id="imagePreview"
-          class="image-preview hidden">
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         PROMPT
-    ====================================================== -->
-
-    <div class="studio-section">
-
-      <div class="studio-section-header">
-
-        <div class="studio-section-title">
-
-          <strong>
-            Creative Prompt
-          </strong>
-
-          <span>
-            Jelaskan video yang ingin dibuat.
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label
-          for="prompt"
-          style="
-            color:#facc15 !important;
-            font-weight:900 !important;
-          "
-        >
-          VIDEO PROMPT
-        </label>
-
-        <div class="prompt-wrapper">
-
-          <textarea
-            id="prompt"
-            rows="7"
-            placeholder="Contoh: seorang wanita berjalan perlahan di jalan kota pada pagi hari, kamera mengikuti dari depan, gerakan natural dan realistis..."
-          ></textarea>
-
-          <div class="prompt-hint">
-
-            <span>
-              DESCRIBE YOUR VISION
-            </span>
-
-            <span>
-              AI READY
-            </span>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         OUTPUT SETTINGS
-         TETAP
-    ====================================================== -->
-
-    <div class="studio-section">
-
-      <div class="studio-section-header">
-
-        <div class="studio-section-title">
-
-          <strong>
-            Output Settings
-          </strong>
-
-          <span>
-            Atur format video sesuai kebutuhan.
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <div class="form-row">
-
-        <div class="form-group">
-
-          <label for="ratio">
-            RASIO
+      <div class="reference-group">
+        <label>Reference Image</label>
+        <div class="reference-row">
+          <div id="imagePreview" class="image-preview hidden"></div>
+          <label class="image-add-tile" for="image" aria-label="Tambah reference image">
+            <span>+</span>
           </label>
-
-          <select id="ratio">
-
-            <option value="">
-              Pilih rasio
-            </option>
-
-          </select>
-
         </div>
-
-
-        <div class="form-group">
-
-          <label for="duration">
-            DURASI
-          </label>
-
-          <select id="duration">
-
-            <option value="">
-              Pilih durasi
-            </option>
-
-          </select>
-
+        <input id="image" class="image-file-input" type="file"
+          accept="image/png,image/jpeg,image/webp">
+        <div id="imageFileStatus" class="image-file-status" aria-live="polite">
+          Tidak ada file dipilih
         </div>
-
       </div>
 
-
-      <div class="form-group">
-
-        <label for="resolution">
-          RESOLUSI
-        </label>
-
-        <select id="resolution">
-
-          <option value="">
-            Pilih resolusi
-          </option>
-
-        </select>
-
+      <div class="form-group prompt-group">
+        <label for="prompt">Video Prompt</label>
+        <textarea id="prompt" rows="5" placeholder=""></textarea>
       </div>
 
+      <div class="setting-row">
+        <label for="ratio">Ratio</label>
+        <select id="ratio"><option value="">Pilih</option></select>
+      </div>
+
+      <div class="setting-row">
+        <label for="duration">Duration</label>
+        <select id="duration"><option value="">Pilih</option></select>
+      </div>
+
+      <div class="setting-row resolution-row">
+        <label for="resolution">Resolution</label>
+        <select id="resolution"><option value="">Pilih</option></select>
+      </div>
+
+      <button id="generateVideo" type="button" class="generate-btn">Generate Video</button>
+      <div id="status" class="generator-status" aria-live="polite"></div>
     </div>
 
-
-    <!-- =====================================================
-         GENERATE
-    ====================================================== -->
-
-    <div class="generate-area">
-
-      <div class="generate-info">
-
-        <span class="generate-info-dot"></span>
-
-        <span>
-          ENGINE READY
-        </span>
-
-      </div>
-
-
-      <button
-        id="generateVideo"
-        type="button"
-        class="generate-btn"
-      >
-
-        <span class="generate-btn-icon">
-          ✦
-        </span>
-
-        <span class="generate-btn-text">
-          Generate Video
-        </span>
-
-        <span class="generate-btn-arrow">
-          →
-        </span>
-
-      </button>
-
-
-      <div
-        id="status"
-        class="generator-status">
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         RESULT
-    ====================================================== -->
-
-    <section
-      id="videoResult"
-      class="video-result hidden"
-    >
-
-      <div class="result-header">
-
-        <div>
-
-          <div class="result-eyebrow">
-            GENERATION COMPLETE
-          </div>
-
-          <h3>
-            Hasil Video
-          </h3>
-
-        </div>
-
-        <div class="result-ready">
-          READY
-        </div>
-
-      </div>
-
-
-      <div class="video-frame">
-
-        <div class="video-frame-top">
-
-          <span></span>
-          <span></span>
-          <span></span>
-
-        </div>
-
-        <video
-          id="video"
-          controls
-          playsinline>
-        </video>
-
-      </div>
-
-
+    <section id="videoResult" class="video-result hidden">
+      <video id="video" controls playsinline></video>
       <div class="video-actions">
-
-        <a
-          id="downloadVideo"
-          class="download-btn"
-          href="#"
-          download="gen-z-ai-video.mp4"
-        >
-
-          <span>
-            ↓
-          </span>
-
+        <a id="downloadVideo" class="download-btn" href="#" download="gen-z-ai-video.mp4">
           Download Video
-
         </a>
-
       </div>
-
     </section>
-
-
   </div>
-
 </section>
-
-
-<style>
-/* =========================================================
-   GEN-Z.AI GENERATOR STATUS UI
-   ========================================================= */
-
-.gen-z-ai-status-select {
-  color: #fff !important;
-}
-
-/* Provider / Model belum dipilih */
-#provider:has(option:checked[value=""]),
-#model:has(option:checked[value=""]) {
-  color: #ef4444 !important;
-}
-
-/* Provider / Model sudah dipilih */
-#provider:has(option:checked:not([value=""])),
-#model:has(option:checked:not([value=""])) {
-  color: #fff !important;
-}
-
-/* Gambar referensi */
-.image-file-status {
-  margin-top: 7px;
-  color: #ef4444 !important;
-  font-size: 9px;
-  font-weight: 750;
-  line-height: 1.4;
-}
-
-.image-file-status.has-file {
-  color: #fff !important;
-}
-
-/* Hilangkan badge READY pada header generator */
-.generator-header .generator-live-badge {
-  display: none !important;
-}
-
-/* Label kuning stabilo */
-.generator-eyebrow {
-  color: #facc15 !important;
-  font-weight: 900 !important;
-}
-
-.studio-section-title strong {
-  color: rgba(255,255,255,.88);
-}
-
-#auth .generator-eyebrow {
-  color: #facc15 !important;
-}
-
-/* VIDEO PROMPT */
-#prompt + .prompt-hint {
-  color: inherit;
-}
-</style>
