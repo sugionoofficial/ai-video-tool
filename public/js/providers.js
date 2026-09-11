@@ -1,24 +1,11 @@
-/* =========================================================
-   GEN-Z.AI PROVIDERS
-========================================================= */
+/* GEN-Z.AI - Provider UI */
 
 (function () {
-
   'use strict';
 
-  const GENZ = window.GENZ || (window.GENZ = {});
+  window.GENZ = window.GENZ || {};
 
-  GENZ.providers = {
-    current: null,
-    list: []
-  };
-
-
-  /* =======================================================
-     PROVIDER DEFAULT CONFIG
-  ======================================================= */
-
-  GENZ.providers.config = {
+  const CONFIG = {
 
     veo: {
       name: 'Gemini / Veo',
@@ -47,7 +34,6 @@
       ]
     },
 
-
     minimax: {
       name: 'MiniMax',
 
@@ -73,7 +59,6 @@
         '1080P'
       ]
     },
-
 
     luma: {
       name: 'Luma',
@@ -107,282 +92,182 @@
 
   };
 
+  function setOptions(
+    elementId,
+    values,
+    selected
+  ) {
 
-  /* =======================================================
-     SELECT PROVIDER
-  ======================================================= */
+    const element =
+      document.getElementById(elementId);
 
-  GENZ.providers.select = function (providerId) {
+    if (!element) return;
 
-    GENZ.providers.current =
-      providerId;
+    element.innerHTML = '';
 
+    values.forEach(value => {
 
-    document
-      .querySelectorAll('.provider')
-      .forEach(button => {
+      const option =
+        document.createElement('option');
 
-        button.classList.toggle(
-          'active',
-          button.dataset.provider === providerId
-        );
+      option.value = value;
+      option.textContent = value;
 
-      });
-
-
-    const c =
-      GENZ.providers.config[providerId] ||
-      GENZ.providers.list.find(
-        x => x.id === providerId
-      )?.capabilities;
-
-
-    if (!c) {
-      return;
-    }
-
-
-    fillOptions(
-      document.getElementById('model'),
-      c.models || []
-    );
-
-
-    fillOptions(
-      document.getElementById('duration'),
-      c.durations || []
-    );
-
-
-    fillOptions(
-      document.getElementById('aspect'),
-      c.aspects || []
-    );
-
-
-    fillOptions(
-      document.getElementById('resolution'),
-      c.resolutions || c.res || []
-    );
-
-  };
-
-
-  /* =======================================================
-     OPTION HELPER
-  ======================================================= */
-
-  function fillOptions(element, values) {
-
-    if (!element) {
-      return;
-    }
-
-
-    element.innerHTML =
-      (values || [])
-        .map(value => {
-
-          const safe =
-            GENZ.escapeHtml
-              ? GENZ.escapeHtml(value)
-              : String(value);
-
-          return `
-            <option value="${safe}">
-              ${safe}
-            </option>
-          `;
-
-        })
-        .join('');
-
-  }
-
-
-  /* =======================================================
-     RENDER PROVIDERS
-  ======================================================= */
-
-  GENZ.providers.render = function () {
-
-    const box =
-      document.getElementById(
-        'providers'
-      );
-
-
-    if (!box) {
-      return;
-    }
-
-
-    box.innerHTML = '';
-
-
-    GENZ.providers.list
-      .forEach(provider => {
-
-        const button =
-          document.createElement(
-            'button'
-          );
-
-
-        button.className =
-          'provider';
-
-
-        button.dataset.provider =
-          provider.id;
-
-
-        button.type =
-          'button';
-
-
-        button.innerHTML = `
-          ${GENZ.escapeHtml
-            ? GENZ.escapeHtml(provider.name)
-            : provider.name}
-
-          <small>
-            ${GENZ.escapeHtml
-              ? GENZ.escapeHtml(provider.adapter || '')
-              : provider.adapter || ''}
-          </small>
-        `;
-
-
-        button.addEventListener(
-          'click',
-          () => {
-
-            GENZ.providers.select(
-              provider.id
-            );
-
-          }
-        );
-
-
-        box.append(
-          button
-        );
-
-      });
-
+      element.appendChild(option);
+    });
 
     if (
-      GENZ.providers.list.length
+      selected !== undefined &&
+      values
+        .map(String)
+        .includes(String(selected))
     ) {
+      element.value = selected;
+    }
+  }
 
-      GENZ.providers.select(
-        GENZ.providers.list[0].id
+  function selectProvider(provider) {
+
+    if (!CONFIG[provider]) {
+      console.warn(
+        'Provider tidak dikenal:',
+        provider
       );
 
-
-      const generate =
-        document.getElementById(
-          'generate'
-        );
-
-
-      if (generate) {
-        generate.disabled =
-          false;
-      }
-
-    } else {
-
-      const status =
-        document.getElementById(
-          'status'
-        );
-
-
-      if (status) {
-
-        status.textContent =
-          'Belum ada provider aktif.';
-
-      }
-
-
-      const generate =
-        document.getElementById(
-          'generate'
-        );
-
-
-      if (generate) {
-        generate.disabled =
-          true;
-      }
-
+      return;
     }
 
+    const config =
+      CONFIG[provider];
+
+    const providerElement =
+      document.getElementById('provider');
+
+    if (providerElement) {
+      providerElement.value = provider;
+    }
+
+    setOptions(
+      'model',
+      config.models
+    );
+
+    setOptions(
+      'duration',
+      config.durations
+    );
+
+    setOptions(
+      'aspect',
+      config.aspects
+    );
+
+    /*
+     * Compatibility dengan UI lama
+     * yang masih memakai #ratio.
+     */
+    setOptions(
+      'ratio',
+      config.aspects
+    );
+
+    setOptions(
+      'resolution',
+      config.res
+    );
+
+    GENZ.state.provider =
+      provider;
+  }
+
+  function renderButtons() {
+
+    const container =
+      document.querySelector(
+        '[data-providers]'
+      );
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML = '';
+
+    Object.entries(CONFIG)
+      .forEach(([key, config]) => {
+
+        const button =
+          document.createElement('button');
+
+        button.type = 'button';
+
+        button.dataset.provider =
+          key;
+
+        button.textContent =
+          config.name;
+
+        container.appendChild(button);
+      });
+
+    if (
+      container.dataset
+        .providerListenerAttached
+    ) {
+      return;
+    }
+
+    container.dataset
+      .providerListenerAttached = 'true';
+
+    container.addEventListener(
+      'click',
+      event => {
+
+        const button =
+          event.target.closest(
+            '[data-provider]'
+          );
+
+        if (!button) return;
+
+        selectProvider(
+          button.dataset.provider
+        );
+      }
+    );
+  }
+
+  async function loadProviders() {
+
+    renderButtons();
+
+    const current =
+      GENZ.state.provider ||
+      document.getElementById(
+        'provider'
+      )?.value ||
+      'veo';
+
+    selectProvider(
+      CONFIG[current]
+        ? current
+        : 'veo'
+    );
+
+    return CONFIG;
+  }
+
+  GENZ.providers = {
+    config: CONFIG,
+    selectProvider,
+    loadProviders
   };
 
+  window.selectProvider =
+    selectProvider;
 
-  /* =======================================================
-     LOAD PROVIDERS
-  ======================================================= */
-
-  GENZ.providers.load =
-    async function () {
-
-      const response =
-        await fetch(
-          '/api/providers',
-          {
-            cache: 'no-store'
-          }
-        );
-
-
-      const data =
-        await response.json();
-
-
-      if (
-        !response.ok ||
-        data.success === false
-      ) {
-
-        throw new Error(
-          data.error ||
-          'Gagal memuat provider'
-        );
-
-      }
-
-
-      GENZ.providers.list =
-        Array.isArray(
-          data.providers
-        )
-          ? data.providers
-          : [];
-
-
-      GENZ.state.providers =
-        GENZ.providers.list;
-
-
-      GENZ.providers.render();
-
-    };
-
-
-  /*
-   * Compatibility dengan kode lama.
-   */
-
-  GENZ.providers.selectProvider =
-    GENZ.providers.select;
-
-  GENZ.providers.loadProviders =
-    GENZ.providers.load;
+  window.loadProviders =
+    loadProviders;
 
 })();
