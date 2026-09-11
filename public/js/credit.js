@@ -24,6 +24,7 @@
     selectedPackage: null
   };
 
+
   /* =========================================================
      HELPERS
      ========================================================= */
@@ -32,6 +33,7 @@
     return document.getElementById(id);
   }
 
+
   function getGENZState() {
     window.GENZ = window.GENZ || {};
     window.GENZ.state = window.GENZ.state || {};
@@ -39,39 +41,34 @@
     return window.GENZ.state;
   }
 
-  function getAccount() {
-    const genzState = getGENZState();
 
-    return genzState.account || {};
+  function getAccount() {
+    return getGENZState().account || {};
   }
 
+
   function getCurrentUser() {
-    const genzState = getGENZState();
+    const state = getGENZState();
+    const account = getAccount();
 
     return (
-      genzState.user ||
-      getAccount().user ||
+      state.user ||
+      account.user ||
       null
     );
   }
 
-  /* =========================================================
-     AUTH
-     ========================================================= */
 
   function isLoggedIn() {
-    const genzState = getGENZState();
+    const state = getGENZState();
     const user = getCurrentUser();
 
     return Boolean(
       user ||
-      genzState.loggedIn === true
+      state.loggedIn === true
     );
   }
 
-  /* =========================================================
-     ADMIN
-     ========================================================= */
 
   function isAdmin() {
     const account = getAccount();
@@ -82,9 +79,6 @@
     );
   }
 
-  /* =========================================================
-     NAVIGATION
-     ========================================================= */
 
   function showPage(page) {
     if (
@@ -95,41 +89,19 @@
     }
 
     window.location.hash = '#' + page;
-
     return false;
   }
 
-  /* =========================================================
-     RUPIAH
-     ========================================================= */
 
   function formatRupiah(value) {
     const number = Number(value) || 0;
 
-    return 'Rp ' + number.toLocaleString('id-ID');
+    return (
+      'Rp ' +
+      number.toLocaleString('id-ID')
+    );
   }
 
-  /* =========================================================
-     STATUS
-     ========================================================= */
-
-  function setStatus(text, type = 'info') {
-    const el = $('creditStatus');
-
-    if (!el) return;
-
-    el.className = 'credit-status';
-
-    if (text) {
-      el.classList.add(type);
-    }
-
-    el.textContent = text || '';
-  }
-
-  /* =========================================================
-     AUTH TOKEN
-     ========================================================= */
 
   function getToken() {
     try {
@@ -148,6 +120,7 @@
 
     return null;
   }
+
 
   /* =========================================================
      API
@@ -174,11 +147,14 @@
         'Bearer ' + token;
     }
 
-    const response = await fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers
-    });
+    const response = await fetch(
+      url,
+      {
+        ...options,
+        credentials: 'include',
+        headers
+      }
+    );
 
     let data = null;
 
@@ -199,8 +175,33 @@
     return data;
   }
 
+
   /* =========================================================
-     BALANCE PARSER
+     STATUS
+     ========================================================= */
+
+  function setStatus(
+    text,
+    type = 'info'
+  ) {
+    const el = $('creditStatus');
+
+    if (!el) return;
+
+    el.className =
+      'credit-status';
+
+    if (text) {
+      el.classList.add(type);
+    }
+
+    el.textContent =
+      text || '';
+  }
+
+
+  /* =========================================================
+     BALANCE
      ========================================================= */
 
   function getBalance(data) {
@@ -235,9 +236,12 @@
         value !== null &&
         value !== ''
       ) {
-        const number = Number(value);
+        const number =
+          Number(value);
 
-        if (Number.isFinite(number)) {
+        if (
+          Number.isFinite(number)
+        ) {
           return number;
         }
       }
@@ -246,13 +250,13 @@
     return 0;
   }
 
-  /* =========================================================
-     EMAIL PARSER
-     ========================================================= */
 
   function getEmail(data) {
-    const user = getCurrentUser();
-    const account = getAccount();
+    const user =
+      getCurrentUser();
+
+    const account =
+      getAccount();
 
     return (
       data?.email ||
@@ -264,9 +268,6 @@
     );
   }
 
-  /* =========================================================
-     UPDATE CREDIT UI
-     ========================================================= */
 
   function updateCreditUI(balance) {
     const formatted =
@@ -277,15 +278,9 @@
       $('creditBalance');
 
     if (balanceEl) {
-      balanceEl.textContent = formatted;
+      balanceEl.textContent =
+        formatted;
     }
-
-    /*
-      Header:
-      C 1000
-         ↑
-       saldo
-    */
 
     const headerCredits =
       $('headerCredits');
@@ -295,10 +290,6 @@
         formatted;
     }
 
-    /*
-      Legacy account credit element.
-    */
-
     const accountCredits =
       $('credits');
 
@@ -307,25 +298,16 @@
         formatted;
     }
 
-    /*
-      Keep global account state synchronized.
-    */
-
-    const account = getAccount();
+    const account =
+      getAccount();
 
     account.credits =
       Number(balance || 0);
 
-    const genzState =
-      getGENZState();
-
-    genzState.account =
+    getGENZState().account =
       account;
   }
 
-  /* =========================================================
-     UPDATE EMAIL UI
-     ========================================================= */
 
   function updateEmailUI(email) {
     const emailEl =
@@ -337,14 +319,13 @@
     }
   }
 
-  /* =========================================================
-     LOAD BALANCE
-     ========================================================= */
 
   async function loadBalance() {
     try {
       const data =
-        await api('/api/account/credits');
+        await api(
+          '/api/account/credits'
+        );
 
       const balance =
         getBalance(data);
@@ -363,17 +344,95 @@
         error
       );
 
-      /*
-        Jangan menghapus saldo header menjadi
-        0 hanya karena request sementara gagal.
-      */
-
       return null;
     }
   }
 
+
   /* =========================================================
-     LOAD TRANSACTION HISTORY
+     TRANSACTION TYPE
+     ========================================================= */
+
+  function transactionLabel(transaction) {
+    const type =
+      String(
+        transaction?.type ||
+        transaction?.transaction_type ||
+        ''
+      )
+        .trim()
+        .toLowerCase();
+
+    switch (type) {
+
+      case 'generation':
+      case 'generate':
+      case 'video_generation':
+        return 'Generate Video';
+
+      case 'image_generation':
+      case 'image':
+        return 'Generate Image';
+
+      case 'refund':
+        return 'Credit Dikembalikan';
+
+      case 'topup':
+      case 'top_up':
+        return 'Top Up Credit';
+
+      case 'admin_adjustment':
+        return 'Penyesuaian Admin';
+
+      default:
+        return (
+          transaction?.note ||
+          transaction?.description ||
+          'Transaksi Credit'
+        );
+    }
+  }
+
+
+  function transactionIcon(transaction) {
+    const type =
+      String(
+        transaction?.type ||
+        transaction?.transaction_type ||
+        ''
+      )
+        .trim()
+        .toLowerCase();
+
+    switch (type) {
+
+      case 'generation':
+      case 'generate':
+      case 'video_generation':
+        return '🎬';
+
+      case 'image_generation':
+      case 'image':
+        return '🖼️';
+
+      case 'refund':
+        return '↩️';
+
+      case 'topup':
+      case 'top_up':
+        return '💳';
+
+      case 'admin_adjustment':
+        return '🛠️';
+
+      default:
+        return 'C';
+    }
+  }
+
+
+  /* =========================================================
+     TRANSACTION HISTORY
      ========================================================= */
 
   async function loadHistory() {
@@ -397,14 +456,16 @@
               data?.transactions
             )
             ? data.transactions
-            : Array.isArray(data?.data)
+            : Array.isArray(
+                data?.data
+              )
               ? data.data
               : [];
 
       if (!transactions.length) {
         container.innerHTML = `
           <div class="credit-history-empty">
-            Belum ada riwayat transaksi.
+            Belum ada riwayat Credit.
           </div>
         `;
 
@@ -413,7 +474,7 @@
 
       container.innerHTML =
         transactions
-          .slice(0, 20)
+          .slice(0, 50)
           .map(renderTransaction)
           .join('');
 
@@ -425,11 +486,12 @@
 
       container.innerHTML = `
         <div class="credit-history-empty">
-          Riwayat credit belum tersedia.
+          Riwayat Credit belum tersedia.
         </div>
       `;
     }
   }
+
 
   /* =========================================================
      RENDER TRANSACTION
@@ -440,25 +502,34 @@
   ) {
     const amount =
       Number(
-        transaction.amount ??
-        transaction.credit ??
-        transaction.credits ??
+        transaction?.amount ??
+        transaction?.credit ??
+        transaction?.credits ??
         0
       );
 
     const positive =
       amount >= 0;
 
+    const label =
+      transactionLabel(
+        transaction
+      );
+
+    const icon =
+      transactionIcon(
+        transaction
+      );
+
     const note =
-      transaction.note ||
-      transaction.description ||
-      transaction.type ||
-      'Transaksi Credit';
+      transaction?.note ||
+      transaction?.description ||
+      '';
 
     const dateValue =
-      transaction.created_at ||
-      transaction.createdAt ||
-      transaction.date ||
+      transaction?.created_at ||
+      transaction?.createdAt ||
+      transaction?.date ||
       null;
 
     let date = '';
@@ -468,44 +539,100 @@
         date =
           new Date(
             dateValue
-          ).toLocaleString('id-ID');
+          ).toLocaleString(
+            'id-ID',
+            {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }
+          );
       } catch {
         date =
           String(dateValue);
       }
     }
 
+    const balanceAfter =
+      transaction?.balance_after ??
+      transaction?.balanceAfter ??
+      null;
+
     return `
       <div
+        class="credit-history-item"
         style="
           display:flex;
-          justify-content:space-between;
           align-items:center;
           gap:12px;
-          padding:12px;
-          border-radius:12px;
+          padding:13px;
+          border-radius:13px;
           background:rgba(255,255,255,.025);
-          border:1px solid rgba(255,255,255,.05);
+          border:1px solid rgba(255,255,255,.06);
         "
       >
 
-        <div style="min-width:0;">
+        <div
+          style="
+            width:34px;
+            height:34px;
+            flex-shrink:0;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:10px;
+            background:${
+              positive
+                ? 'rgba(34,197,94,.12)'
+                : 'rgba(239,68,68,.12)'
+            };
+            font-size:15px;
+          "
+        >
+          ${icon}
+        </div>
+
+        <div
+          style="
+            min-width:0;
+            flex:1;
+          "
+        >
 
           <div
             style="
               color:#fff;
               font-size:11px;
-              font-weight:700;
+              font-weight:800;
             "
           >
-            ${escapeHtml(note)}
+            ${escapeHtml(label)}
           </div>
+
+          ${
+            note
+              ? `
+                <div
+                  style="
+                    margin-top:3px;
+                    color:rgba(255,255,255,.42);
+                    font-size:9px;
+                    line-height:1.4;
+                  "
+                >
+                  ${escapeHtml(note)}
+                </div>
+              `
+              : ''
+          }
 
           <div
             style="
-              color:rgba(255,255,255,.35);
-              font-size:9px;
-              margin-top:3px;
+              margin-top:4px;
+              color:rgba(255,255,255,.3);
+              font-size:8px;
             "
           >
             ${escapeHtml(date)}
@@ -513,22 +640,54 @@
 
         </div>
 
-        <strong
+        <div
           style="
             flex-shrink:0;
-            color:${positive
-              ? '#86efac'
-              : '#fca5a5'};
-            font-size:11px;
+            text-align:right;
           "
         >
-          ${positive ? '+' : ''}
-          ${amount.toLocaleString('id-ID')} C
-        </strong>
+
+          <div
+            style="
+              color:${
+                positive
+                  ? '#86efac'
+                  : '#fca5a5'
+              };
+              font-size:11px;
+              font-weight:900;
+            "
+          >
+            ${
+              positive
+                ? '+'
+                : ''
+            }${amount.toLocaleString('id-ID')} C
+          </div>
+
+          ${
+            balanceAfter !== null
+              ? `
+                <div
+                  style="
+                    margin-top:3px;
+                    color:rgba(255,255,255,.28);
+                    font-size:8px;
+                  "
+                >
+                  Saldo:
+                  ${Number(balanceAfter).toLocaleString('id-ID')} C
+                </div>
+              `
+              : ''
+          }
+
+        </div>
 
       </div>
     `;
   }
+
 
   /* =========================================================
      HTML ESCAPE
@@ -536,18 +695,36 @@
 
   function escapeHtml(value) {
     return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(
+        /&/g,
+        '&amp;'
+      )
+      .replace(
+        /</g,
+        '&lt;'
+      )
+      .replace(
+        />/g,
+        '&gt;'
+      )
+      .replace(
+        /"/g,
+        '&quot;'
+      )
+      .replace(
+        /'/g,
+        '&#039;'
+      );
   }
+
 
   /* =========================================================
      PACKAGE
      ========================================================= */
 
-  function getPackage(credit) {
+  function getPackage(
+    credit
+  ) {
     return state.packages.find(
       item =>
         Number(item.credit) ===
@@ -555,9 +732,6 @@
     );
   }
 
-  /* =========================================================
-     SAVE SELECTED PACKAGE
-     ========================================================= */
 
   function saveSelectedPackage(
     packageData
@@ -570,17 +744,16 @@
         Number(packageData.price)
     };
 
-    const genzState =
-      getGENZState();
+    getGENZState()
+      .selectedCreditPackage = {
+        credit:
+          Number(packageData.credit),
 
-    genzState.selectedCreditPackage = {
-      credit:
-        Number(packageData.credit),
-
-      price:
-        Number(packageData.price)
-    };
+        price:
+          Number(packageData.price)
+      };
   }
+
 
   /* =========================================================
      PACKAGE PURCHASE
@@ -594,7 +767,7 @@
 
     if (!packageData) {
       setStatus(
-        'Paket credit tidak ditemukan.',
+        'Paket Credit tidak ditemukan.',
         'error'
       );
 
@@ -605,36 +778,31 @@
       packageData
     );
 
-    /*
-      ADMIN / OWNER
-      Langsung menuju Top Up Setting.
-    */
-
     if (isAdmin()) {
+
       setStatus(
         `Paket C ${packageData.credit} dipilih.`,
         'success'
       );
 
-      setTimeout(() => {
-        showPage('topup-settings');
-      }, 150);
+      setTimeout(
+        () => {
+          showPage(
+            'topup-settings'
+          );
+        },
+        150
+      );
 
       return;
     }
 
-    /*
-      USER BIASA
-      Halaman pembayaran belum dibuat.
-      Jangan mengurangi saldo.
-      Jangan memanggil endpoint top-up.
-    */
-
     setStatus(
-      `Paket C ${packageData.credit} dipilih. Total ${formatRupiah(packageData.price)}. Pembayaran akan tersedia pada tahap berikutnya.`,
+      `Paket C ${packageData.credit} dipilih. Total ${formatRupiah(packageData.price)}. Halaman pembayaran akan digunakan setelah sistem pembayaran diaktifkan.`,
       'info'
     );
   }
+
 
   /* =========================================================
      BIND PACKAGES
@@ -654,11 +822,13 @@
       return;
     }
 
-    container.dataset.genzBound = '1';
+    container.dataset.genzBound =
+      '1';
 
     container.addEventListener(
       'click',
       event => {
+
         const button =
           event.target.closest(
             '.credit-package'
@@ -674,7 +844,9 @@
           );
 
         if (
-          !Number.isFinite(credit)
+          !Number.isFinite(
+            credit
+          )
         ) {
           return;
         }
@@ -686,8 +858,9 @@
     );
   }
 
+
   /* =========================================================
-     BACK BUTTON
+     BACK
      ========================================================= */
 
   function bindBack() {
@@ -704,7 +877,8 @@
       return;
     }
 
-    button.dataset.genzBound = '1';
+    button.dataset.genzBound =
+      '1';
 
     button.addEventListener(
       'click',
@@ -714,34 +888,29 @@
     );
   }
 
+
   /* =========================================================
      LOAD HTML
      ========================================================= */
 
   async function loadHtml() {
-    /*
-      Jika app.js sudah mempunyai
-      GENZ.loadComponent(), gunakan itu.
-    */
 
     if (
       typeof window.GENZ?.loadComponent ===
       'function'
     ) {
+
       const result =
         await window.GENZ.loadComponent(
           'credit',
           '#pageContainer'
         );
 
-      state.htmlLoaded = result !== false;
+      state.htmlLoaded =
+        result !== false;
 
       return state.htmlLoaded;
     }
-
-    /*
-      Fallback loader.
-    */
 
     const container =
       document.querySelector(
@@ -753,6 +922,7 @@
     }
 
     try {
+
       const response =
         await fetch(
           '/components/credit.html',
@@ -770,27 +940,32 @@
       container.innerHTML =
         await response.text();
 
-      state.htmlLoaded = true;
+      state.htmlLoaded =
+        true;
 
       return true;
 
     } catch (error) {
+
       console.error(
         '[GEN-Z CREDIT] HTML error',
         error
       );
 
-      state.htmlLoaded = false;
+      state.htmlLoaded =
+        false;
 
       return false;
     }
   }
+
 
   /* =========================================================
      LOAD PAGE
      ========================================================= */
 
   async function load() {
+
     if (state.loading) {
       return;
     }
@@ -803,11 +978,11 @@
     state.loading = true;
 
     try {
-      setStatus('', 'info');
 
-      /*
-        Pastikan komponen HTML sudah ada.
-      */
+      setStatus(
+        '',
+        'info'
+      );
 
       if (
         !$('creditPage') &&
@@ -816,29 +991,18 @@
         await loadHtml();
       }
 
-      /*
-        Ambil saldo terbaru dari server.
-      */
-
       await loadBalance();
-
-      /*
-        Bind hanya sekali.
-      */
 
       bindPackages();
       bindBack();
 
-      /*
-        Riwayat tidak boleh membuat
-        halaman Credit gagal total.
-      */
-
       await loadHistory();
 
-      state.loaded = true;
+      state.loaded =
+        true;
 
     } catch (error) {
+
       console.error(
         '[GEN-Z CREDIT] load error',
         error
@@ -851,9 +1015,12 @@
       );
 
     } finally {
-      state.loading = false;
+
+      state.loading =
+        false;
     }
   }
+
 
   /* =========================================================
      REFRESH
@@ -864,17 +1031,20 @@
     await loadHistory();
   }
 
+
   /* =========================================================
      INIT
      ========================================================= */
 
   async function init() {
+
     if (!$('creditPage')) {
       await loadHtml();
     }
 
     await load();
   }
+
 
   /* =========================================================
      PUBLIC API
@@ -884,17 +1054,16 @@
     window.GENZ || {};
 
   window.GENZ.credit = {
-    load,
-    init,
-    refresh,
-    loadBalance,
-    loadHistory,
 
-    /*
-      Backward compatibility:
-      generator / app lama mungkin memanggil
-      handleTopup().
-    */
+    load,
+
+    init,
+
+    refresh,
+
+    loadBalance,
+
+    loadHistory,
 
     handleTopup:
       handlePackagePurchase,
@@ -906,6 +1075,7 @@
     isAdmin,
 
     state
+
   };
 
 })();
