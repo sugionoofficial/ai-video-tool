@@ -1,0 +1,157 @@
+<section class="page-card topup-settings-page" id="topupSettingsPage">
+
+  <div class="page-header">
+
+    <button
+      type="button"
+      class="back-btn"
+      id="topupSettingsBack">
+      ←
+    </button>
+
+    <div>
+
+      <h2>
+        Top up Setting
+      </h2>
+
+      <p>
+        Kelola dan tambahkan kredit user.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="topupSettingsStatus"
+    class="admin-status-message"
+    aria-live="polite">
+  </div>
+
+
+  <div class="admin-card">
+
+    <div class="admin-card-header">
+
+      <h3>
+        Tambah Kredit User
+      </h3>
+
+      <button
+        type="button"
+        id="topupSettingsRefresh">
+        Refresh
+      </button>
+
+    </div>
+
+
+    <form id="topupSettingsForm">
+
+      <label for="topupSettingsUser">
+        User
+      </label>
+
+      <select
+        id="topupSettingsUser"
+        required>
+
+        <option value="">
+          Pilih user
+        </option>
+
+      </select>
+
+
+      <div
+        id="topupSettingsBalance"
+        class="topup-settings-balance">
+
+        Saldo saat ini: -
+
+      </div>
+
+
+      <label for="topupSettingsAmount">
+        Jumlah Kredit
+      </label>
+
+      <input
+        id="topupSettingsAmount"
+        type="number"
+        min="1"
+        step="1"
+        placeholder="Contoh: 100"
+        required>
+
+
+      <label for="topupSettingsNote">
+        Catatan
+      </label>
+
+      <textarea
+        id="topupSettingsNote"
+        rows="3"
+        placeholder="Contoh: Penambahan kredit manual oleh admin"></textarea>
+
+
+      <button
+        type="submit"
+        class="admin-primary-btn"
+        id="topupSettingsSubmit">
+
+        Tambahkan Kredit
+
+      </button>
+
+    </form>
+
+  </div>
+
+
+  <div class="admin-card">
+
+    <div class="admin-card-header">
+
+      <h3>
+        Daftar User
+      </h3>
+
+    </div>
+
+
+    <div class="admin-table-wrap">
+
+      <table class="admin-table">
+
+        <thead>
+
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Kredit</th>
+            <th>Aksi</th>
+          </tr>
+
+        </thead>
+
+
+        <tbody id="topupSettingsUsers">
+
+          <tr>
+            <td colspan="4">
+              Memuat...
+            </td>
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</section>
