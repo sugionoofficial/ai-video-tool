@@ -30,10 +30,6 @@ import {
 function canonicalProvider(value) {
   const raw = String(value || "").trim().toLowerCase();
 
-  /*
-   * Alias hanya untuk kompatibilitas provider bawaan.
-   * ID custom seperti "veo-production" tetap dipertahankan.
-   */
   const aliases = {
     gemini: "veo",
     veo: "veo",
@@ -51,10 +47,6 @@ function providerId(value) {
     throw new HttpError("ID provider tidak valid.", 400);
   }
 
-  /*
-   * "gemini" adalah alias internal.
-   * Gunakan "veo" untuk provider Gemini/Veo.
-   */
   if (id === "gemini") {
     throw new HttpError(
       "ID provider reserved. Gunakan ID selain gemini.",
@@ -263,7 +255,10 @@ async function currentUser(request, env) {
 
 async function requireUser(request, env) {
   const user =
-    await currentUser(request, env);
+    await currentUser(
+      request,
+      env
+    );
 
   if (!user?.id) {
     throw new HttpError(
@@ -277,7 +272,10 @@ async function requireUser(request, env) {
 
 async function requireAdmin(request, env) {
   const user =
-    await requireUser(request, env);
+    await requireUser(
+      request,
+      env
+    );
 
   const res = await sb(
     `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
@@ -491,9 +489,6 @@ function publicProvider(p) {
  * ============================================================
  * DATA URL
  * ============================================================
- *
- * Tetap dipertahankan untuk kompatibilitas
- * validasi request image reference.
  */
 
 function parseDataUrl(
@@ -715,14 +710,6 @@ async function getJob(
 /*
  * ============================================================
  * GENERATE ROUTER
- * ============================================================
- *
- * Tidak ada lagi:
- * - generateVeo()
- * - generateMiniMax()
- * - generateLuma()
- *
- * Semua ditangani adapter provider.
  * ============================================================
  */
 
@@ -952,10 +939,6 @@ async function handleGenerate(
       env
     );
 
-    /*
-     * Semua detail API provider sekarang
-     * ditangani file adapter masing-masing.
-     */
     const result =
       await adapter.generate(
         body,
@@ -1202,211 +1185,192 @@ async function handleStatus(
     );
   }
 
-  try {
-    const result =
-      await adapter.status(
-        externalId,
-        provider,
-        env
-      );
-
-    if (!result) {
-      throw new HttpError(
-        "Provider tidak mengembalikan status.",
-        502
-      );
-    }
-
-    result.provider = id;
-
-    if (
-      result.status ===
-      "completed"
-    ) {
-      const proxyUrl =
-        `/api/video?provider=${encodeURIComponent(
-          id
-        )}&jobId=${encodeURIComponent(
-          job.id
-        )}`;
-
-      const nextMetadata = {
-        ...(job.metadata || {})
-      };
-
-      /*
-       * Adapter MiniMax mengembalikan
-       * provider file ID.
-       *
-       * Adapter lain biasanya mengembalikan
-       * URL provider.
-       */
-      if (result.fileId) {
-        nextMetadata.provider_file_id =
-          result.fileId;
-      }
-
-      await updateJob(
-        job.id,
-        {
-          status:
-            "completed",
-
-          provider_status:
-            "completed",
-
-          last_error: null,
-
-          last_error_code: null,
-
-          video_url:
-            result.videoUrl ||
-            proxyUrl,
-
-          metadata:
-            nextMetadata
-        },
-        env
-      );
-
-      await recordJobEvent(
-        job.id,
-        user.id,
-        "completed",
-        {
-          providerStatus:
-            "completed",
-
-          message:
-            "Provider generation completed",
-
-          metadata: {
-            adapter:
-              provider.adapter
-          }
-        },
-        env
-      );
-
-      result.videoUrl =
-        proxyUrl;
-
-      /*
-       * Jangan expose provider file ID
-       * ke frontend.
-       */
-      delete result.fileId;
-    } else if (
-      result.status ===
-      "failed"
-    ) {
-      await updateJob(
-        job.id,
-        {
-          status: "failed",
-
-          provider_status:
-            "failed",
-
-          last_error:
-            result.error ||
-            "Provider reported failure",
-
-          last_error_code:
-            "provider_failed"
-        },
-        env
-      );
-
-      await recordJobEvent(
-        job.id,
-        user.id,
-        "failed",
-        {
-          providerStatus:
-            "failed",
-
-          errorCode:
-            "provider_failed",
-
-          message:
-            result.error ||
-            "Provider reported failure"
-        },
-        env
-      );
-
-      await refundJob(
-        job.id,
-        env
-      );
-
-      await recordJobEvent(
-        job.id,
-        user.id,
-        "refunded",
-        {
-          message:
-            "Credit refunded after provider failure"
-        },
-        env
-      );
-    } else {
-      await updateJob(
-        job.id,
-        {
-          attempt_count:
-            Number(
-              job.attempt_count ||
-                0
-            ) + 1,
-
-          provider_status:
-            "processing"
-        },
-        env
-      );
-
-      await recordJobEvent(
-        job.id,
-        user.id,
-        "poll_processing",
-        {
-          providerStatus:
-            "processing",
-
-          message:
-            "Provider still processing",
-
-          metadata: {
-            adapter:
-              provider.adapter
-          }
-        },
-        env
-      );
-    }
-
-    return json(
-      {
-        jobId: job.id,
-        ...result
-      },
-      200,
+  const result =
+    await adapter.status(
+      externalId,
+      provider,
       env
     );
-  } catch (err) {
-    throw err;
+
+  if (!result) {
+    throw new HttpError(
+      "Provider tidak mengembalikan status.",
+      502
+    );
   }
+
+  result.provider = id;
+
+  if (
+    result.status ===
+    "completed"
+  ) {
+    const proxyUrl =
+      `/api/video?provider=${encodeURIComponent(
+        id
+      )}&jobId=${encodeURIComponent(
+        job.id
+      )}`;
+
+    const nextMetadata = {
+      ...(job.metadata || {})
+    };
+
+    if (result.fileId) {
+      nextMetadata.provider_file_id =
+        result.fileId;
+    }
+
+    await updateJob(
+      job.id,
+      {
+        status:
+          "completed",
+
+        provider_status:
+          "completed",
+
+        last_error: null,
+
+        last_error_code: null,
+
+        video_url:
+          result.videoUrl ||
+          proxyUrl,
+
+        metadata:
+          nextMetadata
+      },
+      env
+    );
+
+    await recordJobEvent(
+      job.id,
+      user.id,
+      "completed",
+      {
+        providerStatus:
+          "completed",
+
+        message:
+          "Provider generation completed",
+
+        metadata: {
+          adapter:
+            provider.adapter
+        }
+      },
+      env
+    );
+
+    result.videoUrl =
+      proxyUrl;
+
+    delete result.fileId;
+  } else if (
+    result.status ===
+    "failed"
+  ) {
+    await updateJob(
+      job.id,
+      {
+        status: "failed",
+
+        provider_status:
+          "failed",
+
+        last_error:
+          result.error ||
+          "Provider reported failure",
+
+        last_error_code:
+          "provider_failed"
+      },
+      env
+    );
+
+    await recordJobEvent(
+      job.id,
+      user.id,
+      "failed",
+      {
+        providerStatus:
+          "failed",
+
+        errorCode:
+          "provider_failed",
+
+        message:
+          result.error ||
+          "Provider reported failure"
+      },
+      env
+    );
+
+    await refundJob(
+      job.id,
+      env
+    );
+
+    await recordJobEvent(
+      job.id,
+      user.id,
+      "refunded",
+      {
+        message:
+          "Credit refunded after provider failure"
+      },
+      env
+    );
+  } else {
+    await updateJob(
+      job.id,
+      {
+        attempt_count:
+          Number(
+            job.attempt_count ||
+              0
+          ) + 1,
+
+        provider_status:
+          "processing"
+      },
+      env
+    );
+
+    await recordJobEvent(
+      job.id,
+      user.id,
+      "poll_processing",
+      {
+        providerStatus:
+          "processing",
+
+        message:
+          "Provider still processing",
+
+        metadata: {
+          adapter:
+            provider.adapter
+        }
+      },
+      env
+    );
+  }
+
+  return json(
+    {
+      jobId: job.id,
+      ...result
+    },
+    200,
+    env
+  );
 }
 
 /*
  * ============================================================
  * VIDEO PROXY ROUTER
- * ============================================================
- *
- * Worker tidak mengetahui URL/API provider.
- * Adapter masing-masing menangani fetch video.
  * ============================================================
  */
 
@@ -1515,15 +1479,6 @@ async function handleVideo(
     );
   }
 
-  /*
-   * MiniMax menyimpan provider_file_id
-   * karena URL file-nya bersifat sementara.
-   *
-   * Adapter lain menggunakan video_url.
-   *
-   * Perbedaan ini adalah routing metadata,
-   * bukan logic API provider.
-   */
   let target;
 
   if (
@@ -1564,10 +1519,6 @@ async function handleVideo(
     }
   }
 
-  /*
-   * Seluruh validasi host dan pengambilan
-   * video dilakukan adapter provider.
-   */
   const response =
     await adapter.fetchVideo(
       target,
@@ -1642,16 +1593,36 @@ async function transactionApi(
       )
     );
 
+  /*
+   * FIX:
+   *
+   * credit_transactions tidak memiliki:
+   * - job_id
+   *
+   * Kolom referensi yang tersedia adalah:
+   * - reference_id
+   *
+   * Jadi jangan request job_id karena
+   * akan menyebabkan Supabase error 400/500.
+   */
   const rows =
     await sb(
       `/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(
         user.id
-      )}&select=id,amount,balance_after,type,note,job_id,created_at&order=created_at.desc&limit=${limit}`,
+      )}&select=id,amount,balance_after,type,reference_id,note,created_at&order=created_at.desc&limit=${limit}`,
       {},
       env
     );
 
   if (!rows.ok) {
+    const data =
+      await safeJson(rows);
+
+    console.error(
+      "credit transaction query failed",
+      data
+    );
+
     throw new HttpError(
       "Gagal mengambil riwayat credit.",
       500
@@ -1969,12 +1940,6 @@ async function adminApi(
   const url =
     new URL(request.url);
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN JOBS
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/jobs" &&
@@ -2046,12 +2011,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * JOB EVENTS
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/job-events" &&
@@ -2108,12 +2067,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN PROVIDERS GET
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/providers" &&
@@ -2169,32 +2122,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN PROVIDER POST
-   * ----------------------------------------------------------
-   *
-   * Kompatibel dengan frontend lama:
-   * {
-   *   id,
-   *   name,
-   *   adapter,
-   *   api_key,
-   *   enabled,
-   *   config
-   * }
-   *
-   * Sekaligus mendukung:
-   * {
-   *   id,
-   *   name,
-   *   api_key
-   * }
-   *
-   * Adapter akan diinfer dari name/id.
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/providers" &&
@@ -2227,12 +2154,6 @@ async function adminApi(
       );
     }
 
-    /*
-     * Prioritas:
-     * 1. adapter eksplisit
-     * 2. infer dari name
-     * 3. infer dari id
-     */
     let adapterValue =
       String(
         body.adapter || ""
@@ -2359,12 +2280,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN PROVIDER PUT
-   * ----------------------------------------------------------
-   */
-
   const m =
     url.pathname.match(
       /^\/api\/admin\/providers\/([^/]+)$/
@@ -2431,15 +2346,6 @@ async function adminApi(
       patch.adapter =
         requested;
     }
-
-    /*
-     * Jika nama diubah tetapi adapter
-     * tidak diberikan, kita tidak otomatis
-     * mengganti adapter provider yang sudah ada.
-     *
-     * Ini mencegah rename provider
-     * secara tidak sengaja memutus konfigurasi.
-     */
 
     if (
       body.api_key !==
@@ -2539,12 +2445,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN PROVIDER DELETE
-   * ----------------------------------------------------------
-   */
-
   if (
     m &&
     request.method ===
@@ -2604,12 +2504,6 @@ async function adminApi(
       env
     );
   }
-
-  /*
-   * ----------------------------------------------------------
-   * ADMIN PROVIDER TOGGLE
-   * ----------------------------------------------------------
-   */
 
   const mt =
     url.pathname.match(
@@ -2691,12 +2585,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN TOPUP LIST
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/topup-requests" &&
@@ -2769,12 +2657,6 @@ async function adminApi(
       env
     );
   }
-
-  /*
-   * ----------------------------------------------------------
-   * ADMIN TOPUP APPROVE / REJECT
-   * ----------------------------------------------------------
-   */
 
   const tr =
     url.pathname.match(
@@ -2864,12 +2746,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN CONTACT GET
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/contact" &&
@@ -2901,12 +2777,6 @@ async function adminApi(
       env
     );
   }
-
-  /*
-   * ----------------------------------------------------------
-   * ADMIN CONTACT POST
-   * ----------------------------------------------------------
-   */
 
   if (
     url.pathname ===
@@ -2998,12 +2868,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN USERS
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/users" &&
@@ -3087,8 +2951,16 @@ async function adminApi(
    * ----------------------------------------------------------
    * ADMIN TRANSACTIONS
    * ----------------------------------------------------------
+   *
+   * FIX:
+   *
+   * credit_transactions tidak memiliki:
+   * - job_id
+   * - admin_user_id
+   *
+   * Kolom yang tersedia untuk referensi:
+   * - reference_id
    */
-
   if (
     url.pathname ===
       "/api/admin/transactions" &&
@@ -3138,12 +3010,20 @@ async function adminApi(
       await sb(
         `/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(
           userId
-        )}&select=id,amount,balance_after,type,note,job_id,admin_user_id,created_at&order=created_at.desc&limit=${limit}`,
+        )}&select=id,amount,balance_after,type,reference_id,note,created_at&order=created_at.desc&limit=${limit}`,
         {},
         env
       );
 
     if (!tx.ok) {
+      const data =
+        await safeJson(tx);
+
+      console.error(
+        "admin credit transaction query failed",
+        data
+      );
+
       throw new HttpError(
         "Gagal mengambil riwayat credit.",
         500
@@ -3161,12 +3041,6 @@ async function adminApi(
       env
     );
   }
-
-  /*
-   * ----------------------------------------------------------
-   * ADMIN CREDIT ADJUSTMENT
-   * ----------------------------------------------------------
-   */
 
   if (
     url.pathname ===
@@ -3263,12 +3137,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN LIST
-   * ----------------------------------------------------------
-   */
-
   if (
     url.pathname ===
       "/api/admin/admins" &&
@@ -3320,12 +3188,6 @@ async function adminApi(
       env
     );
   }
-
-  /*
-   * ----------------------------------------------------------
-   * ADMIN ADD
-   * ----------------------------------------------------------
-   */
 
   if (
     url.pathname ===
@@ -3411,12 +3273,6 @@ async function adminApi(
       env
     );
   }
-
-  /*
-   * ----------------------------------------------------------
-   * ADMIN REMOVE
-   * ----------------------------------------------------------
-   */
 
   if (
     url.pathname ===
