@@ -1,0 +1,33 @@
+GEN-Z.AI — PRECISION UI PATCH
+=================================
+
+Designed against the supplied 857px mobile reference.
+
+Files:
+1. public/components/header.html
+2. public/components/account.html
+3. public/components/generator.html
+4. public/css/generator.css
+
+Key visual measurements:
+- Main Generate content: 38px left/right edge at 857px viewport.
+- Header logo/subtitle aligns to the same 38px grid on mobile.
+- Generate form max width: 781px.
+- Provider/Model controls: 78px high.
+- Reference thumbnail: 170x126px.
+- Add tile: 136x126px.
+- Prompt: compact dark textarea.
+- Ratio + Duration: two equal columns.
+- Resolution: full width.
+- Generate Video: 82px high.
+- Brand subtitle: "AI Creative Engine" in red.
+- Top-right: hamburger only.
+
+Compatibility:
+- Existing generator.js selectors are preserved.
+- Existing account.js selectors account-container/accountBtn/accountMenu/adminPanel/contactAdmin/logout are preserved.
+- Credit DOM id remains hidden for account.js compatibility; credit display should be rendered only by the Generate-page-specific UI in the next integration pass.
+
+IMPORTANT:
+Replace these files in the project rather than adding duplicate components.
+Do not add a second header/account component.
