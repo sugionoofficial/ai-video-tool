@@ -1,932 +1,544 @@
 /* =========================================================
-   GEN-Z.AI
-   CREDIT MODULE
-   public/js/credit.js
+   GEN-Z.AI - CREDIT PAGE
    ========================================================= */
 
 (function () {
+  'use strict';
 
-  "use strict";
-
-
-  const GENZ =
-    window.GENZ ||
-    (window.GENZ = {});
-
-
-  /* =======================================================
-     HELPERS
-     ======================================================= */
+  const state = {
+    loaded: false,
+    loading: false,
+    packages: [
+      { credit: 10, price: 10000 },
+      { credit: 50, price: 50000 },
+      { credit: 100, price: 100000 },
+      { credit: 200, price: 200000 },
+      { credit: 300, price: 300000 },
+      { credit: 400, price: 400000 },
+      { credit: 500, price: 500000 }
+    ]
+  };
 
   function $(id) {
-
     return document.getElementById(id);
-
   }
-
-
-  function isLoggedIn() {
-
-    return Boolean(
-      GENZ.state &&
-      GENZ.state.loggedIn === true &&
-      GENZ.state.user
-    );
-
-  }
-
 
   function isAdmin() {
+    const account = window.GENZ?.state?.account || {};
+
+    return (
+      account.isAdmin === true &&
+      account.roleValidated === true
+    );
+  }
+
+  function isLoggedIn() {
+    const state = window.GENZ?.state || {};
 
     return Boolean(
-      GENZ.state &&
-      GENZ.state.account &&
-      GENZ.state.account.isAdmin === true &&
-      GENZ.state.account.roleValidated === true
+      state.user ||
+      state.account?.user ||
+      state.loggedIn === true
     );
-
   }
 
+  function formatRupiah(value) {
+    const number = Number(value) || 0;
 
-  function escapeHtml(value) {
+    return 'Rp ' + number.toLocaleString('id-ID');
+  }
 
-    if (
-      typeof GENZ.escapeHtml === "function"
-    ) {
+  function setStatus(text, type = 'info') {
+    const el = $('creditStatus');
 
-      return GENZ.escapeHtml(
-        String(value ?? "")
-      );
+    if (!el) return;
 
+    el.className = 'credit-status';
+
+    if (text) {
+      el.classList.add(type);
     }
 
-
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-
+    el.textContent = text || '';
   }
 
-
-  async function getToken() {
-
+  function getToken() {
     try {
-
       if (
-        GENZ.auth &&
-        typeof GENZ.auth.token === "function"
+        window.GENZ &&
+        window.GENZ.auth &&
+        typeof window.GENZ.auth.token === 'function'
       ) {
-
-        return await GENZ.auth.token();
-
+        return window.GENZ.auth.token();
       }
-
-    } catch (_) {}
+    } catch (error) {
+      console.warn('[GEN-Z CREDIT] token error', error);
+    }
 
     return null;
-
   }
 
-
-  async function api(
-    url,
-    options = {}
-  ) {
-
-    const authToken =
-      await getToken();
-
+  async function api(url, options = {}) {
+    const token = getToken();
 
     const headers = {
-      Accept:
-        "application/json",
-
-      ...(options.body
-        ? {
-            "Content-Type":
-              "application/json"
-          }
-        : {}),
-
-      ...(authToken
-        ? {
-            Authorization:
-              `Bearer ${authToken}`
-          }
-        : {}),
-
+      Accept: 'application/json',
       ...(options.headers || {})
-
     };
 
-
-    const response =
-      await fetch(
-        url,
-        {
-          ...options,
-          credentials:
-            "include",
-          headers
-        }
-      );
-
-
-    let data =
-      null;
-
-
-    try {
-
-      data =
-        await response.json();
-
-    } catch (_) {
-
-      data =
-        null;
-
+    if (options.body && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
     }
 
+    if (token) {
+      headers.Authorization = 'Bearer ' + token;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers
+    });
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
 
     if (!response.ok) {
-
-      throw new Error(
+      const message =
         data?.error ||
         data?.message ||
-        `HTTP ${response.status}`
-      );
+        'Permintaan gagal.';
 
+      throw new Error(message);
     }
-
 
     return data;
-
   }
 
+  function getBalance(data) {
+    if (!data) return 0;
 
-  /* =======================================================
-     BALANCE
-     ======================================================= */
+    const candidates = [
+      data.credits,
+      data.credit,
+      data.balance,
+      data.current_credits,
+      data.currentCredit,
+      data.user?.credits,
+      data.account?.credits
+    ];
+
+    for (const value of candidates) {
+      if (value !== undefined && value !== null) {
+        const number = Number(value);
+
+        if (Number.isFinite(number)) {
+          return number;
+        }
+      }
+    }
+
+    return 0;
+  }
 
   async function loadBalance() {
-
-    const element =
-      $("creditBalance");
-
-
-    if (!element) {
-      return 0;
-    }
-
+    const balanceEl = $('creditBalance');
+    const emailEl = $('creditUserEmail');
 
     try {
+      const data = await api('/api/account/credits');
 
-      const data =
-        await api(
-          "/api/account/credits",
-          {
-            method: "GET"
-          }
-        );
+      const balance = getBalance(data);
 
-
-      const credits =
-        Number(
-          data?.credits ??
-          data?.credit ??
-          data?.balance ??
-          0
-        );
-
-
-      element.textContent =
-        credits.toLocaleString(
-          "id-ID"
-        );
-
-
-      /*
-       * Simpan juga ke global state.
-       */
-
-      GENZ.state =
-        GENZ.state ||
-        {};
-
-
-      GENZ.state.account =
-        {
-          ...(GENZ.state.account || {}),
-          credits
-        };
-
-
-      /*
-       * Sinkronkan modul account
-       * jika tersedia.
-       */
-
-      if (
-        GENZ.account &&
-        typeof GENZ.account.updateCredits ===
-          "function"
-      ) {
-
-        GENZ.account.updateCredits(
-          credits
-        );
-
+      if (balanceEl) {
+        balanceEl.textContent = balance.toLocaleString('id-ID');
       }
 
+      const user =
+        window.GENZ?.state?.user ||
+        window.GENZ?.state?.account?.user ||
+        null;
 
-      /*
-       * Sinkronkan header jika element tersedia.
-       */
+      const email =
+        data?.email ||
+        data?.user?.email ||
+        user?.email ||
+        window.GENZ?.state?.account?.email ||
+        '-';
 
-      const headerCredits =
-        $("headerCredits");
-
-
-      if (headerCredits) {
-
-        headerCredits.textContent =
-          credits.toLocaleString(
-            "id-ID"
-          );
-
+      if (emailEl) {
+        emailEl.textContent = email;
       }
 
+      updateHeaderCredit(balance);
 
-      return credits;
+      return balance;
 
     } catch (error) {
+      console.error('[GEN-Z CREDIT] balance error', error);
 
-      console.error(
-        "[CREDIT] Gagal memuat saldo:",
-        error
-      );
-
-
-      element.textContent =
-        "0";
-
+      if (balanceEl) {
+        balanceEl.textContent = '0';
+      }
 
       return 0;
-
     }
-
   }
 
+  function updateHeaderCredit(balance) {
+    const headerCredits = $('headerCredits');
 
-  /* =======================================================
-     EMAIL
-     ======================================================= */
-
-  function loadUser() {
-
-    const element =
-      $("creditUserEmail");
-
-
-    if (!element) {
-      return;
+    if (headerCredits) {
+      headerCredits.textContent =
+        Number(balance || 0).toLocaleString('id-ID');
     }
 
+    const accountCredits = $('credits');
 
-    const email =
-      GENZ.state?.user?.email ||
-      "User";
-
-
-    element.textContent =
-      email;
-
+    if (accountCredits) {
+      accountCredits.textContent =
+        Number(balance || 0).toLocaleString('id-ID');
+    }
   }
-
-
-  /* =======================================================
-     HISTORY
-     ======================================================= */
 
   async function loadHistory() {
+    const container = $('creditHistory');
 
-    const container =
-      $("creditHistory");
-
-
-    if (!container) {
-      return;
-    }
-
-
-    container.innerHTML =
-      `
-        <div class="credit-history-empty">
-          Memuat riwayat...
-        </div>
-      `;
-
+    if (!container) return;
 
     try {
-
-      /*
-       * Endpoint transaksi akun.
-       * Jika backend belum menyediakan endpoint ini,
-       * halaman tetap aman dan hanya menampilkan
-       * pesan bahwa riwayat belum tersedia.
-       */
-
-      const data =
-        await api(
-          "/api/account/transactions",
-          {
-            method: "GET"
-          }
-        );
-
+      const data = await api('/api/account/transactions');
 
       const transactions =
         Array.isArray(data)
           ? data
-          : (
-              data?.transactions ||
-              data?.data ||
-              []
-            );
+          : Array.isArray(data?.transactions)
+            ? data.transactions
+            : Array.isArray(data?.data)
+              ? data.data
+              : [];
 
-
-      if (
-        !Array.isArray(transactions) ||
-        transactions.length === 0
-      ) {
-
-        container.innerHTML =
-          `
-            <div class="credit-history-empty">
-              Belum ada riwayat kredit.
-            </div>
-          `;
+      if (!transactions.length) {
+        container.innerHTML = `
+          <div class="credit-history-empty">
+            Belum ada riwayat transaksi.
+          </div>
+        `;
 
         return;
-
       }
 
+      container.innerHTML = transactions
+        .slice(0, 20)
+        .map(transaction => {
+          const amount =
+            Number(
+              transaction.amount ??
+              transaction.credit ??
+              transaction.credits ??
+              0
+            );
 
-      container.innerHTML =
-        transactions
-          .map(
-            function (item) {
+          const positive = amount >= 0;
 
-              const amount =
-                Number(
-                  item?.amount ??
-                  item?.credits ??
-                  item?.credit_amount ??
-                  0
-                );
+          const note =
+            transaction.note ||
+            transaction.description ||
+            transaction.type ||
+            'Transaksi Credit';
 
+          const dateValue =
+            transaction.created_at ||
+            transaction.createdAt ||
+            transaction.date ||
+            null;
 
-              const type =
-                item?.type ||
-                item?.transaction_type ||
-                item?.description ||
-                "Transaksi Kredit";
+          let date = '';
 
+          if (dateValue) {
+            try {
+              date = new Date(dateValue).toLocaleString('id-ID');
+            } catch {
+              date = String(dateValue);
+            }
+          }
 
-              const date =
-                item?.created_at ||
-                item?.createdAt ||
-                item?.date ||
-                "";
-
-
-              const positive =
-                amount >= 0;
-
-
-              return `
-
-                <div
-                  class="credit-transaction">
-
-                  <div
-                    class="credit-transaction-main">
-
-                    <span
-                      class="credit-transaction-type">
-
-                      ${escapeHtml(type)}
-
-                    </span>
-
-                    <span
-                      class="credit-transaction-date">
-
-                      ${escapeHtml(
-                        formatDate(date)
-                      )}
-
-                    </span>
-
-                  </div>
-
-
-                  <strong
-                    class="
-                      credit-transaction-amount
-                      ${positive ? "plus" : "minus"}
-                    ">
-
-                    ${positive ? "+" : ""}
-                    ${amount.toLocaleString("id-ID")}
-
-                  </strong>
-
+          return `
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:12px;
+              padding:12px;
+              border-radius:12px;
+              background:rgba(255,255,255,.025);
+              border:1px solid rgba(255,255,255,.05);
+            ">
+              <div style="min-width:0;">
+                <div style="
+                  color:#fff;
+                  font-size:11px;
+                  font-weight:700;
+                ">
+                  ${escapeHtml(note)}
                 </div>
 
-              `;
-
-            }
-          )
-          .join("");
-
-    } catch (error) {
-
-      console.warn(
-        "[CREDIT] Riwayat transaksi belum tersedia:",
-        error
-      );
-
-
-      container.innerHTML =
-        `
-          <div class="credit-history-empty">
-            Belum ada riwayat kredit.
-          </div>
-        `;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     DATE
-     ======================================================= */
-
-  function formatDate(value) {
-
-    if (!value) {
-      return "-";
-    }
-
-
-    const date =
-      new Date(value);
-
-
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
-
-      return String(value);
-
-    }
-
-
-    return date.toLocaleString(
-      "id-ID",
-      {
-        day:
-          "2-digit",
-
-        month:
-          "2-digit",
-
-        year:
-          "numeric",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     PAYMENT PLACEHOLDER
-     ======================================================= */
-
-  function showPaymentPage() {
-
-    const pages =
-      $("pageContent");
-
-
-    if (!pages) {
-      return;
-    }
-
-
-    pages.innerHTML = `
-
-      <section
-        class="page-card credit-payment-page">
-
-        <div class="page-header">
-
-          <button
-            type="button"
-            class="back-btn"
-            id="creditPaymentBack"
-            aria-label="Kembali ke Kredit">
-
-            ←
-
-          </button>
-
-
-          <div>
-
-            <h2>
-              Pembayaran
-            </h2>
-
-            <p>
-              Top Up Kredit GEN-Z.AI
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <div
-          class="credit-payment-placeholder">
-
-          <div
-            class="credit-payment-icon">
-            Rp
-          </div>
-
-
-          <h3>
-            Halaman Pembayaran
-          </h3>
-
-
-          <p>
-            Sistem pembayaran belum
-            diaktifkan.
-          </p>
-
-
-          <small>
-            Halaman ini sementara digunakan
-            sebagai tujuan Top Up user biasa.
-          </small>
-
-        </div>
-
-      </section>
-
-    `;
-
-
-    const back =
-      $("creditPaymentBack");
-
-
-    if (back) {
-
-      back.addEventListener(
-        "click",
-        function () {
-
-          load();
-
-        },
-        {
-          once: true
-        }
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     TOP UP ROUTER
-     ======================================================= */
-
-  function handleTopup() {
-
-    /*
-     * ADMIN / OWNER
-     *
-     * Tidak melewati pembayaran.
-     * Langsung ke Top Up Setting.
-     */
-
-    if (isAdmin()) {
-
-      if (
-        typeof GENZ.showPage ===
-        "function"
-      ) {
-
-        GENZ.showPage(
-          "topup-settings"
-        );
-
-      } else if (
-        typeof GENZ.emit ===
-        "function"
-      ) {
-
-        GENZ.emit(
-          "show-page",
-          "topup-settings"
-        );
-
-      }
-
-      return;
-
-    }
-
-
-    /*
-     * USER BIASA
-     *
-     * Untuk sementara menuju
-     * placeholder halaman pembayaran.
-     */
-
-    showPaymentPage();
-
-  }
-
-
-  /* =======================================================
-     BACK TO STUDIO
-     ======================================================= */
-
-  function backToStudio() {
-
-    if (
-      typeof GENZ.showStudio ===
-      "function"
-    ) {
-
-      GENZ.showStudio();
-
-      return;
-
-    }
-
-
-    if (
-      typeof GENZ.emit ===
-      "function"
-    ) {
-
-      GENZ.emit(
-        "show-studio"
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     BIND
-     ======================================================= */
-
-  function bind() {
-
-    const back =
-      $("creditBack");
-
-
-    if (back) {
-
-      back.onclick =
-        backToStudio;
-
-    }
-
-
-    const topup =
-      $("creditTopupButton");
-
-
-    if (topup) {
-
-      topup.onclick =
-        handleTopup;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     LOAD HTML
-     ======================================================= */
-
-  async function loadHtml() {
-
-    const container =
-      $("pageContent");
-
-
-    if (!container) {
-
-      throw new Error(
-        "Element #pageContent tidak ditemukan."
-      );
-
-    }
-
-
-    /*
-     * Gunakan loader utama jika tersedia.
-     */
-
-    if (
-      typeof GENZ.loadComponent ===
-      "function"
-    ) {
-
-      await GENZ.loadComponent(
-        "#pageContent",
-        "/components/credit.html"
-      );
-
-      return;
-
-    }
-
-
-    /*
-     * Fallback.
-     */
-
-    const response =
-      await fetch(
-        "/components/credit.html",
-        {
-          cache:
-            "no-store"
-        }
-      );
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        `Gagal memuat credit.html (${response.status})`
-      );
-
-    }
-
-
-    container.innerHTML =
-      await response.text();
-
-  }
-
-
-  /* =======================================================
-     LOAD
-     ======================================================= */
-
-  async function load() {
-
-    if (!isLoggedIn()) {
-
-      backToStudio();
-
-      return;
-
-    }
-
-
-    try {
-
-      await loadHtml();
-
-    } catch (error) {
-
-      console.error(
-        "[CREDIT] Gagal memuat halaman:",
-        error
-      );
-
-
-      const container =
-        $("pageContent");
-
-
-      if (container) {
-
-        container.innerHTML = `
-
-          <section
-            class="page-card">
-
-            <div
-              class="page-header">
-
-              <button
-                type="button"
-                class="back-btn"
-                id="creditBack">
-
-                ←
-
-              </button>
-
-
-              <div>
-
-                <h2>
-                  Kredit
-                </h2>
-
-                <p>
-                  Halaman kredit tidak dapat dimuat.
-                </p>
-
+                <div style="
+                  color:rgba(255,255,255,.35);
+                  font-size:9px;
+                  margin-top:3px;
+                ">
+                  ${escapeHtml(date)}
+                </div>
               </div>
 
+              <strong style="
+                flex-shrink:0;
+                color:${positive ? '#86efac' : '#fca5a5'};
+                font-size:11px;
+              ">
+                ${positive ? '+' : ''}${amount.toLocaleString('id-ID')} C
+              </strong>
             </div>
+          `;
+        })
+        .join('');
 
-          </section>
+    } catch (error) {
+      console.warn('[GEN-Z CREDIT] history unavailable', error);
 
-        `;
+      container.innerHTML = `
+        <div class="credit-history-empty">
+          Riwayat credit belum tersedia.
+        </div>
+      `;
+    }
+  }
 
-      }
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
+  function getPackage(credit) {
+    return state.packages.find(
+      item => Number(item.credit) === Number(credit)
+    );
+  }
+
+  function handlePackagePurchase(credit) {
+    const packageData = getPackage(credit);
+
+    if (!packageData) {
+      setStatus('Paket credit tidak ditemukan.', 'error');
+      return;
     }
 
+    /*
+      ADMIN / OWNER
+      Langsung menuju Top Up Setting.
+    */
+    if (isAdmin()) {
+      if (
+        typeof window.GENZ?.showPage === 'function'
+      ) {
+        window.GENZ.showPage('topup-settings');
+      } else {
+        window.location.hash = '#topup-settings';
+      }
 
-    loadUser();
+      return;
+    }
 
-    bind();
+    /*
+      USER BIASA
+      Untuk sementara halaman pembayaran belum dibuat.
+      Kita hanya menampilkan informasi paket yang dipilih.
+    */
+    setStatus(
+      `Paket C ${packageData.credit} dipilih. Total ${formatRupiah(packageData.price)}. Halaman pembayaran akan digunakan pada tahap berikutnya.`,
+      'info'
+    );
 
-    await loadBalance();
+    /*
+      Data pilihan disimpan hanya selama sesi halaman.
+      Tidak menyimpan API key atau data sensitif.
+    */
+    try {
+      window.GENZ = window.GENZ || {};
+      window.GENZ.state = window.GENZ.state || {};
 
-    await loadHistory();
-
+      window.GENZ.state.selectedCreditPackage = {
+        credit: packageData.credit,
+        price: packageData.price
+      };
+    } catch (error) {
+      console.warn(
+        '[GEN-Z CREDIT] package state error',
+        error
+      );
+    }
   }
 
+  function bindPackages() {
+    const container = $('creditPackages');
 
-  /* =======================================================
-     REFRESH
-     ======================================================= */
+    if (!container) return;
+
+    if (container.dataset.genzBound === '1') {
+      return;
+    }
+
+    container.dataset.genzBound = '1';
+
+    container.addEventListener('click', event => {
+      const button =
+        event.target.closest('.credit-package');
+
+      if (!button) return;
+
+      const credit =
+        Number(button.dataset.credit);
+
+      handlePackagePurchase(credit);
+    });
+  }
+
+  function bindBack() {
+    const button = $('creditBack');
+
+    if (!button) return;
+
+    if (button.dataset.genzBound === '1') {
+      return;
+    }
+
+    button.dataset.genzBound = '1';
+
+    button.addEventListener('click', () => {
+      if (
+        typeof window.GENZ?.showPage === 'function'
+      ) {
+        window.GENZ.showPage('studio');
+      } else {
+        window.location.hash = '#studio';
+      }
+    });
+  }
+
+  async function load() {
+    if (state.loading) return;
+
+    if (!isLoggedIn()) {
+      if (
+        typeof window.GENZ?.showPage === 'function'
+      ) {
+        window.GENZ.showPage('studio');
+      }
+
+      return;
+    }
+
+    state.loading = true;
+
+    try {
+      setStatus('', 'info');
+
+      await loadBalance();
+
+      bindPackages();
+      bindBack();
+
+      await loadHistory();
+
+      state.loaded = true;
+
+    } catch (error) {
+      console.error('[GEN-Z CREDIT] load error', error);
+
+      setStatus(
+        error.message ||
+        'Halaman Credit gagal dimuat.',
+        'error'
+      );
+
+    } finally {
+      state.loading = false;
+    }
+  }
 
   async function refresh() {
-
-    loadUser();
-
     await loadBalance();
-
     await loadHistory();
-
   }
 
+  async function loadHtml() {
+    if (
+      typeof window.GENZ?.loadComponent === 'function'
+    ) {
+      return window.GENZ.loadComponent(
+        'credit',
+        '#pageContainer'
+      );
+    }
 
-  /* =======================================================
-     PUBLIC API
-     ======================================================= */
+    const container =
+      document.querySelector('#pageContainer');
 
-  GENZ.credit = {
+    if (!container) return false;
 
+    try {
+      const response = await fetch(
+        '/components/credit.html',
+        {
+          cache: 'no-store'
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          'Gagal memuat komponen Credit.'
+        );
+      }
+
+      container.innerHTML =
+        await response.text();
+
+      return true;
+
+    } catch (error) {
+      console.error(
+        '[GEN-Z CREDIT] html error',
+        error
+      );
+
+      return false;
+    }
+  }
+
+  async function init() {
+    await loadHtml();
+    await load();
+  }
+
+  window.GENZ = window.GENZ || {};
+
+  window.GENZ.credit = {
     load,
-
+    init,
     refresh,
-
     loadBalance,
-
     loadHistory,
-
-    handleTopup
-
+    handleTopup: handlePackagePurchase,
+    state
   };
-
 
 })();
