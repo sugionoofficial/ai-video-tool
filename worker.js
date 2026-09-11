@@ -1,3 +1,4 @@
+```javascript
 import {
   getAdapter,
   getAdapterInfo,
@@ -797,6 +798,39 @@ async function handleGenerate(
     );
   }
 
+  /*
+   * Simpan parameter asli request untuk Riwayat Video.
+   * Jangan hanya mengandalkan result dari provider karena
+   * tidak semua provider mengembalikan semua parameter input.
+   */
+  const requestedModel =
+    body?.model != null
+      ? String(
+          body.model
+        ).trim()
+      : null;
+
+  const requestedDuration =
+    body?.duration != null
+      ? Number(
+          body.duration
+        )
+      : null;
+
+  const requestedAspectRatio =
+    body?.aspectRatio != null
+      ? String(
+          body.aspectRatio
+        ).trim()
+      : null;
+
+  const requestedResolution =
+    body?.resolution != null
+      ? String(
+          body.resolution
+        ).trim()
+      : null;
+
   const cost =
     Math.max(
       1,
@@ -826,17 +860,21 @@ async function handleGenerate(
   const fingerprintSource =
     JSON.stringify({
       provider: id,
+
       model:
-        body.model || null,
+        requestedModel,
+
       duration:
-        body.duration || null,
+        requestedDuration,
+
       aspectRatio:
-        body.aspectRatio ||
-        null,
+        requestedAspectRatio,
+
       resolution:
-        body.resolution ||
-        null,
+        requestedResolution,
+
       prompt,
+
       imageData:
         Boolean(
           body.imageData
@@ -922,6 +960,44 @@ async function handleGenerate(
   }
 
   try {
+    /*
+     * Simpan input generation sejak awal.
+     * Ini memastikan data Riwayat tetap tersedia walaupun
+     * provider tidak mengembalikan ulang prompt/input.
+     */
+    const initialMetadata = {
+      provider: id,
+
+      adapter:
+        provider.adapter,
+
+      prompt,
+
+      model:
+        requestedModel,
+
+      duration:
+        requestedDuration,
+
+      aspectRatio:
+        requestedAspectRatio,
+
+      resolution:
+        requestedResolution
+    };
+
+    await updateJob(
+      jobId,
+      {
+        model:
+          requestedModel,
+
+        metadata:
+          initialMetadata
+      },
+      env
+    );
+
     await recordJobEvent(
       jobId,
       user.id,
@@ -930,11 +1006,8 @@ async function handleGenerate(
         message:
           "Generation job created",
 
-        metadata: {
-          provider: id,
-          adapter:
-            provider.adapter
-        }
+        metadata:
+          initialMetadata
       },
       env
     );
@@ -958,10 +1031,34 @@ async function handleGenerate(
 
     result.provider = id;
 
+    /*
+     * Gabungkan metadata input dengan metadata provider.
+     * Metadata input tidak boleh hilang.
+     */
     const metadata = {
+      ...initialMetadata,
       ...result,
+
+      provider: id,
+
       adapter:
-        provider.adapter
+        provider.adapter,
+
+      prompt,
+
+      model:
+        requestedModel ||
+        result.model ||
+        null,
+
+      duration:
+        requestedDuration,
+
+      aspectRatio:
+        requestedAspectRatio,
+
+      resolution:
+        requestedResolution
     };
 
     await updateJob(
@@ -985,6 +1082,7 @@ async function handleGenerate(
         last_error_code: null,
 
         model:
+          requestedModel ||
           result.model ||
           null,
 
@@ -1005,14 +1103,7 @@ async function handleGenerate(
         message:
           "Provider accepted generation request",
 
-        metadata: {
-          adapter:
-            provider.adapter,
-
-          model:
-            result.model ||
-            null
-        }
+        metadata
       },
       env
     );
@@ -1212,8 +1303,49 @@ async function handleStatus(
         job.id
       )}`;
 
-    const nextMetadata = {
+    /*
+     * Pertahankan metadata generation sebelumnya.
+     * Jangan mengganti metadata hanya dengan metadata provider.
+     */
+    const previousMetadata = {
       ...(job.metadata || {})
+    };
+
+    const nextMetadata = {
+      ...previousMetadata,
+
+      ...result,
+
+      provider: id,
+
+      adapter:
+        provider.adapter,
+
+      prompt:
+        previousMetadata.prompt ||
+        result.prompt ||
+        null,
+
+      model:
+        previousMetadata.model ||
+        result.model ||
+        job.model ||
+        null,
+
+      duration:
+        previousMetadata.duration ??
+        result.duration ??
+        null,
+
+      aspectRatio:
+        previousMetadata.aspectRatio ||
+        result.aspectRatio ||
+        null,
+
+      resolution:
+        previousMetadata.resolution ||
+        result.resolution ||
+        null
     };
 
     if (result.fileId) {
@@ -1238,6 +1370,9 @@ async function handleStatus(
           result.videoUrl ||
           proxyUrl,
 
+        model:
+          nextMetadata.model,
+
         metadata:
           nextMetadata
       },
@@ -1255,10 +1390,8 @@ async function handleStatus(
         message:
           "Provider generation completed",
 
-        metadata: {
-          adapter:
-            provider.adapter
-        }
+        metadata:
+          nextMetadata
       },
       env
     );
@@ -1593,18 +1726,6 @@ async function transactionApi(
       )
     );
 
-  /*
-   * FIX:
-   *
-   * credit_transactions tidak memiliki:
-   * - job_id
-   *
-   * Kolom referensi yang tersedia adalah:
-   * - reference_id
-   *
-   * Jadi jangan request job_id karena
-   * akan menyebabkan Supabase error 400/500.
-   */
   const rows =
     await sb(
       `/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(
@@ -2947,20 +3068,6 @@ async function adminApi(
     );
   }
 
-  /*
-   * ----------------------------------------------------------
-   * ADMIN TRANSACTIONS
-   * ----------------------------------------------------------
-   *
-   * FIX:
-   *
-   * credit_transactions tidak memiliki:
-   * - job_id
-   * - admin_user_id
-   *
-   * Kolom yang tersedia untuk referensi:
-   * - reference_id
-   */
   if (
     url.pathname ===
       "/api/admin/transactions" &&
@@ -3491,12 +3598,6 @@ export default {
       );
 
     try {
-      /*
-       * --------------------------------------------------------
-       * PUBLIC CONFIG
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname ===
           "/api/config" &&
@@ -3519,12 +3620,6 @@ export default {
           env
         );
       }
-
-      /*
-       * --------------------------------------------------------
-       * DIAGNOSTIC
-       * --------------------------------------------------------
-       */
 
       if (
         url.pathname ===
@@ -3589,12 +3684,6 @@ export default {
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * PUBLIC PROVIDERS
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname ===
           "/api/providers" &&
@@ -3629,12 +3718,6 @@ export default {
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * ADMIN
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname.startsWith(
           "/api/admin/"
@@ -3645,12 +3728,6 @@ export default {
           env
         );
       }
-
-      /*
-       * --------------------------------------------------------
-       * ACCOUNT CREDIT
-       * --------------------------------------------------------
-       */
 
       if (
         url.pathname ===
@@ -3664,12 +3741,6 @@ export default {
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * ACCOUNT TRANSACTIONS
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname ===
           "/api/account/transactions" &&
@@ -3682,12 +3753,6 @@ export default {
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * ACCOUNT TOPUP
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname ===
         "/api/account/topup-requests"
@@ -3697,12 +3762,6 @@ export default {
           env
         );
       }
-
-      /*
-       * --------------------------------------------------------
-       * GENERATE
-       * --------------------------------------------------------
-       */
 
       if (
         url.pathname ===
@@ -3732,12 +3791,6 @@ export default {
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * GENERATE STATUS
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname ===
           "/api/generate/status" &&
@@ -3750,12 +3803,6 @@ export default {
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * VIDEO PROXY
-       * --------------------------------------------------------
-       */
-
       if (
         url.pathname ===
           "/api/video" &&
@@ -3767,12 +3814,6 @@ export default {
           env
         );
       }
-
-      /*
-       * --------------------------------------------------------
-       * FRONTEND ASSETS
-       * --------------------------------------------------------
-       */
 
       return env.ASSETS.fetch(
         request
@@ -3816,3 +3857,4 @@ export default {
     }
   }
 };
+```
