@@ -12,27 +12,36 @@
    - Worker menentukan adapter
    - Fallback hanya untuk capability
    - Provider disabled tidak ditampilkan
+   - Capability mengikuti aturan adapter
    ========================================================= */
 
 (function () {
 
   'use strict';
 
-  window.GENZ = window.GENZ || {};
 
-  const GENZ = window.GENZ;
+  window.GENZ =
+    window.GENZ || {};
 
-  GENZ.state = GENZ.state || {};
-  GENZ.providers = GENZ.providers || {};
+
+  const GENZ =
+    window.GENZ;
+
+
+  GENZ.state =
+    GENZ.state || {};
+
+
+  GENZ.providers =
+    GENZ.providers || {};
+
+
   GENZ.videoProviders =
     GENZ.videoProviders || {};
 
+
   /* =======================================================
      CAPABILITY FALLBACK
-
-     Ini BUKAN daftar provider.
-     Hanya digunakan jika backend belum
-     mengirim capability.
   ======================================================= */
 
   const CAPABILITY_FALLBACK = {
@@ -64,6 +73,7 @@
 
     },
 
+
     minimax: {
 
       models: [
@@ -89,6 +99,7 @@
       ]
 
     },
+
 
     luma: {
 
@@ -122,13 +133,19 @@
 
   };
 
+
   /* =======================================================
      HELPERS
   ======================================================= */
 
   function $(id) {
-    return document.getElementById(id);
+
+    return document.getElementById(
+      id
+    );
+
   }
+
 
   function text(value) {
 
@@ -139,6 +156,7 @@
       .toLowerCase();
 
   }
+
 
   function normalizeId(value) {
 
@@ -153,17 +171,19 @@
 
   }
 
+
   /* =======================================================
      DETECT ADAPTER TYPE
-
-     Hanya untuk capability fallback.
   ======================================================= */
 
   function detectType(provider) {
 
     if (!provider) {
+
       return null;
+
     }
+
 
     const values = [
 
@@ -175,10 +195,13 @@
 
     ];
 
-    const value = values
-      .filter(Boolean)
-      .map(text)
-      .join(' ');
+
+    const value =
+      values
+        .filter(Boolean)
+        .map(text)
+        .join(' ');
+
 
     if (
       value.includes('gemini') ||
@@ -189,6 +212,7 @@
 
     }
 
+
     if (
       value.includes('minimax') ||
       value.includes('mini max')
@@ -198,6 +222,7 @@
 
     }
 
+
     if (
       value.includes('luma')
     ) {
@@ -206,9 +231,11 @@
 
     }
 
+
     return null;
 
   }
+
 
   /* =======================================================
      NORMALIZE CAPABILITIES
@@ -219,17 +246,22 @@
   ) {
 
     const type =
-      detectType(provider);
+      detectType(
+        provider
+      );
+
 
     const fallback =
       type
         ? CAPABILITY_FALLBACK[type]
         : null;
 
+
     const source =
       provider?.capabilities ||
       provider?.config?.capabilities ||
       {};
+
 
     const models =
       Array.isArray(
@@ -253,6 +285,7 @@
                 )
           );
 
+
     const durations =
       Array.isArray(
         source.durations
@@ -274,6 +307,7 @@
                   []
                 )
           );
+
 
     const aspects =
       Array.isArray(
@@ -297,6 +331,7 @@
                 )
           );
 
+
     const resolutions =
       Array.isArray(
         source.resolutions
@@ -319,6 +354,7 @@
                 )
           );
 
+
     return {
 
       models,
@@ -333,6 +369,247 @@
 
   }
 
+
+  /* =======================================================
+     IMAGE REFERENCE DETECTION
+  ======================================================= */
+
+  function hasImageReference() {
+
+    if (
+      GENZ.state &&
+      GENZ.state.imageData
+    ) {
+
+      return true;
+
+    }
+
+
+    if (
+      GENZ.upload &&
+      GENZ.upload.imageData
+    ) {
+
+      return true;
+
+    }
+
+
+    const input =
+      $('image');
+
+
+    if (
+      input &&
+      input.files &&
+      input.files.length
+    ) {
+
+      return true;
+
+    }
+
+
+    return false;
+
+  }
+
+
+  /* =======================================================
+     EFFECTIVE CAPABILITIES
+  =======================================================
+
+     Capability dasar berasal dari adapter.
+
+     Setelah itu UI menerapkan aturan kombinasi
+     yang memang diketahui oleh adapter.
+
+  ======================================================= */
+
+  function getEffectiveCapabilities(
+    provider
+  ) {
+
+    const base =
+      normalizeCapabilities(
+        provider
+      );
+
+
+    const type =
+      detectType(
+        provider
+      );
+
+
+    const result = {
+
+      models: [
+        ...base.models
+      ],
+
+      durations: [
+        ...base.durations
+      ],
+
+      aspects: [
+        ...base.aspects
+      ],
+
+      resolutions: [
+        ...base.resolutions
+      ]
+
+    };
+
+
+    const selectedResolution =
+      String(
+        $('resolution')?.value ||
+        ''
+      ).trim();
+
+
+    const selectedModel =
+      String(
+        $('model')?.value ||
+        ''
+      ).trim();
+
+
+    const hasImage =
+      hasImageReference();
+
+
+    /* =====================================================
+       VEO
+    ===================================================== */
+
+    if (
+      type === 'veo'
+    ) {
+
+      /*
+       * Veo image-to-video membutuhkan 8 detik.
+       */
+
+      if (
+        hasImage
+      ) {
+
+        result.durations =
+          result.durations.filter(
+            value =>
+              Number(value) === 8
+          );
+
+      }
+
+
+      /*
+       * Veo 1080p dan 4K membutuhkan 8 detik.
+       */
+
+      if (
+        selectedResolution === '1080p' ||
+        selectedResolution === '4k'
+      ) {
+
+        result.durations =
+          result.durations.filter(
+            value =>
+              Number(value) === 8
+          );
+
+      }
+
+
+      /*
+       * Veo Lite tidak mendukung 4K.
+       */
+
+      if (
+        selectedModel ===
+          'veo-3.1-lite-generate-preview'
+      ) {
+
+        result.resolutions =
+          result.resolutions.filter(
+            value =>
+              String(value)
+                .toLowerCase() !==
+              '4k'
+          );
+
+      }
+
+    }
+
+
+    /* =====================================================
+       MINIMAX
+    ===================================================== */
+
+    if (
+      type === 'minimax'
+    ) {
+
+      /*
+       * MiniMax 1080P menggunakan 6 detik.
+       */
+
+      if (
+        selectedResolution ===
+        '1080P'
+      ) {
+
+        result.durations =
+          result.durations.filter(
+            value =>
+              Number(value) === 6
+          );
+
+      }
+
+
+      /*
+       * 512P hanya untuk Hailuo 02.
+       */
+
+      if (
+        selectedModel &&
+        selectedModel !==
+          'MiniMax-Hailuo-02'
+      ) {
+
+        result.resolutions =
+          result.resolutions.filter(
+            value =>
+              String(value)
+                .toUpperCase() !==
+              '512P'
+          );
+
+      }
+
+
+      /*
+       * Hailuo 2.3 Fast membutuhkan
+       * image reference.
+       *
+       * Jangan hapus modelnya.
+       * Kita tandai melalui UI.
+       */
+
+    }
+
+
+    return result;
+
+  }
+
+
   /* =======================================================
      NORMALIZE PROVIDER LIST
   ======================================================= */
@@ -341,64 +618,82 @@
     list
   ) {
 
-    if (!Array.isArray(list)) {
+    if (
+      !Array.isArray(list)
+    ) {
+
       return [];
+
     }
+
 
     return list
 
-      .filter(provider => {
+      .filter(
+        provider => {
 
-        if (!provider) {
-          return false;
-        }
+          if (!provider) {
 
-        if (
-          provider.enabled === false
-        ) {
-          return false;
-        }
+            return false;
 
-        return Boolean(
-          provider.id ||
-          provider.name
-        );
+          }
 
-      })
 
-      .map(provider => {
+          if (
+            provider.enabled === false
+          ) {
 
-        const id =
-          String(
+            return false;
+
+          }
+
+
+          return Boolean(
             provider.id ||
-            provider.name ||
-            ''
-          ).trim();
+            provider.name
+          );
 
-        const name =
-          String(
-            provider.name ||
-            id
-          ).trim();
+        }
+      )
 
-        return {
+      .map(
+        provider => {
 
-          ...provider,
+          const id =
+            String(
+              provider.id ||
+              provider.name ||
+              ''
+            ).trim();
 
-          id,
 
-          name,
+          const name =
+            String(
+              provider.name ||
+              id
+            ).trim();
 
-          capabilities:
-            normalizeCapabilities(
-              provider
-            )
 
-        };
+          return {
 
-      });
+            ...provider,
+
+            id,
+
+            name,
+
+            capabilities:
+              normalizeCapabilities(
+                provider
+              )
+
+          };
+
+        }
+      );
 
   }
+
 
   /* =======================================================
      PROVIDER DROPDOWN
@@ -411,32 +706,44 @@
     const element =
       $('provider');
 
+
     if (!element) {
+
       return;
+
     }
+
 
     const previous =
       String(
         element.value || ''
       ).trim();
 
-    element.innerHTML = '';
+
+    element.innerHTML =
+      '';
+
 
     const placeholder =
       document.createElement(
         'option'
       );
 
-    placeholder.value = '';
+
+    placeholder.value =
+      '';
+
 
     placeholder.textContent =
       providers.length
         ? 'Pilih AI Engine'
         : 'Tidak ada AI Engine';
 
+
     element.appendChild(
       placeholder
     );
+
 
     providers.forEach(
       provider => {
@@ -446,12 +753,15 @@
             'option'
           );
 
+
         option.value =
           provider.id;
+
 
         option.textContent =
           provider.name ||
           provider.id;
+
 
         element.appendChild(
           option
@@ -459,6 +769,7 @@
 
       }
     );
+
 
     if (
       previous &&
@@ -477,8 +788,9 @@
 
   }
 
+
   /* =======================================================
-     DOM OPTION HELPERS
+     OPTION HELPERS
   ======================================================= */
 
   function setOptions(
@@ -489,41 +801,57 @@
     const element =
       $(id);
 
+
     if (!element) {
+
       return;
+
     }
+
 
     const list =
       Array.isArray(values)
         ? values
         : [];
 
+
     const previous =
       String(
         element.value || ''
       );
 
-    element.innerHTML = '';
 
-    if (!list.length) {
+    element.innerHTML =
+      '';
+
+
+    if (
+      !list.length
+    ) {
 
       const option =
         document.createElement(
           'option'
         );
 
-      option.value = '';
+
+      option.value =
+        '';
+
 
       option.textContent =
         'Tidak tersedia';
+
 
       element.appendChild(
         option
       );
 
+
       return;
 
     }
+
 
     list.forEach(
       value => {
@@ -533,11 +861,14 @@
             'option'
           );
 
+
         option.value =
           String(value);
 
+
         option.textContent =
           String(value);
+
 
         element.appendChild(
           option
@@ -545,6 +876,7 @@
 
       }
     );
+
 
     if (
       previous &&
@@ -565,6 +897,7 @@
 
   }
 
+
   function setValue(
     id,
     value
@@ -573,9 +906,13 @@
     const element =
       $(id);
 
+
     if (!element) {
+
       return;
+
     }
+
 
     element.value =
       String(
@@ -583,6 +920,171 @@
       );
 
   }
+
+
+  /* =======================================================
+     SAFE DURATION SELECTION
+  ======================================================= */
+
+  function ensureValidDuration(
+    provider
+  ) {
+
+    const duration =
+      $('duration');
+
+
+    if (!duration) {
+
+      return;
+
+    }
+
+
+    const effective =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      effective.durations.map(
+        value =>
+          String(value)
+      );
+
+
+    if (
+      !allowed.length
+    ) {
+
+      return;
+
+    }
+
+
+    const current =
+      String(
+        duration.value || ''
+      );
+
+
+    if (
+      !allowed.includes(
+        current
+      )
+    ) {
+
+      duration.value =
+        allowed[0];
+
+    }
+
+  }
+
+
+  /* =======================================================
+     SAFE RESOLUTION SELECTION
+  ======================================================= */
+
+  function ensureValidResolution(
+    provider
+  ) {
+
+    const resolution =
+      $('resolution');
+
+
+    if (!resolution) {
+
+      return;
+
+    }
+
+
+    const base =
+      normalizeCapabilities(
+        provider
+      );
+
+
+    const model =
+      String(
+        $('model')?.value ||
+        ''
+      ).trim();
+
+
+    let allowed =
+      base.resolutions.map(
+        value =>
+          String(value)
+      );
+
+
+    const type =
+      detectType(
+        provider
+      );
+
+
+    if (
+      type === 'veo' &&
+      model ===
+        'veo-3.1-lite-generate-preview'
+    ) {
+
+      allowed =
+        allowed.filter(
+          value =>
+            value.toLowerCase() !==
+            '4k'
+        );
+
+    }
+
+
+    if (
+      type === 'minimax' &&
+      model &&
+      model !==
+        'MiniMax-Hailuo-02'
+    ) {
+
+      allowed =
+        allowed.filter(
+          value =>
+            value.toUpperCase() !==
+            '512P'
+        );
+
+    }
+
+
+    if (
+      !allowed.length
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      !allowed.includes(
+        String(
+          resolution.value
+        )
+      )
+    ) {
+
+      resolution.value =
+        allowed[0];
+
+    }
+
+  }
+
 
   /* =======================================================
      UPDATE GENERATE BUTTON
@@ -596,34 +1098,277 @@
       $('generateVideo') ||
       $('generateBtn');
 
+
     if (!button) {
+
       return;
+
     }
+
 
     if (!provider) {
 
       button.textContent =
         'Generate Video';
 
+
       button.disabled =
         true;
+
 
       return;
 
     }
+
 
     const name =
       provider.name ||
       provider.id ||
       'Provider';
 
+
     button.textContent =
       `Generate Video • ${name}`;
+
 
     button.disabled =
       false;
 
   }
+
+
+  /* =======================================================
+     UPDATE PROVIDER UI
+  ======================================================= */
+
+  function updateProviderUI(
+    provider
+  ) {
+
+    if (!provider) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      normalizeCapabilities(
+        provider
+      );
+
+
+    setValue(
+      'provider',
+      provider.id
+    );
+
+
+    setOptions(
+      'model',
+      capabilities.models
+    );
+
+
+    setOptions(
+      'duration',
+      capabilities.durations
+    );
+
+
+    setOptions(
+      'ratio',
+      capabilities.aspects
+    );
+
+
+    setOptions(
+      'aspect',
+      capabilities.aspects
+    );
+
+
+    setOptions(
+      'resolution',
+      capabilities.resolutions
+    );
+
+
+    GENZ.state.provider =
+      provider.id;
+
+
+    GENZ.providers.current =
+      provider.id;
+
+
+    GENZ.providers.currentProvider =
+      provider;
+
+
+    ensureValidResolution(
+      provider
+    );
+
+
+    ensureValidDuration(
+      provider
+    );
+
+
+    updateGenerateButton(
+      provider
+    );
+
+
+    updateImageAvailability();
+
+
+    updateActiveButton(
+      provider.id
+    );
+
+
+    updateModelCompatibility(
+      provider
+    );
+
+
+    dispatchProviderChange(
+      provider
+    );
+
+  }
+
+
+  /* =======================================================
+     MODEL COMPATIBILITY
+  ======================================================= */
+
+  function updateModelCompatibility(
+    provider
+  ) {
+
+    const model =
+      $('model');
+
+
+    if (!model) {
+
+      return;
+
+    }
+
+
+    const type =
+      detectType(
+        provider
+      );
+
+
+    const hasImage =
+      hasImageReference();
+
+
+    Array.from(
+      model.options
+    ).forEach(
+      option => {
+
+        option.disabled =
+          false;
+
+
+        option.title =
+          '';
+
+      }
+    );
+
+
+    /*
+     * MiniMax Hailuo 2.3 Fast
+     * membutuhkan image reference.
+     */
+
+    if (
+      type === 'minimax'
+    ) {
+
+      const fast =
+        Array.from(
+          model.options
+        ).find(
+          option =>
+            option.value ===
+            'MiniMax-Hailuo-2.3-Fast'
+        );
+
+
+      if (fast) {
+
+        fast.disabled =
+          !hasImage;
+
+
+        fast.title =
+          hasImage
+            ? ''
+            : 'Model ini membutuhkan image reference.';
+
+      }
+
+
+      /*
+       * Jika model Fast sedang dipilih
+       * tetapi image tidak ada,
+       * pindahkan ke model normal.
+       */
+
+      if (
+        model.value ===
+          'MiniMax-Hailuo-2.3-Fast' &&
+        !hasImage
+      ) {
+
+        const fallback =
+          Array.from(
+            model.options
+          ).find(
+            option =>
+              !option.disabled
+          );
+
+
+        if (fallback) {
+
+          model.value =
+            fallback.value;
+
+        }
+
+      }
+
+    }
+
+
+    /*
+     * Setelah model berubah,
+     * resolution dan duration bisa
+     * berubah juga.
+     */
+
+    ensureValidResolution(
+      provider
+    );
+
+
+    ensureValidDuration(
+      provider
+    );
+
+  }
+
 
   /* =======================================================
      IMAGE INPUT
@@ -634,19 +1379,19 @@
     const imageInput =
       $('image');
 
+
     if (!imageInput) {
+
       return;
+
     }
 
-    /*
-      Validasi final dilakukan
-      oleh adapter backend.
-    */
 
     imageInput.disabled =
       false;
 
   }
+
 
   /* =======================================================
      ACTIVE BUTTON
@@ -679,109 +1424,26 @@
 
   }
 
+
   /* =======================================================
-     UPDATE PROVIDER UI
+     PROVIDER CHANGE EVENT
   ======================================================= */
 
-  function updateProviderUI(
+  function dispatchProviderChange(
     provider
   ) {
 
-    if (!provider) {
-      return;
-    }
-
     const capabilities =
-      provider.capabilities ||
       normalizeCapabilities(
         provider
       );
 
-    /*
-      Provider dropdown
-    */
-
-    setValue(
-      'provider',
-      provider.id
-    );
-
-    /*
-      Model
-    */
-
-    setOptions(
-      'model',
-      capabilities.models
-    );
-
-    /*
-      Durasi
-    */
-
-    setOptions(
-      'duration',
-      capabilities.durations
-    );
-
-    /*
-      Rasio
-    */
-
-    setOptions(
-      'ratio',
-      capabilities.aspects
-    );
-
-    setOptions(
-      'aspect',
-      capabilities.aspects
-    );
-
-    /*
-      Resolusi
-    */
-
-    setOptions(
-      'resolution',
-      capabilities.resolutions
-    );
-
-    /*
-      State
-    */
-
-    GENZ.state.provider =
-      provider.id;
-
-    GENZ.providers.current =
-      provider.id;
-
-    GENZ.providers.currentProvider =
-      provider;
-
-    /*
-      Tombol
-    */
-
-    updateGenerateButton(
-      provider
-    );
-
-    updateImageAvailability();
-
-    updateActiveButton(
-      provider.id
-    );
-
-    /*
-      Event
-    */
 
     document.dispatchEvent(
       new CustomEvent(
         'genz-provider-change',
         {
+
           detail: {
 
             provider,
@@ -799,11 +1461,186 @@
             capabilities
 
           }
+
         }
       )
     );
 
   }
+
+
+  /* =======================================================
+     REFRESH CURRENT PROVIDER OPTIONS
+  ======================================================= */
+
+  function refreshCurrentOptions() {
+
+    const provider =
+      GENZ.providers
+        .currentProvider;
+
+
+    if (!provider) {
+
+      return;
+
+    }
+
+
+    const type =
+      detectType(
+        provider
+      );
+
+
+    const base =
+      normalizeCapabilities(
+        provider
+      );
+
+
+    let durations =
+      [
+        ...base.durations
+      ];
+
+
+    let resolutions =
+      [
+        ...base.resolutions
+      ];
+
+
+    const currentResolution =
+      String(
+        $('resolution')?.value ||
+        ''
+      ).trim();
+
+
+    const currentModel =
+      String(
+        $('model')?.value ||
+        ''
+      ).trim();
+
+
+    const hasImage =
+      hasImageReference();
+
+
+    /* =====================================================
+       VEO RULES
+    ===================================================== */
+
+    if (
+      type === 'veo'
+    ) {
+
+      if (
+        hasImage ||
+        currentResolution ===
+          '1080p' ||
+        currentResolution ===
+          '4k'
+      ) {
+
+        durations =
+          durations.filter(
+            value =>
+              Number(value) === 8
+          );
+
+      }
+
+
+      if (
+        currentModel ===
+          'veo-3.1-lite-generate-preview'
+      ) {
+
+        resolutions =
+          resolutions.filter(
+            value =>
+              String(value)
+                .toLowerCase() !==
+              '4k'
+          );
+
+      }
+
+    }
+
+
+    /* =====================================================
+       MINIMAX RULES
+    ===================================================== */
+
+    if (
+      type === 'minimax'
+    ) {
+
+      if (
+        currentResolution ===
+          '1080P'
+      ) {
+
+        durations =
+          durations.filter(
+            value =>
+              Number(value) === 6
+          );
+
+      }
+
+
+      if (
+        currentModel &&
+        currentModel !==
+          'MiniMax-Hailuo-02'
+      ) {
+
+        resolutions =
+          resolutions.filter(
+            value =>
+              String(value)
+                .toUpperCase() !==
+              '512P'
+          );
+
+      }
+
+    }
+
+
+    setOptions(
+      'duration',
+      durations
+    );
+
+
+    setOptions(
+      'resolution',
+      resolutions
+    );
+
+
+    ensureValidDuration(
+      provider
+    );
+
+
+    ensureValidResolution(
+      provider
+    );
+
+
+    updateModelCompatibility(
+      provider
+    );
+
+  }
+
 
   /* =======================================================
      PROVIDER BUTTONS
@@ -818,12 +1655,17 @@
         '[data-providers]'
       );
 
+
     if (!container) {
+
       return;
+
     }
+
 
     container.innerHTML =
       '';
+
 
     providers.forEach(
       provider => {
@@ -833,18 +1675,23 @@
             'button'
           );
 
+
         button.type =
           'button';
+
 
         button.className =
           'provider-button';
 
+
         button.dataset.provider =
           provider.id;
+
 
         button.textContent =
           provider.name ||
           provider.id;
+
 
         container.appendChild(
           button
@@ -852,6 +1699,7 @@
 
       }
     );
+
 
     if (
       container.dataset
@@ -863,9 +1711,11 @@
 
     }
 
+
     container.dataset
       .listenerAttached =
       'true';
+
 
     container.addEventListener(
       'click',
@@ -876,9 +1726,13 @@
             '[data-provider]'
           );
 
+
         if (!button) {
+
           return;
+
         }
+
 
         selectProvider(
           button.dataset.provider
@@ -888,6 +1742,7 @@
     );
 
   }
+
 
   /* =======================================================
      FIND PROVIDER
@@ -901,10 +1756,12 @@
       GENZ.providers.list ||
       [];
 
+
     const normalized =
       normalizeId(
         providerId
       );
+
 
     return (
       providers.find(
@@ -924,6 +1781,7 @@
 
   }
 
+
   /* =======================================================
      SELECT PROVIDER
   ======================================================= */
@@ -937,6 +1795,7 @@
         providerId
       );
 
+
     if (!provider) {
 
       console.warn(
@@ -944,17 +1803,21 @@
         providerId
       );
 
+
       return null;
 
     }
+
 
     updateProviderUI(
       provider
     );
 
+
     return provider;
 
   }
+
 
   /* =======================================================
      LOAD PROVIDER DATA
@@ -968,6 +1831,7 @@
         await fetch(
           '/api/providers',
           {
+
             method:
               'GET',
 
@@ -984,6 +1848,7 @@
           }
         );
 
+
       if (!response.ok) {
 
         throw new Error(
@@ -992,8 +1857,10 @@
 
       }
 
+
       const data =
         await response.json();
+
 
       if (
         !Array.isArray(
@@ -1007,6 +1874,7 @@
 
       }
 
+
       return data.providers;
 
     } catch (error) {
@@ -1016,11 +1884,13 @@
         error
       );
 
+
       return [];
 
     }
 
   }
+
 
   /* =======================================================
      LOAD PROVIDERS
@@ -1031,36 +1901,30 @@
     const rawProviders =
       await fetchProviderData();
 
+
     const providers =
       normalizeProviderList(
         rawProviders
       );
 
+
     GENZ.providers.list =
       providers;
+
 
     GENZ.videoProviders.list =
       providers;
 
-    /*
-      Sinkronkan dropdown.
-    */
 
     renderProviderSelect(
       providers
     );
 
-    /*
-      Sinkronkan tombol provider.
-    */
 
     renderButtons(
       providers
     );
 
-    /*
-      Provider sebelumnya.
-    */
 
     const requested =
       String(
@@ -1068,6 +1932,7 @@
         $('provider')?.value ||
         ''
       ).trim();
+
 
     let selected =
       providers.find(
@@ -1077,11 +1942,6 @@
           ) === requested
       );
 
-    /*
-      Jika provider sebelumnya
-      sudah tidak tersedia,
-      gunakan provider aktif pertama.
-    */
 
     if (!selected) {
 
@@ -1090,6 +1950,7 @@
         null;
 
     }
+
 
     if (selected) {
 
@@ -1102,45 +1963,55 @@
       GENZ.state.provider =
         null;
 
+
       GENZ.providers.current =
         null;
 
+
       GENZ.providers.currentProvider =
         null;
+
 
       setValue(
         'provider',
         ''
       );
 
+
       setOptions(
         'model',
         []
       );
+
 
       setOptions(
         'duration',
         []
       );
 
+
       setOptions(
         'ratio',
         []
       );
+
 
       setOptions(
         'aspect',
         []
       );
 
+
       setOptions(
         'resolution',
         []
       );
 
+
       updateGenerateButton(
         null
       );
+
 
       document.dispatchEvent(
         new CustomEvent(
@@ -1150,10 +2021,12 @@
 
     }
 
+
     document.dispatchEvent(
       new CustomEvent(
         'genz-providers-loaded',
         {
+
           detail: {
 
             providers,
@@ -1162,13 +2035,16 @@
               providers.length
 
           }
+
         }
       )
     );
 
+
     return providers;
 
   }
+
 
   /* =======================================================
      PROVIDER SELECT CHANGE
@@ -1179,9 +2055,13 @@
     const element =
       $('provider');
 
+
     if (!element) {
+
       return;
+
     }
+
 
     if (
       element.dataset
@@ -1193,9 +2073,11 @@
 
     }
 
+
     element.dataset
       .providerListenerAttached =
       'true';
+
 
     element.addEventListener(
       'change',
@@ -1204,24 +2086,30 @@
         const providerId =
           element.value;
 
+
         if (!providerId) {
 
           GENZ.state.provider =
             null;
 
+
           GENZ.providers.current =
             null;
 
+
           GENZ.providers.currentProvider =
             null;
+
 
           updateGenerateButton(
             null
           );
 
+
           return;
 
         }
+
 
         selectProvider(
           providerId
@@ -1232,6 +2120,75 @@
 
   }
 
+
+  /* =======================================================
+     FIELD CHANGE LISTENERS
+  ======================================================= */
+
+  function bindCapabilityListeners() {
+
+    if (
+      document.documentElement
+        .dataset
+        .providerCapabilityListenersAttached ===
+      'true'
+    ) {
+
+      return;
+
+    }
+
+
+    document.documentElement
+      .dataset
+      .providerCapabilityListenersAttached =
+      'true';
+
+
+    document.addEventListener(
+      'change',
+      event => {
+
+        const target =
+          event.target;
+
+
+        if (!target) {
+
+          return;
+
+        }
+
+
+        if (
+          target.id ===
+            'resolution' ||
+          target.id ===
+            'model' ||
+          target.id ===
+            'duration'
+        ) {
+
+          refreshCurrentOptions();
+
+        }
+
+
+        if (
+          target.id ===
+          'image'
+        ) {
+
+          refreshCurrentOptions();
+
+        }
+
+      }
+    );
+
+  }
+
+
   /* =======================================================
      PUBLIC API
   ======================================================= */
@@ -1239,26 +2196,34 @@
   GENZ.providers.load =
     loadProviders;
 
+
   GENZ.providers.reload =
     loadProviders;
+
 
   GENZ.providers.select =
     selectProvider;
 
+
   GENZ.providers.find =
     findProvider;
+
 
   GENZ.videoProviders.load =
     loadProviders;
 
+
   GENZ.videoProviders.select =
     selectProvider;
+
 
   window.selectProvider =
     selectProvider;
 
+
   window.loadProviders =
     loadProviders;
+
 
   /* =======================================================
      INITIALIZATION
@@ -1268,21 +2233,19 @@
 
     bindProviderSelect();
 
+    bindCapabilityListeners();
+
+
     await loadProviders();
 
-    /*
-      Generator component bisa dimuat
-      secara dinamis setelah file JS ini
-      sudah dieksekusi.
-
-      Karena itu kita cek ulang DOM
-      setelah halaman siap.
-    */
 
     setTimeout(
       () => {
 
         bindProviderSelect();
+
+        bindCapabilityListeners();
+
 
         if (
           GENZ.providers.list &&
@@ -1293,14 +2256,17 @@
             GENZ.providers.list
           );
 
+
           renderButtons(
             GENZ.providers.list
           );
+
 
           const current =
             findProvider(
               GENZ.state.provider
             );
+
 
           if (current) {
 
@@ -1317,6 +2283,7 @@
     );
 
   }
+
 
   if (
     document.readyState ===
