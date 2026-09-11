@@ -1,7 +1,8 @@
-/* GEN-Z.AI - MiniMax Provider */
-
 (function () {
   'use strict';
+
+  window.GENZ = window.GENZ || {};
+  GENZ.videoProviders = GENZ.videoProviders || {};
 
   const CONFIG = {
     name: 'MiniMax',
@@ -12,10 +13,7 @@
       'MiniMax-Hailuo-02'
     ],
 
-    durations: [
-      6,
-      10
-    ],
+    durations: [6, 10],
 
     aspects: [
       '16:9',
@@ -33,9 +31,7 @@
     const duration = Number(input.duration);
 
     if (!CONFIG.models.includes(input.model)) {
-      throw new Error(
-        'Model MiniMax tidak valid.'
-      );
+      throw new Error('Model MiniMax tidak valid.');
     }
 
     if (!CONFIG.durations.includes(duration)) {
@@ -50,9 +46,6 @@
       );
     }
 
-    /*
-     * MiniMax 1080P hanya 6 detik.
-     */
     if (
       input.resolution === '1080P' &&
       duration !== 6
@@ -62,9 +55,6 @@
       );
     }
 
-    /*
-     * MiniMax Fast membutuhkan gambar referensi.
-     */
     if (
       input.model === 'MiniMax-Hailuo-2.3-Fast' &&
       !input.imageData
@@ -80,23 +70,13 @@
 
     return {
       provider: 'minimax',
-
       prompt: input.prompt,
-
       model: input.model,
-
       duration: Number(input.duration),
-
       resolution: input.resolution,
-
       imageData: input.imageData || null
     };
   }
-
-  window.GENZ = window.GENZ || {};
-
-  GENZ.videoProviders =
-    GENZ.videoProviders || {};
 
   GENZ.videoProviders.minimax = {
     CONFIG,
