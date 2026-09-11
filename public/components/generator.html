@@ -19,8 +19,14 @@
 
         <div>
 
-          <div class="generator-eyebrow">
-            AI CREATIVE ENGINE
+          <div
+            class="generator-eyebrow"
+            style="
+              color:#facc15 !important;
+              font-weight:900 !important;
+            "
+          >
+            AI CREATIV ENGINE
           </div>
 
           <h2>
@@ -33,11 +39,6 @@
 
         </div>
 
-      </div>
-
-      <div class="generator-live-badge">
-        <span></span>
-        READY
       </div>
 
     </div>
@@ -58,7 +59,7 @@
           </strong>
 
           <span>
-            Pilih provider
+            Pilih provider dan model yang digunakan.
           </span>
 
         </div>
@@ -70,14 +71,23 @@
 
       <div class="form-group">
 
-        <label for="provider">
-          AI ENGINE
+        <label
+          for="provider"
+          style="
+            color:#facc15 !important;
+            font-weight:900 !important;
+          "
+        >
+          PROVIDER
         </label>
 
-        <select id="provider">
+        <select
+          id="provider"
+          class="genz-status-select"
+        >
 
           <option value="">
-            Pilih AI Engine
+            Tidak ada PROVIDER
           </option>
 
         </select>
@@ -89,14 +99,23 @@
 
       <div class="form-group">
 
-        <label for="model">
+        <label
+          for="model"
+          style="
+            color:#facc15 !important;
+            font-weight:900 !important;
+          "
+        >
           MODEL
         </label>
 
-        <select id="model">
+        <select
+          id="model"
+          class="genz-status-select"
+        >
 
           <option value="">
-            Pilih model
+            Tidak ada MODEL
           </option>
 
         </select>
@@ -124,8 +143,13 @@
 
         <div class="studio-section-title">
 
-          <strong>
-            Reference Image
+          <strong
+            style="
+              color:#facc15 !important;
+              font-weight:900 !important;
+            "
+          >
+            Gambar Referensi
           </strong>
 
           <span>
@@ -173,6 +197,14 @@
           Maksimal 12 MB
         </small>
 
+        <div
+          id="imageFileStatus"
+          class="image-file-status"
+          aria-live="polite"
+        >
+          Tidak ada File yang di pilih
+        </div>
+
 
         <div
           id="imagePreview"
@@ -209,7 +241,13 @@
 
       <div class="form-group">
 
-        <label for="prompt">
+        <label
+          for="prompt"
+          style="
+            color:#facc15 !important;
+            font-weight:900 !important;
+          "
+        >
           VIDEO PROMPT
         </label>
 
@@ -242,6 +280,7 @@
 
     <!-- =====================================================
          OUTPUT SETTINGS
+         TETAP
     ====================================================== -->
 
     <div class="studio-section">
@@ -265,8 +304,6 @@
 
       <div class="form-row">
 
-        <!-- RATIO -->
-
         <div class="form-group">
 
           <label for="ratio">
@@ -283,8 +320,6 @@
 
         </div>
 
-
-        <!-- DURATION -->
 
         <div class="form-group">
 
@@ -304,8 +339,6 @@
 
       </div>
 
-
-      <!-- RESOLUTION -->
 
       <div class="form-group">
 
@@ -446,3 +479,63 @@
   </div>
 
 </section>
+
+
+<style>
+/* =========================================================
+   GEN-Z.AI GENERATOR STATUS UI
+   ========================================================= */
+
+.gen-z-ai-status-select {
+  color: #fff !important;
+}
+
+/* Provider / Model belum dipilih */
+#provider:has(option:checked[value=""]),
+#model:has(option:checked[value=""]) {
+  color: #ef4444 !important;
+}
+
+/* Provider / Model sudah dipilih */
+#provider:has(option:checked:not([value=""])),
+#model:has(option:checked:not([value=""])) {
+  color: #fff !important;
+}
+
+/* Gambar referensi */
+.image-file-status {
+  margin-top: 7px;
+  color: #ef4444 !important;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.image-file-status.has-file {
+  color: #fff !important;
+}
+
+/* Hilangkan badge READY pada header generator */
+.generator-header .generator-live-badge {
+  display: none !important;
+}
+
+/* Label kuning stabilo */
+.generator-eyebrow {
+  color: #facc15 !important;
+  font-weight: 900 !important;
+}
+
+.studio-section-title strong {
+  color: rgba(255,255,255,.88);
+}
+
+#auth .generator-eyebrow {
+  color: #facc15 !important;
+}
+
+/* VIDEO PROMPT */
+#prompt + .prompt-hint {
+  color: inherit;
+}
+</style>
