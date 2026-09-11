@@ -1,9 +1,11 @@
+/* =========================================================
+   GEN-Z.AI
+   generator.js
+   Main generator dispatcher
+   ========================================================= */
+
 (function () {
   'use strict';
-
-  window.GENZ = window.GENZ || {};
-  GENZ.generator = GENZ.generator || {};
-  GENZ.videoProviders = GENZ.videoProviders || {};
 
   const PROVIDER_MODULES = {
     veo: '/js/providers/veo.js',
@@ -11,590 +13,926 @@
     luma: '/js/providers/luma.js'
   };
 
-  GENZ.generator.busy = false;
+  const POLL_INTERVAL = 2500;
+  const MAX_POLL_TIME = 10 * 60 * 1000;
 
-  function $(id) {
-    return document.getElementById(id);
+  let pollTimer = null;
+  let pollStartedAt = 0;
+
+  function $(selector) {
+    return document.querySelector(selector);
   }
 
-  function value(id, fallback = '') {
-    const el = $(id);
-    return el ? String(el.value || fallback) : fallback;
-  }
-
-  function getImageData() {
+  function getGenerateButton() {
     return (
-      GENZ.state?.imageData ||
-      GENZ.upload?.imageData ||
-      null
+      $('#generateVideo') ||
+      $('#generateBtn') ||
+      document.querySelector('[data-action="generate-video"]')
     );
   }
 
-  function collectInput() {
-    const provider =
-      value(
-        'provider',
-        GENZ.state?.provider || 'veo'
-      ).toLowerCase();
-
-    const aspectRatio =
-      value(
-        'ratio',
-        value('aspect', '16:9')
-      );
-
-    return {
-      provider,
-
-      prompt:
-        value('prompt').trim(),
-
-      model:
-        value('model'),
-
-      duration:
-        value('duration'),
-
-      aspectRatio,
-
-      resolution:
-        value('resolution', '720p'),
-
-      imageData:
-        getImageData()
-    };
+  function getStatusElement() {
+    return $('#status');
   }
 
-  async function loadProvider(provider) {
-    const modulePath =
-      PROVIDER_MODULES[provider];
+  function setStatus(message, type) {
+    const el = getStatusElement();
 
-    if (!modulePath) {
-      throw new Error(
-        'Provider tidak didukung: ' + provider
-      );
+    if (!el) return;
+
+    el.textContent = message || '';
+
+    el.classList.remove(
+      'success',
+      'error',
+      'loading',
+      'warning'
+    );
+
+    if (type) {
+      el.classList.add(type);
+    }
+  }
+
+  function setButtonLoading(loading) {
+    const button = getGenerateButton();
+
+    if (!button) return;
+
+    if (loading) {
+      if (!button.dataset.originalText) {
+        button.dataset.originalText =
+          button.textContent || 'Generate Video';
+      }
+
+      button.disabled = true;
+      button.textContent = 'Generating...';
+      button.setAttribute('aria-busy', 'true');
+    } else {
+      button.disabled = false;
+
+      if (button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
+        delete button.dataset.originalText;
+      }
+
+      button.removeAttribute('aria-busy');
+    }
+  }
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = null;
     }
 
-    if (!GENZ.videoProviders[provider]) {
-      await import(modulePath);
+    if (GENZ && GENZ.video) {
+      GENZ.video.poll = null;
+    }
+  }
+
+  function getValue(selectors, fallback) {
+    for (const selector of selectors) {
+      const el = $(selector);
+
+      if (el && el.value !== undefined) {
+        return el.value;
+      }
     }
 
-    const adapter =
-      GENZ.videoProviders[provider];
+    return fallback;
+  }
 
-    if (!adapter) {
-      throw new Error(
-        'Provider ' +
-        provider +
-        ' belum berhasil dimuat.'
-      );
+  function collectInput() {
+    const provider = String(
+      getValue(['#provider'], 'veo')
+    ).trim().toLowerCase();
+
+    const prompt = String(
+      getValue(['#prompt'], '')
+    ).trim();
+
+    const model = String(
+      getValue(['#model'], '')
+    ).trim();
+
+    const duration = getValue(
+      ['#duration'],
+      ''
+    );
+
+    const aspectRatio = String(
+      getValue(['#ratio', '#aspect'], '')
+    ).trim();
+
+    const resolution = String(
+      getValue(['#resolution'], '')
+    ).trim();
+
+    let imageData = null;
+
+    if (
+      window.GENZ &&
+      GENZ.state &&
+      GENZ.state.imageData
+    ) {
+      imageData = GENZ.state.imageData;
     }
 
     if (
-      typeof adapter.generate !== 'function'
+      !imageData &&
+      window.GENZ &&
+      GENZ.upload &&
+      GENZ.upload.imageData
     ) {
+      imageData = GENZ.upload.imageData;
+    }
+
+    return {
+      provider,
+      prompt,
+      model,
+      duration,
+      aspectRatio,
+      resolution,
+      imageData
+    };
+  }
+
+  async function loadProvider(providerName) {
+    const modulePath = PROVIDER_MODULES[providerName];
+
+    if (!modulePath) {
       throw new Error(
-        'Adapter provider ' +
-        provider +
-        ' tidak memiliki fungsi generate().'
+        `Provider "${providerName}" tidak didukung.`
       );
     }
 
-    return adapter;
+    try {
+      const module = await import(
+        `${modulePath}?v=${Date.now()}`
+      );
+
+      if (!module) {
+        throw new Error(
+          `Module provider ${providerName} kosong.`
+        );
+      }
+
+      if (typeof module.generate === 'function') {
+        return module;
+      }
+
+      if (
+        module.default &&
+        typeof module.default.generate === 'function'
+      ) {
+        return module.default;
+      }
+
+      if (
+        window.GENZ &&
+        GENZ.videoProviders &&
+        GENZ.videoProviders[providerName]
+      ) {
+        return GENZ.videoProviders[providerName];
+      }
+
+      throw new Error(
+        `Provider ${providerName} tidak memiliki fungsi generate().`
+      );
+
+    } catch (error) {
+      console.error(
+        `[GEN-Z.AI] Gagal memuat provider ${providerName}:`,
+        error
+      );
+
+      throw new Error(
+        `Engine ${providerName} belum termuat. Periksa file provider ${providerName}.js.`
+      );
+    }
   }
 
   async function getToken() {
     if (
-      !GENZ.auth ||
-      typeof GENZ.auth.token !== 'function'
+      window.GENZ &&
+      GENZ.auth &&
+      typeof GENZ.auth.token === 'function'
     ) {
-      throw new Error(
-        'Sistem autentikasi belum siap.'
-      );
+      return await GENZ.auth.token();
     }
 
-    const token =
-      await GENZ.auth.token();
-
-    if (!token) {
-      throw new Error(
-        'Sesi login tidak valid. Silakan login kembali.'
-      );
+    if (
+      window.GENZ_AUTH &&
+      typeof GENZ_AUTH.token === 'function'
+    ) {
+      return await GENZ_AUTH.token();
     }
 
-    return token;
+    return null;
   }
 
-  async function fetchJSON(
-    url,
-    options = {}
-  ) {
-    const response =
-      await fetch(url, options);
+  async function postGenerate(payload) {
+    const token = await getToken();
 
-    const data =
-      await response
-        .json()
-        .catch(() => ({}));
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      '/api/generate',
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      }
+    );
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = null;
+    }
 
     if (!response.ok) {
+      const message =
+        data?.error ||
+        data?.message ||
+        `HTTP ${response.status}`;
+
+      throw new Error(message);
+    }
+
+    if (!data) {
       throw new Error(
-        data.error ||
-        data.message ||
-        'Request gagal.'
+        'Server tidak mengembalikan respons yang valid.'
       );
     }
 
     return data;
   }
 
-  async function requestGenerate(payload) {
-    const token =
-      await getToken();
+  async function getJobStatus(jobId) {
+    const token = await getToken();
 
-    return fetchJSON(
-      '/api/generate',
-      {
-        method: 'POST',
+    const headers = {};
 
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          Authorization:
-            'Bearer ' + token
-        },
-
-        body:
-          JSON.stringify(payload)
-      }
-    );
-  }
-
-  async function checkStatus(jobId) {
-    const token =
-      await getToken();
-
-    return fetchJSON(
-      '/api/generate/status',
-      {
-        method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          Authorization:
-            'Bearer ' + token
-        },
-
-        body:
-          JSON.stringify({
-            jobId
-          })
-      }
-    );
-  }
-
-  async function pollJob(jobId) {
-    const started =
-      Date.now();
-
-    const timeout =
-      10 * 60 * 1000;
-
-    while (
-      Date.now() - started <
-      timeout
-    ) {
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            2500
-          )
-      );
-
-      const data =
-        await checkStatus(jobId);
-
-      const status =
-        String(
-          data.status || ''
-        ).toLowerCase();
-
-      if (
-        status === 'failed' ||
-        status === 'error' ||
-        status === 'cancelled'
-      ) {
-        throw new Error(
-          data.error ||
-          data.message ||
-          'Generate video gagal.'
-        );
-      }
-
-      const directUrl =
-        data.videoUrl ||
-        data.video_url ||
-        data.url ||
-        data.outputUrl ||
-        data.output_url;
-
-      if (directUrl) {
-        return directUrl;
-      }
-
-      if (
-        status === 'completed' ||
-        status === 'complete' ||
-        status === 'succeeded' ||
-        status === 'success' ||
-        status === 'done'
-      ) {
-        return fetchVideoResult(jobId);
-      }
-
-      updateStatus(
-        'Video sedang diproses... ' +
-        (data.progress != null
-          ? data.progress + '%'
-          : '')
-      );
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
-    throw new Error(
-      'Proses generate video melebihi batas waktu 10 menit.'
+    const url =
+      `/api/generate/status?jobId=${encodeURIComponent(jobId)}`;
+
+    const response = await fetch(
+      url,
+      {
+        method: 'GET',
+        headers
+      }
     );
-  }
 
-  async function fetchVideoResult(jobId) {
-    const token =
-      await getToken();
+    let data = null;
 
-    const response =
-      await fetch(
-        '/api/video?jobId=' +
-        encodeURIComponent(jobId),
-        {
-          headers: {
-            Authorization:
-              'Bearer ' + token
-          }
-        }
-      );
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = null;
+    }
 
     if (!response.ok) {
-      const data =
-        await response
-          .json()
-          .catch(() => ({}));
+      const message =
+        data?.error ||
+        data?.message ||
+        `HTTP ${response.status}`;
 
-      throw new Error(
-        data.error ||
-        data.message ||
-        'Video selesai tetapi hasil tidak dapat diambil.'
-      );
+      throw new Error(message);
+    }
+
+    return data;
+  }
+
+  async function getVideo(jobId) {
+    const token = await getToken();
+
+    const headers = {};
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const url =
+      `/api/video?jobId=${encodeURIComponent(jobId)}`;
+
+    const response = await fetch(
+      url,
+      {
+        method: 'GET',
+        headers
+      }
+    );
+
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+
+      try {
+        const data = await response.json();
+
+        message =
+          data?.error ||
+          data?.message ||
+          message;
+      } catch (_) {}
+
+      throw new Error(message);
     }
 
     const contentType =
-      response.headers.get(
-        'content-type'
-      ) || '';
+      response.headers.get('content-type') || '';
 
-    if (
-      contentType.includes('video/')
-    ) {
-      const blob =
-        await response.blob();
-
-      return URL.createObjectURL(
-        blob
-      );
+    if (contentType.includes('application/json')) {
+      return await response.json();
     }
 
-    const data =
-      await response
-        .json()
-        .catch(() => ({}));
+    const blob = await response.blob();
 
-    const url =
+    return {
+      blob
+    };
+  }
+
+  function findJobId(data) {
+    if (!data) return null;
+
+    return (
+      data.jobId ||
+      data.job_id ||
+      data.id ||
+      data.job?.jobId ||
+      data.job?.job_id ||
+      data.job?.id ||
+      data.data?.jobId ||
+      data.data?.job_id ||
+      data.data?.id ||
+      null
+    );
+  }
+
+  function findVideoUrl(data) {
+    if (!data) return null;
+
+    return (
       data.videoUrl ||
       data.video_url ||
       data.url ||
       data.outputUrl ||
-      data.output_url;
-
-    if (!url) {
-      throw new Error(
-        'Video selesai tetapi URL hasil tidak ditemukan.'
-      );
-    }
-
-    return url;
+      data.output_url ||
+      data.video?.url ||
+      data.data?.videoUrl ||
+      data.data?.video_url ||
+      data.data?.url ||
+      data.result?.videoUrl ||
+      data.result?.video_url ||
+      data.result?.url ||
+      null
+    );
   }
 
-  async function showVideo(url) {
-    if (!url) {
-      throw new Error(
-        'URL video kosong.'
-      );
-    }
+  function normalizeStatus(data) {
+    if (!data) return '';
 
-    if (
-      typeof url === 'string' &&
-      url.startsWith('/') &&
-      GENZ.video &&
-      typeof GENZ.video.fetchProtected ===
-        'function'
-    ) {
-      await GENZ.video.fetchProtected(
-        url
-      );
+    return String(
+      data.status ||
+      data.state ||
+      data.jobStatus ||
+      data.job?.status ||
+      data.data?.status ||
+      ''
+    ).toLowerCase();
+  }
 
-      showResult();
+  function isCompleted(status) {
+    return [
+      'completed',
+      'complete',
+      'succeeded',
+      'success',
+      'successful',
+      'done',
+      'finished',
+      'ready'
+    ].includes(status);
+  }
 
-      return url;
-    }
+  function isFailed(status) {
+    return [
+      'failed',
+      'failure',
+      'error',
+      'cancelled',
+      'canceled',
+      'rejected'
+    ].includes(status);
+  }
 
-    if (
-      GENZ.video &&
-      typeof GENZ.video.show ===
-        'function'
-    ) {
-      GENZ.video.show(url);
-    } else {
-      const video =
-        $('video');
+  async function displayVideo(data, jobId) {
+    let videoUrl = findVideoUrl(data);
+
+    if (videoUrl) {
+      if (
+        GENZ.video &&
+        typeof GENZ.video.fetchProtected === 'function'
+      ) {
+        try {
+          await GENZ.video.fetchProtected(videoUrl);
+          return;
+        } catch (error) {
+          console.warn(
+            '[GEN-Z.AI] Protected video gagal:',
+            error
+          );
+        }
+      }
+
+      if (
+        GENZ.video &&
+        typeof GENZ.video.show === 'function'
+      ) {
+        GENZ.video.show(videoUrl);
+        return;
+      }
+
+      const video = $('#video');
 
       if (video) {
-        video.src = url;
+        video.src = videoUrl;
         video.load();
       }
 
-      const download =
-        $('downloadVideo');
-
-      if (download) {
-        download.href = url;
-      }
-    }
-
-    showResult();
-
-    return url;
-  }
-
-  function updateStatus(message) {
-    const status =
-      $('status');
-
-    if (status) {
-      status.textContent =
-        message || '';
-    }
-  }
-
-  function showResult() {
-    const result =
-      $('videoResult');
-
-    if (result) {
-      result.classList.remove(
-        'hidden'
-      );
-    }
-  }
-
-  function setBusy(busy) {
-    const button =
-      $('generateVideo') ||
-      $('generateBtn');
-
-    if (!button) {
       return;
     }
 
-    button.disabled =
-      busy;
+    const result = await getVideo(jobId);
 
-    button.dataset.busy =
-      busy ? 'true' : 'false';
+    if (!result) {
+      throw new Error(
+        'Video selesai tetapi hasil video tidak ditemukan.'
+      );
+    }
 
-    button.textContent =
-      busy
-        ? 'Generating...'
-        : 'Generate Video';
+    if (result.blob) {
+      const objectUrl = URL.createObjectURL(
+        result.blob
+      );
+
+      if (
+        GENZ.video &&
+        typeof GENZ.video.show === 'function'
+      ) {
+        GENZ.video.show(objectUrl);
+      } else {
+        const video = $('#video');
+
+        if (video) {
+          video.src = objectUrl;
+          video.load();
+        }
+      }
+
+      if (GENZ.state) {
+        GENZ.state.currentVideoObjectUrl =
+          objectUrl;
+      }
+
+      return;
+    }
+
+    const finalUrl = findVideoUrl(result);
+
+    if (!finalUrl) {
+      throw new Error(
+        'Hasil video tidak memiliki URL.'
+      );
+    }
+
+    if (
+      GENZ.video &&
+      typeof GENZ.video.fetchProtected === 'function'
+    ) {
+      try {
+        await GENZ.video.fetchProtected(finalUrl);
+        return;
+      } catch (_) {}
+    }
+
+    if (
+      GENZ.video &&
+      typeof GENZ.video.show === 'function'
+    ) {
+      GENZ.video.show(finalUrl);
+      return;
+    }
+
+    const video = $('#video');
+
+    if (video) {
+      video.src = finalUrl;
+      video.load();
+    }
+  }
+
+  async function pollJob(jobId) {
+    stopPolling();
+
+    pollStartedAt = Date.now();
+
+    if (GENZ && GENZ.video) {
+      GENZ.video.poll = true;
+    }
+
+    return new Promise(
+      (resolve, reject) => {
+
+        const check = async () => {
+          try {
+            if (
+              Date.now() - pollStartedAt >
+              MAX_POLL_TIME
+            ) {
+              stopPolling();
+
+              reject(
+                new Error(
+                  'Proses generate video terlalu lama dan melewati batas waktu.'
+                )
+              );
+
+              return;
+            }
+
+            const data =
+              await getJobStatus(jobId);
+
+            const status =
+              normalizeStatus(data);
+
+            console.log(
+              '[GEN-Z.AI] Job status:',
+              status,
+              data
+            );
+
+            if (status) {
+              setStatus(
+                `Status: ${status}`,
+                'loading'
+              );
+            }
+
+            const directUrl =
+              findVideoUrl(data);
+
+            if (
+              directUrl &&
+              (
+                isCompleted(status) ||
+                !status
+              )
+            ) {
+              stopPolling();
+
+              await displayVideo(
+                data,
+                jobId
+              );
+
+              resolve(data);
+              return;
+            }
+
+            if (isFailed(status)) {
+              stopPolling();
+
+              const message =
+                data?.error ||
+                data?.message ||
+                data?.job?.error ||
+                'Generate video gagal.';
+
+              reject(
+                new Error(message)
+              );
+
+              return;
+            }
+
+            if (isCompleted(status)) {
+              stopPolling();
+
+              await displayVideo(
+                data,
+                jobId
+              );
+
+              resolve(data);
+              return;
+            }
+
+            pollTimer = setTimeout(
+              check,
+              POLL_INTERVAL
+            );
+
+            if (GENZ && GENZ.video) {
+              GENZ.video.poll = pollTimer;
+            }
+
+          } catch (error) {
+            stopPolling();
+            reject(error);
+          }
+        };
+
+        check();
+      }
+    );
   }
 
   async function generate() {
-    if (GENZ.generator.busy) {
-      return;
+    if (!window.GENZ) {
+      throw new Error(
+        'GENZ belum diinisialisasi.'
+      );
     }
+
+    stopPolling();
 
     const input =
       collectInput();
 
-    if (!input.prompt) {
-      alert(
-        'Prompt wajib diisi.'
+    if (!input.provider) {
+      throw new Error(
+        'Provider video belum dipilih.'
       );
-      return;
     }
 
-    GENZ.generator.busy =
-      true;
+    if (!input.prompt) {
+      throw new Error(
+        'Prompt video wajib diisi.'
+      );
+    }
 
-    setBusy(true);
-
-    updateStatus(
-      'Menyiapkan generator...'
+    setButtonLoading(true);
+    setStatus(
+      'Menyiapkan engine video...',
+      'loading'
     );
 
     try {
-      const adapter =
+      const provider =
         await loadProvider(
           input.provider
         );
 
-      updateStatus(
-        'Memvalidasi pengaturan ' +
-        input.provider +
-        '...'
+      if (
+        !provider ||
+        typeof provider.generate !== 'function'
+      ) {
+        throw new Error(
+          `Provider ${input.provider} tidak memiliki fungsi generate().`
+        );
+      }
+
+      setStatus(
+        `Menyiapkan ${input.provider.toUpperCase()}...`,
+        'loading'
       );
 
       /*
-       * Validasi dan aturan khusus
-       * sepenuhnya ditangani provider.
+       * Provider module bertanggung jawab atas:
+       * - validasi
+       * - aturan model
+       * - aturan durasi
+       * - aturan resolusi
+       * - aturan image input
+       * - payload provider
        */
-      const payload =
-        await adapter.generate(
-          input
-        );
 
-      updateStatus(
-        'Mengirim permintaan ke server...'
-      );
+      let payload;
 
-      const result =
-        await requestGenerate(
-          payload
-        );
+      try {
+        payload =
+          await provider.generate(
+            input,
+            {
+              postGenerate,
+              setStatus
+            }
+          );
+      } catch (error) {
+        /*
+         * Jika generate() provider memang mengembalikan
+         * payload untuk dikirim ke backend, gunakan payload.
+         *
+         * Jika provider module langsung melakukan request,
+         * hasil respons juga tetap dapat diproses.
+         */
+        throw error;
+      }
+
+      /*
+       * Provider module versi GEN-Z.AI menghasilkan payload.
+       * Backend tetap menggunakan endpoint /api/generate.
+       */
+
+      let response;
+
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        (
+          payload.jobId ||
+          payload.job_id ||
+          payload.videoUrl ||
+          payload.video_url ||
+          payload.url
+        )
+      ) {
+        response = payload;
+      } else {
+        response =
+          await postGenerate(
+            payload
+          );
+      }
 
       const directUrl =
-        result.videoUrl ||
-        result.video_url ||
-        result.url ||
-        result.outputUrl ||
-        result.output_url;
+        findVideoUrl(response);
 
       if (directUrl) {
-        updateStatus(
-          'Video berhasil dibuat.'
+        setStatus(
+          'Video berhasil dibuat.',
+          'success'
         );
 
-        return await showVideo(
-          directUrl
+        await displayVideo(
+          response,
+          findJobId(response)
         );
+
+        return response;
       }
 
       const jobId =
-        result.jobId ||
-        result.job_id ||
-        result.id ||
-        result.job?.id;
+        findJobId(response);
 
       if (!jobId) {
         throw new Error(
-          'Server tidak mengembalikan job ID atau URL video.'
+          response?.error ||
+          response?.message ||
+          'Server tidak mengembalikan Job ID.'
         );
       }
 
-      updateStatus(
-        'Video sedang diproses...'
+      setStatus(
+        'Video sedang diproses...',
+        'loading'
       );
 
-      const videoUrl =
+      const result =
         await pollJob(jobId);
 
-      updateStatus(
-        'Video berhasil dibuat.'
+      setStatus(
+        'Video berhasil dibuat.',
+        'success'
       );
 
-      return await showVideo(
-        videoUrl
-      );
+      return result;
 
     } catch (error) {
       console.error(
-        'GEN-Z.AI generate error:',
+        '[GEN-Z.AI] Generate video error:',
         error
       );
 
-      updateStatus(
-        error.message ||
-        'Generate video gagal.'
-      );
+      stopPolling();
 
-      alert(
-        error.message ||
-        'Generate video gagal.'
+      setStatus(
+        error?.message ||
+        'Generate video gagal.',
+        'error'
       );
 
       throw error;
 
     } finally {
-      GENZ.generator.busy =
-        false;
-
-      setBusy(false);
+      setButtonLoading(false);
     }
   }
 
-  /*
-   * Event delegation.
-   * Mendukung kedua ID agar kompatibel
-   * dengan versi UI lama dan baru.
-   */
-  document.addEventListener(
-    'click',
-    event => {
-      const button =
-        event.target.closest(
-          '#generateVideo, #generateBtn, [data-action="generate-video"]'
-        );
-
-      if (!button) {
-        return;
-      }
-
-      if (
-        button.disabled ||
-        GENZ.generator.busy
-      ) {
-        return;
-      }
-
-      generate().catch(
-        () => {}
-      );
+  function handleGenerateClick(event) {
+    if (event) {
+      event.preventDefault();
     }
-  );
+
+    generate().catch(
+      () => {}
+    );
+  }
+
+  function initialize() {
+    /*
+     * Hindari memasang listener dua kali.
+     */
+    if (
+      window.GENZ &&
+      GENZ.generator &&
+      GENZ.generator._initialized
+    ) {
+      return;
+    }
+
+    document.addEventListener(
+      'click',
+      function (event) {
+        const target =
+          event.target.closest(
+            '#generateVideo, #generateBtn, [data-action="generate-video"]'
+          );
+
+        if (!target) return;
+
+        handleGenerateClick(
+          event
+        );
+      }
+    );
+
+    if (!window.GENZ) {
+      window.GENZ = {};
+    }
+
+    if (!GENZ.generator) {
+      GENZ.generator = {};
+    }
+
+    GENZ.generator.generate =
+      generate;
+
+    GENZ.generator.initialize =
+      initialize;
+
+    GENZ.generator.stopPolling =
+      stopPolling;
+
+    GENZ.generator._initialized =
+      true;
+  }
 
   /*
-   * API publik.
+   * Public API
    */
   window.generateVideo =
     generate;
 
+  if (!window.GENZ) {
+    window.GENZ = {};
+  }
+
+  GENZ.generator =
+    GENZ.generator || {};
+
   GENZ.generator.generate =
     generate;
 
-  GENZ.generator.collectInput =
-    collectInput;
+  GENZ.generator.initialize =
+    initialize;
 
-  GENZ.generator.loadProvider =
-    loadProvider;
+  GENZ.generator.stopPolling =
+    stopPolling;
+
+  /*
+   * Inisialisasi setelah DOM tersedia.
+   */
+  if (
+    document.readyState === 'loading'
+  ) {
+    document.addEventListener(
+      'DOMContentLoaded',
+      initialize,
+      {
+        once: true
+      }
+    );
+  } else {
+    initialize();
+  }
 
 })();
