@@ -1,1014 +1,1116 @@
 /* =========================================================
-   GEN-Z.AI
-   INTERNAL PAGES
-   Profile / Credit / Top-up / Top-up Setting / Contact / Admin
-   ========================================================= */
-
+GEN-Z.AI
+INTERNAL PAGES
+Profile / Credit / Top-up / Top-up Setting / Contact / Admin
+========================================================= */
 
 /* =========================================================
-   PAGE CARD
-   ========================================================= */
+PAGE CARD
+========================================================= */
 
 .page-card {
-  position: relative;
+position: relative;
 
-  width: min(820px, calc(100% - 28px));
+width: min(820px, calc(100% - 28px));
 
-  margin: 28px auto 50px;
+margin: 28px auto 50px;
 
-  padding: 30px;
+padding: 30px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  overflow: hidden;
+overflow: hidden;
 
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 22px;
+border: 1px solid rgba(255, 255, 255, 0.075);
+border-radius: 22px;
 
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.055),
-      rgba(255, 255, 255, 0.018)
-    ),
-    rgba(8, 8, 12, 0.82);
+background:
+linear-gradient(
+145deg,
+rgba(255, 255, 255, 0.055),
+rgba(255, 255, 255, 0.018)
+),
+rgba(8, 8, 12, 0.82);
 
-  box-shadow:
-    0 28px 70px rgba(0, 0, 0, 0.32),
-    0 0 50px rgba(124, 58, 237, 0.035),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+box-shadow:
+0 28px 70px rgba(0, 0, 0, 0.32),
+0 0 50px rgba(124, 58, 237, 0.035),
+inset 0 1px 0 rgba(255, 255, 255, 0.035);
 
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+backdrop-filter: blur(22px);
+-webkit-backdrop-filter: blur(22px);
 }
-
-
-/* top glow */
-
-.page-card::before {
-  position: absolute;
-
-  top: -130px;
-  left: 50%;
-
-  width: 380px;
-  height: 190px;
-
-  content: "";
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(124, 58, 237, 0.105),
-      transparent 70%
-    );
-
-  transform: translateX(-50%);
-
-  pointer-events: none;
-}
-
 
 /* =========================================================
-   PAGE HEADER
-   ========================================================= */
+TOP GLOW
+========================================================= */
+
+.page-card::before {
+position: absolute;
+
+top: -130px;
+left: 50%;
+
+width: 380px;
+height: 190px;
+
+content: "";
+
+border-radius: 50%;
+
+background:
+radial-gradient(
+circle,
+rgba(124, 58, 237, 0.105),
+transparent 70%
+);
+
+transform: translateX(-50%);
+
+pointer-events: none;
+}
+
+/* =========================================================
+PAGE HEADER
+========================================================= */
 
 .page-header {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  display: flex;
-  align-items: center;
+display: flex;
+align-items: center;
 
-  gap: 14px;
+gap: 14px;
 
-  margin-bottom: 26px;
-  padding-bottom: 20px;
+margin-bottom: 26px;
+padding-bottom: 20px;
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+border-bottom: 1px solid rgba(255, 255, 255, 0.065);
 }
 
 .page-header h2 {
-  margin: 0;
+margin: 0;
 
-  color: #fff;
+color: #fff;
 
-  font-size: 23px;
-  font-weight: 900;
+font-size: 23px;
+font-weight: 900;
 
-  line-height: 1.1;
-  letter-spacing: -0.04em;
+line-height: 1.1;
+letter-spacing: -0.04em;
 }
 
 .page-header p {
-  margin: 6px 0 0;
+margin: 6px 0 0;
 
-  color: rgba(255, 255, 255, 0.4);
+color: rgba(255, 255, 255, 0.4);
 
-  font-size: 10px;
-  font-weight: 650;
+font-size: 10px;
+font-weight: 650;
 
-  line-height: 1.45;
+line-height: 1.45;
 }
 
-
 /* =========================================================
-   BACK BUTTON
-   ========================================================= */
+BACK BUTTON
+========================================================= */
 
 .back-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+display: flex;
+align-items: center;
+justify-content: center;
 
-  flex: 0 0 auto;
+flex: 0 0 auto;
 
-  width: 40px;
-  height: 40px;
+width: 40px;
+height: 40px;
 
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 11px;
+padding: 0;
 
-  background: rgba(255, 255, 255, 0.035);
+border: 1px solid rgba(255, 255, 255, 0.08);
+border-radius: 11px;
 
-  color: rgba(255, 255, 255, 0.68);
+background: rgba(255, 255, 255, 0.035);
 
-  cursor: pointer;
+color: rgba(255, 255, 255, 0.68);
 
-  font-size: 18px;
+cursor: pointer;
 
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+font-size: 18px;
+
+transition:
+background 0.2s ease,
+border-color 0.2s ease,
+color 0.2s ease,
+transform 0.2s ease;
 }
 
 .back-btn:hover {
-  background: rgba(139, 92, 246, 0.09);
+background: rgba(139, 92, 246, 0.09);
 
-  border-color: rgba(167, 139, 250, 0.3);
+border-color: rgba(167, 139, 250, 0.3);
 
-  color: #fff;
+color: #fff;
 
-  transform: translateX(-2px);
+transform: translateX(-2px);
 }
 
 .back-btn:focus-visible {
-  outline: 2px solid rgba(167, 139, 250, 0.75);
-  outline-offset: 2px;
+outline: 2px solid rgba(167, 139, 250, 0.75);
+outline-offset: 2px;
 }
 
-
 /* =========================================================
-   PROFILE
-   ========================================================= */
+PROFILE
+========================================================= */
 
 .profile-info {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  display: grid;
+display: grid;
 
-  gap: 9px;
+gap: 9px;
 }
 
 .profile-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+display: flex;
+align-items: center;
+justify-content: space-between;
 
-  gap: 18px;
+gap: 18px;
 
-  min-height: 54px;
+min-height: 54px;
 
-  padding: 0 16px;
+padding: 0 16px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 12px;
+border: 1px solid rgba(255, 255, 255, 0.055);
+border-radius: 12px;
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(255, 255, 255, 0.018)
-    );
+background:
+linear-gradient(
+135deg,
+rgba(255, 255, 255, 0.04),
+rgba(255, 255, 255, 0.018)
+);
 }
 
 .profile-row span {
-  color: rgba(255, 255, 255, 0.42);
+color: rgba(255, 255, 255, 0.42);
 
-  font-size: 10px;
-  font-weight: 750;
+font-size: 10px;
+font-weight: 750;
 
-  letter-spacing: 0.025em;
+letter-spacing: 0.025em;
 }
 
 .profile-row strong {
-  color: rgba(255, 255, 255, 0.82);
+color: rgba(255, 255, 255, 0.82);
 
-  font-size: 11px;
-  font-weight: 800;
+font-size: 11px;
+font-weight: 800;
 
-  text-align: right;
+text-align: right;
 }
 
-
 /* =========================================================
-   TRANSACTIONS
-   ========================================================= */
+TRANSACTIONS
+========================================================= */
 
 .transaction-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+display: flex;
+align-items: center;
+justify-content: space-between;
 
-  gap: 16px;
+gap: 16px;
 
-  min-height: 58px;
+min-height: 58px;
 
-  padding: 11px 15px;
+padding: 11px 15px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 12px;
+border: 1px solid rgba(255, 255, 255, 0.055);
+border-radius: 12px;
 
-  background: rgba(255, 255, 255, 0.025);
+background: rgba(255, 255, 255, 0.025);
 
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease;
+transition:
+background 0.2s ease,
+border-color 0.2s ease;
 }
 
 .transaction-row:hover {
-  background: rgba(255, 255, 255, 0.042);
+background: rgba(255, 255, 255, 0.042);
 
-  border-color: rgba(167, 139, 250, 0.16);
+border-color: rgba(167, 139, 250, 0.16);
 }
 
 .transaction-row small {
-  color: rgba(255, 255, 255, 0.42);
+color: rgba(255, 255, 255, 0.42);
 
-  font-size: 9px;
+font-size: 9px;
 }
 
 .transaction-row span {
-  color: rgba(255, 255, 255, 0.72);
+color: rgba(255, 255, 255, 0.72);
 
-  font-size: 10px;
-  font-weight: 700;
+font-size: 10px;
+font-weight: 700;
 }
 
-
 /* =========================================================
-   CREDIT BALANCE
-   ========================================================= */
+CREDIT BALANCE
+========================================================= */
 
 .credit-balance {
-  position: relative;
+position: relative;
 
-  margin-bottom: 25px;
+margin-bottom: 25px;
 
-  padding: 30px 20px;
+padding: 30px 20px;
 
-  overflow: hidden;
+overflow: hidden;
 
-  border: 1px solid rgba(167, 139, 250, 0.14);
-  border-radius: 18px;
+border: 1px solid rgba(167, 139, 250, 0.14);
+border-radius: 18px;
 
-  background:
-    radial-gradient(
-      circle at 50% 0%,
-      rgba(124, 58, 237, 0.14),
-      transparent 60%
-    ),
-    rgba(139, 92, 246, 0.045);
+background:
+radial-gradient(
+circle at 50% 0%,
+rgba(124, 58, 237, 0.14),
+transparent 60%
+),
+rgba(139, 92, 246, 0.045);
 
-  text-align: center;
+text-align: center;
 }
 
 .credit-balance::after {
-  position: absolute;
+position: absolute;
 
-  top: -70px;
-  right: -60px;
+top: -70px;
+right: -60px;
 
-  width: 150px;
-  height: 150px;
+width: 150px;
+height: 150px;
 
-  content: "";
+content: "";
 
-  border-radius: 50%;
+border-radius: 50%;
 
-  background:
-    radial-gradient(
-      circle,
-      rgba(59, 130, 246, 0.08),
-      transparent 70%
-    );
+background:
+radial-gradient(
+circle,
+rgba(59, 130, 246, 0.08),
+transparent 70%
+);
 
-  pointer-events: none;
+pointer-events: none;
 }
 
 .credit-balance span {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  display: block;
+display: block;
 
-  color: rgba(255, 255, 255, 0.42);
+color: rgba(255, 255, 255, 0.42);
 
-  font-size: 10px;
-  font-weight: 800;
+font-size: 10px;
+font-weight: 800;
 
-  letter-spacing: 0.08em;
+letter-spacing: 0.08em;
 }
 
 .credit-balance strong {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  display: block;
+display: block;
 
-  margin-top: 8px;
+margin-top: 8px;
 
-  color: #ddd6fe;
+color: #ddd6fe;
 
-  font-size: 42px;
-  font-weight: 950;
+font-size: 42px;
+font-weight: 950;
 
-  line-height: 1;
+line-height: 1;
 
-  letter-spacing: -0.055em;
+letter-spacing: -0.055em;
 
-  text-shadow:
-    0 0 30px rgba(139, 92, 246, 0.22);
+text-shadow:
+0 0 30px rgba(139, 92, 246, 0.22);
 }
 
-
 /* =========================================================
-   CREDIT HISTORY
-   ========================================================= */
+CREDIT HISTORY
+========================================================= */
 
 .credit-history h3,
 .topup-history h3 {
-  margin: 0 0 13px;
+margin: 0 0 13px;
 
-  color: rgba(255, 255, 255, 0.78);
+color: rgba(255, 255, 255, 0.78);
 
-  font-size: 12px;
-  font-weight: 850;
+font-size: 12px;
+font-weight: 850;
 
-  letter-spacing: -0.015em;
+letter-spacing: -0.015em;
 }
 
-
 /* =========================================================
-   CREDIT COLORS
-   ========================================================= */
+CREDIT COLORS
+========================================================= */
 
 .credit-plus {
-  color: #86efac;
+color: #86efac;
 
-  font-weight: 850;
+font-weight: 850;
 }
 
 .credit-minus {
-  color: #fca5a5;
+color: #fca5a5;
 
-  font-weight: 850;
+font-weight: 850;
 }
 
-
 /* =========================================================
-   TOP-UP
-   ========================================================= */
+TOP-UP
+========================================================= */
 
 .topup-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+display: flex;
+align-items: center;
+justify-content: space-between;
 
-  gap: 16px;
+gap: 16px;
 
-  min-height: 58px;
+min-height: 58px;
 
-  padding: 11px 15px;
+padding: 11px 15px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 12px;
+border: 1px solid rgba(255, 255, 255, 0.055);
+border-radius: 12px;
 
-  background: rgba(255, 255, 255, 0.025);
+background: rgba(255, 255, 255, 0.025);
 }
 
 .topup-row small {
-  color: rgba(255, 255, 255, 0.4);
+color: rgba(255, 255, 255, 0.4);
 
-  font-size: 9px;
+font-size: 9px;
 }
 
-
 /* =========================================================
-   TOP-UP FORM
-   ========================================================= */
+TOP-UP FORM
+========================================================= */
 
 #topupForm {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  display: grid;
+display: grid;
 
-  gap: 13px;
+gap: 13px;
 }
 
 #topupForm input,
 #topupForm textarea {
-  width: 100%;
+width: 100%;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  padding: 13px 14px;
+padding: 13px 14px;
 
-  border: 1px solid rgba(255, 255, 255, 0.085);
-  border-radius: 11px;
+border: 1px solid rgba(255, 255, 255, 0.085);
+border-radius: 11px;
 
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.045),
-      rgba(255, 255, 255, 0.018)
-    );
+background:
+linear-gradient(
+180deg,
+rgba(255, 255, 255, 0.045),
+rgba(255, 255, 255, 0.018)
+);
 
-  color: rgba(255, 255, 255, 0.88);
+color: rgba(255, 255, 255, 0.88);
 
-  font: inherit;
+font: inherit;
 
-  font-size: 11px;
+font-size: 11px;
 
-  outline: none;
+outline: none;
 
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+transition:
+border-color 0.2s ease,
+box-shadow 0.2s ease,
+background 0.2s ease;
+}
+
+#topupForm input::placeholder,
+#topupForm textarea::placeholder {
+color: rgba(255, 255, 255, 0.25);
 }
 
 #topupForm textarea {
-  min-height: 120px;
+min-height: 120px;
 
-  resize: vertical;
+resize: vertical;
 
-  line-height: 1.6;
+line-height: 1.6;
 }
 
 #topupForm input:focus,
 #topupForm textarea:focus {
-  border-color: rgba(167, 139, 250, 0.45);
+border-color: rgba(167, 139, 250, 0.45);
 
-  background: rgba(139, 92, 246, 0.045);
+background: rgba(139, 92, 246, 0.045);
 
-  box-shadow:
-    0 0 0 3px rgba(124, 58, 237, 0.07);
+box-shadow:
+0 0 0 3px rgba(124, 58, 237, 0.07);
 }
 
-
 /* =========================================================
-   PRIMARY BUTTON
-   ========================================================= */
+PRIMARY BUTTON
+========================================================= */
 
 .primary-btn {
-  min-height: 46px;
+min-height: 46px;
 
-  padding: 0 18px;
+padding: 0 18px;
 
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  border-radius: 11px;
+border: 1px solid rgba(167, 139, 250, 0.35);
+border-radius: 11px;
 
-  background:
-    linear-gradient(
-      135deg,
-      #7c3aed,
-      #4f46e5
-    );
+background:
+linear-gradient(
+135deg,
+#7c3aed,
+#4f46e5
+);
 
-  color: #fff;
+color: #fff;
 
-  font-size: 10px;
-  font-weight: 900;
+font-size: 10px;
+font-weight: 900;
 
-  letter-spacing: 0.05em;
+letter-spacing: 0.05em;
 
-  cursor: pointer;
+cursor: pointer;
 
-  box-shadow:
-    0 10px 28px rgba(109, 40, 217, 0.2);
+box-shadow:
+0 10px 28px rgba(109, 40, 217, 0.2);
 
-  transition:
-    filter 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+transition:
+filter 0.2s ease,
+transform 0.2s ease,
+box-shadow 0.2s ease,
+opacity 0.2s ease;
 }
 
 .primary-btn:hover {
-  filter: brightness(1.08);
+filter: brightness(1.08);
 
-  transform: translateY(-1px);
+transform: translateY(-1px);
 
-  box-shadow:
-    0 14px 34px rgba(109, 40, 217, 0.28);
+box-shadow:
+0 14px 34px rgba(109, 40, 217, 0.28);
 }
 
 .primary-btn:focus-visible {
-  outline: 2px solid rgba(167, 139, 250, 0.75);
-  outline-offset: 2px;
+outline: 2px solid rgba(167, 139, 250, 0.75);
+outline-offset: 2px;
 }
 
 .primary-btn:disabled {
-  opacity: 0.5;
+opacity: 0.5;
 
-  cursor: not-allowed;
+cursor: not-allowed;
 
-  transform: none;
+transform: none;
 
-  filter: none;
+filter: none;
+
+box-shadow:
+0 8px 20px rgba(109, 40, 217, 0.08);
 }
 
-
 /* =========================================================
-   TOP-UP STATUS
-   ========================================================= */
+TOP-UP STATUS
+========================================================= */
 
 .topup-status {
-  min-height: 20px;
+min-height: 20px;
 
-  margin-top: 14px;
+margin-top: 14px;
 
-  color: rgba(255, 255, 255, 0.48);
+color: rgba(255, 255, 255, 0.48);
 
-  font-size: 10px;
+font-size: 10px;
 
-  line-height: 1.5;
+line-height: 1.5;
 }
 
-
 /* =========================================================
-   EMPTY STATE
-   ========================================================= */
+EMPTY STATE
+========================================================= */
 
 .empty-state {
-  padding: 25px 15px;
+padding: 25px 15px;
 
-  border: 1px dashed rgba(255, 255, 255, 0.09);
-  border-radius: 12px;
+border: 1px dashed rgba(255, 255, 255, 0.09);
+border-radius: 12px;
 
-  color: rgba(255, 255, 255, 0.36);
+color: rgba(255, 255, 255, 0.36);
 
-  font-size: 10px;
+font-size: 10px;
 
-  text-align: center;
+text-align: center;
 }
 
-
 /* =========================================================
-   TOP-UP BADGE
-   ========================================================= */
+TOP-UP BADGE
+========================================================= */
 
 .topup-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+display: inline-flex;
+align-items: center;
+justify-content: center;
 
-  min-height: 25px;
+min-height: 25px;
 
-  padding: 0 10px;
+padding: 0 10px;
 
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
+border: 1px solid rgba(255, 255, 255, 0.06);
+border-radius: 999px;
 
-  font-size: 9px;
-  font-weight: 800;
+font-size: 9px;
+font-weight: 800;
 }
 
-
 /* =========================================================
-   STATUS COLORS
-   ========================================================= */
+STATUS COLORS
+========================================================= */
 
 .status-pending {
-  background: rgba(245, 158, 11, 0.09);
+background: rgba(245, 158, 11, 0.09);
 
-  border-color: rgba(245, 158, 11, 0.16);
+border-color: rgba(245, 158, 11, 0.16);
 
-  color: #fcd34d;
+color: #fcd34d;
 }
 
 .status-approved {
-  background: rgba(34, 197, 94, 0.09);
+background: rgba(34, 197, 94, 0.09);
 
-  border-color: rgba(34, 197, 94, 0.16);
+border-color: rgba(34, 197, 94, 0.16);
 
-  color: #86efac;
+color: #86efac;
 }
 
 .status-rejected {
-  background: rgba(239, 68, 68, 0.09);
+background: rgba(239, 68, 68, 0.09);
 
-  border-color: rgba(239, 68, 68, 0.16);
+border-color: rgba(239, 68, 68, 0.16);
 
-  color: #fca5a5;
+color: #fca5a5;
 }
 
-
 /* =========================================================
-   TOP-UP SETTING
-   ========================================================= */
+TOP-UP SETTING
+========================================================= */
 
 .topup-settings-page {
-  width: 100%;
+width: 100%;
 }
 
 .topup-settings-card {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  width: 100%;
-  max-width: 560px;
+width: 100%;
+max-width: 560px;
 
-  margin: 20px auto 0;
+margin: 20px auto 0;
 
-  padding: 20px;
+padding: 20px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
+border: 1px solid rgba(255, 255, 255, 0.08);
+border-radius: 18px;
 
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.035),
-      rgba(255, 255, 255, 0.012)
-    ),
-    rgba(0, 0, 0, 0.16);
+background:
+linear-gradient(
+145deg,
+rgba(255, 255, 255, 0.035),
+rgba(255, 255, 255, 0.012)
+),
+rgba(0, 0, 0, 0.16);
 
-  box-shadow:
-    0 18px 45px rgba(0, 0, 0, 0.18);
+box-shadow:
+0 18px 45px rgba(0, 0, 0, 0.18);
 }
 
-
-/* ---------------------------------------------------------
-   TOP-UP SETTING FIELD
---------------------------------------------------------- */
+/* =========================================================
+TOP-UP SETTING FIELD
+========================================================= */
 
 .topup-field {
-  margin-bottom: 18px;
+position: relative;
+
+margin-bottom: 18px;
+}
+
+.topup-field:last-child {
+margin-bottom: 0;
 }
 
 .topup-field label {
-  display: block;
+display: block;
 
-  margin-bottom: 8px;
+margin-bottom: 8px;
 
-  color: #facc15;
+color: #facc15;
 
-  font-size: 10px;
-  font-weight: 850;
+font-size: 10px;
+font-weight: 850;
 
-  letter-spacing: 0.08em;
+letter-spacing: 0.08em;
 }
 
 .topup-field input,
 .topup-field select,
 .topup-field textarea {
-  width: 100%;
+display: block;
 
-  box-sizing: border-box;
+width: 100%;
 
-  padding: 12px 13px;
+min-width: 0;
 
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+box-sizing: border-box;
 
-  background:
-    rgba(0, 0, 0, 0.35);
+padding: 12px 13px;
 
-  color: #fff;
+border: 1px solid rgba(255, 255, 255, 0.1);
+border-radius: 10px;
 
-  font-family: inherit;
+background:
+rgba(0, 0, 0, 0.35);
 
-  font-size: 12px;
+color: #fff;
 
-  outline: none;
+font-family: inherit;
 
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+font-size: 12px;
+
+line-height: 1.4;
+
+outline: none;
+
+transition:
+border-color 0.2s ease,
+background 0.2s ease,
+box-shadow 0.2s ease,
+opacity 0.2s ease;
+}
+
+.topup-field input {
+height: 44px;
+}
+
+.topup-field select {
+height: 44px;
+
+appearance: auto;
+
+-webkit-appearance: auto;
+
+cursor: pointer;
+}
+
+.topup-field textarea {
+min-height: 95px;
+
+resize: vertical;
+
+line-height: 1.55;
 }
 
 .topup-field input::placeholder,
 .topup-field textarea::placeholder {
-  color: rgba(255, 255, 255, 0.25);
+color: rgba(255, 255, 255, 0.25);
 }
 
 .topup-field input:focus,
 .topup-field select:focus,
 .topup-field textarea:focus {
-  border-color: rgba(250, 204, 21, 0.45);
+border-color: rgba(250, 204, 21, 0.45);
 
-  background:
-    rgba(0, 0, 0, 0.48);
+background:
+rgba(0, 0, 0, 0.48);
 
-  box-shadow:
-    0 0 0 3px rgba(250, 204, 21, 0.055);
+box-shadow:
+0 0 0 3px rgba(250, 204, 21, 0.055);
 }
 
-.topup-field select {
-  appearance: auto;
+.topup-field input:disabled,
+.topup-field select:disabled,
+.topup-field textarea:disabled {
+opacity: 0.48;
 
-  cursor: pointer;
+cursor: not-allowed;
 }
 
 .topup-field select option {
-  background: #111;
+background: #111;
 
-  color: #fff;
-}
-
-.topup-field textarea {
-  min-height: 95px;
-
-  resize: vertical;
-
-  line-height: 1.55;
+color: #fff;
 }
 
 .topup-field small {
-  display: block;
+display: block;
 
-  margin-top: 7px;
+margin-top: 7px;
 
-  color: rgba(255, 255, 255, 0.38);
+color: rgba(255, 255, 255, 0.38);
 
-  font-size: 9px;
+font-size: 9px;
 
-  line-height: 1.5;
+line-height: 1.5;
 }
 
-
-/* ---------------------------------------------------------
-   SELECTED USER INFORMATION
---------------------------------------------------------- */
+/* =========================================================
+SELECTED USER INFORMATION
+========================================================= */
 
 .topup-user-info {
-  display: grid;
+display: grid;
 
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1fr);
+grid-template-columns:
+minmax(0, 1fr)
+minmax(0, 1fr);
 
-  gap: 10px;
+gap: 10px;
 
-  margin:
-    0 0 20px;
+margin: 0 0 20px;
+}
+
+.topup-user-info[hidden] {
+display: none !important;
 }
 
 .topup-user-info > div {
-  min-width: 0;
+min-width: 0;
 
-  padding: 13px;
+padding: 13px;
 
-  box-sizing: border-box;
+box-sizing: border-box;
 
-  border: 1px solid rgba(255, 255, 255, 0.065);
-  border-radius: 12px;
+border: 1px solid rgba(255, 255, 255, 0.065);
+border-radius: 12px;
 
-  background:
-    rgba(255, 255, 255, 0.025);
+background:
+rgba(255, 255, 255, 0.025);
 }
 
 .topup-user-info span {
-  display: block;
+display: block;
 
-  margin-bottom: 5px;
+margin-bottom: 5px;
 
-  color: rgba(255, 255, 255, 0.38);
+color: rgba(255, 255, 255, 0.38);
 
-  font-size: 9px;
-  font-weight: 750;
+font-size: 9px;
+font-weight: 750;
 
-  text-transform: uppercase;
+text-transform: uppercase;
 
-  letter-spacing: 0.06em;
+letter-spacing: 0.06em;
 }
 
 .topup-user-info strong {
-  display: block;
+display: block;
 
-  min-width: 0;
+min-width: 0;
 
-  color: rgba(255, 255, 255, 0.9);
+color: rgba(255, 255, 255, 0.9);
 
-  font-size: 11px;
-  font-weight: 800;
+font-size: 11px;
+font-weight: 800;
 
-  overflow: hidden;
+overflow: hidden;
 
-  text-overflow: ellipsis;
+text-overflow: ellipsis;
 
-  white-space: nowrap;
+white-space: nowrap;
 }
 
 #topupCurrentCredit {
-  color: #86efac;
+color: #86efac;
 
-  font-size: 16px;
+font-size: 16px;
+
+font-weight: 900;
 }
 
-
-/* ---------------------------------------------------------
-   TOP-UP SETTING BUTTON
---------------------------------------------------------- */
+/* =========================================================
+TOP-UP SETTING BUTTON
+========================================================= */
 
 .topup-submit-btn {
-  width: 100%;
+display: block;
 
-  margin-top: 4px;
+width: 100%;
+
+margin-top: 4px;
 }
 
-
-/* ---------------------------------------------------------
-   TOP-UP SETTING STATUS
---------------------------------------------------------- */
+/* =========================================================
+TOP-UP SETTING STATUS
+========================================================= */
 
 .topup-settings-status {
-  position: relative;
-  z-index: 1;
+position: relative;
+z-index: 1;
 
-  min-height: 18px;
+min-height: 18px;
 
-  margin: 12px 0;
+margin: 12px 0;
 
-  font-size: 10px;
+font-size: 10px;
 
-  line-height: 1.5;
+font-weight: 700;
+
+line-height: 1.5;
 }
 
 .topup-settings-status:empty {
-  display: none;
+display: none;
 }
 
 .topup-settings-status.info {
-  color: rgba(255, 255, 255, 0.55);
+color: rgba(255, 255, 255, 0.55);
 }
 
 .topup-settings-status.success {
-  color: #86efac;
+color: #86efac;
 }
 
 .topup-settings-status.error {
-  color: #fca5a5;
+color: #fca5a5;
 }
 
-
 /* =========================================================
-   ADMIN STATUS
-   ========================================================= */
+ADMIN STATUS
+========================================================= */
 
 .admin-status-message {
-  min-height: 20px;
+min-height: 20px;
 
-  margin: 10px 0;
+margin: 10px 0;
 
-  font-size: 10px;
+font-size: 10px;
 
-  line-height: 1.5;
+line-height: 1.5;
 }
 
 .admin-status-message.success {
-  color: #86efac;
+color: #86efac;
 }
 
 .admin-status-message.error {
-  color: #fca5a5;
+color: #fca5a5;
 }
 
 .admin-status-message.info {
-  color: rgba(255, 255, 255, 0.55);
+color: rgba(255, 255, 255, 0.55);
 }
 
-
 /* =========================================================
-   HIDDEN
-   ========================================================= */
+HIDDEN
+========================================================= */
 
 .hidden {
-  display: none !important;
+display: none !important;
 }
 
-
 /* =========================================================
-   MOBILE
-   ========================================================= */
+MOBILE
+========================================================= */
 
 @media (max-width: 600px) {
 
-  .page-card {
-    width: calc(100% - 18px);
+.page-card {
+width: calc(100% - 18px);
 
-    margin-top: 15px;
+margin-top: 15px;
 
-    padding: 20px 15px;
+padding: 20px 15px;
 
-    border-radius: 18px;
-  }
-
-  .page-header {
-    gap: 11px;
-
-    margin-bottom: 21px;
-    padding-bottom: 17px;
-  }
-
-  .page-header h2 {
-    font-size: 20px;
-  }
-
-  .page-header p {
-    font-size: 9px;
-  }
-
-  .back-btn {
-    width: 38px;
-    height: 38px;
-  }
-
-  .profile-row,
-  .transaction-row,
-  .topup-row {
-    min-height: 52px;
-
-    padding: 10px 12px;
-
-    gap: 10px;
-  }
-
-  .profile-row span,
-  .transaction-row small,
-  .topup-row small {
-    font-size: 8px;
-  }
-
-  .profile-row strong,
-  .transaction-row span {
-    font-size: 9px;
-  }
-
-  .credit-balance {
-    padding: 25px 15px;
-  }
-
-  .credit-balance strong {
-    font-size: 36px;
-  }
-
-  .topup-settings-card {
-    margin-top: 15px;
-
-    padding: 16px;
-
-    border-radius: 15px;
-  }
-
-  .topup-user-info {
-    grid-template-columns: 1fr;
-  }
+border-radius: 18px;
 
 }
 
+.page-header {
+gap: 11px;
+
+margin-bottom: 21px;
+padding-bottom: 17px;
+
+}
+
+.page-header h2 {
+font-size: 20px;
+}
+
+.page-header p {
+font-size: 9px;
+}
+
+.back-btn {
+width: 38px;
+height: 38px;
+}
+
+.profile-row,
+.transaction-row,
+.topup-row {
+min-height: 52px;
+
+padding: 10px 12px;
+
+gap: 10px;
+
+}
+
+.profile-row span,
+.transaction-row small,
+.topup-row small {
+font-size: 8px;
+}
+
+.profile-row strong,
+.transaction-row span {
+font-size: 9px;
+}
+
+.credit-balance {
+padding: 25px 15px;
+}
+
+.credit-balance strong {
+font-size: 36px;
+}
+
+.topup-settings-card {
+margin-top: 15px;
+
+padding: 16px;
+
+border-radius: 15px;
+
+}
+
+.topup-field {
+margin-bottom: 16px;
+}
+
+.topup-field input,
+.topup-field select {
+height: 43px;
+}
+
+.topup-field textarea {
+min-height: 90px;
+}
+
+.topup-user-info {
+grid-template-columns: 1fr;
+
+gap: 8px;
+
+margin-bottom: 17px;
+
+}
+
+.topup-user-info > div {
+padding: 12px;
+}
+
+#topupCurrentCredit {
+font-size: 15px;
+}
+
+.topup-submit-btn {
+min-height: 45px;
+}
+
+}
 
 /* =========================================================
-   REDUCED MOTION
-   ========================================================= */
+VERY SMALL MOBILE
+========================================================= */
+
+@media (max-width: 380px) {
+
+.page-card {
+width: calc(100% - 12px);
+
+padding: 17px 12px;
+
+border-radius: 16px;
+
+}
+
+.topup-settings-card {
+padding: 13px;
+
+border-radius: 14px;
+
+}
+
+.page-header h2 {
+font-size: 18px;
+}
+
+.page-header p {
+font-size: 8px;
+}
+
+.topup-field label {
+font-size: 9px;
+}
+
+.topup-field input,
+.topup-field select,
+.topup-field textarea {
+font-size: 11px;
+}
+
+}
+
+/* =========================================================
+REDUCED MOTION
+========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
 
-  .back-btn,
-  .transaction-row,
-  .primary-btn,
-  #topupForm input,
-  #topupForm textarea,
-  .topup-field input,
-  .topup-field select,
-  .topup-field textarea {
-    transition: none;
-  }
+.back-btn,
+.transaction-row,
+.primary-btn,
+#topupForm input,
+#topupForm textarea,
+.topup-field input,
+.topup-field select,
+.topup-field textarea {
+transition: none;
+}
 
 }
