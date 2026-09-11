@@ -1,157 +1,439 @@
-<section id="studio" class="generator-page">
+<section
+  id="studio"
+  class="generator-page"
+>
 
   <div class="generator-card">
 
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
     <div class="generator-header">
-      <h2>AI Video Generator</h2>
-      <p>Buat video realistis menggunakan AI</p>
+
+      <div class="generator-title-row">
+
+        <div class="generator-title-icon">
+          <span aria-hidden="true">✦</span>
+        </div>
+
+        <div>
+
+          <div class="generator-eyebrow">
+            AI CREATIVE ENGINE
+          </div>
+
+          <h2>
+            AI Video Generator
+          </h2>
+
+          <p>
+            Buat video realistis dengan engine AI pilihanmu.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="generator-live-badge">
+        <span></span>
+        READY
+      </div>
+
     </div>
 
-    <!-- PROVIDER -->
-    <div class="form-group">
-      <label for="provider">AI Engine</label>
 
-      <select id="provider">
-        <option value="">
-          Pilih AI Engine
-        </option>
-      </select>
-    </div>
+    <!-- =====================================================
+         ENGINE
+    ====================================================== -->
 
-    <!-- MODEL -->
-    <div class="form-group">
-      <label for="model">Model</label>
+    <div class="studio-section">
 
-      <select id="model">
-        <option value="">
-          Pilih model
-        </option>
-      </select>
-    </div>
+      <div class="studio-section-header">
 
-    <!-- IMAGE -->
-    <div class="form-group">
+        <div class="studio-section-number">
+          01
+        </div>
 
-      <label for="image">
-        Gambar Referensi
-      </label>
+        <div>
 
-      <input
-        id="image"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-      >
+          <strong>
+            AI Engine
+          </strong>
 
-      <small>
-        Maksimal 12 MB
-      </small>
+          <span>
+            Pilih provider dan model yang digunakan.
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <!-- PROVIDER -->
+
+      <div class="form-group">
+
+        <label for="provider">
+          AI ENGINE
+        </label>
+
+        <select id="provider">
+
+          <option value="">
+            Pilih AI Engine
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <!-- MODEL -->
+
+      <div class="form-group">
+
+        <label for="model">
+          MODEL
+        </label>
+
+        <select id="model">
+
+          <option value="">
+            Pilih model
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <!-- PROVIDER BUTTONS -->
 
       <div
-        id="imagePreview"
-        class="image-preview hidden">
+        class="provider-buttons"
+        data-providers>
       </div>
 
     </div>
 
-    <!-- PROMPT -->
-    <div class="form-group">
 
-      <label for="prompt">
-        Prompt Video
-      </label>
+    <!-- =====================================================
+         REFERENCE IMAGE
+    ====================================================== -->
 
-      <textarea
-        id="prompt"
-        rows="7"
-        placeholder="Tuliskan prompt video yang ingin dibuat..."
-      ></textarea>
+    <div class="studio-section">
 
-    </div>
+      <div class="studio-section-header">
 
-    <!-- RATIO + DURATION -->
-    <div class="form-row">
+        <div class="studio-section-number">
+          02
+        </div>
+
+        <div>
+
+          <strong>
+            Reference Image
+          </strong>
+
+          <span>
+            Gunakan gambar untuk image-to-video jika diperlukan.
+          </span>
+
+        </div>
+
+      </div>
+
 
       <div class="form-group">
 
-        <label for="ratio">
-          Rasio
+        <label for="image">
+          GAMBAR REFERENSI
         </label>
 
-        <select id="ratio">
+        <div class="upload-zone">
+
+          <div class="upload-zone-icon">
+            <span aria-hidden="true">↑</span>
+          </div>
+
+          <div class="upload-zone-content">
+
+            <strong>
+              Upload gambar
+            </strong>
+
+            <span>
+              PNG, JPG atau WEBP
+            </span>
+
+          </div>
+
+          <input
+            id="image"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+          >
+
+        </div>
+
+        <small>
+          Maksimal 12 MB
+        </small>
+
+
+        <div
+          id="imagePreview"
+          class="image-preview hidden">
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         PROMPT
+    ====================================================== -->
+
+    <div class="studio-section">
+
+      <div class="studio-section-header">
+
+        <div class="studio-section-number">
+          03
+        </div>
+
+        <div>
+
+          <strong>
+            Creative Prompt
+          </strong>
+
+          <span>
+            Jelaskan video yang ingin dibuat.
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="prompt">
+          VIDEO PROMPT
+        </label>
+
+        <div class="prompt-wrapper">
+
+          <textarea
+            id="prompt"
+            rows="7"
+            placeholder="Contoh: seorang wanita berjalan perlahan di jalan kota pada pagi hari, kamera mengikuti dari depan, gerakan natural dan realistis..."
+          ></textarea>
+
+          <div class="prompt-hint">
+            <span>
+              DESCRIBE YOUR VISION
+            </span>
+
+            <span>
+              AI READY
+            </span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         OUTPUT SETTINGS
+    ====================================================== -->
+
+    <div class="studio-section">
+
+      <div class="studio-section-header">
+
+        <div class="studio-section-number">
+          04
+        </div>
+
+        <div>
+
+          <strong>
+            Output Settings
+          </strong>
+
+          <span>
+            Atur format video sesuai kebutuhan.
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="form-row">
+
+        <!-- RATIO -->
+
+        <div class="form-group">
+
+          <label for="ratio">
+            RASIO
+          </label>
+
+          <select id="ratio">
+
+            <option value="">
+              Pilih rasio
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- DURATION -->
+
+        <div class="form-group">
+
+          <label for="duration">
+            DURASI
+          </label>
+
+          <select id="duration">
+
+            <option value="">
+              Pilih durasi
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+
+      <!-- RESOLUTION -->
+
+      <div class="form-group">
+
+        <label for="resolution">
+          RESOLUSI
+        </label>
+
+        <select id="resolution">
+
           <option value="">
-            Pilih rasio
+            Pilih resolusi
           </option>
+
         </select>
 
       </div>
 
-      <div class="form-group">
+    </div>
 
-        <label for="duration">
-          Durasi
-        </label>
 
-        <select id="duration">
-          <option value="">
-            Pilih durasi
-          </option>
-        </select>
+    <!-- =====================================================
+         GENERATE
+    ====================================================== -->
 
+    <div class="generate-area">
+
+      <div class="generate-info">
+
+        <span class="generate-info-dot"></span>
+
+        <span>
+          ENGINE READY
+        </span>
+
+      </div>
+
+
+      <button
+        id="generateVideo"
+        type="button"
+        class="generate-btn"
+      >
+
+        <span class="generate-btn-icon">
+          ✦
+        </span>
+
+        <span class="generate-btn-text">
+          Generate Video
+        </span>
+
+        <span class="generate-btn-arrow">
+          →
+        </span>
+
+      </button>
+
+
+      <div
+        id="status"
+        class="generator-status">
       </div>
 
     </div>
 
-    <!-- RESOLUTION -->
-    <div class="form-group">
 
-      <label for="resolution">
-        Resolusi
-      </label>
+    <!-- =====================================================
+         RESULT
+    ====================================================== -->
 
-      <select id="resolution">
-        <option value="">
-          Pilih resolusi
-        </option>
-      </select>
-
-    </div>
-
-    <!-- PROVIDER BUTTONS -->
-    <div
-      class="provider-buttons"
-      data-providers>
-    </div>
-
-    <!-- GENERATE -->
-    <button
-      id="generateVideo"
-      type="button"
-      class="generate-btn">
-
-      Generate Video
-
-    </button>
-
-    <!-- STATUS -->
-    <div
-      id="status"
-      class="generator-status">
-    </div>
-
-    <!-- RESULT -->
     <section
       id="videoResult"
-      class="video-result hidden">
+      class="video-result hidden"
+    >
 
       <div class="result-header">
-        <h3>Hasil Video</h3>
+
+        <div>
+
+          <div class="result-eyebrow">
+            GENERATION COMPLETE
+          </div>
+
+          <h3>
+            Hasil Video
+          </h3>
+
+        </div>
+
+        <div class="result-ready">
+          READY
+        </div>
+
       </div>
 
-      <video
-        id="video"
-        controls
-        playsinline>
-      </video>
+
+      <div class="video-frame">
+
+        <div class="video-frame-top">
+
+          <span></span>
+          <span></span>
+          <span></span>
+
+        </div>
+
+        <video
+          id="video"
+          controls
+          playsinline>
+        </video>
+
+      </div>
+
 
       <div class="video-actions">
 
@@ -159,7 +441,12 @@
           id="downloadVideo"
           class="download-btn"
           href="#"
-          download="gen-z-ai-video.mp4">
+          download="gen-z-ai-video.mp4"
+        >
+
+          <span>
+            ↓
+          </span>
 
           Download Video
 
@@ -168,6 +455,7 @@
       </div>
 
     </section>
+
 
   </div>
 
