@@ -1,161 +1,710 @@
 /* =========================================================
-   GEN-Z.AI - PAGES
+   GEN-Z.AI
+   INTERNAL PAGES
+   Profile / Credit / Top-up / Contact / Admin
+   ========================================================= */
+
+
+/* =========================================================
+   PAGE CARD
    ========================================================= */
 
 .page-card {
-  width: min(760px, calc(100% - 24px));
-  margin: 24px auto;
-  padding: 24px;
-  border-radius: 18px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.1);
+  position: relative;
+
+  width: min(820px, calc(100% - 28px));
+
+  margin: 28px auto 50px;
+
+  padding: 30px;
+
   box-sizing: border-box;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.055),
+      rgba(255, 255, 255, 0.018)
+    ),
+    rgba(8, 8, 12, 0.82);
+
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.32),
+    0 0 50px rgba(124, 58, 237, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 }
 
+
+/* top glow */
+
+.page-card::before {
+  position: absolute;
+
+  top: -130px;
+  left: 50%;
+
+  width: 380px;
+  height: 190px;
+
+  content: "";
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(124, 58, 237, 0.105),
+      transparent 70%
+    );
+
+  transform: translateX(-50%);
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   PAGE HEADER
+   ========================================================= */
+
 .page-header {
+  position: relative;
+  z-index: 1;
+
   display: flex;
   align-items: center;
+
   gap: 14px;
-  margin-bottom: 24px;
+
+  margin-bottom: 26px;
+  padding-bottom: 20px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
 }
 
 .page-header h2 {
   margin: 0;
+
+  color: #fff;
+
+  font-size: 23px;
+  font-weight: 900;
+
+  line-height: 1.1;
+  letter-spacing: -0.04em;
 }
 
 .page-header p {
-  margin: 4px 0 0;
-  opacity: .65;
+  margin: 6px 0 0;
+
+  color: rgba(255, 255, 255, 0.4);
+
+  font-size: 10px;
+  font-weight: 650;
+
+  line-height: 1.45;
 }
+
+
+/* =========================================================
+   BACK BUTTON
+   ========================================================= */
 
 .back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
   width: 40px;
   height: 40px;
-  border: 0;
-  border-radius: 10px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+
+  background: rgba(255, 255, 255, 0.035);
+
+  color: rgba(255, 255, 255, 0.68);
+
   cursor: pointer;
-  font-size: 20px;
+
+  font-size: 18px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
+
+.back-btn:hover {
+  background: rgba(139, 92, 246, 0.09);
+
+  border-color: rgba(167, 139, 250, 0.3);
+
+  color: #fff;
+
+  transform: translateX(-2px);
+}
+
+.back-btn:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.75);
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   PROFILE
+   ========================================================= */
 
 .profile-info {
+  position: relative;
+  z-index: 1;
+
   display: grid;
-  gap: 10px;
+
+  gap: 9px;
 }
 
-.profile-row,
-.transaction-row,
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 18px;
+
+  min-height: 54px;
+
+  padding: 0 16px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.018)
+    );
+}
+
+.profile-row span {
+  color: rgba(255, 255, 255, 0.42);
+
+  font-size: 10px;
+  font-weight: 750;
+
+  letter-spacing: 0.025em;
+}
+
+.profile-row strong {
+  color: rgba(255, 255, 255, 0.82);
+
+  font-size: 11px;
+  font-weight: 800;
+
+  text-align: right;
+}
+
+
+/* =========================================================
+   TRANSACTIONS
+   ========================================================= */
+
+.transaction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  min-height: 58px;
+
+  padding: 11px 15px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.transaction-row:hover {
+  background: rgba(255, 255, 255, 0.042);
+
+  border-color: rgba(167, 139, 250, 0.16);
+}
+
+.transaction-row small {
+  color: rgba(255, 255, 255, 0.42);
+
+  font-size: 9px;
+}
+
+.transaction-row span {
+  color: rgba(255, 255, 255, 0.72);
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   CREDIT BALANCE
+   ========================================================= */
+
+.credit-balance {
+  position: relative;
+
+  margin-bottom: 25px;
+
+  padding: 30px 20px;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(167, 139, 250, 0.14);
+  border-radius: 18px;
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(124, 58, 237, 0.14),
+      transparent 60%
+    ),
+    rgba(139, 92, 246, 0.045);
+
+  text-align: center;
+}
+
+.credit-balance::after {
+  position: absolute;
+
+  top: -70px;
+  right: -60px;
+
+  width: 150px;
+  height: 150px;
+
+  content: "";
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(59, 130, 246, 0.08),
+      transparent 70%
+    );
+
+  pointer-events: none;
+}
+
+.credit-balance span {
+  position: relative;
+  z-index: 1;
+
+  display: block;
+
+  color: rgba(255, 255, 255, 0.42);
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+}
+
+.credit-balance strong {
+  position: relative;
+  z-index: 1;
+
+  display: block;
+
+  margin-top: 8px;
+
+  color: #ddd6fe;
+
+  font-size: 42px;
+  font-weight: 950;
+
+  line-height: 1;
+
+  letter-spacing: -0.055em;
+
+  text-shadow:
+    0 0 30px rgba(139, 92, 246, 0.22);
+}
+
+
+/* =========================================================
+   CREDIT HISTORY
+   ========================================================= */
+
+.credit-history h3,
+.topup-history h3 {
+  margin: 0 0 13px;
+
+  color: rgba(255, 255, 255, 0.78);
+
+  font-size: 12px;
+  font-weight: 850;
+
+  letter-spacing: -0.015em;
+}
+
+
+/* =========================================================
+   CREDIT COLORS
+   ========================================================= */
+
+.credit-plus {
+  color: #86efac;
+
+  font-weight: 850;
+}
+
+.credit-minus {
+  color: #fca5a5;
+
+  font-weight: 850;
+}
+
+
+/* =========================================================
+   TOP-UP
+   ========================================================= */
+
 .topup-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   gap: 16px;
-  padding: 15px;
+
+  min-height: 58px;
+
+  padding: 11px 15px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.055);
   border-radius: 12px;
-  background: rgba(255,255,255,.04);
+
+  background: rgba(255, 255, 255, 0.025);
 }
 
-.profile-row span,
-.transaction-row small,
 .topup-row small {
-  opacity: .65;
+  color: rgba(255, 255, 255, 0.4);
+
+  font-size: 9px;
 }
 
-.credit-balance {
-  text-align: center;
-  padding: 28px;
-  margin-bottom: 24px;
-  border-radius: 16px;
-  background: rgba(255,255,255,.05);
-}
 
-.credit-balance span {
-  display: block;
-  opacity: .65;
-}
-
-.credit-balance strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 36px;
-}
-
-.credit-history h3,
-.topup-history h3 {
-  margin-bottom: 14px;
-}
+/* =========================================================
+   TOP-UP FORM
+   ========================================================= */
 
 #topupForm {
+  position: relative;
+  z-index: 1;
+
   display: grid;
-  gap: 12px;
+
+  gap: 13px;
 }
 
 #topupForm input,
 #topupForm textarea {
   width: 100%;
+
   box-sizing: border-box;
-  padding: 13px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.15);
-  background: rgba(255,255,255,.05);
-  color: inherit;
+
+  padding: 13px 14px;
+
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.045),
+      rgba(255, 255, 255, 0.018)
+    );
+
+  color: rgba(255, 255, 255, 0.88);
+
+  font: inherit;
+
+  font-size: 11px;
+
   outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
+
+#topupForm textarea {
+  min-height: 120px;
+
+  resize: vertical;
+
+  line-height: 1.6;
+}
+
+#topupForm input:focus,
+#topupForm textarea:focus {
+  border-color: rgba(167, 139, 250, 0.45);
+
+  background: rgba(139, 92, 246, 0.045);
+
+  box-shadow:
+    0 0 0 3px rgba(124, 58, 237, 0.07);
+}
+
+
+/* =========================================================
+   PRIMARY BUTTON
+   ========================================================= */
 
 .primary-btn {
-  padding: 13px 18px;
-  border: 0;
-  border-radius: 10px;
+  min-height: 46px;
+
+  padding: 0 18px;
+
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7c3aed,
+      #4f46e5
+    );
+
+  color: #fff;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  letter-spacing: 0.05em;
+
   cursor: pointer;
-  font-weight: 700;
+
+  box-shadow:
+    0 10px 28px rgba(109, 40, 217, 0.2);
+
+  transition:
+    filter 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
+.primary-btn:hover {
+  filter: brightness(1.08);
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 14px 34px rgba(109, 40, 217, 0.28);
+}
+
+.primary-btn:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.75);
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   TOP-UP STATUS
+   ========================================================= */
 
 .topup-status {
-  margin-top: 15px;
   min-height: 20px;
+
+  margin-top: 14px;
+
+  color: rgba(255, 255, 255, 0.48);
+
+  font-size: 10px;
+
+  line-height: 1.5;
 }
 
-.credit-plus {
-  font-weight: 700;
-}
 
-.credit-minus {
-  font-weight: 700;
-}
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
 
 .empty-state {
-  padding: 20px;
+  padding: 25px 15px;
+
+  border: 1px dashed rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+
+  color: rgba(255, 255, 255, 0.36);
+
+  font-size: 10px;
+
   text-align: center;
-  opacity: .6;
 }
+
+
+/* =========================================================
+   TOP-UP BADGE
+   ========================================================= */
 
 .topup-badge {
-  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 25px;
+
+  padding: 0 10px;
+
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 999px;
-  font-size: 12px;
+
+  font-size: 9px;
+  font-weight: 800;
 }
 
+
+/* =========================================================
+   STATUS COLORS
+   ========================================================= */
+
 .status-pending {
-  background: rgba(255,193,7,.15);
+  background: rgba(245, 158, 11, 0.09);
+
+  border-color: rgba(245, 158, 11, 0.16);
+
+  color: #fcd34d;
 }
 
 .status-approved {
-  background: rgba(40,167,69,.15);
+  background: rgba(34, 197, 94, 0.09);
+
+  border-color: rgba(34, 197, 94, 0.16);
+
+  color: #86efac;
 }
 
 .status-rejected {
-  background: rgba(220,53,69,.15);
+  background: rgba(239, 68, 68, 0.09);
+
+  border-color: rgba(239, 68, 68, 0.16);
+
+  color: #fca5a5;
 }
+
+
+/* =========================================================
+   HIDDEN
+   ========================================================= */
+
+.hidden {
+  display: none !important;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
 @media (max-width: 600px) {
 
   .page-card {
-    padding: 18px;
+    width: calc(100% - 18px);
+
     margin-top: 15px;
+
+    padding: 20px 15px;
+
+    border-radius: 18px;
+  }
+
+  .page-header {
+    gap: 11px;
+
+    margin-bottom: 21px;
+    padding-bottom: 17px;
+  }
+
+  .page-header h2 {
+    font-size: 20px;
+  }
+
+  .page-header p {
+    font-size: 9px;
+  }
+
+  .back-btn {
+    width: 38px;
+    height: 38px;
   }
 
   .profile-row,
   .transaction-row,
   .topup-row {
-    padding: 12px;
+    min-height: 52px;
+
+    padding: 10px 12px;
+
+    gap: 10px;
   }
+
+  .profile-row span,
+  .transaction-row small,
+  .topup-row small {
+    font-size: 8px;
+  }
+
+  .profile-row strong,
+  .transaction-row span {
+    font-size: 9px;
+  }
+
+  .credit-balance {
+    padding: 25px 15px;
+  }
+
+  .credit-balance strong {
+    font-size: 36px;
+  }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .back-btn,
+  .transaction-row,
+  .primary-btn,
+  #topupForm input,
+  #topupForm textarea {
+    transition: none;
+  }
+
 }
