@@ -37,16 +37,158 @@
   }
 
 
-  function message(text) {
+  /*
+   * =========================================================
+   * AUTH MESSAGE
+   * =========================================================
+   *
+   * success = hijau
+   * error   = merah
+   * info    = warna netral
+   *
+   * CSS GEN-Z.AI sudah memiliki:
+   *
+   * .auth-message.success
+   * .auth-message.error
+   *
+   * sehingga kita cukup memasang class yang sesuai.
+   */
+
+  function message(
+    text,
+    type = 'auto'
+  ) {
+
     const el = $('authMsg');
 
-    if (el) {
-      el.textContent = text || '';
+    if (!el) {
+      if (text) {
+        console.log(
+          '[GEN-Z AUTH]',
+          text
+        );
+      }
+
+      return;
     }
 
-    if (text) {
-      console.log('[GEN-Z AUTH]', text);
+
+    const value =
+      String(
+        text || ''
+      ).trim();
+
+
+    /*
+     * Bersihkan status sebelumnya.
+     */
+    el.classList.remove(
+      'success',
+      'error',
+      'info'
+    );
+
+
+    /*
+     * Kosongkan pesan.
+     */
+    if (!value) {
+
+      el.textContent = '';
+
+      return;
     }
+
+
+    /*
+     * Tentukan tipe pesan.
+     */
+    let messageType =
+      type;
+
+
+    if (
+      messageType === 'auto'
+    ) {
+
+      /*
+       * Pesan sukses GEN-Z.AI.
+       */
+      if (
+        /pendaftaran berhasil/i.test(value) ||
+        /email reset password telah dikirim/i.test(value) ||
+        /berhasil/i.test(value) ||
+        /dikirim/i.test(value) ||
+        /verifikasi/i.test(value)
+      ) {
+
+        messageType =
+          'success';
+
+      /*
+       * Pesan error.
+       */
+      } else if (
+        /gagal/i.test(value) ||
+        /error/i.test(value) ||
+        /salah/i.test(value) ||
+        /ditolak/i.test(value) ||
+        /tidak valid/i.test(value) ||
+        /belum tersedia/i.test(value) ||
+        /wajib diisi/i.test(value) ||
+        /minimal/i.test(value)
+      ) {
+
+        messageType =
+          'error';
+
+      /*
+       * Pesan informasi/proses.
+       */
+      } else {
+
+        messageType =
+          'info';
+
+      }
+    }
+
+
+    /*
+     * Pasang class visual.
+     */
+    if (
+      messageType === 'success'
+    ) {
+
+      el.classList.add(
+        'success'
+      );
+
+    } else if (
+      messageType === 'error'
+    ) {
+
+      el.classList.add(
+        'error'
+      );
+
+    } else {
+
+      el.classList.add(
+        'info'
+      );
+    }
+
+
+    el.textContent =
+      value;
+
+
+    console.log(
+      '[GEN-Z AUTH]',
+      value
+    );
   }
 
 
@@ -56,24 +198,38 @@
     const register = $('register');
     const forgot = $('forgotPassword');
 
+
     if (login) {
 
-      login.disabled = loading;
+      login.disabled =
+        loading;
+
+
       login.setAttribute(
         'aria-busy',
-        loading ? 'true' : 'false'
+        loading
+          ? 'true'
+          : 'false'
       );
+
 
       /*
        * Jangan mengganti seluruh innerHTML tombol.
        * UI login baru memiliki beberapa elemen
        * seperti auth-btn-text dan auth-btn-arrow.
        */
+
       const buttonText =
-        login.querySelector('.auth-btn-text');
+        login.querySelector(
+          '.auth-btn-text'
+        );
+
 
       const buttonArrow =
-        login.querySelector('.auth-btn-arrow');
+        login.querySelector(
+          '.auth-btn-arrow'
+        );
+
 
       if (buttonText) {
 
@@ -88,25 +244,28 @@
           loading
             ? 'MEMPROSES...'
             : 'LOGIN';
-
       }
+
 
       if (buttonArrow) {
 
         buttonArrow.style.opacity =
-          loading ? '0' : '';
-
+          loading
+            ? '0'
+            : '';
       }
     }
 
 
     if (register) {
-      register.disabled = loading;
+      register.disabled =
+        loading;
     }
 
 
     if (forgot) {
-      forgot.disabled = loading;
+      forgot.disabled =
+        loading;
     }
   }
 
@@ -120,20 +279,28 @@
     const password =
       $('password');
 
+
     const toggle =
       $('togglePassword');
 
-    if (!password || !toggle) {
+
+    if (
+      !password ||
+      !toggle
+    ) {
       return;
     }
 
+
     const showing =
       password.type === 'text';
+
 
     password.type =
       showing
         ? 'password'
         : 'text';
+
 
     toggle.setAttribute(
       'aria-label',
@@ -141,6 +308,7 @@
         ? 'Tampilkan password'
         : 'Sembunyikan password'
     );
+
 
     toggle.setAttribute(
       'aria-pressed',
@@ -161,14 +329,18 @@
       return authClient;
     }
 
+
     if (
       !window.supabase ||
-      typeof window.supabase.createClient !== 'function'
+      typeof window.supabase.createClient !==
+        'function'
     ) {
+
       throw new Error(
         'Library Supabase belum termuat.'
       );
     }
+
 
     const response =
       await fetch(
@@ -177,37 +349,47 @@
           method: 'GET',
           cache: 'no-store',
           headers: {
-            'Accept': 'application/json'
+            'Accept':
+              'application/json'
           }
         }
       );
 
+
     if (!response.ok) {
+
       throw new Error(
         'Gagal mengambil konfigurasi GEN-Z.AI.'
       );
     }
 
+
     const config =
       await response.json();
+
 
     const supabaseUrl =
       String(
         config.supabaseUrl || ''
       ).trim();
 
+
     const supabaseKey =
       String(
         config.supabasePublishableKey || ''
       ).trim();
 
+
     if (!supabaseUrl) {
+
       throw new Error(
         'Supabase URL belum tersedia.'
       );
     }
 
+
     if (!supabaseKey) {
+
       throw new Error(
         'Supabase Publishable Key belum tersedia.'
       );
@@ -217,7 +399,9 @@
     /*
      * Validasi URL Supabase.
      */
+
     let parsedUrl;
+
 
     try {
 
@@ -235,7 +419,8 @@
 
 
     if (
-      parsedUrl.protocol !== 'https:' ||
+      parsedUrl.protocol !==
+        'https:' ||
       !parsedUrl.hostname.endsWith(
         '.supabase.co'
       )
@@ -257,6 +442,7 @@
     /*
      * Digunakan oleh app.js.
      */
+
     window.GENZ_AUTH_CLIENT =
       authClient;
 
@@ -274,17 +460,23 @@
     const client =
       await getClient();
 
+
     const {
       data,
       error
     } =
       await client.auth.getSession();
 
+
     if (error) {
       throw error;
     }
 
-    return data?.session || null;
+
+    return (
+      data?.session ||
+      null
+    );
   }
 
 
@@ -293,7 +485,11 @@
     const session =
       await getSession();
 
-    return session?.user || null;
+
+    return (
+      session?.user ||
+      null
+    );
   }
 
 
@@ -302,7 +498,11 @@
     const session =
       await getSession();
 
-    return session?.access_token || null;
+
+    return (
+      session?.access_token ||
+      null
+    );
   }
 
 
@@ -315,11 +515,14 @@
     const authPage =
       $('auth');
 
+
     const studio =
       $('studio');
 
+
     const accountPage =
       $('accountPage');
+
 
     const accountBtn =
       $('accountBtn');
@@ -330,6 +533,7 @@
       authPage.classList.add(
         'hidden'
       );
+
 
       authPage.style.display =
         'none';
@@ -342,6 +546,7 @@
         'hidden'
       );
 
+
       studio.style.display =
         'block';
     }
@@ -353,6 +558,7 @@
         'hidden'
       );
 
+
       accountPage.style.display =
         'none';
     }
@@ -363,6 +569,7 @@
       accountBtn.classList.remove(
         'hidden'
       );
+
 
       accountBtn.style.display =
         'flex';
@@ -381,11 +588,14 @@
     const authPage =
       $('auth');
 
+
     const studio =
       $('studio');
 
+
     const accountPage =
       $('accountPage');
+
 
     const accountBtn =
       $('accountBtn');
@@ -396,6 +606,7 @@
       studio.classList.add(
         'hidden'
       );
+
 
       studio.style.display =
         'none';
@@ -408,6 +619,7 @@
         'hidden'
       );
 
+
       accountPage.style.display =
         'none';
     }
@@ -419,6 +631,7 @@
         'hidden'
       );
 
+
       accountBtn.style.display =
         'none';
     }
@@ -429,6 +642,7 @@
       authPage.classList.remove(
         'hidden'
       );
+
 
       authPage.style.display =
         'block';
@@ -454,10 +668,13 @@
      * Hindari event login ganda
      * untuk session user yang sama.
      */
+
     if (
-      lastSessionUserId === user.id &&
+      lastSessionUserId ===
+        user.id &&
       session?.access_token
     ) {
+
       return;
     }
 
@@ -471,9 +688,12 @@
         'genz-auth-login',
         {
           detail: {
-            user: user,
+            user:
+              user,
+
             session:
-              session || null
+              session ||
+              null
           }
         }
       )
@@ -486,10 +706,12 @@
     /*
      * Jangan mengirim logout berkali-kali.
      */
+
     if (
       lastSessionUserId === null &&
       !logoutInProgress
     ) {
+
       return;
     }
 
@@ -513,19 +735,25 @@
   async function login() {
 
     const email =
-      $('email')?.value.trim() || '';
+      $('email')?.value.trim() ||
+      '';
+
 
     const password =
-      $('password')?.value || '';
+      $('password')?.value ||
+      '';
 
 
     if (!email) {
 
       message(
-        'Email wajib diisi.'
+        'Email wajib diisi.',
+        'error'
       );
 
+
       $('email')?.focus();
+
 
       return;
     }
@@ -534,10 +762,13 @@
     if (!password) {
 
       message(
-        'Password wajib diisi.'
+        'Password wajib diisi.',
+        'error'
       );
 
+
       $('password')?.focus();
+
 
       return;
     }
@@ -545,8 +776,10 @@
 
     setLoading(true);
 
+
     message(
-      'Memproses login...'
+      'Memproses login...',
+      'info'
     );
 
 
@@ -560,10 +793,11 @@
         data,
         error
       } =
-        await client.auth.signInWithPassword({
-          email,
-          password
-        });
+        await client.auth
+          .signInWithPassword({
+            email,
+            password
+          });
 
 
       if (error) {
@@ -579,9 +813,7 @@
       }
 
 
-      message(
-        ''
-      );
+      message('');
 
 
       showStudio();
@@ -589,7 +821,8 @@
 
       emitLogin(
         data.user,
-        data.session || null
+        data.session ||
+          null
       );
 
 
@@ -603,7 +836,8 @@
 
       message(
         error?.message ||
-        'Login gagal.'
+        'Login gagal.',
+        'error'
       );
 
 
@@ -622,19 +856,25 @@
   async function register() {
 
     const email =
-      $('email')?.value.trim() || '';
+      $('email')?.value.trim() ||
+      '';
+
 
     const password =
-      $('password')?.value || '';
+      $('password')?.value ||
+      '';
 
 
     if (!email) {
 
       message(
-        'Email wajib diisi.'
+        'Email wajib diisi.',
+        'error'
       );
 
+
       $('email')?.focus();
+
 
       return;
     }
@@ -643,22 +883,30 @@
     if (!password) {
 
       message(
-        'Password wajib diisi.'
+        'Password wajib diisi.',
+        'error'
       );
 
+
       $('password')?.focus();
+
 
       return;
     }
 
 
-    if (password.length < 6) {
+    if (
+      password.length < 6
+    ) {
 
       message(
-        'Password minimal 6 karakter.'
+        'Password minimal 6 karakter.',
+        'error'
       );
 
+
       $('password')?.focus();
+
 
       return;
     }
@@ -666,8 +914,10 @@
 
     setLoading(true);
 
+
     message(
-      'Mendaftarkan akun...'
+      'Mendaftarkan akun...',
+      'info'
     );
 
 
@@ -693,16 +943,18 @@
 
 
       /*
-       * Supabase dapat mengembalikan session
-       * jika email confirmation tidak diwajibkan.
+       * Jika email confirmation tidak diwajibkan,
+       * Supabase dapat langsung memberikan session.
        */
+
       if (
         data?.session &&
         data?.user
       ) {
 
         message(
-          ''
+          'Pendaftaran berhasil.',
+          'success'
         );
 
 
@@ -717,8 +969,17 @@
 
       } else {
 
+        /*
+         * Confirm Email aktif.
+         *
+         * Pesan ini secara eksplisit
+         * diberi status success sehingga
+         * tampil HIJAU.
+         */
+
         message(
-          'Pendaftaran berhasil. Periksa email untuk verifikasi akun.'
+          'Pendaftaran berhasil. Periksa email untuk verifikasi akun.',
+          'success'
         );
 
       }
@@ -734,7 +995,8 @@
 
       message(
         error?.message ||
-        'Pendaftaran gagal.'
+        'Pendaftaran gagal.',
+        'error'
       );
 
 
@@ -753,16 +1015,20 @@
   async function forgotPassword() {
 
     const email =
-      $('email')?.value.trim() || '';
+      $('email')?.value.trim() ||
+      '';
 
 
     if (!email) {
 
       message(
-        'Masukkan email terlebih dahulu.'
+        'Masukkan email terlebih dahulu.',
+        'error'
       );
 
+
       $('email')?.focus();
+
 
       return;
     }
@@ -770,8 +1036,10 @@
 
     setLoading(true);
 
+
     message(
-      'Mengirim email reset password...'
+      'Mengirim email reset password...',
+      'info'
     );
 
 
@@ -784,13 +1052,14 @@
       const {
         error
       } =
-        await client.auth.resetPasswordForEmail(
-          email,
-          {
-            redirectTo:
-              window.location.origin
-          }
-        );
+        await client.auth
+          .resetPasswordForEmail(
+            email,
+            {
+              redirectTo:
+                window.location.origin
+            }
+          );
 
 
       if (error) {
@@ -799,7 +1068,8 @@
 
 
       message(
-        'Email reset password telah dikirim.'
+        'Email reset password telah dikirim.',
+        'success'
       );
 
 
@@ -813,7 +1083,8 @@
 
       message(
         error?.message ||
-        'Gagal mengirim reset password.'
+        'Gagal mengirim reset password.',
+        'error'
       );
 
 
@@ -831,7 +1102,10 @@
 
   async function logout() {
 
-    if (logoutInProgress) {
+    if (
+      logoutInProgress
+    ) {
+
       return;
     }
 
@@ -859,6 +1133,7 @@
 
       showLoggedOutUI();
 
+
       emitLogout();
 
 
@@ -872,7 +1147,8 @@
 
       message(
         error?.message ||
-        'Logout gagal.'
+        'Logout gagal.',
+        'error'
       );
 
 
@@ -918,9 +1194,11 @@
 
           event.preventDefault();
 
+
           if (!target.disabled) {
             login();
           }
+
 
           return;
         }
@@ -932,9 +1210,11 @@
 
           event.preventDefault();
 
+
           if (!target.disabled) {
             register();
           }
+
 
           return;
         }
@@ -946,9 +1226,11 @@
 
           event.preventDefault();
 
+
           if (!target.disabled) {
             forgotPassword();
           }
+
 
           return;
         }
@@ -960,9 +1242,11 @@
 
           event.preventDefault();
 
+
           if (!target.disabled) {
             togglePassword();
           }
+
 
           return;
         }
@@ -973,6 +1257,7 @@
         ) {
 
           event.preventDefault();
+
 
           logout();
 
@@ -992,17 +1277,21 @@
 
         if (
           !target ||
-          target.id !== 'password'
+          target.id !==
+            'password'
         ) {
+
           return;
         }
 
 
         if (
-          event.key === 'Enter'
+          event.key ===
+          'Enter'
         ) {
 
           event.preventDefault();
+
 
           if (!target.disabled) {
             login();
@@ -1035,6 +1324,7 @@
     if (
       authListenerRegistered
     ) {
+
       return;
     }
 
@@ -1073,6 +1363,7 @@
 
           }
 
+
           return;
         }
 
@@ -1083,7 +1374,9 @@
 
           showLoggedOutUI();
 
+
           emitLogout();
+
 
           return;
         }
@@ -1093,13 +1386,16 @@
          * TOKEN_REFRESHED tidak dianggap
          * sebagai login baru.
          */
+
         if (
-          event === 'TOKEN_REFRESHED'
+          event ===
+          'TOKEN_REFRESHED'
         ) {
 
           if (
             session?.user &&
-            lastSessionUserId === null
+            lastSessionUserId ===
+              null
           ) {
 
             emitLogin(
@@ -1109,6 +1405,7 @@
 
           }
 
+
           return;
         }
 
@@ -1117,8 +1414,10 @@
          * INITIAL_SESSION digunakan hanya
          * untuk memastikan UI sesuai session.
          */
+
         if (
-          event === 'INITIAL_SESSION'
+          event ===
+          'INITIAL_SESSION'
         ) {
 
           if (
@@ -1157,6 +1456,7 @@
      * Event delegation harus dipasang sekali.
      * Tidak bergantung pada keberadaan HTML login.
      */
+
     setupDelegatedEvents();
 
 
@@ -1169,6 +1469,7 @@
       /*
        * Ambil session yang sudah tersimpan.
        */
+
       const session =
         await getSession();
 
@@ -1196,6 +1497,7 @@
       /*
        * Listener Supabase hanya satu.
        */
+
       setupAuthStateListener(
         client
       );
@@ -1211,7 +1513,8 @@
 
       message(
         error?.message ||
-        'Sistem login gagal diinisialisasi.'
+        'Sistem login gagal diinisialisasi.',
+        'error'
       );
 
     }
@@ -1254,6 +1557,7 @@
   /*
    * API utama.
    */
+
   window.GENZ_AUTH =
     API;
 
@@ -1262,6 +1566,7 @@
    * Kompatibilitas dengan modul lama/pendukung
    * yang memanggil GENZ.auth.
    */
+
   window.GENZ =
     window.GENZ || {};
 
@@ -1275,7 +1580,8 @@
   ========================================================= */
 
   if (
-    document.readyState === 'loading'
+    document.readyState ===
+    'loading'
   ) {
 
     document.addEventListener(
