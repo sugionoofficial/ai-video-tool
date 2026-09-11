@@ -215,7 +215,14 @@
   min-height: 126px;
 }
 
+
+/* ==========================================================
+   IMAGE PREVIEW
+   ========================================================== */
+
 .image-preview {
+  position: relative;
+
   width: 170px;
   height: 126px;
 
@@ -227,19 +234,112 @@
   border-radius: 13px;
 
   background: #0a1a29;
+
+  box-sizing: border-box;
 }
 
 .image-preview.hidden {
   display: none !important;
 }
 
+
+/* ==========================================================
+   IMAGE
+   ========================================================== */
+
 .image-preview img {
+  position: relative;
+
+  z-index: 1;
+
   width: 100%;
   height: 100%;
 
   object-fit: cover;
   display: block;
+
+  pointer-events: none;
 }
+
+
+/* ==========================================================
+   REMOVE BUTTON
+   ========================================================== */
+
+.image-remove-btn {
+  position: absolute;
+
+  top: 7px;
+  right: 7px;
+
+  z-index: 9999;
+
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  margin: 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+
+  background: rgba(0, 0, 0, 0.82);
+  color: #ffffff;
+
+  font-family: Arial, sans-serif;
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1;
+
+  cursor: pointer;
+
+  pointer-events: auto;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  box-sizing: border-box;
+
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.55);
+
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.image-remove-btn:hover {
+  background: #ef3f55;
+
+  border-color: #ffffff;
+
+  transform: scale(1.08);
+}
+
+.image-remove-btn:active {
+  background: #d92f45;
+
+  transform: scale(0.94);
+}
+
+.image-remove-btn:focus {
+  outline: none;
+}
+
+.image-remove-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+
+/* ==========================================================
+   ADD IMAGE TILE
+   ========================================================== */
 
 .image-add-tile {
   width: 136px;
@@ -257,6 +357,8 @@
   background: rgba(17, 39, 61, 0.82);
 
   cursor: pointer;
+
+  box-sizing: border-box;
 }
 
 .image-add-tile span {
@@ -274,6 +376,11 @@
     rgba(128, 197, 235, 0.78);
 }
 
+
+/* ==========================================================
+   FILE INPUT
+   ========================================================== */
+
 .image-file-input {
   position: absolute !important;
 
@@ -284,6 +391,11 @@
 
   pointer-events: none !important;
 }
+
+
+/* ==========================================================
+   FILE STATUS
+   ========================================================== */
 
 .image-file-status {
   min-height: 12px;
@@ -559,12 +671,6 @@
     margin-bottom: 28px;
   }
 
-  /*
-   * PENTING:
-   * Jangan lagi memakai 76px di mobile.
-   * Semua select tetap 48px.
-   */
-
   .form-group select,
   .setting-field select,
   #provider,
@@ -623,10 +729,6 @@
   .generator-hero p {
     font-size: 17px;
   }
-
-  /*
-   * Semua select tetap 48px.
-   */
 
   .form-group select,
   .setting-field select,
