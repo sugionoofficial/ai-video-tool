@@ -14,9 +14,10 @@
    * - Session management
    * - Supabase auth state
    * - Token access
+   * - Password visibility toggle
    *
    * Komponen login dapat dimuat secara dinamis oleh app.js.
-   * Karena itu event listener menggunakan event delegation.
+   * Event listener menggunakan event delegation.
    * =========================================================
    */
 
@@ -50,24 +51,103 @@
 
 
   function setLoading(loading) {
+
     const login = $('login');
     const register = $('register');
     const forgot = $('forgotPassword');
 
     if (login) {
+
       login.disabled = loading;
-      login.textContent = loading
-        ? 'MEMPROSES...'
-        : 'LOGIN';
+      login.setAttribute(
+        'aria-busy',
+        loading ? 'true' : 'false'
+      );
+
+      /*
+       * Jangan mengganti seluruh innerHTML tombol.
+       * UI login baru memiliki beberapa elemen
+       * seperti auth-btn-text dan auth-btn-arrow.
+       */
+      const buttonText =
+        login.querySelector('.auth-btn-text');
+
+      const buttonArrow =
+        login.querySelector('.auth-btn-arrow');
+
+      if (buttonText) {
+
+        buttonText.textContent =
+          loading
+            ? 'MEMPROSES...'
+            : 'MASUK KE GEN-Z.AI';
+
+      } else {
+
+        login.textContent =
+          loading
+            ? 'MEMPROSES...'
+            : 'LOGIN';
+
+      }
+
+      if (buttonArrow) {
+
+        buttonArrow.style.opacity =
+          loading ? '0' : '';
+
+      }
     }
+
 
     if (register) {
       register.disabled = loading;
     }
 
+
     if (forgot) {
       forgot.disabled = loading;
     }
+  }
+
+
+  /* =========================================================
+     PASSWORD VISIBILITY
+  ========================================================= */
+
+  function togglePassword() {
+
+    const password =
+      $('password');
+
+    const toggle =
+      $('togglePassword');
+
+    if (!password || !toggle) {
+      return;
+    }
+
+    const showing =
+      password.type === 'text';
+
+    password.type =
+      showing
+        ? 'password'
+        : 'text';
+
+    toggle.setAttribute(
+      'aria-label',
+      showing
+        ? 'Tampilkan password'
+        : 'Sembunyikan password'
+    );
+
+    toggle.setAttribute(
+      'aria-pressed',
+      showing
+        ? 'false'
+        : 'true'
+    );
   }
 
 
@@ -90,16 +170,17 @@
       );
     }
 
-    const response = await fetch(
-      '/api/config',
-      {
-        method: 'GET',
-        cache: 'no-store',
-        headers: {
-          'Accept': 'application/json'
+    const response =
+      await fetch(
+        '/api/config',
+        {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            'Accept': 'application/json'
+          }
         }
-      }
-    );
+      );
 
     if (!response.ok) {
       throw new Error(
@@ -107,15 +188,18 @@
       );
     }
 
-    const config = await response.json();
+    const config =
+      await response.json();
 
-    const supabaseUrl = String(
-      config.supabaseUrl || ''
-    ).trim();
+    const supabaseUrl =
+      String(
+        config.supabaseUrl || ''
+      ).trim();
 
-    const supabaseKey = String(
-      config.supabasePublishableKey || ''
-    ).trim();
+    const supabaseKey =
+      String(
+        config.supabasePublishableKey || ''
+      ).trim();
 
     if (!supabaseUrl) {
       throw new Error(
@@ -129,27 +213,39 @@
       );
     }
 
+
     /*
      * Validasi URL Supabase.
      */
     let parsedUrl;
 
     try {
-      parsedUrl = new URL(supabaseUrl);
+
+      parsedUrl =
+        new URL(
+          supabaseUrl
+        );
+
     } catch {
+
       throw new Error(
         'Supabase URL tidak valid.'
       );
     }
 
+
     if (
       parsedUrl.protocol !== 'https:' ||
-      !parsedUrl.hostname.endsWith('.supabase.co')
+      !parsedUrl.hostname.endsWith(
+        '.supabase.co'
+      )
     ) {
+
       throw new Error(
         'Supabase URL tidak valid.'
       );
     }
+
 
     authClient =
       window.supabase.createClient(
@@ -157,10 +253,13 @@
         supabaseKey
       );
 
+
     /*
      * Digunakan oleh app.js.
      */
-    window.GENZ_AUTH_CLIENT = authClient;
+    window.GENZ_AUTH_CLIENT =
+      authClient;
+
 
     return authClient;
   }
@@ -172,12 +271,14 @@
 
   async function getSession() {
 
-    const client = await getClient();
+    const client =
+      await getClient();
 
     const {
       data,
       error
-    } = await client.auth.getSession();
+    } =
+      await client.auth.getSession();
 
     if (error) {
       throw error;
@@ -189,7 +290,8 @@
 
   async function getUser() {
 
-    const session = await getSession();
+    const session =
+      await getSession();
 
     return session?.user || null;
   }
@@ -197,7 +299,8 @@
 
   async function token() {
 
-    const session = await getSession();
+    const session =
+      await getSession();
 
     return session?.access_token || null;
   }
@@ -221,25 +324,50 @@
     const accountBtn =
       $('accountBtn');
 
+
     if (authPage) {
-      authPage.classList.add('hidden');
-      authPage.style.display = 'none';
+
+      authPage.classList.add(
+        'hidden'
+      );
+
+      authPage.style.display =
+        'none';
     }
+
 
     if (studio) {
-      studio.classList.remove('hidden');
-      studio.style.display = 'block';
+
+      studio.classList.remove(
+        'hidden'
+      );
+
+      studio.style.display =
+        'block';
     }
+
 
     if (accountPage) {
-      accountPage.classList.add('hidden');
-      accountPage.style.display = 'none';
+
+      accountPage.classList.add(
+        'hidden'
+      );
+
+      accountPage.style.display =
+        'none';
     }
 
+
     if (accountBtn) {
-      accountBtn.classList.remove('hidden');
-      accountBtn.style.display = 'flex';
+
+      accountBtn.classList.remove(
+        'hidden'
+      );
+
+      accountBtn.style.display =
+        'flex';
     }
+
 
     window.scrollTo({
       top: 0,
@@ -262,24 +390,48 @@
     const accountBtn =
       $('accountBtn');
 
+
     if (studio) {
-      studio.classList.add('hidden');
-      studio.style.display = 'none';
+
+      studio.classList.add(
+        'hidden'
+      );
+
+      studio.style.display =
+        'none';
     }
+
 
     if (accountPage) {
-      accountPage.classList.add('hidden');
-      accountPage.style.display = 'none';
+
+      accountPage.classList.add(
+        'hidden'
+      );
+
+      accountPage.style.display =
+        'none';
     }
+
 
     if (accountBtn) {
-      accountBtn.classList.add('hidden');
-      accountBtn.style.display = 'none';
+
+      accountBtn.classList.add(
+        'hidden'
+      );
+
+      accountBtn.style.display =
+        'none';
     }
 
+
     if (authPage) {
-      authPage.classList.remove('hidden');
-      authPage.style.display = 'block';
+
+      authPage.classList.remove(
+        'hidden'
+      );
+
+      authPage.style.display =
+        'block';
     }
   }
 
@@ -288,14 +440,19 @@
      AUTH EVENTS
   ========================================================= */
 
-  function emitLogin(user, session) {
+  function emitLogin(
+    user,
+    session
+  ) {
 
     if (!user) {
       return;
     }
 
+
     /*
-     * Hindari event login ganda untuk session yang sama.
+     * Hindari event login ganda
+     * untuk session user yang sama.
      */
     if (
       lastSessionUserId === user.id &&
@@ -304,7 +461,10 @@
       return;
     }
 
-    lastSessionUserId = user.id;
+
+    lastSessionUserId =
+      user.id;
+
 
     window.dispatchEvent(
       new CustomEvent(
@@ -312,7 +472,8 @@
         {
           detail: {
             user: user,
-            session: session || null
+            session:
+              session || null
           }
         }
       )
@@ -332,7 +493,10 @@
       return;
     }
 
-    lastSessionUserId = null;
+
+    lastSessionUserId =
+      null;
+
 
     window.dispatchEvent(
       new CustomEvent(
@@ -354,15 +518,30 @@
     const password =
       $('password')?.value || '';
 
+
     if (!email) {
-      message('Email wajib diisi.');
+
+      message(
+        'Email wajib diisi.'
+      );
+
+      $('email')?.focus();
+
       return;
     }
 
+
     if (!password) {
-      message('Password wajib diisi.');
+
+      message(
+        'Password wajib diisi.'
+      );
+
+      $('password')?.focus();
+
       return;
     }
+
 
     setLoading(true);
 
@@ -370,10 +549,12 @@
       'Memproses login...'
     );
 
+
     try {
 
       const client =
         await getClient();
+
 
       const {
         data,
@@ -384,26 +565,33 @@
           password
         });
 
+
       if (error) {
         throw error;
       }
 
+
       if (!data?.user) {
+
         throw new Error(
           'Login gagal. User tidak ditemukan.'
         );
       }
 
+
       message(
-        'Login berhasil.'
+        ''
       );
 
+
       showStudio();
+
 
       emitLogin(
         data.user,
         data.session || null
       );
+
 
     } catch (error) {
 
@@ -412,10 +600,12 @@
         error
       );
 
+
       message(
         error?.message ||
         'Login gagal.'
       );
+
 
     } finally {
 
@@ -437,22 +627,42 @@
     const password =
       $('password')?.value || '';
 
+
     if (!email) {
-      message('Email wajib diisi.');
+
+      message(
+        'Email wajib diisi.'
+      );
+
+      $('email')?.focus();
+
       return;
     }
+
 
     if (!password) {
-      message('Password wajib diisi.');
+
+      message(
+        'Password wajib diisi.'
+      );
+
+      $('password')?.focus();
+
       return;
     }
 
+
     if (password.length < 6) {
+
       message(
         'Password minimal 6 karakter.'
       );
+
+      $('password')?.focus();
+
       return;
     }
+
 
     setLoading(true);
 
@@ -460,10 +670,12 @@
       'Mendaftarkan akun...'
     );
 
+
     try {
 
       const client =
         await getClient();
+
 
       const {
         data,
@@ -474,9 +686,11 @@
           password
         });
 
+
       if (error) {
         throw error;
       }
+
 
       /*
        * Supabase dapat mengembalikan session
@@ -488,15 +702,18 @@
       ) {
 
         message(
-          'Pendaftaran berhasil.'
+          ''
         );
 
+
         showStudio();
+
 
         emitLogin(
           data.user,
           data.session
         );
+
 
       } else {
 
@@ -506,6 +723,7 @@
 
       }
 
+
     } catch (error) {
 
       console.error(
@@ -513,10 +731,12 @@
         error
       );
 
+
       message(
         error?.message ||
         'Pendaftaran gagal.'
       );
+
 
     } finally {
 
@@ -535,12 +755,18 @@
     const email =
       $('email')?.value.trim() || '';
 
+
     if (!email) {
+
       message(
         'Masukkan email terlebih dahulu.'
       );
+
+      $('email')?.focus();
+
       return;
     }
+
 
     setLoading(true);
 
@@ -548,10 +774,12 @@
       'Mengirim email reset password...'
     );
 
+
     try {
 
       const client =
         await getClient();
+
 
       const {
         error
@@ -564,13 +792,16 @@
           }
         );
 
+
       if (error) {
         throw error;
       }
 
+
       message(
         'Email reset password telah dikirim.'
       );
+
 
     } catch (error) {
 
@@ -579,10 +810,12 @@
         error
       );
 
+
       message(
         error?.message ||
         'Gagal mengirim reset password.'
       );
+
 
     } finally {
 
@@ -602,25 +835,32 @@
       return;
     }
 
-    logoutInProgress = true;
+
+    logoutInProgress =
+      true;
+
 
     try {
 
       const client =
         await getClient();
 
+
       const {
         error
       } =
         await client.auth.signOut();
 
+
       if (error) {
         throw error;
       }
 
+
       showLoggedOutUI();
 
       emitLogout();
+
 
     } catch (error) {
 
@@ -629,14 +869,17 @@
         error
       );
 
+
       message(
         error?.message ||
         'Logout gagal.'
       );
 
+
     } finally {
 
-      logoutInProgress = false;
+      logoutInProgress =
+        false;
 
     }
   }
@@ -644,7 +887,7 @@
 
   /* =========================================================
      EVENT DELEGATION
-     Penting karena komponen dapat dimuat dinamis.
+     Penting karena auth.html dimuat dinamis.
   ========================================================= */
 
   function setupDelegatedEvents() {
@@ -653,40 +896,86 @@
       return;
     }
 
+
     document.addEventListener(
       'click',
       function (event) {
 
         const target =
           event.target.closest(
-            '#login, #register, #forgotPassword, #logout'
+            '#login, #register, #forgotPassword, #logout, #togglePassword'
           );
+
 
         if (!target) {
           return;
         }
 
-        if (target.id === 'login') {
+
+        if (
+          target.id === 'login'
+        ) {
+
           event.preventDefault();
-          login();
+
+          if (!target.disabled) {
+            login();
+          }
+
           return;
         }
 
-        if (target.id === 'register') {
+
+        if (
+          target.id === 'register'
+        ) {
+
           event.preventDefault();
-          register();
+
+          if (!target.disabled) {
+            register();
+          }
+
           return;
         }
 
-        if (target.id === 'forgotPassword') {
+
+        if (
+          target.id === 'forgotPassword'
+        ) {
+
           event.preventDefault();
-          forgotPassword();
+
+          if (!target.disabled) {
+            forgotPassword();
+          }
+
           return;
         }
 
-        if (target.id === 'logout') {
+
+        if (
+          target.id === 'togglePassword'
+        ) {
+
           event.preventDefault();
+
+          if (!target.disabled) {
+            togglePassword();
+          }
+
+          return;
+        }
+
+
+        if (
+          target.id === 'logout'
+        ) {
+
+          event.preventDefault();
+
           logout();
+
         }
 
       }
@@ -700,6 +989,7 @@
         const target =
           event.target;
 
+
         if (
           !target ||
           target.id !== 'password'
@@ -707,13 +997,16 @@
           return;
         }
 
+
         if (
           event.key === 'Enter'
         ) {
 
           event.preventDefault();
 
-          login();
+          if (!target.disabled) {
+            login();
+          }
 
         }
 
@@ -721,7 +1014,9 @@
     );
 
 
-    initialized = true;
+    initialized =
+      true;
+
 
     console.log(
       '[GEN-Z AUTH] Event delegation aktif.'
@@ -733,29 +1028,43 @@
      SUPABASE AUTH STATE
   ========================================================= */
 
-  function setupAuthStateListener(client) {
+  function setupAuthStateListener(
+    client
+  ) {
 
-    if (authListenerRegistered) {
+    if (
+      authListenerRegistered
+    ) {
       return;
     }
 
-    authListenerRegistered = true;
+
+    authListenerRegistered =
+      true;
+
 
     client.auth.onAuthStateChange(
-      function (event, session) {
+      function (
+        event,
+        session
+      ) {
 
         console.log(
           '[GEN-Z AUTH] Auth event:',
           event
         );
 
+
         if (
           event === 'SIGNED_IN'
         ) {
 
-          if (session?.user) {
+          if (
+            session?.user
+          ) {
 
             showStudio();
+
 
             emitLogin(
               session.user,
@@ -818,10 +1127,12 @@
 
             showStudio();
 
+
             emitLogin(
               session.user,
               session
             );
+
 
           } else {
 
@@ -848,10 +1159,12 @@
      */
     setupDelegatedEvents();
 
+
     try {
 
       const client =
         await getClient();
+
 
       /*
        * Ambil session yang sudah tersimpan.
@@ -859,16 +1172,19 @@
       const session =
         await getSession();
 
+
       if (
         session?.user
       ) {
 
         showStudio();
 
+
         emitLogin(
           session.user,
           session
         );
+
 
       } else {
 
@@ -884,6 +1200,7 @@
         client
       );
 
+
     } catch (error) {
 
       console.error(
@@ -891,10 +1208,12 @@
         error
       );
 
+
       message(
         error?.message ||
         'Sistem login gagal diinisialisasi.'
       );
+
     }
   }
 
@@ -925,7 +1244,9 @@
 
     showStudio,
 
-    showLoggedOutUI
+    showLoggedOutUI,
+
+    togglePassword
 
   };
 
@@ -933,15 +1254,20 @@
   /*
    * API utama.
    */
-  window.GENZ_AUTH = API;
+  window.GENZ_AUTH =
+    API;
 
 
   /*
    * Kompatibilitas dengan modul lama/pendukung
    * yang memanggil GENZ.auth.
    */
-  window.GENZ = window.GENZ || {};
-  window.GENZ.auth = API;
+  window.GENZ =
+    window.GENZ || {};
+
+
+  window.GENZ.auth =
+    API;
 
 
   /* =========================================================
@@ -959,6 +1285,7 @@
         once: true
       }
     );
+
 
   } else {
 
