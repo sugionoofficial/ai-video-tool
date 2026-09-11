@@ -895,29 +895,67 @@
 
   async function loadHtml() {
 
+    /*
+     * core.js:
+     *
+     * GENZ.loadComponent(target, url)
+     *
+     * app.js:
+     *
+     * <div id="pageContent"></div>
+     *
+     * Jadi target harus #pageContent
+     * dan URL harus /components/credit.html.
+     */
+
     if (
       typeof window.GENZ?.loadComponent ===
       'function'
     ) {
+      try {
 
-      const result =
-        await window.GENZ.loadComponent(
-          'credit',
-          '#pageContainer'
+        const result =
+          await window.GENZ.loadComponent(
+            '#pageContent',
+            '/components/credit.html'
+          );
+
+        state.htmlLoaded =
+          result !== false;
+
+        return state.htmlLoaded;
+
+      } catch (error) {
+
+        console.error(
+          '[GEN-Z CREDIT] loadComponent error',
+          error
         );
 
-      state.htmlLoaded =
-        result !== false;
-
-      return state.htmlLoaded;
+        state.htmlLoaded =
+          false;
+      }
     }
+
+
+    /*
+     * Fallback apabila core.js
+     * belum menyediakan loadComponent().
+     */
 
     const container =
       document.querySelector(
-        '#pageContainer'
+        '#pageContent'
       );
 
     if (!container) {
+      console.error(
+        '[GEN-Z CREDIT] #pageContent tidak ditemukan.'
+      );
+
+      state.htmlLoaded =
+        false;
+
       return false;
     }
 
@@ -933,12 +971,15 @@
 
       if (!response.ok) {
         throw new Error(
-          'Gagal memuat komponen Credit.'
+          `Gagal memuat credit.html. HTTP ${response.status}`
         );
       }
 
-      container.innerHTML =
+      const html =
         await response.text();
+
+      container.innerHTML =
+        html;
 
       state.htmlLoaded =
         true;
@@ -984,19 +1025,46 @@
         'info'
       );
 
-      if (
-        !$('creditPage') &&
-        !state.htmlLoaded
-      ) {
-        await loadHtml();
+
+      /*
+       * Pastikan HTML Credit sudah
+       * berada di #pageContent.
+       */
+
+      if (!$('creditPage')) {
+
+        const loaded =
+          await loadHtml();
+
+        if (!loaded) {
+          throw new Error(
+            'Komponen Credit gagal dimuat.'
+          );
+        }
       }
 
+
+      /*
+       * Ambil saldo terbaru.
+       */
+
       await loadBalance();
+
+
+      /*
+       * Pasang event.
+       */
 
       bindPackages();
       bindBack();
 
+
+      /*
+       * Ambil riwayat transaksi.
+       */
+
       await loadHistory();
+
 
       state.loaded =
         true;
