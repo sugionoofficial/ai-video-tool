@@ -12,7 +12,7 @@
    - Worker menentukan adapter
    - Fallback hanya untuk capability
    - Provider disabled tidak ditampilkan
-========================================================= */
+   ========================================================= */
 
 (function () {
 
@@ -24,18 +24,21 @@
 
   GENZ.state = GENZ.state || {};
   GENZ.providers = GENZ.providers || {};
-  GENZ.videoProviders = GENZ.videoProviders || {};
+  GENZ.videoProviders =
+    GENZ.videoProviders || {};
 
   /* =======================================================
      CAPABILITY FALLBACK
-     
+
      Ini BUKAN daftar provider.
-     Hanya digunakan jika backend belum mengirim capability.
+     Hanya digunakan jika backend belum
+     mengirim capability.
   ======================================================= */
 
   const CAPABILITY_FALLBACK = {
 
     veo: {
+
       models: [
         'veo-3.1-fast-generate-preview',
         'veo-3.1-generate-preview',
@@ -58,9 +61,11 @@
         '1080p',
         '4k'
       ]
+
     },
 
     minimax: {
+
       models: [
         'MiniMax-Hailuo-2.3',
         'MiniMax-Hailuo-2.3-Fast',
@@ -82,9 +87,11 @@
         '768P',
         '1080P'
       ]
+
     },
 
     luma: {
+
       models: [
         'ray-2',
         'ray-flash-2'
@@ -110,6 +117,7 @@
         '1080p',
         '4k'
       ]
+
     }
 
   };
@@ -123,24 +131,32 @@
   }
 
   function text(value) {
-    return String(value || '')
+
+    return String(
+      value || ''
+    )
       .trim()
       .toLowerCase();
+
   }
 
   function normalizeId(value) {
 
     return text(value)
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(
+        /[^a-z0-9]+/g,
+        '-'
+      )
+      .replace(
+        /^-+|-+$/g,
+        '');
 
   }
 
   /* =======================================================
      DETECT ADAPTER TYPE
-     
-     Digunakan hanya untuk capability fallback.
-     Tidak menentukan adapter generation.
+
+     Hanya untuk capability fallback.
   ======================================================= */
 
   function detectType(provider) {
@@ -150,9 +166,13 @@
     }
 
     const values = [
+
       provider.adapter,
+
       provider.id,
+
       provider.name
+
     ];
 
     const value = values
@@ -164,30 +184,39 @@
       value.includes('gemini') ||
       value.includes('veo')
     ) {
+
       return 'veo';
+
     }
 
     if (
       value.includes('minimax') ||
       value.includes('mini max')
     ) {
+
       return 'minimax';
+
     }
 
     if (
       value.includes('luma')
     ) {
+
       return 'luma';
+
     }
 
     return null;
+
   }
 
   /* =======================================================
      NORMALIZE CAPABILITIES
   ======================================================= */
 
-  function normalizeCapabilities(provider) {
+  function normalizeCapabilities(
+    provider
+  ) {
 
     const type =
       detectType(provider);
@@ -203,62 +232,101 @@
       {};
 
     const models =
-      Array.isArray(source.models) &&
+      Array.isArray(
+        source.models
+      ) &&
       source.models.length
+
         ? source.models
+
         : (
-            Array.isArray(provider?.models) &&
+            Array.isArray(
+              provider?.models
+            ) &&
             provider.models.length
+
               ? provider.models
+
               : (
-                  fallback?.models || []
+                  fallback?.models ||
+                  []
                 )
           );
 
     const durations =
-      Array.isArray(source.durations) &&
+      Array.isArray(
+        source.durations
+      ) &&
       source.durations.length
+
         ? source.durations
+
         : (
-            Array.isArray(provider?.durations) &&
+            Array.isArray(
+              provider?.durations
+            ) &&
             provider.durations.length
+
               ? provider.durations
+
               : (
-                  fallback?.durations || []
+                  fallback?.durations ||
+                  []
                 )
           );
 
     const aspects =
-      Array.isArray(source.aspects) &&
+      Array.isArray(
+        source.aspects
+      ) &&
       source.aspects.length
+
         ? source.aspects
+
         : (
-            Array.isArray(provider?.aspects) &&
+            Array.isArray(
+              provider?.aspects
+            ) &&
             provider.aspects.length
+
               ? provider.aspects
+
               : (
-                  fallback?.aspects || []
+                  fallback?.aspects ||
+                  []
                 )
           );
 
     const resolutions =
-      Array.isArray(source.resolutions) &&
+      Array.isArray(
+        source.resolutions
+      ) &&
       source.resolutions.length
+
         ? source.resolutions
+
         : (
-            Array.isArray(provider?.resolutions) &&
+            Array.isArray(
+              provider?.resolutions
+            ) &&
             provider.resolutions.length
+
               ? provider.resolutions
+
               : (
-                  fallback?.resolutions || []
+                  fallback?.resolutions ||
+                  []
                 )
           );
 
     return {
 
       models,
+
       durations,
+
       aspects,
+
       resolutions
 
     };
@@ -269,13 +337,16 @@
      NORMALIZE PROVIDER LIST
   ======================================================= */
 
-  function normalizeProviderList(list) {
+  function normalizeProviderList(
+    list
+  ) {
 
     if (!Array.isArray(list)) {
       return [];
     }
 
     return list
+
       .filter(provider => {
 
         if (!provider) {
@@ -294,6 +365,7 @@
         );
 
       })
+
       .map(provider => {
 
         const id =
@@ -329,12 +401,93 @@
   }
 
   /* =======================================================
+     PROVIDER DROPDOWN
+  ======================================================= */
+
+  function renderProviderSelect(
+    providers
+  ) {
+
+    const element =
+      $('provider');
+
+    if (!element) {
+      return;
+    }
+
+    const previous =
+      String(
+        element.value || ''
+      ).trim();
+
+    element.innerHTML = '';
+
+    const placeholder =
+      document.createElement(
+        'option'
+      );
+
+    placeholder.value = '';
+
+    placeholder.textContent =
+      providers.length
+        ? 'Pilih AI Engine'
+        : 'Tidak ada AI Engine';
+
+    element.appendChild(
+      placeholder
+    );
+
+    providers.forEach(
+      provider => {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value =
+          provider.id;
+
+        option.textContent =
+          provider.name ||
+          provider.id;
+
+        element.appendChild(
+          option
+        );
+
+      }
+    );
+
+    if (
+      previous &&
+      providers.some(
+        provider =>
+          String(
+            provider.id
+          ) === previous
+      )
+    ) {
+
+      element.value =
+        previous;
+
+    }
+
+  }
+
+  /* =======================================================
      DOM OPTION HELPERS
   ======================================================= */
 
-  function setOptions(id, values) {
+  function setOptions(
+    id,
+    values
+  ) {
 
-    const element = $(id);
+    const element =
+      $(id);
 
     if (!element) {
       return;
@@ -352,30 +505,57 @@
 
     element.innerHTML = '';
 
-    list.forEach(value => {
+    if (!list.length) {
 
       const option =
         document.createElement(
           'option'
         );
 
-      option.value =
-        String(value);
+      option.value = '';
 
       option.textContent =
-        String(value);
+        'Tidak tersedia';
 
       element.appendChild(
         option
       );
 
-    });
+      return;
+
+    }
+
+    list.forEach(
+      value => {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value =
+          String(value);
+
+        option.textContent =
+          String(value);
+
+        element.appendChild(
+          option
+        );
+
+      }
+    );
 
     if (
       previous &&
       list
-        .map(value => String(value))
-        .includes(previous)
+        .map(
+          value =>
+            String(value)
+        )
+        .includes(
+          previous
+        )
     ) {
 
       element.value =
@@ -385,9 +565,13 @@
 
   }
 
-  function setValue(id, value) {
+  function setValue(
+    id,
+    value
+  ) {
 
-    const element = $(id);
+    const element =
+      $(id);
 
     if (!element) {
       return;
@@ -404,7 +588,9 @@
      UPDATE GENERATE BUTTON
   ======================================================= */
 
-  function updateGenerateButton(provider) {
+  function updateGenerateButton(
+    provider
+  ) {
 
     const button =
       $('generateVideo') ||
@@ -414,13 +600,28 @@
       return;
     }
 
+    if (!provider) {
+
+      button.textContent =
+        'Generate Video';
+
+      button.disabled =
+        true;
+
+      return;
+
+    }
+
     const name =
-      provider?.name ||
-      provider?.id ||
+      provider.name ||
+      provider.id ||
       'Provider';
 
     button.textContent =
       `Generate Video • ${name}`;
+
+    button.disabled =
+      false;
 
   }
 
@@ -438,10 +639,8 @@
     }
 
     /*
-      Jangan menentukan kemampuan image
-      berdasarkan nama provider.
-
-      Validasi final dilakukan adapter backend.
+      Validasi final dilakukan
+      oleh adapter backend.
     */
 
     imageInput.disabled =
@@ -453,23 +652,30 @@
      ACTIVE BUTTON
   ======================================================= */
 
-  function updateActiveButton(providerId) {
+  function updateActiveButton(
+    providerId
+  ) {
 
     document
       .querySelectorAll(
         '[data-providers] [data-provider]'
       )
-      .forEach(button => {
+      .forEach(
+        button => {
 
-        button.classList.toggle(
-          'active',
-          String(
-            button.dataset.provider
-          ) ===
-          String(providerId)
-        );
+          button.classList.toggle(
+            'active',
 
-      });
+            String(
+              button.dataset.provider
+            ) ===
+            String(
+              providerId
+            )
+          );
+
+        }
+      );
 
   }
 
@@ -477,7 +683,9 @@
      UPDATE PROVIDER UI
   ======================================================= */
 
-  function updateProviderUI(provider) {
+  function updateProviderUI(
+    provider
+  ) {
 
     if (!provider) {
       return;
@@ -489,15 +697,27 @@
         provider
       );
 
+    /*
+      Provider dropdown
+    */
+
     setValue(
       'provider',
       provider.id
     );
 
+    /*
+      Model
+    */
+
     setOptions(
       'model',
       capabilities.models
     );
+
+    /*
+      Durasi
+    */
 
     setOptions(
       'duration',
@@ -505,8 +725,7 @@
     );
 
     /*
-      Support dua kemungkinan ID
-      pada UI generator lama.
+      Rasio
     */
 
     setOptions(
@@ -519,10 +738,18 @@
       capabilities.aspects
     );
 
+    /*
+      Resolusi
+    */
+
     setOptions(
       'resolution',
       capabilities.resolutions
     );
+
+    /*
+      State
+    */
 
     GENZ.state.provider =
       provider.id;
@@ -532,6 +759,10 @@
 
     GENZ.providers.currentProvider =
       provider;
+
+    /*
+      Tombol
+    */
 
     updateGenerateButton(
       provider
@@ -543,18 +774,30 @@
       provider.id
     );
 
+    /*
+      Event
+    */
+
     document.dispatchEvent(
       new CustomEvent(
         'genz-provider-change',
         {
           detail: {
+
             provider,
-            id: provider.id,
-            name: provider.name,
+
+            id:
+              provider.id,
+
+            name:
+              provider.name,
+
             adapter:
               provider.adapter ||
               null,
+
             capabilities
+
           }
         }
       )
@@ -566,7 +809,9 @@
      PROVIDER BUTTONS
   ======================================================= */
 
-  function renderButtons(providers) {
+  function renderButtons(
+    providers
+  ) {
 
     const container =
       document.querySelector(
@@ -577,42 +822,49 @@
       return;
     }
 
-    container.innerHTML = '';
+    container.innerHTML =
+      '';
 
-    providers.forEach(provider => {
+    providers.forEach(
+      provider => {
 
-      const button =
-        document.createElement(
-          'button'
+        const button =
+          document.createElement(
+            'button'
+          );
+
+        button.type =
+          'button';
+
+        button.className =
+          'provider-button';
+
+        button.dataset.provider =
+          provider.id;
+
+        button.textContent =
+          provider.name ||
+          provider.id;
+
+        container.appendChild(
+          button
         );
 
-      button.type =
-        'button';
-
-      button.className =
-        'provider-button';
-
-      button.dataset.provider =
-        provider.id;
-
-      button.textContent =
-        provider.name ||
-        provider.id;
-
-      container.appendChild(
-        button
-      );
-
-    });
+      }
+    );
 
     if (
-      container.dataset.listenerAttached ===
+      container.dataset
+        .listenerAttached ===
       'true'
     ) {
+
       return;
+
     }
 
-    container.dataset.listenerAttached =
+    container.dataset
+      .listenerAttached =
       'true';
 
     container.addEventListener(
@@ -641,7 +893,9 @@
      FIND PROVIDER
   ======================================================= */
 
-  function findProvider(providerId) {
+  function findProvider(
+    providerId
+  ) {
 
     const providers =
       GENZ.providers.list ||
@@ -652,18 +906,21 @@
         providerId
       );
 
-    return providers.find(
-      provider => {
+    return (
+      providers.find(
+        provider => {
 
-        return (
-          normalizeId(
-            provider.id
-          ) ===
-          normalized
-        );
+          return (
+            normalizeId(
+              provider.id
+            ) ===
+            normalized
+          );
 
-      }
-    ) || null;
+        }
+      ) ||
+      null
+    );
 
   }
 
@@ -671,7 +928,9 @@
      SELECT PROVIDER
   ======================================================= */
 
-  function selectProvider(providerId) {
+  function selectProvider(
+    providerId
+  ) {
 
     const provider =
       findProvider(
@@ -686,6 +945,7 @@
       );
 
       return null;
+
     }
 
     updateProviderUI(
@@ -715,9 +975,12 @@
               'include',
 
             headers: {
+
               Accept:
                 'application/json'
+
             }
+
           }
         );
 
@@ -761,14 +1024,6 @@
 
   /* =======================================================
      LOAD PROVIDERS
-     
-     PENTING:
-     Tidak ada fallback provider instance.
-     
-     Jika database kosong:
-     → provider kosong
-     → UI kosong
-     → tidak membuat Veo/MiniMax/Luma palsu.
   ======================================================= */
 
   async function loadProviders() {
@@ -787,35 +1042,45 @@
     GENZ.videoProviders.list =
       providers;
 
+    /*
+      Sinkronkan dropdown.
+    */
+
+    renderProviderSelect(
+      providers
+    );
+
+    /*
+      Sinkronkan tombol provider.
+    */
+
     renderButtons(
       providers
     );
 
     /*
-      Provider yang sebelumnya dipilih
-      harus tetap dipertahankan jika masih ada.
+      Provider sebelumnya.
     */
 
     const requested =
-      GENZ.state.provider ||
-      $('provider')?.value ||
-      '';
+      String(
+        GENZ.state.provider ||
+        $('provider')?.value ||
+        ''
+      ).trim();
 
     let selected =
       providers.find(
         provider =>
           String(
             provider.id
-          ) ===
-          String(
-            requested
-          )
+          ) === requested
       );
 
     /*
-      Jika provider sebelumnya sudah
-      tidak aktif / sudah dihapus,
-      pilih provider aktif pertama.
+      Jika provider sebelumnya
+      sudah tidak tersedia,
+      gunakan provider aktif pertama.
     */
 
     if (!selected) {
@@ -834,10 +1099,6 @@
 
     } else {
 
-      /*
-        Database kosong atau semua provider disabled.
-      */
-
       GENZ.state.provider =
         null;
 
@@ -850,6 +1111,31 @@
       setValue(
         'provider',
         ''
+      );
+
+      setOptions(
+        'model',
+        []
+      );
+
+      setOptions(
+        'duration',
+        []
+      );
+
+      setOptions(
+        'ratio',
+        []
+      );
+
+      setOptions(
+        'aspect',
+        []
+      );
+
+      setOptions(
+        'resolution',
+        []
       );
 
       updateGenerateButton(
@@ -869,10 +1155,12 @@
         'genz-providers-loaded',
         {
           detail: {
+
             providers,
-            current:
-              selected?.id ||
-              null
+
+            count:
+              providers.length
+
           }
         }
       )
@@ -883,69 +1171,88 @@
   }
 
   /* =======================================================
-     PUBLIC API
+     PROVIDER SELECT CHANGE
   ======================================================= */
 
-  GENZ.videoProviders = {
+  function bindProviderSelect() {
 
-    fallback:
-      CAPABILITY_FALLBACK,
+    const element =
+      $('provider');
 
-    list:
-      GENZ.providers.list,
+    if (!element) {
+      return;
+    }
 
-    current:
-      GENZ.providers.current ||
-      null,
+    if (
+      element.dataset
+        .providerListenerAttached ===
+      'true'
+    ) {
 
-    load:
-      loadProviders,
+      return;
 
-    loadProviders,
+    }
 
-    select:
-      selectProvider,
+    element.dataset
+      .providerListenerAttached =
+      'true';
 
-    selectProvider,
+    element.addEventListener(
+      'change',
+      () => {
 
-    find:
-      findProvider,
+        const providerId =
+          element.value;
 
-    normalize:
-      normalizeProviderList,
+        if (!providerId) {
 
-    detectType,
+          GENZ.state.provider =
+            null;
 
-    normalizeCapabilities
+          GENZ.providers.current =
+            null;
 
-  };
+          GENZ.providers.currentProvider =
+            null;
+
+          updateGenerateButton(
+            null
+          );
+
+          return;
+
+        }
+
+        selectProvider(
+          providerId
+        );
+
+      }
+    );
+
+  }
+
+  /* =======================================================
+     PUBLIC API
+  ======================================================= */
 
   GENZ.providers.load =
     loadProviders;
 
-  GENZ.providers.loadProviders =
+  GENZ.providers.reload =
     loadProviders;
 
   GENZ.providers.select =
     selectProvider;
 
-  GENZ.providers.selectProvider =
-    selectProvider;
-
   GENZ.providers.find =
     findProvider;
 
-  /*
-    Capability fallback tetap tersedia
-    untuk kompatibilitas kode lama.
-  */
+  GENZ.videoProviders.load =
+    loadProviders;
 
-  GENZ.providers.config =
-    CAPABILITY_FALLBACK;
-
-  /*
-    Compatibility global.
-  */
+  GENZ.videoProviders.select =
+    selectProvider;
 
   window.selectProvider =
     selectProvider;
@@ -954,20 +1261,60 @@
     loadProviders;
 
   /* =======================================================
-     INITIALIZE
+     INITIALIZATION
   ======================================================= */
 
-  function initialize() {
+  async function initialize() {
 
-    loadProviders()
-      .catch(error => {
+    bindProviderSelect();
 
-        console.error(
-          '[GEN-Z.AI] Provider initialization error:',
-          error
-        );
+    await loadProviders();
 
-      });
+    /*
+      Generator component bisa dimuat
+      secara dinamis setelah file JS ini
+      sudah dieksekusi.
+
+      Karena itu kita cek ulang DOM
+      setelah halaman siap.
+    */
+
+    setTimeout(
+      () => {
+
+        bindProviderSelect();
+
+        if (
+          GENZ.providers.list &&
+          GENZ.providers.list.length
+        ) {
+
+          renderProviderSelect(
+            GENZ.providers.list
+          );
+
+          renderButtons(
+            GENZ.providers.list
+          );
+
+          const current =
+            findProvider(
+              GENZ.state.provider
+            );
+
+          if (current) {
+
+            updateProviderUI(
+              current
+            );
+
+          }
+
+        }
+
+      },
+      300
+    );
 
   }
 
@@ -980,8 +1327,7 @@
       'DOMContentLoaded',
       initialize,
       {
-        once:
-          true
+        once: true
       }
     );
 
