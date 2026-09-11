@@ -19,6 +19,8 @@
   let started = false;
   let authBound = false;
 
+  let topupSettingsLoading = null;
+
 
   /* =======================================================
      UTILITY
@@ -30,18 +32,244 @@
 
 
   function log(...args) {
+
     console.log(
       '[GEN-Z.AI]',
       ...args
     );
+
   }
 
 
   function error(...args) {
+
     console.error(
       '[GEN-Z.AI]',
       ...args
     );
+
+  }
+
+
+  /* =======================================================
+     DYNAMIC MODULE LOADER
+     
+     Top Up Setting tidak perlu dimuat sejak awal.
+     Modul hanya dimuat saat halaman dibuka.
+  ======================================================= */
+
+  function loadScriptOnce(
+    src,
+    moduleName
+  ) {
+
+    if (
+      moduleName === 'topupSettings' &&
+      GENZ.topupSettings &&
+      typeof GENZ.topupSettings.load === 'function'
+    ) {
+
+      return Promise.resolve(
+        GENZ.topupSettings
+      );
+
+    }
+
+
+    if (
+      moduleName === 'topupSettings' &&
+      topupSettingsLoading
+    ) {
+
+      return topupSettingsLoading;
+
+    }
+
+
+    const promise =
+      new Promise(
+        function (resolve, reject) {
+
+          const existing =
+            document.querySelector(
+              `script[data-genz-module="${moduleName}"]`
+            );
+
+
+          if (existing) {
+
+            if (
+              moduleName === 'topupSettings' &&
+              GENZ.topupSettings &&
+              typeof GENZ.topupSettings.load === 'function'
+            ) {
+
+              resolve(
+                GENZ.topupSettings
+              );
+
+              return;
+
+            }
+
+
+            existing.addEventListener(
+              'load',
+              function () {
+
+                if (
+                  moduleName === 'topupSettings' &&
+                  GENZ.topupSettings &&
+                  typeof GENZ.topupSettings.load === 'function'
+                ) {
+
+                  resolve(
+                    GENZ.topupSettings
+                  );
+
+                } else {
+
+                  reject(
+                    new Error(
+                      `Modul ${moduleName} tidak mendaftarkan GENZ.${moduleName}.`
+                    )
+                  );
+
+                }
+
+              },
+              {
+                once: true
+              }
+            );
+
+
+            existing.addEventListener(
+              'error',
+              function () {
+
+                reject(
+                  new Error(
+                    `Gagal memuat ${src}`
+                  )
+                );
+
+              },
+              {
+                once: true
+              }
+            );
+
+
+            return;
+
+          }
+
+
+          const script =
+            document.createElement(
+              'script'
+            );
+
+
+          script.src =
+            src;
+
+          script.async =
+            true;
+
+          script.dataset.genzModule =
+            moduleName;
+
+
+          script.onload =
+            function () {
+
+              if (
+                moduleName === 'topupSettings' &&
+                GENZ.topupSettings &&
+                typeof GENZ.topupSettings.load === 'function'
+              ) {
+
+                resolve(
+                  GENZ.topupSettings
+                );
+
+              } else {
+
+                reject(
+                  new Error(
+                    `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
+                  )
+                );
+
+              }
+
+            };
+
+
+          script.onerror =
+            function () {
+
+              reject(
+                new Error(
+                  `Gagal memuat ${src}`
+                )
+              );
+
+            };
+
+
+          document.head.appendChild(
+            script
+          );
+
+        }
+      );
+
+
+    if (
+      moduleName === 'topupSettings'
+    ) {
+
+      topupSettingsLoading =
+        promise;
+
+      promise.finally(
+        function () {
+
+          topupSettingsLoading =
+            null;
+
+        }
+      );
+
+    }
+
+
+    return promise;
+
+  }
+
+
+  async function ensureTopupSettings() {
+
+    if (
+      GENZ.topupSettings &&
+      typeof GENZ.topupSettings.load ===
+      'function'
+    ) {
+
+      return GENZ.topupSettings;
+
+    }
+
+
+    return await loadScriptOnce(
+      '/js/topup-settings.js',
+      'topupSettings'
+    );
+
   }
 
 
@@ -62,18 +290,6 @@
 
     }
 
-
-    /*
-     * AUTH
-     *
-     * Auth berada di luar application-container.
-     *
-     * BELUM LOGIN
-     * -> login tampil
-     *
-     * SUDAH LOGIN
-     * -> application tampil
-     */
 
     app.innerHTML = `
 
@@ -145,10 +361,6 @@
         authComponentError
       );
 
-
-      /*
-       * Fallback login.
-       */
 
       authContainer.innerHTML = `
 
@@ -1102,10 +1314,9 @@
     page
   ) {
 
-    /*
-     * Semua halaman internal
-     * membutuhkan login.
-     */
+    /* ---------------------------------------------------
+       Semua halaman internal membutuhkan login.
+    --------------------------------------------------- */
 
     if (!GENZ.state.loggedIn) {
 
@@ -1161,7 +1372,7 @@
 
 
     /* =====================================================
-       ROUTING HALAMAN
+       ROUTING
     ===================================================== */
 
     switch (page) {
@@ -1180,6 +1391,13 @@
         ) {
 
           await GENZ.profile.load();
+
+        } else {
+
+          showModuleUnavailable(
+            'Profile',
+            '/js/profile.js'
+          );
 
         }
 
@@ -1200,6 +1418,13 @@
 
           await GENZ.credit.load();
 
+        } else {
+
+          showModuleUnavailable(
+            'Credit',
+            '/js/credit.js'
+          );
+
         }
 
         break;
@@ -1219,6 +1444,13 @@
 
           await GENZ.topup.load();
 
+        } else {
+
+          showModuleUnavailable(
+            'Top Up',
+            '/js/topup.js'
+          );
+
         }
 
         break;
@@ -1226,17 +1458,10 @@
 
       /* ===================================================
          TOP UP SETTING
-         HALAMAN KHUSUS ADMIN / OWNER
+         ADMIN / OWNER ONLY
       =================================================== */
 
       case 'topup-settings':
-
-        /*
-         * Jangan menentukan admin berdasarkan email.
-         *
-         * Role sudah divalidasi oleh account.js
-         * melalui server /api/account/credits.
-         */
 
         if (
           !GENZ.state.account ||
@@ -1253,15 +1478,36 @@
         }
 
 
-        if (
-          GENZ.topupSettings &&
-          typeof GENZ.topupSettings.load ===
-          'function'
-        ) {
+        try {
 
-          await GENZ.topupSettings.load();
+          const topupSettings =
+            await ensureTopupSettings();
 
-        } else {
+
+          if (
+            topupSettings &&
+            typeof topupSettings.load ===
+            'function'
+          ) {
+
+            await topupSettings.load();
+
+          } else {
+
+            showModuleUnavailable(
+              'Top Up Setting',
+              '/js/topup-settings.js'
+            );
+
+          }
+
+        } catch (moduleError) {
+
+          error(
+            'Top Up Setting module error:',
+            moduleError
+          );
+
 
           showModuleUnavailable(
             'Top Up Setting',
@@ -1278,11 +1524,6 @@
       =================================================== */
 
       case 'admin':
-
-        /*
-         * Admin Panel juga harus menggunakan
-         * hasil validasi role dari server.
-         */
 
         if (
           !GENZ.state.account ||
@@ -1325,11 +1566,6 @@
 
       case 'contact':
 
-        /*
-         * Contact hanya untuk user biasa.
-         * Admin tidak membutuhkan menu ini.
-         */
-
         if (
           GENZ.state.account &&
           GENZ.state.account.isAdmin === true &&
@@ -1366,7 +1602,7 @@
 
 
   /* =======================================================
-     ACCESS DENIED PAGE
+     ACCESS DENIED
   ======================================================= */
 
   function showAccessDenied(
@@ -1375,7 +1611,6 @@
 
     const pages =
       $('pageContent');
-
 
     if (!pages) {
       return;
@@ -1425,7 +1660,6 @@
     const back =
       $('accessDeniedBack');
 
-
     if (back) {
 
       back.addEventListener(
@@ -1449,7 +1683,6 @@
 
     const pages =
       $('pageContent');
-
 
     if (!pages) {
       return;
@@ -1514,7 +1747,6 @@
 
     const back =
       $('moduleUnavailableBack');
-
 
     if (back) {
 
