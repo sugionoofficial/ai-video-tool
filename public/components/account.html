@@ -1,3 +1,256 @@
+<style>
+  .account {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .account-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 190px;
+    max-width: 280px;
+    padding: 6px 9px 6px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #fff;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .account-btn:hover {
+    background: rgba(255, 255, 255, 0.065);
+    border-color: rgba(167, 139, 250, 0.25);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+    transform: translateY(-1px);
+  }
+
+  .account-btn:focus-visible {
+    outline: 2px solid rgba(167, 139, 250, 0.85);
+    outline-offset: 3px;
+  }
+
+  .account-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(167, 139, 250, 0.35);
+    border-radius: 10px;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(139, 92, 246, 0.32),
+        rgba(59, 130, 246, 0.12)
+      );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 18px rgba(124, 58, 237, 0.1);
+  }
+
+  .account-avatar span {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 950;
+    letter-spacing: -0.08em;
+  }
+
+  .account-user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 0;
+    flex: 1;
+    gap: 3px;
+  }
+
+  .account-email {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-credits {
+    display: block;
+    color: #c4b5fd;
+    font-size: 10px;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  .account-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 14px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .account-btn[aria-expanded="true"] .account-chevron {
+    transform: rotate(180deg);
+  }
+
+  .account-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 999;
+    width: 235px;
+    padding: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.085);
+    border-radius: 17px;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(25, 25, 31, 0.98),
+        rgba(10, 10, 14, 0.98)
+      );
+    box-shadow:
+      0 25px 70px rgba(0, 0, 0, 0.55),
+      0 0 35px rgba(124, 58, 237, 0.07);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    transform-origin: top right;
+  }
+
+  .account-menu.hidden {
+    display: none !important;
+  }
+
+  .menu-email {
+    width: 100%;
+    padding: 11px 12px 10px;
+    overflow: hidden;
+    color: rgba(196, 181, 253, 0.7);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-menu-divider {
+    width: 100%;
+    height: 1px;
+    margin: 5px 0;
+    background: rgba(255, 255, 255, 0.065);
+  }
+
+  .account-menu > button {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 11px;
+    font-weight: 750;
+    text-align: left;
+    transition:
+      background 0.18s ease,
+      color 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .account-menu > button span:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    color: rgba(167, 139, 250, 0.72);
+    font-size: 13px;
+  }
+
+  .account-menu > button span:last-child {
+    flex: 1;
+  }
+
+  .account-menu > button:hover {
+    background: rgba(139, 92, 246, 0.1);
+    color: #fff;
+    transform: translateX(2px);
+  }
+
+  .account-menu > button:focus-visible {
+    outline: 2px solid rgba(167, 139, 250, 0.7);
+    outline-offset: -2px;
+  }
+
+  .account-menu > button.danger {
+    color: rgba(248, 113, 113, 0.8);
+  }
+
+  .account-menu > button.danger span:first-child {
+    color: rgba(248, 113, 113, 0.78);
+  }
+
+  .account-menu > button.danger:hover {
+    background: rgba(239, 68, 68, 0.09);
+    color: #fca5a5;
+  }
+
+  @media (max-width: 720px) {
+    .account-btn {
+      min-width: 0;
+      width: 43px;
+      height: 43px;
+      padding: 4px;
+      border-radius: 12px;
+    }
+
+    .account-avatar {
+      width: 33px;
+      height: 33px;
+    }
+
+    .account-user-info,
+    .account-chevron {
+      display: none;
+    }
+
+    .account-menu {
+      right: -2px;
+      width: 225px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .account-btn,
+    .account-chevron,
+    .account-menu > button {
+      transition: none;
+    }
+  }
+</style>
+
+
 <div class="account">
 
   <button
