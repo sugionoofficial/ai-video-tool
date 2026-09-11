@@ -1,0 +1,395 @@
+<style>
+  .history-page {
+    width: 100%;
+  }
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .history-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 20px;
+  }
+
+  .history-header p {
+    margin: 4px 0 0;
+    color: rgba(255,255,255,.52);
+    font-size: 12px;
+  }
+
+  .history-back {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(145,180,210,.18);
+    border-radius: 11px;
+    background: rgba(12,31,49,.72);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .history-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .history-count {
+    color: rgba(255,255,255,.5);
+    font-size: 12px;
+  }
+
+  .history-refresh {
+    min-height: 36px;
+    padding: 0 13px;
+    border: 1px solid rgba(130,200,240,.2);
+    border-radius: 10px;
+    background: rgba(20,52,76,.6);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .history-status {
+    min-height: 20px;
+    margin-bottom: 12px;
+    color: rgba(255,255,255,.55);
+    font-size: 12px;
+  }
+
+  .history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .history-card {
+    overflow: hidden;
+    border: 1px solid rgba(145,180,210,.14);
+    border-radius: 14px;
+    background: rgba(8,18,28,.86);
+    cursor: pointer;
+    transition:
+      transform .18s ease,
+      border-color .18s ease;
+  }
+
+  .history-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(130,200,240,.34);
+  }
+
+  .history-thumb {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    background: #071019;
+  }
+
+  .history-thumb video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #071019;
+  }
+
+  .history-placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+    box-sizing: border-box;
+    color: rgba(255,255,255,.48);
+    text-align: center;
+    font-size: 12px;
+  }
+
+  .history-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.68);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    backdrop-filter: blur(8px);
+  }
+
+  .history-info {
+    padding: 11px;
+  }
+
+  .history-provider {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .history-date {
+    margin-top: 4px;
+    color: rgba(255,255,255,.43);
+    font-size: 10px;
+  }
+
+  .history-prompt {
+    display: -webkit-box;
+    margin-top: 7px;
+    overflow: hidden;
+    color: rgba(255,255,255,.62);
+    font-size: 11px;
+    line-height: 1.45;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .history-empty {
+    padding: 42px 20px;
+    border: 1px dashed rgba(145,180,210,.18);
+    border-radius: 14px;
+    color: rgba(255,255,255,.48);
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .history-modal.hidden {
+    display: none !important;
+  }
+
+  .history-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0,0,0,.72);
+    backdrop-filter: blur(12px);
+  }
+
+  .history-dialog {
+    width: min(760px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    border: 1px solid rgba(145,180,210,.18);
+    border-radius: 18px;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(13,31,47,.98),
+        rgba(4,10,16,.98)
+      );
+    box-shadow: 0 30px 90px rgba(0,0,0,.65);
+  }
+
+  .history-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+
+  .history-dialog-head h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 16px;
+  }
+
+  .history-close {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 9px;
+    background: rgba(255,255,255,.07);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  .history-dialog-body {
+    padding: 16px;
+  }
+
+  .history-player {
+    display: block;
+    width: 100%;
+    max-height: 62vh;
+    border-radius: 12px;
+    background: #000;
+  }
+
+  .history-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .history-detail-item {
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.045);
+  }
+
+  .history-detail-item span {
+    display: block;
+    margin-bottom: 4px;
+    color: rgba(255,255,255,.42);
+    font-size: 10px;
+  }
+
+  .history-detail-item strong {
+    display: block;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .history-detail-prompt {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.045);
+    color: rgba(255,255,255,.72);
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .history-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 12px;
+    border: 0;
+    border-radius: 11px;
+    background: linear-gradient(135deg,#22c55e,#16a34a);
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .history-error {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(239,68,68,.08);
+    color: #fca5a5;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  @media (max-width: 600px) {
+    .history-grid {
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 9px;
+    }
+
+    .history-detail-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<section class="history-page">
+
+  <div class="history-header">
+    <button
+      type="button"
+      class="history-back"
+      id="historyBack"
+      aria-label="Kembali"
+    >
+      ←
+    </button>
+
+    <div>
+      <h2>Riwayat Video</h2>
+      <p>Semua video yang pernah kamu generate.</p>
+    </div>
+  </div>
+
+  <div class="history-toolbar">
+    <span
+      id="historyCount"
+      class="history-count"
+    >
+      0 video
+    </span>
+
+    <button
+      type="button"
+      id="historyRefresh"
+      class="history-refresh"
+    >
+      Refresh
+    </button>
+  </div>
+
+  <div
+    id="historyStatus"
+    class="history-status"
+  ></div>
+
+  <div
+    id="historyGrid"
+    class="history-grid"
+  ></div>
+
+  <div
+    id="historyModal"
+    class="history-modal hidden"
+    aria-hidden="true"
+  >
+
+    <div
+      class="history-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="historyDialogTitle"
+    >
+
+      <div class="history-dialog-head">
+
+        <h3 id="historyDialogTitle">
+          Detail Video
+        </h3>
+
+        <button
+          type="button"
+          id="historyClose"
+          class="history-close"
+          aria-label="Tutup"
+        >
+          ×
+        </button>
+
+      </div>
+
+      <div
+        id="historyDialogBody"
+        class="history-dialog-body"
+      ></div>
+
+    </div>
+
+  </div>
+
+</section>
