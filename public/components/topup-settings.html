@@ -1,19 +1,35 @@
-<section class="page-card topup-settings-page" id="topupSettingsPage">
+<section
+  class="page-card topup-settings-page"
+  id="topupSettingsPage">
 
   <div class="page-header">
+
     <button
       type="button"
       class="back-btn"
       id="topupSettingsBack"
       aria-label="Kembali">
+
       ←
+
     </button>
 
     <div>
-      <h2>Top Up Setting</h2>
-      <p>Tambah kredit pengguna secara manual</p>
+
+      <h2>
+        Top Up Setting
+      </h2>
+
+      <p>
+        Tambah kredit pengguna secara manual
+      </p>
+
     </div>
+
   </div>
+
+
+  <!-- STATUS -->
 
   <div
     id="topupSettingsStatus"
@@ -21,42 +37,89 @@
     aria-live="polite">
   </div>
 
+
+  <!-- FORM -->
+
   <div class="topup-settings-card">
+
+
+    <!-- USER -->
 
     <div class="topup-field">
 
-      <label for="topupUser">
+      <label
+        for="topupUser">
+
         USER
+
       </label>
 
-      <select id="topupUser">
-        <option value="">Pilih user</option>
+
+      <select
+        id="topupUser">
+
+        <option value="">
+          Pilih user
+        </option>
+
       </select>
 
     </div>
+
+
+    <!-- USER INFO -->
 
     <div
       class="topup-user-info"
       id="topupUserInfo"
       hidden>
 
+
       <div class="topup-user-email">
-        <span>Email</span>
-        <strong id="topupSelectedEmail">-</strong>
+
+        <span>
+          Email
+        </span>
+
+        <strong
+          id="topupSelectedEmail">
+
+          -
+
+        </strong>
+
       </div>
 
+
       <div class="topup-user-credit">
-        <span>Kredit Saat Ini</span>
-        <strong id="topupCurrentCredit">0</strong>
+
+        <span>
+          Kredit Saat Ini
+        </span>
+
+        <strong
+          id="topupCurrentCredit">
+
+          0
+
+        </strong>
+
       </div>
 
     </div>
 
+
+    <!-- CREDIT -->
+
     <div class="topup-field">
 
-      <label for="topupAmount">
+      <label
+        for="topupAmount">
+
         TAMBAH KREDIT
+
       </label>
+
 
       <input
         type="number"
@@ -67,17 +130,28 @@
         placeholder="Contoh: 100"
         autocomplete="off">
 
+
       <small>
-        Masukkan jumlah kredit yang ingin ditambahkan.
+
+        Masukkan jumlah kredit
+        yang ingin ditambahkan.
+
       </small>
 
     </div>
 
+
+    <!-- NOTE -->
+
     <div class="topup-field">
 
-      <label for="topupNote">
+      <label
+        for="topupNote">
+
         CATATAN
+
       </label>
+
 
       <textarea
         id="topupNote"
@@ -87,6 +161,9 @@
 
     </div>
 
+
+    <!-- SUBMIT -->
+
     <button
       type="button"
       class="primary-btn topup-submit-btn"
@@ -95,6 +172,7 @@
       Tambah Kredit
 
     </button>
+
 
   </div>
 
