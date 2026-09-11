@@ -5,7 +5,10 @@
 .generator-page {
   width: 100%;
   min-height: calc(100vh - 70px);
-  padding: 48px 38px 64px;
+
+  /* Jarak dari header diperkecil */
+  padding: 20px 38px 64px;
+
   box-sizing: border-box;
   color: #fff;
 
@@ -183,7 +186,7 @@
   background: rgba(10, 27, 43, 0.74);
   color: #f5f8fb;
 
-  /* Ukuran tulisan prompt diperkecil */
+  /* Tulisan Prompt diperkecil */
   font-size: 15px;
   line-height: 1.5;
   font-weight: 400;
@@ -194,8 +197,6 @@
 
 .form-group textarea::placeholder {
   color: rgba(195, 211, 226, 0.55);
-
-  /* Placeholder juga dibuat lebih kecil */
   font-size: 15px;
 }
 
@@ -605,7 +606,8 @@
 @media (max-width: 600px) {
 
   .generator-page {
-    padding: 42px 38px 55px;
+    /* Di mobile juga dinaikkan */
+    padding: 20px 38px 55px;
   }
 
   .topbar {
@@ -648,10 +650,10 @@
     margin-bottom: 28px;
   }
 
-  /*
-   * PROMPT
-   * Tulisan yang diketik tetap kecil di mobile.
-   */
+
+  /* ========================================================
+     PROMPT — MOBILE
+     ======================================================== */
 
   .form-group textarea {
     font-size: 15px;
@@ -662,11 +664,10 @@
     font-size: 15px;
   }
 
-  /*
-   * PENTING:
-   * Jangan lagi memakai 76px di mobile.
-   * Semua select tetap 48px.
-   */
+
+  /* ========================================================
+     SELECT — MOBILE
+     ======================================================== */
 
   .form-group select,
   .setting-field select,
@@ -727,10 +728,8 @@
     font-size: 17px;
   }
 
-  /*
-   * Prompt tetap 15px.
-   */
 
+  /* Prompt tetap kecil */
   .form-group textarea {
     font-size: 15px;
   }
@@ -739,10 +738,8 @@
     font-size: 15px;
   }
 
-  /*
-   * Semua select tetap 48px.
-   */
 
+  /* Semua select tetap 48px */
   .form-group select,
   .setting-field select,
   #provider,
