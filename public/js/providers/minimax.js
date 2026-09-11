@@ -13,7 +13,10 @@
       'MiniMax-Hailuo-02'
     ],
 
-    durations: [6, 10],
+    durations: [
+      6,
+      10
+    ],
 
     aspects: [
       '16:9',
@@ -30,8 +33,14 @@
   function validate(input) {
     const duration = Number(input.duration);
 
+    if (!input.prompt) {
+      throw new Error('Prompt wajib diisi.');
+    }
+
     if (!CONFIG.models.includes(input.model)) {
-      throw new Error('Model MiniMax tidak valid.');
+      throw new Error(
+        'Model MiniMax tidak valid.'
+      );
     }
 
     if (!CONFIG.durations.includes(duration)) {
