@@ -1,11 +1,6 @@
 /* =========================================================
    GEN-Z.AI ACCOUNT MODULE
-   Role validation:
-   - ONLY server response: data.isAdmin === true
-   - Never trust email
-   - Never trust local role
-   - Never infer admin from username
-========================================================= */
+   ========================================================= */
 
 (function () {
 
@@ -16,9 +11,9 @@
     (window.GENZ = {});
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      STATE
-  ------------------------------------------------------- */
+  ======================================================= */
 
   GENZ.account =
     GENZ.account || {
@@ -30,17 +25,42 @@
     };
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
+     HELPERS
+  ======================================================= */
+
+  function getElement(id) {
+
+    return document.getElementById(id);
+
+  }
+
+
+  function setExpanded(expanded) {
+
+    const button =
+      getElement("accountBtn");
+
+    if (!button) {
+      return;
+    }
+
+    button.setAttribute(
+      "aria-expanded",
+      expanded ? "true" : "false"
+    );
+
+  }
+
+
+  /* =======================================================
      ENSURE ACCOUNT UI
-  ------------------------------------------------------- */
+  ======================================================= */
 
   async function ensureUI() {
 
     const container =
-      document.getElementById(
-        "account-container"
-      );
-
+      getElement("account-container");
 
     if (!container) {
 
@@ -54,14 +74,10 @@
 
 
     let button =
-      document.getElementById(
-        "accountBtn"
-      );
+      getElement("accountBtn");
 
     let menu =
-      document.getElementById(
-        "accountMenu"
-      );
+      getElement("accountMenu");
 
 
     if (!button || !menu) {
@@ -88,14 +104,10 @@
 
 
     button =
-      document.getElementById(
-        "accountBtn"
-      );
+      getElement("accountBtn");
 
     menu =
-      document.getElementById(
-        "accountMenu"
-      );
+      getElement("accountMenu");
 
 
     if (!button) {
@@ -109,18 +121,9 @@
     }
 
 
-    /*
-     * Tombol akun harus selalu terlihat
-     * setelah user berhasil login.
-     */
+    button.classList.remove("hidden");
 
-    button.classList.remove(
-      "hidden"
-    );
-
-    button.removeAttribute(
-      "hidden"
-    );
+    button.removeAttribute("hidden");
 
     button.style.setProperty(
       "display",
@@ -141,22 +144,34 @@
     );
 
 
+    if (menu) {
+
+      menu.classList.toggle(
+        "hidden",
+        !GENZ.account.menuOpen
+      );
+
+    }
+
+
+    setExpanded(
+      GENZ.account.menuOpen
+    );
+
+
     return true;
 
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      OPEN MENU
-  ------------------------------------------------------- */
+  ======================================================= */
 
   function openMenu() {
 
     const menu =
-      document.getElementById(
-        "accountMenu"
-      );
-
+      getElement("accountMenu");
 
     if (!menu) {
       return;
@@ -171,20 +186,20 @@
     GENZ.account.menuOpen =
       true;
 
+
+    setExpanded(true);
+
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      CLOSE MENU
-  ------------------------------------------------------- */
+  ======================================================= */
 
   function closeMenu() {
 
     const menu =
-      document.getElementById(
-        "accountMenu"
-      );
-
+      getElement("accountMenu");
 
     if (!menu) {
       return;
@@ -199,12 +214,15 @@
     GENZ.account.menuOpen =
       false;
 
+
+    setExpanded(false);
+
   }
 
 
-  /* -------------------------------------------------------
-     TOGGLE
-  ------------------------------------------------------- */
+  /* =======================================================
+     TOGGLE MENU
+  ======================================================= */
 
   function toggleMenu() {
 
@@ -223,13 +241,11 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      UPDATE USER
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  function updateUser(
-    user
-  ) {
+  function updateUser(user) {
 
     if (!user) {
       return;
@@ -246,15 +262,10 @@
 
 
     const emailElement =
-      document.getElementById(
-        "userEmail"
-      );
-
+      getElement("userEmail");
 
     const menuEmail =
-      document.getElementById(
-        "menuEmail"
-      );
+      getElement("menuEmail");
 
 
     if (emailElement) {
@@ -275,19 +286,14 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      UPDATE CREDIT
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  function updateCredits(
-    amount
-  ) {
+  function updateCredits(amount) {
 
     const element =
-      document.getElementById(
-        "credits"
-      );
-
+      getElement("credits");
 
     if (!element) {
       return;
@@ -304,49 +310,25 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      UPDATE ROLE
-     IMPORTANT:
-     ONLY Boolean true from server is accepted.
-  ------------------------------------------------------- */
+     
+     Hanya Boolean true dari server
+     yang dianggap sebagai admin.
+  ======================================================= */
 
-  function updateRole(
-    isAdmin
-  ) {
-
-    /*
-     * Jangan pernah menggunakan:
-     *
-     * - email
-     * - username
-     * - local role
-     * - string "admin"
-     *
-     * Satu-satunya nilai valid:
-     *
-     * data.isAdmin === true
-     */
+  function updateRole(isAdmin) {
 
     const admin =
-      document.getElementById(
-        "adminPanel"
-      );
-
+      getElement("adminPanel");
 
     const contact =
-      document.getElementById(
-        "contactAdmin"
-      );
+      getElement("contactAdmin");
 
 
     const adminState =
       isAdmin === true;
 
-
-    /*
-     * Simpan status yang sudah
-     * divalidasi dari server.
-     */
 
     GENZ.state.account =
       GENZ.state.account || {};
@@ -399,9 +381,53 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
+     INVALIDATE ADMIN
+  ======================================================= */
+
+  function invalidateAdmin() {
+
+    GENZ.state.account =
+      GENZ.state.account || {};
+
+
+    GENZ.state.account.isAdmin =
+      false;
+
+    GENZ.state.account.roleValidated =
+      false;
+
+
+    const admin =
+      getElement("adminPanel");
+
+    const contact =
+      getElement("contactAdmin");
+
+
+    if (admin) {
+
+      admin.classList.add(
+        "hidden"
+      );
+
+    }
+
+
+    if (contact) {
+
+      contact.classList.remove(
+        "hidden"
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
      REFRESH ACCOUNT FROM SERVER
-  ------------------------------------------------------- */
+  ======================================================= */
 
   async function refresh() {
 
@@ -438,11 +464,6 @@
 
       if (!response.ok) {
 
-        /*
-         * Kalau validasi account gagal,
-         * jangan mempertahankan status admin lama.
-         */
-
         invalidateAdmin();
 
         console.warn(
@@ -471,17 +492,9 @@
       }
 
 
-      /*
-       * Simpan response account.
-       */
-
       GENZ.state.account =
         data;
 
-
-      /*
-       * Kredit.
-       */
 
       updateCredits(
         data.credits ??
@@ -491,19 +504,13 @@
 
 
       /*
-       * ROLE VALIDATION
+       * Server adalah sumber kebenaran.
        *
-       * Sangat penting:
+       * Hanya:
        *
-       *     data.isAdmin === true
+       * data.isAdmin === true
        *
-       * bukan:
-       *
-       *     Boolean(data.isAdmin)
-       *
-       * bukan:
-       *
-       *     data.role === "admin"
+       * yang boleh membuka Admin.
        */
 
       updateRole(
@@ -511,22 +518,11 @@
       );
 
 
-      /*
-       * Tandai bahwa status role
-       * berasal dari server.
-       */
-
       GENZ.state.account.roleValidated =
         true;
 
 
     } catch (error) {
-
-      /*
-       * Network error juga harus
-       * menghilangkan privilege admin
-       * yang sebelumnya tersimpan.
-       */
 
       invalidateAdmin();
 
@@ -539,70 +535,17 @@
     }
 
 
-    /*
-     * Pengaman terakhir untuk UI.
-     */
-
     await ensureUI();
 
   }
 
 
-  /* -------------------------------------------------------
-     INVALIDATE ADMIN
-  ------------------------------------------------------- */
-
-  function invalidateAdmin() {
-
-    GENZ.state.account =
-      GENZ.state.account || {};
-
-
-    GENZ.state.account.isAdmin =
-      false;
-
-
-    GENZ.state.account.roleValidated =
-      false;
-
-
-    const admin =
-      document.getElementById(
-        "adminPanel"
-      );
-
-
-    const contact =
-      document.getElementById(
-        "contactAdmin"
-      );
-
-
-    if (admin) {
-
-      admin.classList.add(
-        "hidden"
-      );
-
-    }
-
-
-    if (contact) {
-
-      contact.classList.remove(
-        "hidden"
-      );
-
-    }
-
-  }
-
-
-  /* -------------------------------------------------------
+  /* =======================================================
      HAS ADMIN ACCESS
-     Frontend guard only.
-     Backend remains authoritative.
-  ------------------------------------------------------- */
+     
+     Frontend guard saja.
+     Backend tetap menjadi otoritas utama.
+  ======================================================= */
 
   function hasAdminAccess() {
 
@@ -615,13 +558,11 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      PAGE NAVIGATION
-  ------------------------------------------------------- */
+  ======================================================= */
 
-  function navigate(
-    page
-  ) {
+  function navigate(page) {
 
     closeMenu();
 
@@ -630,17 +571,24 @@
       page;
 
 
-    GENZ.emit(
-      "page-change",
-      page
-    );
+    if (
+      typeof GENZ.emit ===
+      "function"
+    ) {
+
+      GENZ.emit(
+        "page-change",
+        page
+      );
+
+    }
 
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      EVENTS
-  ------------------------------------------------------- */
+  ======================================================= */
 
   function bindEvents() {
 
@@ -686,15 +634,15 @@
 
         if (pageButton) {
 
-          /*
-           * Jangan biarkan user biasa
-           * memanggil halaman admin hanya
-           * karena HTML dimanipulasi.
-           */
-
           const page =
             pageButton.dataset.page;
 
+
+          /*
+           * Admin hanya boleh dibuka
+           * setelah server memvalidasi
+           * isAdmin === true.
+           */
 
           if (
             page === "admin" &&
@@ -712,9 +660,7 @@
           }
 
 
-          navigate(
-            page
-          );
+          navigate(page);
 
           return;
 
@@ -735,75 +681,71 @@
     );
 
 
-    GENZ.on(
-      "auth-login",
-      async function (user) {
+    if (
+      typeof GENZ.on ===
+      "function"
+    ) {
 
-        GENZ.state.loggedIn =
-          true;
+      GENZ.on(
+        "auth-login",
+        async function (user) {
 
-
-        /*
-         * Reset privilege terlebih dahulu.
-         * Status admin baru boleh muncul
-         * setelah server divalidasi.
-         */
-
-        GENZ.state.account = {
-
-          isAdmin: false,
-
-          roleValidated: false
-
-        };
+          GENZ.state.loggedIn =
+            true;
 
 
-        updateUser(
-          user
-        );
+          GENZ.state.account = {
+
+            isAdmin: false,
+
+            roleValidated: false
+
+          };
 
 
-        await ensureUI();
+          updateUser(user);
+
+          await ensureUI();
+
+          await refresh();
+
+        }
+      );
 
 
-        await refresh();
+      GENZ.on(
+        "auth-logout",
+        function () {
 
-      }
-    );
+          GENZ.state.loggedIn =
+            false;
 
-
-    GENZ.on(
-      "auth-logout",
-      function () {
-
-        GENZ.state.loggedIn =
-          false;
+          GENZ.state.user =
+            null;
 
 
-        GENZ.state.user =
-          null;
+          GENZ.state.account = {
+
+            isAdmin: false,
+
+            roleValidated: false
+
+          };
 
 
-        GENZ.state.account = {
+          closeMenu();
 
-          isAdmin: false,
+        }
+      );
 
-          roleValidated: false
-
-        };
-
-
-        closeMenu();
-
-      }
-    );
+    }
 
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      INIT
-  ------------------------------------------------------- */
+  ======================================================= */
 
   async function init() {
 
@@ -811,11 +753,6 @@
 
     bindEvents();
 
-
-    /*
-     * Kalau sudah login, langsung
-     * validasi status admin dari server.
-     */
 
     if (
       GENZ.state.loggedIn === true
@@ -833,76 +770,39 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      PUBLIC API
-  ------------------------------------------------------- */
+  ======================================================= */
 
   GENZ.account.init =
     init;
 
-
   GENZ.account.refresh =
     refresh;
-
 
   GENZ.account.ensureUI =
     ensureUI;
 
-
   GENZ.account.open =
     openMenu;
-
 
   GENZ.account.close =
     closeMenu;
 
-
   GENZ.account.updateUser =
     updateUser;
-
 
   GENZ.account.updateCredits =
     updateCredits;
 
-
   GENZ.account.updateRole =
     updateRole;
 
-
   GENZ.account.hasAdminAccess =
     hasAdminAccess;
-
 
   GENZ.account.invalidateAdmin =
     invalidateAdmin;
 
 
 })();
-
-/*Lalu "admin.js" juga harus diperketat
-
-Di "public/js/admin.js", ganti fungsi "isAdmin()" menjadi:*/
-
-function isAdmin() {
-
-  return (
-    GENZ.state.account &&
-    GENZ.state.account.isAdmin === true &&
-    GENZ.state.account.roleValidated === true
-  );
-
-}
-
-/*Dengan begitu alurnya menjadi:
-
-Login
-  ↓
-/api/account/credits
-  ↓
-data.isAdmin === true ?
-  ├── YA  → Admin menu tampil
-  └── TIDAK → User menu tampil
-
-Dan yang penting, "role: "admin"" lokal tidak lagi cukup. Bahkan kalau seseorang mengubah JavaScript di browser menjadi "role = "admin"", frontend tetap menolak karena "isAdmin" harus berasal dari respons server. Backend tetap menjadi pagar terakhir melalui "requireAdmin()".
-
-Ini juga memperbaiki masalah stale privilege: kalau request validasi account gagal atau logout, "isAdmin" langsung di-reset ke "false". Browser tidak boleh menyimpan kekuasaan seperti bangsawan abad pertengahan.*/
