@@ -1,0 +1,13 @@
+SYNC NOTES
+==========
+Based on the current main branch of sugionoofficial/ai-video-tool and the supplied reference image.
+
+Replace:
+- public/components/generator.html
+- public/css/generator.css
+
+Existing generator.js hooks are preserved:
+#provider #model #image #imagePreview #imageFileStatus #prompt
+#ratio #duration #resolution #generateVideo #status #videoResult #video #downloadVideo
+
+No backend/provider/auth code is changed by this package.
