@@ -1,247 +1,932 @@
 /* =========================================================
-   GEN-Z.AI - CREDIT
+   GEN-Z.AI
+   CREDIT MODULE
    public/js/credit.js
    ========================================================= */
 
 (function () {
+
   "use strict";
 
-  const GENZ = window.GENZ;
 
-  if (!GENZ) return;
+  const GENZ =
+    window.GENZ ||
+    (window.GENZ = {});
 
-  GENZ.credit = {
 
-    async load() {
-      const container =
-        GENZ.$("pageContent") ||
-        GENZ.$("creditContent") ||
-        GENZ.$("content");
+  /* =======================================================
+     HELPERS
+     ======================================================= */
 
-      if (!container) return;
+  function $(id) {
 
-      container.innerHTML = `
-        <section class="page-card">
+    return document.getElementById(id);
 
-          <div class="page-header">
-            <button
-              type="button"
-              class="back-btn"
-              data-back-studio>
-              ←
-            </button>
+  }
 
-            <div>
-              <h2>Kredit</h2>
-              <p>Saldo kredit akun Anda</p>
-            </div>
-          </div>
 
-          <div class="credit-balance">
-            <span>Total Kredit</span>
-            <strong id="creditBalance">
-              Memuat...
-            </strong>
-          </div>
+  function isLoggedIn() {
 
-          <div class="credit-history">
-            <h3>Riwayat Kredit</h3>
+    return Boolean(
+      GENZ.state &&
+      GENZ.state.loggedIn === true &&
+      GENZ.state.user
+    );
 
-            <div id="creditHistory">
-              Memuat riwayat...
-            </div>
-          </div>
+  }
 
-        </section>
-      `;
 
-      this.bind();
-      await this.refresh();
-    },
+  function isAdmin() {
 
-    bind() {
-      const back =
-        document.querySelector("[data-back-studio]");
+    return Boolean(
+      GENZ.state &&
+      GENZ.state.account &&
+      GENZ.state.account.isAdmin === true &&
+      GENZ.state.account.roleValidated === true
+    );
 
-      if (back) {
-        back.addEventListener("click", () => {
-          GENZ.emit("show-studio");
-        });
+  }
+
+
+  function escapeHtml(value) {
+
+    if (
+      typeof GENZ.escapeHtml === "function"
+    ) {
+
+      return GENZ.escapeHtml(
+        String(value ?? "")
+      );
+
+    }
+
+
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  }
+
+
+  async function getToken() {
+
+    try {
+
+      if (
+        GENZ.auth &&
+        typeof GENZ.auth.token === "function"
+      ) {
+
+        return await GENZ.auth.token();
+
       }
-    },
 
-    async refresh() {
-      try {
-        const token =
-          GENZ.auth &&
-          typeof GENZ.auth.token === "function"
-            ? await GENZ.auth.token()
-            : null;
+    } catch (_) {}
 
-        const response =
-          await GENZ.fetchJSON(
-            "/api/account/credits",
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`
-              }
-            }
-          );
+    return null;
 
-        const credits =
-          response?.credits ??
-          response?.balance ??
-          0;
+  }
 
-        GENZ.state.account = {
+
+  async function api(
+    url,
+    options = {}
+  ) {
+
+    const authToken =
+      await getToken();
+
+
+    const headers = {
+      Accept:
+        "application/json",
+
+      ...(options.body
+        ? {
+            "Content-Type":
+              "application/json"
+          }
+        : {}),
+
+      ...(authToken
+        ? {
+            Authorization:
+              `Bearer ${authToken}`
+          }
+        : {}),
+
+      ...(options.headers || {})
+
+    };
+
+
+    const response =
+      await fetch(
+        url,
+        {
+          ...options,
+          credentials:
+            "include",
+          headers
+        }
+      );
+
+
+    let data =
+      null;
+
+
+    try {
+
+      data =
+        await response.json();
+
+    } catch (_) {
+
+      data =
+        null;
+
+    }
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data?.error ||
+        data?.message ||
+        `HTTP ${response.status}`
+      );
+
+    }
+
+
+    return data;
+
+  }
+
+
+  /* =======================================================
+     BALANCE
+     ======================================================= */
+
+  async function loadBalance() {
+
+    const element =
+      $("creditBalance");
+
+
+    if (!element) {
+      return 0;
+    }
+
+
+    try {
+
+      const data =
+        await api(
+          "/api/account/credits",
+          {
+            method: "GET"
+          }
+        );
+
+
+      const credits =
+        Number(
+          data?.credits ??
+          data?.credit ??
+          data?.balance ??
+          0
+        );
+
+
+      element.textContent =
+        credits.toLocaleString(
+          "id-ID"
+        );
+
+
+      /*
+       * Simpan juga ke global state.
+       */
+
+      GENZ.state =
+        GENZ.state ||
+        {};
+
+
+      GENZ.state.account =
+        {
           ...(GENZ.state.account || {}),
           credits
         };
 
-        const balance =
-          GENZ.$("creditBalance");
 
-        if (balance) {
-          balance.textContent =
-            Number(credits).toLocaleString("id-ID");
-        }
+      /*
+       * Sinkronkan modul account
+       * jika tersedia.
+       */
 
-        await this.loadHistory();
+      if (
+        GENZ.account &&
+        typeof GENZ.account.updateCredits ===
+          "function"
+      ) {
 
-        if (
-          GENZ.account &&
-          GENZ.account.updateCredits
-        ) {
-          GENZ.account.updateCredits(credits);
-        }
-
-      } catch (error) {
-
-        console.error(
-          "[GEN-Z.AI] Credit error:",
-          error
+        GENZ.account.updateCredits(
+          credits
         );
 
-        const balance =
-          GENZ.$("creditBalance");
-
-        if (balance) {
-          balance.textContent = "0";
-        }
       }
-    },
 
-    async loadHistory() {
-      const container =
-        GENZ.$("creditHistory");
 
-      if (!container) return;
+      /*
+       * Sinkronkan header jika element tersedia.
+       */
 
-      try {
+      const headerCredits =
+        $("headerCredits");
 
-        const token =
-          GENZ.auth &&
-          typeof GENZ.auth.token === "function"
-            ? await GENZ.auth.token()
-            : null;
 
-        const response =
-          await GENZ.fetchJSON(
-            "/api/account/transactions",
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`
-              }
-            }
+      if (headerCredits) {
+
+        headerCredits.textContent =
+          credits.toLocaleString(
+            "id-ID"
           );
 
-        const items =
-          Array.isArray(response)
-            ? response
-            : (
-              response?.transactions ||
-              response?.data ||
+      }
+
+
+      return credits;
+
+    } catch (error) {
+
+      console.error(
+        "[CREDIT] Gagal memuat saldo:",
+        error
+      );
+
+
+      element.textContent =
+        "0";
+
+
+      return 0;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     EMAIL
+     ======================================================= */
+
+  function loadUser() {
+
+    const element =
+      $("creditUserEmail");
+
+
+    if (!element) {
+      return;
+    }
+
+
+    const email =
+      GENZ.state?.user?.email ||
+      "User";
+
+
+    element.textContent =
+      email;
+
+  }
+
+
+  /* =======================================================
+     HISTORY
+     ======================================================= */
+
+  async function loadHistory() {
+
+    const container =
+      $("creditHistory");
+
+
+    if (!container) {
+      return;
+    }
+
+
+    container.innerHTML =
+      `
+        <div class="credit-history-empty">
+          Memuat riwayat...
+        </div>
+      `;
+
+
+    try {
+
+      /*
+       * Endpoint transaksi akun.
+       * Jika backend belum menyediakan endpoint ini,
+       * halaman tetap aman dan hanya menampilkan
+       * pesan bahwa riwayat belum tersedia.
+       */
+
+      const data =
+        await api(
+          "/api/account/transactions",
+          {
+            method: "GET"
+          }
+        );
+
+
+      const transactions =
+        Array.isArray(data)
+          ? data
+          : (
+              data?.transactions ||
+              data?.data ||
               []
             );
 
-        if (!items.length) {
-          container.innerHTML = `
-            <div class="empty-state">
-              Belum ada riwayat transaksi.
-            </div>
-          `;
-          return;
-        }
+
+      if (
+        !Array.isArray(transactions) ||
+        transactions.length === 0
+      ) {
 
         container.innerHTML =
-          items.map(item => {
+          `
+            <div class="credit-history-empty">
+              Belum ada riwayat kredit.
+            </div>
+          `;
 
-            const amount =
-              Number(
-                item.amount ??
-                item.credits ??
-                0
-              );
+        return;
 
-            const date =
-              item.created_at ||
-              item.createdAt ||
-              item.date ||
-              "";
+      }
 
-            const type =
-              item.type ||
-              item.transaction_type ||
-              "Transaksi";
 
-            return `
-              <div class="transaction-row">
+      container.innerHTML =
+        transactions
+          .map(
+            function (item) {
 
-                <div>
-                  <strong>
-                    ${GENZ.escapeHtml(type)}
+              const amount =
+                Number(
+                  item?.amount ??
+                  item?.credits ??
+                  item?.credit_amount ??
+                  0
+                );
+
+
+              const type =
+                item?.type ||
+                item?.transaction_type ||
+                item?.description ||
+                "Transaksi Kredit";
+
+
+              const date =
+                item?.created_at ||
+                item?.createdAt ||
+                item?.date ||
+                "";
+
+
+              const positive =
+                amount >= 0;
+
+
+              return `
+
+                <div
+                  class="credit-transaction">
+
+                  <div
+                    class="credit-transaction-main">
+
+                    <span
+                      class="credit-transaction-type">
+
+                      ${escapeHtml(type)}
+
+                    </span>
+
+                    <span
+                      class="credit-transaction-date">
+
+                      ${escapeHtml(
+                        formatDate(date)
+                      )}
+
+                    </span>
+
+                  </div>
+
+
+                  <strong
+                    class="
+                      credit-transaction-amount
+                      ${positive ? "plus" : "minus"}
+                    ">
+
+                    ${positive ? "+" : ""}
+                    ${amount.toLocaleString("id-ID")}
+
                   </strong>
 
-                  <small>
-                    ${GENZ.escapeHtml(
-                      date
-                    )}
-                  </small>
                 </div>
 
-                <strong class="${
-                  amount >= 0
-                    ? "credit-plus"
-                    : "credit-minus"
-                }">
-                  ${
-                    amount >= 0
-                      ? "+"
-                      : ""
-                  }${amount}
-                </strong>
+              `;
 
-              </div>
-            `;
+            }
+          )
+          .join("");
 
-          }).join("");
+    } catch (error) {
 
-      } catch (error) {
+      console.warn(
+        "[CREDIT] Riwayat transaksi belum tersedia:",
+        error
+      );
 
-        console.error(
-          "[GEN-Z.AI] Transaction error:",
-          error
-        );
 
-        container.innerHTML = `
-          <div class="empty-state">
-            Riwayat kredit belum dapat dimuat.
+      container.innerHTML =
+        `
+          <div class="credit-history-empty">
+            Belum ada riwayat kredit.
           </div>
         `;
-      }
+
     }
+
+  }
+
+
+  /* =======================================================
+     DATE
+     ======================================================= */
+
+  function formatDate(value) {
+
+    if (!value) {
+      return "-";
+    }
+
+
+    const date =
+      new Date(value);
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return String(value);
+
+    }
+
+
+    return date.toLocaleString(
+      "id-ID",
+      {
+        day:
+          "2-digit",
+
+        month:
+          "2-digit",
+
+        year:
+          "numeric",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit"
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     PAYMENT PLACEHOLDER
+     ======================================================= */
+
+  function showPaymentPage() {
+
+    const pages =
+      $("pageContent");
+
+
+    if (!pages) {
+      return;
+    }
+
+
+    pages.innerHTML = `
+
+      <section
+        class="page-card credit-payment-page">
+
+        <div class="page-header">
+
+          <button
+            type="button"
+            class="back-btn"
+            id="creditPaymentBack"
+            aria-label="Kembali ke Kredit">
+
+            ←
+
+          </button>
+
+
+          <div>
+
+            <h2>
+              Pembayaran
+            </h2>
+
+            <p>
+              Top Up Kredit GEN-Z.AI
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="credit-payment-placeholder">
+
+          <div
+            class="credit-payment-icon">
+            Rp
+          </div>
+
+
+          <h3>
+            Halaman Pembayaran
+          </h3>
+
+
+          <p>
+            Sistem pembayaran belum
+            diaktifkan.
+          </p>
+
+
+          <small>
+            Halaman ini sementara digunakan
+            sebagai tujuan Top Up user biasa.
+          </small>
+
+        </div>
+
+      </section>
+
+    `;
+
+
+    const back =
+      $("creditPaymentBack");
+
+
+    if (back) {
+
+      back.addEventListener(
+        "click",
+        function () {
+
+          load();
+
+        },
+        {
+          once: true
+        }
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     TOP UP ROUTER
+     ======================================================= */
+
+  function handleTopup() {
+
+    /*
+     * ADMIN / OWNER
+     *
+     * Tidak melewati pembayaran.
+     * Langsung ke Top Up Setting.
+     */
+
+    if (isAdmin()) {
+
+      if (
+        typeof GENZ.showPage ===
+        "function"
+      ) {
+
+        GENZ.showPage(
+          "topup-settings"
+        );
+
+      } else if (
+        typeof GENZ.emit ===
+        "function"
+      ) {
+
+        GENZ.emit(
+          "show-page",
+          "topup-settings"
+        );
+
+      }
+
+      return;
+
+    }
+
+
+    /*
+     * USER BIASA
+     *
+     * Untuk sementara menuju
+     * placeholder halaman pembayaran.
+     */
+
+    showPaymentPage();
+
+  }
+
+
+  /* =======================================================
+     BACK TO STUDIO
+     ======================================================= */
+
+  function backToStudio() {
+
+    if (
+      typeof GENZ.showStudio ===
+      "function"
+    ) {
+
+      GENZ.showStudio();
+
+      return;
+
+    }
+
+
+    if (
+      typeof GENZ.emit ===
+      "function"
+    ) {
+
+      GENZ.emit(
+        "show-studio"
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     BIND
+     ======================================================= */
+
+  function bind() {
+
+    const back =
+      $("creditBack");
+
+
+    if (back) {
+
+      back.onclick =
+        backToStudio;
+
+    }
+
+
+    const topup =
+      $("creditTopupButton");
+
+
+    if (topup) {
+
+      topup.onclick =
+        handleTopup;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     LOAD HTML
+     ======================================================= */
+
+  async function loadHtml() {
+
+    const container =
+      $("pageContent");
+
+
+    if (!container) {
+
+      throw new Error(
+        "Element #pageContent tidak ditemukan."
+      );
+
+    }
+
+
+    /*
+     * Gunakan loader utama jika tersedia.
+     */
+
+    if (
+      typeof GENZ.loadComponent ===
+      "function"
+    ) {
+
+      await GENZ.loadComponent(
+        "#pageContent",
+        "/components/credit.html"
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Fallback.
+     */
+
+    const response =
+      await fetch(
+        "/components/credit.html",
+        {
+          cache:
+            "no-store"
+        }
+      );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        `Gagal memuat credit.html (${response.status})`
+      );
+
+    }
+
+
+    container.innerHTML =
+      await response.text();
+
+  }
+
+
+  /* =======================================================
+     LOAD
+     ======================================================= */
+
+  async function load() {
+
+    if (!isLoggedIn()) {
+
+      backToStudio();
+
+      return;
+
+    }
+
+
+    try {
+
+      await loadHtml();
+
+    } catch (error) {
+
+      console.error(
+        "[CREDIT] Gagal memuat halaman:",
+        error
+      );
+
+
+      const container =
+        $("pageContent");
+
+
+      if (container) {
+
+        container.innerHTML = `
+
+          <section
+            class="page-card">
+
+            <div
+              class="page-header">
+
+              <button
+                type="button"
+                class="back-btn"
+                id="creditBack">
+
+                ←
+
+              </button>
+
+
+              <div>
+
+                <h2>
+                  Kredit
+                </h2>
+
+                <p>
+                  Halaman kredit tidak dapat dimuat.
+                </p>
+
+              </div>
+
+            </div>
+
+          </section>
+
+        `;
+
+      }
+
+    }
+
+
+    loadUser();
+
+    bind();
+
+    await loadBalance();
+
+    await loadHistory();
+
+  }
+
+
+  /* =======================================================
+     REFRESH
+     ======================================================= */
+
+  async function refresh() {
+
+    loadUser();
+
+    await loadBalance();
+
+    await loadHistory();
+
+  }
+
+
+  /* =======================================================
+     PUBLIC API
+     ======================================================= */
+
+  GENZ.credit = {
+
+    load,
+
+    refresh,
+
+    loadBalance,
+
+    loadHistory,
+
+    handleTopup
+
   };
+
 
 })();
