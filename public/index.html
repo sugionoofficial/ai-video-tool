@@ -1,52 +1,187 @@
-<!DOCTYPE html><html lang="id">
+<!DOCTYPE html>
+<html lang="id">
+
 <head>
-  <meta charset="UTF-8"><meta
-name="viewport"
-content="width=device-width, initial-scale=1.0"
+  <meta charset="UTF-8">
 
-«»
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-<meta
-name="theme-color"
-content="#0b0b0f"
+  <meta
+    name="theme-color"
+    content="#0b0b0f"
+  >
 
-«»
+  <title>GEN-Z.AI</title>
 
-  <title>GEN-Z.AI</title>  <!-- =====================================================
-       MAIN CSS
-  ====================================================== -->  <link
+  <!-- Main CSS -->
+  <link
     rel="stylesheet"
     href="/style.css"
-  >  <link
+  >
+
+  <!-- Account -->
+  <link
     rel="stylesheet"
     href="/css/account.css"
-  >  <link
+  >
+
+  <!-- Generator -->
+  <link
     rel="stylesheet"
     href="/css/generator.css"
-  >  <link
+  >
+
+  <!-- Pages -->
+  <link
     rel="stylesheet"
     href="/css/page.css"
   >
-</head><body>  <!-- =====================================================
-       APPLICATION ROOT
-  ====================================================== -->  <div id="app"></div>  <!-- =====================================================
+</head>
+
+<body>
+
+  <!-- Main application container -->
+  <div id="app"></div>
+
+
+  <!-- ==================================================
        SUPABASE
-       Harus dimuat sebelum auth.js
-  ====================================================== -->  <script
-    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-  ></script>  <!-- =====================================================
+       ================================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+  </script>
+
+
+  <!-- ==================================================
        CORE
-  ====================================================== -->  <script src="/js/config.js"></script>  <script src="/js/core.js"></script>  <!-- =====================================================
+       Harus dimuat paling awal karena membuat GENZ.
+       ================================================== -->
+
+  <script
+    src="/js/config.js">
+  </script>
+
+  <script
+    src="/js/core.js">
+  </script>
+
+
+  <!-- ==================================================
        AUTHENTICATION
-  ====================================================== -->  <script src="/js/auth.js"></script>  <!-- =====================================================
+       Login / Register / Session
+       ================================================== -->
+
+  <script
+    src="/js/auth.js">
+  </script>
+
+
+  <!-- ==================================================
        ACCOUNT
-  ====================================================== -->  <script src="/js/account.js"></script>  <!-- =====================================================
-       ACCOUNT PAGES
-  ====================================================== -->  <script src="/js/profile.js"></script>  <script src="/js/credit.js"></script>  <script src="/js/topup.js"></script>  <!-- =====================================================
-       GENERATOR SUPPORT
-  ====================================================== -->  <script src="/js/providers.js"></script>  <script src="/js/upload.js"></script>  <script src="/js/video.js"></script>  <script src="/js/generator.js"></script>  <!-- =====================================================
+       ================================================== -->
+
+  <script
+    src="/js/account.js">
+  </script>
+
+
+  <!-- ==================================================
+       PROFILE / CREDIT / TOPUP
+       ================================================== -->
+
+  <script
+    src="/js/profile.js">
+  </script>
+
+  <script
+    src="/js/credit.js">
+  </script>
+
+  <script
+    src="/js/topup.js">
+  </script>
+
+
+  <!-- ==================================================
+       PROVIDER UI
+       
+       Hanya mengatur:
+       - provider
+       - model
+       - duration
+       - aspect
+       - resolution
+       
+       Aturan API provider berada di:
+       /js/providers/*.js
+       ================================================== -->
+
+  <script
+    src="/js/providers.js">
+  </script>
+
+
+  <!-- ==================================================
+       UPLOAD
+       ================================================== -->
+
+  <script
+    src="/js/upload.js">
+  </script>
+
+
+  <!-- ==================================================
+       VIDEO RESULT
+       ================================================== -->
+
+  <script
+    src="/js/video.js">
+  </script>
+
+
+  <!-- ==================================================
+       GENERATOR DISPATCHER
+       
+       generator.js akan memuat provider secara
+       dinamis ketika provider digunakan.
+
+       Veo:
+       /js/providers/veo.js
+
+       MiniMax:
+       /js/providers/minimax.js
+
+       Luma:
+       /js/providers/luma.js
+       ================================================== -->
+
+  <script
+    src="/js/generator.js">
+  </script>
+
+
+  <!-- ==================================================
        ADMIN
-  ====================================================== -->  <script src="/js/admin.js"></script>  <!-- =====================================================
-       APPLICATION CONTROLLER
-  ====================================================== -->  <script src="/js/app.js"></script></body>
+       ================================================== -->
+
+  <script
+    src="/js/admin.js">
+  </script>
+
+
+  <!-- ==================================================
+       APPLICATION BOOTSTRAP
+       Harus paling akhir.
+       ================================================== -->
+
+  <script
+    src="/js/app.js">
+  </script>
+
+</body>
+
 </html>
