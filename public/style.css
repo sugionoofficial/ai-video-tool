@@ -1387,3 +1387,34 @@ padding-right: 53px !important;
 left: 15px !important;
 }
 }
+/* =========================================================
+   GEN-Z.AI
+   PASSWORD EYE ICON CONTRAST FIX
+   ========================================================= */
+
+#auth .auth-password-fixed .auth-fixed-toggle {
+  color: rgba(196, 181, 253, 0.78) !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-toggle:hover {
+  color: #ffffff !important;
+  background: rgba(167, 139, 250, 0.10) !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-toggle .eye-icon {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-toggle .eye-icon path,
+#auth .auth-password-fixed .auth-fixed-toggle .eye-icon circle {
+  stroke: currentColor !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-toggle .eye-closed path {
+  stroke: currentColor !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-toggle .eye-open circle {
+  stroke: currentColor !important;
+}
