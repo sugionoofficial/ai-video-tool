@@ -6,8 +6,8 @@
   width: 100%;
   min-height: calc(100vh - 70px);
 
-  /* Jarak dari header diperkecil */
-  padding: 20px 38px 64px;
+  /* Didekatkan ke header */
+  padding: 4px 38px 64px;
 
   box-sizing: border-box;
   color: #fff;
@@ -186,7 +186,7 @@
   background: rgba(10, 27, 43, 0.74);
   color: #f5f8fb;
 
-  /* Tulisan Prompt diperkecil */
+  /* Ukuran tulisan prompt */
   font-size: 15px;
   line-height: 1.5;
   font-weight: 400;
@@ -197,6 +197,7 @@
 
 .form-group textarea::placeholder {
   color: rgba(195, 211, 226, 0.55);
+
   font-size: 15px;
 }
 
@@ -331,6 +332,10 @@
 }
 
 
+/* ==========================================================
+   ADD REFERENCE IMAGE
+   ========================================================== */
+
 .image-add-tile {
   width: 136px;
   height: 126px;
@@ -364,6 +369,11 @@
     rgba(128, 197, 235, 0.78);
 }
 
+
+/* ==========================================================
+   IMAGE FILE INPUT
+   ========================================================== */
+
 .image-file-input {
   position: absolute !important;
 
@@ -374,6 +384,11 @@
 
   pointer-events: none !important;
 }
+
+
+/* ==========================================================
+   IMAGE FILE STATUS
+   ========================================================== */
 
 .image-file-status {
   min-height: 12px;
@@ -606,8 +621,8 @@
 @media (max-width: 600px) {
 
   .generator-page {
-    /* Di mobile juga dinaikkan */
-    padding: 20px 38px 55px;
+    /* Tetap sangat dekat dengan header */
+    padding: 4px 38px 55px;
   }
 
   .topbar {
@@ -652,7 +667,7 @@
 
 
   /* ========================================================
-     PROMPT — MOBILE
+     PROMPT MOBILE
      ======================================================== */
 
   .form-group textarea {
@@ -666,7 +681,8 @@
 
 
   /* ========================================================
-     SELECT — MOBILE
+     SELECT MOBILE
+     SEMUA TETAP 48px
      ======================================================== */
 
   .form-group select,
@@ -707,6 +723,7 @@
 @media (max-width: 430px) {
 
   .generator-page {
+    padding-top: 4px;
     padding-left: 38px;
     padding-right: 38px;
   }
@@ -729,7 +746,8 @@
   }
 
 
-  /* Prompt tetap kecil */
+  /* Prompt tetap 15px */
+
   .form-group textarea {
     font-size: 15px;
   }
@@ -740,6 +758,7 @@
 
 
   /* Semua select tetap 48px */
+
   .form-group select,
   .setting-field select,
   #provider,
