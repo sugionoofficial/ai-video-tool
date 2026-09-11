@@ -1173,3 +1173,217 @@ ACCESSIBILITY
 outline: 2px solid rgba(167, 139, 250, 0.85);
 outline-offset: 3px;
 }
+
+/* =========================================================
+GEN-Z.AI LOGIN INPUT FINAL FIX
+Memastikan ikon tidak bertabrakan dengan placeholder
+========================================================= */
+
+#auth .auth-input-wrap {
+position: relative !important;
+display: flex !important;
+align-items: center !important;
+width: 100% !important;
+}
+
+#auth .auth-input-wrap .auth-input-icon {
+position: absolute !important;
+left: 17px !important;
+top: 50% !important;
+
+z-index: 10 !important;
+
+display: flex !important;
+align-items: center !important;
+justify-content: center !important;
+
+width: 18px !important;
+height: 18px !important;
+
+margin: 0 !important;
+padding: 0 !important;
+
+color: rgba(255, 255, 255, 0.34) !important;
+
+pointer-events: none !important;
+
+transform: translateY(-50%) !important;
+}
+
+#auth .auth-input-wrap .auth-input-icon svg {
+display: block !important;
+width: 18px !important;
+height: 18px !important;
+}
+
+/* =========================================================
+EMAIL + PASSWORD INPUT
+========================================================= */
+
+#auth .auth-input-wrap > input {
+display: block !important;
+
+width: 100% !important;
+min-width: 0 !important;
+min-height: 52px !important;
+
+/*
+
+* IKON:
+* left 17px
+* width 18px
+* 
+* TEKS:
+* dimulai dari 58px
+* 
+* Jadi ada jarak sekitar 23px setelah ikon.
+  */
+  padding-top: 0 !important;
+  padding-right: 58px !important;
+  padding-bottom: 0 !important;
+  padding-left: 58px !important;
+
+margin: 0 !important;
+
+border: 1px solid rgba(255, 255, 255, 0.09) !important;
+border-radius: 13px !important;
+
+outline: none !important;
+
+background: rgba(0, 0, 0, 0.24) !important;
+
+color: #ffffff !important;
+
+font-family:
+Inter,
+ui-sans-serif,
+system-ui,
+-apple-system,
+BlinkMacSystemFont,
+"Segoe UI",
+sans-serif !important;
+
+font-size: 13px !important;
+font-weight: 400 !important;
+line-height: normal !important;
+
+text-indent: 0 !important;
+
+transition:
+border-color 0.2s ease,
+background 0.2s ease,
+box-shadow 0.2s ease !important;
+}
+
+/* =========================================================
+PLACEHOLDER
+========================================================= */
+
+#auth .auth-input-wrap > input::placeholder {
+margin: 0 !important;
+padding: 0 !important;
+
+color: rgba(255, 255, 255, 0.28) !important;
+
+opacity: 1 !important;
+}
+
+/* =========================================================
+FOCUS ICON
+========================================================= */
+
+#auth .auth-input-wrap:focus-within .auth-input-icon {
+color: #a78bfa !important;
+}
+
+/* =========================================================
+FOCUS INPUT
+========================================================= */
+
+#auth .auth-input-wrap > input:focus {
+border-color: rgba(139, 92, 246, 0.72) !important;
+
+background: rgba(0, 0, 0, 0.34) !important;
+
+box-shadow:
+0 0 0 3px rgba(139, 92, 246, 0.09),
+0 0 28px rgba(124, 58, 237, 0.08) !important;
+}
+
+/* =========================================================
+PASSWORD EYE BUTTON
+========================================================= */
+
+#auth .auth-input-wrap .auth-password-toggle {
+position: absolute !important;
+
+right: 9px !important;
+top: 50% !important;
+
+z-index: 20 !important;
+
+display: flex !important;
+align-items: center !important;
+justify-content: center !important;
+
+width: 36px !important;
+height: 36px !important;
+
+margin: 0 !important;
+padding: 0 !important;
+
+border: 0 !important;
+border-radius: 9px !important;
+
+background: transparent !important;
+
+color: rgba(255, 255, 255, 0.38) !important;
+
+transform: translateY(-50%) !important;
+}
+
+#auth .auth-input-wrap .auth-password-toggle:hover {
+background: rgba(255, 255, 255, 0.06) !important;
+color: rgba(255, 255, 255, 0.78) !important;
+}
+
+#auth .auth-password-toggle .eye-icon {
+display: block !important;
+width: 18px !important;
+height: 18px !important;
+}
+
+/* =========================================================
+MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+#auth .auth-input-wrap > input {
+min-height: 51px !important;
+
+padding-left: 56px !important;
+padding-right: 55px !important;
+
+font-size: 13px !important;
+
+}
+
+#auth .auth-input-wrap .auth-input-icon {
+left: 16px !important;
+}
+}
+
+/* =========================================================
+SMALL MOBILE
+========================================================= */
+
+@media (max-width: 380px) {
+#auth .auth-input-wrap > input {
+padding-left: 54px !important;
+padding-right: 53px !important;
+}
+
+#auth .auth-input-wrap .auth-input-icon {
+left: 15px !important;
+}
+}
