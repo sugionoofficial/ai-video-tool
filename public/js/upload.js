@@ -24,6 +24,33 @@
     null;
 
 
+  function updateFileStatus(hasFile, text) {
+
+    const status =
+      document.getElementById(
+        'imageFileStatus'
+      );
+
+    if (!status) {
+      return;
+    }
+
+    status.textContent =
+      text ||
+      (
+        hasFile
+          ? 'File berhasil dipilih'
+          : 'Tidak ada File yang di pilih'
+      );
+
+    status.classList.toggle(
+      'has-file',
+      Boolean(hasFile)
+    );
+
+  }
+
+
   /* =======================================================
      SETUP
   ======================================================= */
@@ -40,10 +67,14 @@
         return false;
       }
 
-      /*
-       * Hindari memasang listener
-       * berulang kali.
-       */
+
+      updateFileStatus(
+        Boolean(input.files?.length),
+        input.files?.[0]
+          ? input.files[0].name
+          : 'Tidak ada File yang di pilih'
+      );
+
 
       if (
         input.dataset
@@ -52,6 +83,7 @@
       ) {
         return true;
       }
+
 
       input.dataset
         .uploadListenerAttached =
@@ -78,6 +110,11 @@
             GENZ.state.imageData =
               null;
 
+            updateFileStatus(
+              false,
+              'Tidak ada File yang di pilih'
+            );
+
             return;
 
           }
@@ -97,6 +134,12 @@
 
             GENZ.state.imageData =
               null;
+
+
+            updateFileStatus(
+              false,
+              'Tidak ada File yang di pilih'
+            );
 
 
             const status =
@@ -138,6 +181,12 @@
               null;
 
 
+            updateFileStatus(
+              false,
+              'Tidak ada File yang di pilih'
+            );
+
+
             const status =
               document.getElementById(
                 'status'
@@ -157,6 +206,16 @@
             return;
 
           }
+
+
+          /* -----------------------------------------------
+             FILE SELECTED
+          ----------------------------------------------- */
+
+          updateFileStatus(
+            true,
+            file.name
+          );
 
 
           /* -----------------------------------------------
@@ -182,6 +241,11 @@
                 GENZ.state.imageData =
                   null;
 
+                updateFileStatus(
+                  false,
+                  'Tidak ada File yang di pilih'
+                );
+
                 return;
 
               }
@@ -205,13 +269,6 @@
 
 
               if (preview) {
-
-                /*
-                 * Mendukung <img>,
-                 * container biasa,
-                 * maupun elemen yang
-                 * sudah tersedia.
-                 */
 
                 if (
                   preview.tagName
@@ -282,6 +339,12 @@
                 null;
 
 
+              updateFileStatus(
+                false,
+                'Tidak ada File yang di pilih'
+              );
+
+
               const status =
                 document.getElementById(
                   'status'
@@ -312,9 +375,6 @@
 
   /* =======================================================
      INIT
-     
-     app.js memanggil GENZ.upload.init()
-     setelah generator.html selesai dimuat.
   ======================================================= */
 
   GENZ.upload.init =
@@ -374,18 +434,17 @@
 
       }
 
+
+      updateFileStatus(
+        false,
+        'Tidak ada File yang di pilih'
+      );
+
     };
 
 
   /* =======================================================
      AUTO SETUP
-     
-     Jika komponen generator sudah
-     tersedia, langsung pasang.
-     
-     Jika belum tersedia, app.js
-     akan memanggil init() setelah
-     komponen dimuat.
   ======================================================= */
 
   if (
