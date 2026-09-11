@@ -1,16 +1,17 @@
 /* =========================================================
-   GEN-Z.AI
-   TOP UP SETTING
+   GEN-Z.AI - TOP UP SETTING
    public/js/topup-settings.js
 
    Fungsi:
-   - Halaman khusus Admin/Owner
-   - Memilih user
-   - Melihat saldo kredit
+   - Khusus Admin
+   - Memilih user dari database
+   - Menampilkan email user
+   - Menampilkan kredit saat ini
    - Menambahkan kredit
-   - Menggunakan backend /api/admin/credits/adjust
+   - Catatan transaksi
+   - Menggunakan endpoint admin yang sudah ada
    - Tidak menyimpan API key
-   - Tidak menyimpan data sensitif di localStorage
+   - Tidak menggunakan email hardcode
 ========================================================= */
 
 (function () {
@@ -21,6 +22,10 @@
     window.GENZ ||
     (window.GENZ = {});
 
+
+  /* =======================================================
+     STATE
+  ======================================================= */
 
   const state = {
 
@@ -34,11 +39,13 @@
 
 
   /* =======================================================
-     HELPERS
+     HELPER
   ======================================================= */
 
   function $(id) {
+
     return document.getElementById(id);
+
   }
 
 
@@ -70,31 +77,43 @@
     const number =
       Number(value || 0);
 
-    return number.toLocaleString("id-ID");
+    return number.toLocaleString(
+      "id-ID"
+    );
 
   }
 
+
+  /* =======================================================
+     STATUS
+  ======================================================= */
 
   function setStatus(
     message,
     type = ""
   ) {
 
-    const el =
+    const element =
       $("topupSettingsStatus");
 
-    if (!el) {
+    if (!element) {
+
       return;
+
     }
 
-    el.className =
+    element.className =
       `topup-settings-status ${type}`;
 
-    el.textContent =
+    element.textContent =
       message || "";
 
   }
 
+
+  /* =======================================================
+     TOKEN
+  ======================================================= */
 
   async function getToken() {
 
@@ -112,6 +131,10 @@
   }
 
 
+  /* =======================================================
+     API
+  ======================================================= */
+
   async function api(
     path,
     options = {}
@@ -124,6 +147,7 @@
       ...(options.headers || {})
     };
 
+
     if (
       options.body &&
       !headers["Content-Type"]
@@ -134,12 +158,14 @@
 
     }
 
+
     if (accessToken) {
 
       headers.Authorization =
         `Bearer ${accessToken}`;
 
     }
+
 
     const response =
       await fetch(
@@ -150,6 +176,7 @@
           credentials: "include"
         }
       );
+
 
     let data = {};
 
@@ -164,6 +191,7 @@
 
     }
 
+
     if (!response.ok) {
 
       throw new Error(
@@ -173,6 +201,7 @@
       );
 
     }
+
 
     return data;
 
@@ -197,60 +226,120 @@
 
 
   /* =======================================================
+     USER ID
+  ======================================================= */
+
+  function getUserId(user) {
+
+    if (!user) {
+
+      return "";
+
+    }
+
+    return String(
+      user.id ||
+      user.user_id ||
+      user.uid ||
+      ""
+    );
+
+  }
+
+
+  /* =======================================================
+     USER CREDIT
+  ======================================================= */
+
+  function getUserCredits(user) {
+
+    if (!user) {
+
+      return 0;
+
+    }
+
+    return Number(
+      user.credits ??
+      user.credit ??
+      user.balance ??
+      0
+    );
+
+  }
+
+
+  /* =======================================================
      LOAD USERS
   ======================================================= */
 
   async function loadUsers() {
 
+    if (!isAdmin()) {
+
+      renderDenied();
+
+      return;
+
+    }
+
+
     const select =
       $("topupUser");
 
-    if (!select) {
-      return;
+    if (select) {
+
+      select.disabled = true;
+
     }
 
-    select.innerHTML = `
-      <option value="">
-        Memuat user...
-      </option>
-    `;
+
+    setStatus(
+      "Memuat daftar user...",
+      "info"
+    );
+
 
     try {
 
-      const data =
+      const response =
         await api(
           "/api/admin/users"
         );
 
-      const users =
-        Array.isArray(data)
-          ? data
-          : (
-              Array.isArray(data?.users)
-                ? data.users
-                : []
-            );
 
       state.users =
-        users;
+        Array.isArray(
+          response?.users
+        )
+          ? response.users
+          : [];
+
 
       renderUsers();
+
+
+      setStatus(
+        "",
+        ""
+      );
+
 
     } catch (error) {
 
       console.error(
-        "[GEN-Z.AI] Top Up users error:",
+        "[GEN-Z.AI] Top Up Setting users error:",
         error
       );
 
-      select.innerHTML = `
-        <option value="">
-          Gagal memuat user
-        </option>
-      `;
+
+      state.users = [];
+
+      renderUsers();
+
 
       setStatus(
-        error.message ||
+        error?.message ||
         "Gagal memuat daftar user.",
         "error"
       );
@@ -260,136 +349,113 @@
   }
 
 
+  /* =======================================================
+     RENDER USERS
+  ======================================================= */
+
   function renderUsers() {
 
     const select =
       $("topupUser");
 
     if (!select) {
-      return;
-    }
-
-    if (!state.users.length) {
-
-      select.innerHTML = `
-        <option value="">
-          Tidak ada user
-        </option>
-      `;
 
       return;
 
     }
 
-    const options =
-      state.users
-        .map(user => {
 
-          const id =
-            user.id ||
-            user.user_id ||
-            "";
+    select.innerHTML = "";
 
-          const email =
+
+    const placeholder =
+      document.createElement(
+        "option"
+      );
+
+    placeholder.value = "";
+
+    placeholder.textContent =
+      state.users.length
+        ? "Pilih user"
+        : "Tidak ada user";
+
+    select.appendChild(
+      placeholder
+    );
+
+
+    state.users.forEach(
+      user => {
+
+        const id =
+          getUserId(user);
+
+        const email =
+          String(
             user.email ||
-            user.user_email ||
-            "User";
+            "-"
+          );
 
-          const credits =
-            user.credits ??
-            user.credit ??
-            user.balance ??
-            0;
 
-          if (!id) {
-            return "";
-          }
+        if (!id) {
 
-          return `
-            <option
-              value="${escapeHtml(id)}">
+          return;
 
-              ${escapeHtml(email)}
-              • ${formatNumber(credits)} kredit
+        }
 
-            </option>
-          `;
 
-        })
-        .join("");
+        const option =
+          document.createElement(
+            "option"
+          );
 
-    select.innerHTML = `
-      <option value="">
-        Pilih user
-      </option>
+        option.value =
+          id;
 
-      ${options}
-    `;
+        option.textContent =
+          email;
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    select.disabled =
+      state.users.length === 0;
 
   }
 
 
   /* =======================================================
-     USER SELECTION
+     FIND USER
   ======================================================= */
 
-  function handleUserChange() {
+  function findUser(
+    userId
+  ) {
 
-    const select =
-      $("topupUser");
-
-    if (!select) {
-      return;
-    }
-
-    const userId =
-      select.value;
-
-    if (!userId) {
-
-      state.selectedUser =
-        null;
-
-      hideUserInfo();
-
-      return;
-
-    }
-
-    const user =
-      state.users.find(
-        item =>
-          String(
-            item.id ||
-            item.user_id ||
-            ""
-          ) === String(userId)
-      );
-
-    if (!user) {
-
-      state.selectedUser =
-        null;
-
-      hideUserInfo();
-
-      return;
-
-    }
-
-    state.selectedUser =
-      user;
-
-    showUserInfo(
-      user
-    );
+    return state.users.find(
+      user =>
+        getUserId(user) ===
+        String(userId)
+    ) || null;
 
   }
 
 
-  function showUserInfo(user) {
+  /* =======================================================
+     SHOW USER INFO
+  ======================================================= */
 
-    const box =
+  function showUserInfo(
+    user
+  ) {
+
+    const info =
       $("topupUserInfo");
 
     const email =
@@ -398,52 +464,170 @@
     const credit =
       $("topupCurrentCredit");
 
-    if (!box) {
+
+    if (!user) {
+
+      if (info) {
+
+        info.hidden = true;
+
+      }
+
+      state.selectedUser =
+        null;
+
       return;
+
     }
 
-    const userEmail =
-      user.email ||
-      user.user_email ||
-      "-";
 
-    const currentCredit =
-      user.credits ??
-      user.credit ??
-      user.balance ??
-      0;
+    state.selectedUser =
+      user;
+
 
     if (email) {
 
       email.textContent =
-        userEmail;
+        user.email ||
+        "-";
 
     }
+
 
     if (credit) {
 
       credit.textContent =
         formatNumber(
-          currentCredit
+          getUserCredits(user)
         );
 
     }
 
-    box.hidden =
-      false;
+
+    if (info) {
+
+      info.hidden = false;
+
+    }
 
   }
 
 
+  /* =======================================================
+     USER CHANGE
+  ======================================================= */
+
+  function handleUserChange() {
+
+    const select =
+      $("topupUser");
+
+    if (!select) {
+
+      return;
+
+    }
+
+
+    const userId =
+      select.value;
+
+
+    if (!userId) {
+
+      showUserInfo(
+        null
+      );
+
+      return;
+
+    }
+
+
+    const user =
+      findUser(
+        userId
+      );
+
+
+    showUserInfo(
+      user
+    );
+
+  }
+
+
+  /* =======================================================
+     HIDE USER INFO
+  ======================================================= */
+
   function hideUserInfo() {
 
-    const box =
+    const info =
       $("topupUserInfo");
 
-    if (box) {
+    if (info) {
 
-      box.hidden =
-        true;
+      info.hidden = true;
+
+    }
+
+
+    state.selectedUser =
+      null;
+
+  }
+
+
+  /* =======================================================
+     UPDATE LOCAL USER CREDIT
+  ======================================================= */
+
+  function updateLocalCredit(
+    userId,
+    newBalance
+  ) {
+
+    const user =
+      findUser(
+        userId
+      );
+
+    if (!user) {
+
+      return;
+
+    }
+
+
+    user.credits =
+      Number(
+        newBalance || 0
+      );
+
+
+    if (
+      state.selectedUser &&
+      getUserId(
+        state.selectedUser
+      ) === String(userId)
+    ) {
+
+      state.selectedUser =
+        user;
+
+    }
+
+
+    const credit =
+      $("topupCurrentCredit");
+
+    if (credit) {
+
+      credit.textContent =
+        formatNumber(
+          getUserCredits(user)
+        );
 
     }
 
@@ -456,18 +640,10 @@
 
   async function addCredit() {
 
-    if (
-      state.loading
-    ) {
-
-      return;
-
-    }
-
     if (!isAdmin()) {
 
       setStatus(
-        "Akses admin tidak valid.",
+        "Akses ditolak. Hanya admin yang dapat menambahkan kredit.",
         "error"
       );
 
@@ -475,37 +651,12 @@
 
     }
 
-    const userSelect =
-      $("topupUser");
 
-    const amountInput =
-      $("topupAmount");
+    const user =
+      state.selectedUser;
 
-    const noteInput =
-      $("topupNote");
 
-    if (!userSelect) {
-      return;
-    }
-
-    const userId =
-      String(
-        userSelect.value ||
-        ""
-      ).trim();
-
-    const amount =
-      Number(
-        amountInput?.value || 0
-      );
-
-    const note =
-      String(
-        noteInput?.value ||
-        ""
-      ).trim();
-
-    if (!userId) {
+    if (!user) {
 
       setStatus(
         "Pilih user terlebih dahulu.",
@@ -515,6 +666,44 @@
       return;
 
     }
+
+
+    const userId =
+      getUserId(user);
+
+
+    if (!userId) {
+
+      setStatus(
+        "ID user tidak ditemukan.",
+        "error"
+      );
+
+      return;
+
+    }
+
+
+    const amountInput =
+      $("topupAmount");
+
+
+    const noteInput =
+      $("topupNote");
+
+
+    const amount =
+      Number(
+        amountInput?.value
+      );
+
+
+    const note =
+      String(
+        noteInput?.value ||
+        ""
+      ).trim();
+
 
     if (
       !Number.isInteger(amount) ||
@@ -532,12 +721,11 @@
 
     }
 
-    if (
-      amount > 1000000
-    ) {
+
+    if (amount > 1000000) {
 
       setStatus(
-        "Jumlah kredit terlalu besar.",
+        "Jumlah kredit maksimal 1.000.000.",
         "error"
       );
 
@@ -547,21 +735,37 @@
 
     }
 
+
+    const button =
+      $("topupSubmit");
+
+
     state.loading =
       true;
 
-    updateButton(
-      true
-    );
+
+    if (button) {
+
+      button.disabled = true;
+
+      button.dataset.originalText =
+        button.textContent;
+
+      button.textContent =
+        "Memproses...";
+
+    }
+
 
     setStatus(
       "Menambahkan kredit...",
       "info"
     );
 
+
     try {
 
-      const data =
+      const response =
         await api(
           "/api/admin/credits/adjust",
           {
@@ -576,52 +780,118 @@
                 amount,
 
               note:
-                note ||
-                "Top up manual admin"
+                note
 
             })
 
           }
         );
 
+
+      /*
+       * Backend dapat mengembalikan
+       * balance/credits/new_balance.
+       */
+
       const newBalance =
-        data?.credits ??
-        data?.credit ??
-        data?.balance ??
-        data?.new_balance ??
-        null;
+        response?.credits ??
+        response?.credit ??
+        response?.balance ??
+        response?.new_balance ??
+        response?.newBalance;
+
 
       if (
+        newBalance !== undefined &&
         newBalance !== null
       ) {
 
-        updateSelectedUserCredit(
+        updateLocalCredit(
           userId,
-          newBalance
+          Number(newBalance)
         );
 
       } else {
 
+        /*
+         * Jika response tidak membawa
+         * saldo terbaru, ambil ulang
+         * daftar user dari server.
+         */
+
         await loadUsers();
 
-        const select =
-          $("topupUser");
 
-        if (select) {
+        const refreshedUser =
+          findUser(
+            userId
+          );
 
-          select.value =
-            userId;
 
-          handleUserChange();
+        if (refreshedUser) {
+
+          showUserInfo(
+            refreshedUser
+          );
 
         }
 
       }
 
+
+      /*
+       * Refresh account utama
+       * agar saldo di menu aplikasi
+       * ikut diperbarui.
+       */
+
+      if (
+        GENZ.account &&
+        typeof GENZ.account.refresh ===
+          "function"
+      ) {
+
+        try {
+
+          await GENZ.account.refresh();
+
+        } catch (_) {
+
+          console.warn(
+            "[GEN-Z.AI] Account refresh gagal."
+          );
+
+        }
+
+      }
+
+
+      if (
+        GENZ.credit &&
+        typeof GENZ.credit.refresh ===
+          "function"
+      ) {
+
+        try {
+
+          await GENZ.credit.refresh();
+
+        } catch (_) {
+
+          console.warn(
+            "[GEN-Z.AI] Credit refresh gagal."
+          );
+
+        }
+
+      }
+
+
       setStatus(
-        `Berhasil menambahkan ${formatNumber(amount)} kredit.`,
+        `Berhasil menambahkan ${formatNumber(amount)} kredit ke ${user.email || "user"}.`,
         "success"
       );
+
 
       if (amountInput) {
 
@@ -630,6 +900,7 @@
 
       }
 
+
       if (noteInput) {
 
         noteInput.value =
@@ -637,17 +908,17 @@
 
       }
 
-      refreshAccount();
 
     } catch (error) {
 
       console.error(
-        "[GEN-Z.AI] Add credit error:",
+        "[GEN-Z.AI] Top Up Setting error:",
         error
       );
 
+
       setStatus(
-        error.message ||
+        error?.message ||
         "Gagal menambahkan kredit.",
         "error"
       );
@@ -657,73 +928,17 @@
       state.loading =
         false;
 
-      updateButton(
-        false
-      );
 
-    }
+      if (button) {
 
-  }
+        button.disabled =
+          false;
 
-
-  function updateSelectedUserCredit(
-    userId,
-    newBalance
-  ) {
-
-    const user =
-      state.users.find(
-        item =>
-          String(
-            item.id ||
-            item.user_id ||
-            ""
-          ) === String(userId)
-      );
-
-    if (user) {
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          user,
-          "credits"
-        )
-      ) {
-
-        user.credits =
-          newBalance;
-
-      } else if (
-        Object.prototype.hasOwnProperty.call(
-          user,
-          "credit"
-        )
-      ) {
-
-        user.credit =
-          newBalance;
-
-      } else {
-
-        user.credits =
-          newBalance;
+        button.textContent =
+          button.dataset.originalText ||
+          "Tambah Kredit";
 
       }
-
-      state.selectedUser =
-        user;
-
-    }
-
-    const credit =
-      $("topupCurrentCredit");
-
-    if (credit) {
-
-      credit.textContent =
-        formatNumber(
-          newBalance
-        );
 
     }
 
@@ -731,69 +946,131 @@
 
 
   /* =======================================================
-     BUTTON
+     BACK
   ======================================================= */
 
-  function updateButton(
-    loading
-  ) {
+  function bindBackButton() {
 
     const button =
-      $("topupSubmit");
+      $("topupSettingsBack");
 
     if (!button) {
+
       return;
+
     }
 
-    button.disabled =
-      loading;
 
-    button.textContent =
-      loading
-        ? "Memproses..."
-        : "Tambah Kredit";
+    button.addEventListener(
+      "click",
+      () => {
 
-  }
-
-
-  /* =======================================================
-     ACCOUNT REFRESH
-  ======================================================= */
-
-  function refreshAccount() {
-
-    try {
-
-      if (
-        GENZ.account &&
-        typeof GENZ.account.refresh ===
+        if (
+          typeof GENZ.emit ===
           "function"
-      ) {
+        ) {
 
-        GENZ.account.refresh();
+          GENZ.emit(
+            "show-studio"
+          );
+
+        }
 
       }
-
-    } catch (error) {
-
-      console.warn(
-        "[GEN-Z.AI] Account refresh failed:",
-        error
-      );
-
-    }
+    );
 
   }
 
 
   /* =======================================================
-     EVENTS
+     BIND
   ======================================================= */
 
   function bind() {
 
+    const select =
+      $("topupUser");
+
+    if (select) {
+
+      select.addEventListener(
+        "change",
+        handleUserChange
+      );
+
+    }
+
+
+    const submit =
+      $("topupSubmit");
+
+    if (submit) {
+
+      submit.addEventListener(
+        "click",
+        addCredit
+      );
+
+    }
+
+
+    bindBackButton();
+
+  }
+
+
+  /* =======================================================
+     ACCESS DENIED
+  ======================================================= */
+
+  function renderDenied() {
+
+    const container =
+      $("pageContent") ||
+      $("content");
+
+    if (!container) {
+
+      return;
+
+    }
+
+
+    container.innerHTML = `
+
+      <section class="page-card">
+
+        <div class="page-header">
+
+          <button
+            type="button"
+            class="back-btn"
+            id="topupSettingsDeniedBack">
+            ←
+          </button>
+
+          <div>
+
+            <h2>
+              Akses Ditolak
+            </h2>
+
+            <p>
+              Halaman ini hanya untuk administrator.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    `;
+
+
     const back =
-      $("topupSettingsBack");
+      $("topupSettingsDeniedBack");
+
 
     if (back) {
 
@@ -809,54 +1086,6 @@
             GENZ.emit(
               "show-studio"
             );
-
-          }
-
-        }
-      );
-
-    }
-
-    const user =
-      $("topupUser");
-
-    if (user) {
-
-      user.addEventListener(
-        "change",
-        handleUserChange
-      );
-
-    }
-
-    const submit =
-      $("topupSubmit");
-
-    if (submit) {
-
-      submit.addEventListener(
-        "click",
-        addCredit
-      );
-
-    }
-
-    const amount =
-      $("topupAmount");
-
-    if (amount) {
-
-      amount.addEventListener(
-        "keydown",
-        event => {
-
-          if (
-            event.key === "Enter"
-          ) {
-
-            event.preventDefault();
-
-            addCredit();
 
           }
 
@@ -882,257 +1111,217 @@
 
     }
 
+
     const container =
       $("pageContent") ||
       $("content");
+
 
     if (!container) {
 
       console.error(
-        "[GEN-Z.AI] pageContent tidak ditemukan."
+        "[GEN-Z.AI] Top Up Setting container tidak ditemukan."
       );
 
       return;
 
     }
 
-    container.innerHTML =
-      await getPageHtml();
 
-    bind();
+    /*
+     * Jika HTML halaman belum dimuat,
+     * ambil dari components.
+     */
 
-    await loadUsers();
+    const existing =
+      $("topupSettingsPage");
 
-  }
+
+    if (!existing) {
+
+      try {
+
+        const response =
+          await fetch(
+            "/components/topup-settings.html",
+            {
+              credentials: "include"
+            }
+          );
 
 
-  async function getPageHtml() {
+        if (!response.ok) {
 
-    try {
+          throw new Error(
+            `Gagal memuat halaman Top Up Setting (${response.status})`
+          );
 
-      const response =
-        await fetch(
-          "/components/topup-settings.html",
-          {
-            cache: "no-store"
-          }
+        }
+
+
+        const html =
+          await response.text();
+
+
+        container.innerHTML =
+          html;
+
+      } catch (error) {
+
+        console.error(
+          "[GEN-Z.AI] Top Up Setting HTML error:",
+          error
         );
 
-      if (
-        response.ok
-      ) {
 
-        return await response.text();
+        /*
+         * Fallback HTML.
+         */
+
+        container.innerHTML = `
+
+          <section
+            class="page-card topup-settings-page"
+            id="topupSettingsPage">
+
+            <div class="page-header">
+
+              <button
+                type="button"
+                class="back-btn"
+                id="topupSettingsBack">
+                ←
+              </button>
+
+              <div>
+
+                <h2>
+                  Top Up Setting
+                </h2>
+
+                <p>
+                  Tambah kredit pengguna secara manual
+                </p>
+
+              </div>
+
+            </div>
+
+            <div
+              id="topupSettingsStatus"
+              class="topup-settings-status"
+              aria-live="polite">
+            </div>
+
+            <div class="topup-settings-card">
+
+              <div class="topup-field">
+
+                <label for="topupUser">
+                  USER
+                </label>
+
+                <select id="topupUser">
+
+                  <option value="">
+                    Pilih user
+                  </option>
+
+                </select>
+
+              </div>
+
+              <div
+                class="topup-user-info"
+                id="topupUserInfo"
+                hidden>
+
+                <div class="topup-user-email">
+
+                  <span>
+                    Email
+                  </span>
+
+                  <strong
+                    id="topupSelectedEmail">
+                    -
+                  </strong>
+
+                </div>
+
+                <div class="topup-user-credit">
+
+                  <span>
+                    Kredit Saat Ini
+                  </span>
+
+                  <strong
+                    id="topupCurrentCredit">
+                    0
+                  </strong>
+
+                </div>
+
+              </div>
+
+              <div class="topup-field">
+
+                <label for="topupAmount">
+                  TAMBAH KREDIT
+                </label>
+
+                <input
+                  type="number"
+                  id="topupAmount"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="Contoh: 100"
+                  autocomplete="off">
+
+                <small>
+                  Masukkan jumlah kredit
+                  yang ingin ditambahkan.
+                </small>
+
+              </div>
+
+              <div class="topup-field">
+
+                <label for="topupNote">
+                  CATATAN
+                </label>
+
+                <textarea
+                  id="topupNote"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Contoh: Top up manual admin"></textarea>
+
+              </div>
+
+              <button
+                type="button"
+                class="primary-btn topup-submit-btn"
+                id="topupSubmit">
+                Tambah Kredit
+              </button>
+
+            </div>
+
+          </section>
+
+        `;
 
       }
 
-    } catch (error) {
-
-      console.warn(
-        "[GEN-Z.AI] Gagal memuat topup-settings.html:",
-        error
-      );
-
     }
 
-    /*
-     * Fallback.
-     * Jadi halaman tetap bisa muncul
-     * apabila HTML component gagal dimuat.
-     */
 
-    return `
-      <section
-        class="page-card topup-settings-page"
-        id="topupSettingsPage">
+    bind();
 
-        <div class="page-header">
 
-          <button
-            type="button"
-            class="back-btn"
-            id="topupSettingsBack">
-            ←
-          </button>
-
-          <div>
-
-            <h2>Top Up Setting</h2>
-
-            <p>
-              Tambah kredit pengguna secara manual
-            </p>
-
-          </div>
-
-        </div>
-
-        <div
-          id="topupSettingsStatus"
-          class="topup-settings-status"
-          aria-live="polite">
-        </div>
-
-        <div class="topup-settings-card">
-
-          <div class="topup-field">
-
-            <label for="topupUser">
-              USER
-            </label>
-
-            <select id="topupUser">
-
-              <option value="">
-                Pilih user
-              </option>
-
-            </select>
-
-          </div>
-
-          <div
-            class="topup-user-info"
-            id="topupUserInfo"
-            hidden>
-
-            <div>
-
-              <span>Email</span>
-
-              <strong id="topupSelectedEmail">
-                -
-              </strong>
-
-            </div>
-
-            <div>
-
-              <span>Kredit Saat Ini</span>
-
-              <strong id="topupCurrentCredit">
-                0
-              </strong>
-
-            </div>
-
-          </div>
-
-          <div class="topup-field">
-
-            <label for="topupAmount">
-              TAMBAH KREDIT
-            </label>
-
-            <input
-              type="number"
-              id="topupAmount"
-              min="1"
-              step="1"
-              placeholder="Contoh: 100">
-
-          </div>
-
-          <div class="topup-field">
-
-            <label for="topupNote">
-              CATATAN
-            </label>
-
-            <textarea
-              id="topupNote"
-              rows="3"
-              maxlength="500"
-              placeholder="Contoh: Top up manual admin"></textarea>
-
-          </div>
-
-          <button
-            type="button"
-            class="primary-btn topup-submit-btn"
-            id="topupSubmit">
-
-            Tambah Kredit
-
-          </button>
-
-        </div>
-
-      </section>
-    `;
-
-  }
-
-
-  /* =======================================================
-     ACCESS DENIED
-  ======================================================= */
-
-  function renderDenied() {
-
-    const container =
-      $("pageContent") ||
-      $("content");
-
-    if (!container) {
-      return;
-    }
-
-    container.innerHTML = `
-
-      <section class="page-card">
-
-        <div class="page-header">
-
-          <button
-            type="button"
-            class="back-btn"
-            id="topupDeniedBack">
-            ←
-          </button>
-
-          <div>
-
-            <h2>
-              Akses Ditolak
-            </h2>
-
-            <p>
-              Top Up Setting hanya tersedia untuk administrator.
-            </p>
-
-          </div>
-
-        </div>
-
-      </section>
-
-    `;
-
-    const back =
-      $("topupDeniedBack");
-
-    if (back) {
-
-      back.addEventListener(
-        "click",
-        () => {
-
-          if (
-            typeof GENZ.emit ===
-            "function"
-          ) {
-
-            GENZ.emit(
-              "show-studio"
-            );
-
-          }
-
-        }
-      );
-
-    }
+    await loadUsers();
 
   }
 
@@ -1145,7 +1334,12 @@
 
     load,
 
-    refresh: load,
+    refresh:
+      load,
+
+    loadUsers,
+
+    addCredit,
 
     state
 
