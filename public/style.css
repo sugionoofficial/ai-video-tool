@@ -1418,3 +1418,42 @@ left: 15px !important;
 #auth .auth-password-fixed .auth-fixed-toggle .eye-open circle {
   stroke: currentColor !important;
 }
+
+/* =========================================================
+   GEN-Z.AI
+   AUTH ICON COLOR FIX
+   ========================================================= */
+
+#auth .auth-input-fixed .auth-fixed-icon {
+  color: #a78bfa !important;
+}
+
+#auth .auth-input-fixed .auth-fixed-icon svg {
+  color: #a78bfa !important;
+}
+
+#auth .auth-input-fixed .auth-fixed-icon svg path,
+#auth .auth-input-fixed .auth-fixed-icon svg rect,
+#auth .auth-input-fixed .auth-fixed-icon svg circle {
+  stroke: #a78bfa !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-icon {
+  color: #a78bfa !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-icon svg path,
+#auth .auth-password-fixed .auth-fixed-icon svg rect,
+#auth .auth-password-fixed .auth-fixed-icon svg circle {
+  stroke: #a78bfa !important;
+}
+
+/* Ikon mata */
+#auth .auth-password-fixed .auth-fixed-toggle {
+  color: #a78bfa !important;
+}
+
+#auth .auth-password-fixed .auth-fixed-toggle svg path,
+#auth .auth-password-fixed .auth-fixed-toggle svg circle {
+  stroke: #a78bfa !important;
+}
