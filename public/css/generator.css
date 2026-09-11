@@ -164,7 +164,7 @@
 
 
 /* ==========================================================
-   TEXTAREA
+   TEXTAREA / PROMPT
    ========================================================== */
 
 .form-group textarea {
@@ -183,8 +183,10 @@
   background: rgba(10, 27, 43, 0.74);
   color: #f5f8fb;
 
-  font-size: 18px;
-  line-height: 1.45;
+  /* Ukuran tulisan prompt diperkecil */
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 400;
 
   outline: none;
   box-sizing: border-box;
@@ -192,6 +194,9 @@
 
 .form-group textarea::placeholder {
   color: rgba(195, 211, 226, 0.55);
+
+  /* Placeholder juga dibuat lebih kecil */
+  font-size: 15px;
 }
 
 .form-group textarea:focus {
@@ -215,11 +220,6 @@
   min-height: 126px;
 }
 
-
-/* ==========================================================
-   IMAGE PREVIEW
-   ========================================================== */
-
 .image-preview {
   position: relative;
 
@@ -242,14 +242,8 @@
   display: none !important;
 }
 
-
-/* ==========================================================
-   IMAGE
-   ========================================================== */
-
 .image-preview img {
   position: relative;
-
   z-index: 1;
 
   width: 100%;
@@ -263,7 +257,7 @@
 
 
 /* ==========================================================
-   REMOVE BUTTON
+   REMOVE REFERENCE IMAGE BUTTON
    ========================================================== */
 
 .image-remove-btn {
@@ -288,7 +282,7 @@
   border-radius: 50%;
 
   background: rgba(0, 0, 0, 0.82);
-  color: #ffffff;
+  color: #fff;
 
   font-family: Arial, sans-serif;
   font-size: 23px;
@@ -315,8 +309,7 @@
 
 .image-remove-btn:hover {
   background: #ef3f55;
-
-  border-color: #ffffff;
+  border-color: #fff;
 
   transform: scale(1.08);
 }
@@ -332,14 +325,10 @@
 }
 
 .image-remove-btn:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid #fff;
   outline-offset: 2px;
 }
 
-
-/* ==========================================================
-   ADD IMAGE TILE
-   ========================================================== */
 
 .image-add-tile {
   width: 136px;
@@ -357,8 +346,6 @@
   background: rgba(17, 39, 61, 0.82);
 
   cursor: pointer;
-
-  box-sizing: border-box;
 }
 
 .image-add-tile span {
@@ -376,11 +363,6 @@
     rgba(128, 197, 235, 0.78);
 }
 
-
-/* ==========================================================
-   FILE INPUT
-   ========================================================== */
-
 .image-file-input {
   position: absolute !important;
 
@@ -391,11 +373,6 @@
 
   pointer-events: none !important;
 }
-
-
-/* ==========================================================
-   FILE STATUS
-   ========================================================== */
 
 .image-file-status {
   min-height: 12px;
@@ -671,6 +648,26 @@
     margin-bottom: 28px;
   }
 
+  /*
+   * PROMPT
+   * Tulisan yang diketik tetap kecil di mobile.
+   */
+
+  .form-group textarea {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .form-group textarea::placeholder {
+    font-size: 15px;
+  }
+
+  /*
+   * PENTING:
+   * Jangan lagi memakai 76px di mobile.
+   * Semua select tetap 48px.
+   */
+
   .form-group select,
   .setting-field select,
   #provider,
@@ -729,6 +726,22 @@
   .generator-hero p {
     font-size: 17px;
   }
+
+  /*
+   * Prompt tetap 15px.
+   */
+
+  .form-group textarea {
+    font-size: 15px;
+  }
+
+  .form-group textarea::placeholder {
+    font-size: 15px;
+  }
+
+  /*
+   * Semua select tetap 48px.
+   */
 
   .form-group select,
   .setting-field select,
