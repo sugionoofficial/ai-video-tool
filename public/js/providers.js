@@ -1,12 +1,9 @@
-/* GEN-Z.AI - Provider UI */
-
 (function () {
   'use strict';
 
   window.GENZ = window.GENZ || {};
 
   const CONFIG = {
-
     veo: {
       name: 'Gemini / Veo',
 
@@ -16,11 +13,7 @@
         'veo-3.1-lite-generate-preview'
       ],
 
-      durations: [
-        4,
-        6,
-        8
-      ],
+      durations: [4, 6, 8],
 
       aspects: [
         '16:9',
@@ -43,10 +36,7 @@
         'MiniMax-Hailuo-02'
       ],
 
-      durations: [
-        6,
-        10
-      ],
+      durations: [6, 10],
 
       aspects: [
         '16:9',
@@ -89,24 +79,19 @@
         '4k'
       ]
     }
-
   };
 
-  function setOptions(
-    elementId,
-    values,
-    selected
-  ) {
-
+  function setOptions(id, values) {
     const element =
-      document.getElementById(elementId);
+      document.getElementById(id);
 
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     element.innerHTML = '';
 
     values.forEach(value => {
-
       const option =
         document.createElement('option');
 
@@ -115,30 +100,14 @@
 
       element.appendChild(option);
     });
-
-    if (
-      selected !== undefined &&
-      values
-        .map(String)
-        .includes(String(selected))
-    ) {
-      element.value = selected;
-    }
   }
 
   function selectProvider(provider) {
+    const config = CONFIG[provider];
 
-    if (!CONFIG[provider]) {
-      console.warn(
-        'Provider tidak dikenal:',
-        provider
-      );
-
+    if (!config) {
       return;
     }
-
-    const config =
-      CONFIG[provider];
 
     const providerElement =
       document.getElementById('provider');
@@ -163,8 +132,7 @@
     );
 
     /*
-     * Compatibility dengan UI lama
-     * yang masih memakai #ratio.
+     * Kompatibilitas dengan UI lama.
      */
     setOptions(
       'ratio',
@@ -181,7 +149,6 @@
   }
 
   function renderButtons() {
-
     const container =
       document.querySelector(
         '[data-providers]'
@@ -193,8 +160,8 @@
 
     container.innerHTML = '';
 
-    Object.entries(CONFIG)
-      .forEach(([key, config]) => {
+    Object.entries(CONFIG).forEach(
+      ([key, config]) => {
 
         const button =
           document.createElement('button');
@@ -207,18 +174,21 @@
         button.textContent =
           config.name;
 
-        container.appendChild(button);
-      });
+        container.appendChild(
+          button
+        );
+      }
+    );
 
     if (
-      container.dataset
-        .providerListenerAttached
+      container.dataset.listenerAttached ===
+      'true'
     ) {
       return;
     }
 
-    container.dataset
-      .providerListenerAttached = 'true';
+    container.dataset.listenerAttached =
+      'true';
 
     container.addEventListener(
       'click',
@@ -229,7 +199,9 @@
             '[data-provider]'
           );
 
-        if (!button) return;
+        if (!button) {
+          return;
+        }
 
         selectProvider(
           button.dataset.provider
@@ -239,7 +211,6 @@
   }
 
   async function loadProviders() {
-
     renderButtons();
 
     const current =
