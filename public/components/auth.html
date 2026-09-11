@@ -4,103 +4,194 @@
   style="display:block;"
 >
 
-  <div class="auth-card">
+  <div class="auth-background">
+    <div class="auth-orb auth-orb-1"></div>
+    <div class="auth-orb auth-orb-2"></div>
+    <div class="auth-grid"></div>
+  </div>
 
-    <div class="auth-header">
 
-      <div class="auth-logo">
-        GEN-Z.AI
+  <div class="auth-shell">
+
+    <div class="auth-brand">
+
+      <div class="auth-brand-mark">
+        <span>G</span>
       </div>
 
-      <h1>
-        Selamat Datang
-      </h1>
-
-      <p>
-        Login untuk menggunakan GEN-Z.AI
-      </p>
+      <div class="auth-brand-text">
+        <strong>GEN-Z.AI</strong>
+        <span>AI CREATIVE STUDIO</span>
+      </div>
 
     </div>
 
 
-    <form
-      id="authForm"
-      autocomplete="on"
-    >
+    <div class="auth-card">
 
-      <div class="form-group">
-
-        <label for="email">
-          Email
-        </label>
-
-        <input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="Masukkan email"
-          autocomplete="email"
-          required
-        >
-
-      </div>
+      <div class="auth-card-glow"></div>
 
 
-      <div class="form-group">
+      <div class="auth-header">
 
-        <label for="password">
-          Password
-        </label>
+        <div class="auth-status">
+          <span class="auth-status-dot"></span>
+          AI STUDIO ONLINE
+        </div>
 
-        <input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="Masukkan password"
-          autocomplete="current-password"
-          required
-        >
+        <h1>
+          Selamat datang
+        </h1>
+
+        <p>
+          Masuk dan mulai menciptakan sesuatu yang luar biasa.
+        </p>
 
       </div>
 
 
-      <div
-        id="authMsg"
-        class="auth-message"
-        aria-live="polite"
-      ></div>
-
-
-      <button
-        id="login"
-        type="submit"
-        class="auth-primary-btn"
+      <form
+        id="authForm"
+        autocomplete="on"
       >
-        LOGIN
-      </button>
+
+        <div class="form-group">
+
+          <label for="email">
+            Email
+          </label>
+
+          <div class="auth-input-wrap">
+
+            <span class="auth-input-icon">
+              @
+            </span>
+
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="nama@email.com"
+              autocomplete="email"
+              required
+            >
+
+          </div>
+
+        </div>
 
 
-      <div class="auth-actions">
+        <div class="form-group">
+
+          <div class="auth-label-row">
+
+            <label for="password">
+              Password
+            </label>
+
+            <button
+              id="forgotPassword"
+              type="button"
+              class="auth-forgot"
+            >
+              Lupa password?
+            </button>
+
+          </div>
+
+
+          <div class="auth-input-wrap">
+
+            <span class="auth-input-icon">
+              •
+            </span>
+
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Masukkan password"
+              autocomplete="current-password"
+              required
+            >
+
+            <button
+              type="button"
+              id="togglePassword"
+              class="auth-password-toggle"
+              aria-label="Tampilkan password"
+            >
+              <span></span>
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="authMsg"
+          class="auth-message"
+          aria-live="polite"
+        ></div>
+
+
+        <button
+          id="login"
+          type="submit"
+          class="auth-primary-btn"
+        >
+
+          <span class="auth-btn-text">
+            MASUK KE GEN-Z.AI
+          </span>
+
+          <span class="auth-btn-arrow">
+            →
+          </span>
+
+        </button>
+
+
+        <div class="auth-divider">
+          <span>atau</span>
+        </div>
+
 
         <button
           id="register"
           type="button"
           class="auth-secondary-btn"
         >
-          DAFTAR
+          BUAT AKUN BARU
         </button>
 
-        <button
-          id="forgotPassword"
-          type="button"
-          class="auth-link-btn"
-        >
-          LUPA PASSWORD?
-        </button>
+
+      </form>
+
+
+      <div class="auth-footer">
+
+        <span>
+          GEN-Z.AI
+        </span>
+
+        <span class="auth-footer-dot">
+          •
+        </span>
+
+        <span>
+          AI CREATIVE STUDIO
+        </span>
 
       </div>
 
-    </form>
+    </div>
+
+
+    <div class="auth-bottom-text">
+      Create beyond imagination.
+    </div>
 
   </div>
 
