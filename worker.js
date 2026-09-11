@@ -1,4 +1,3 @@
-```javascript
 import {
   getAdapter,
   getAdapterInfo,
@@ -10,14 +9,17 @@ import {
 /*
  * ============================================================
  * GEN-Z.AI WORKER
- * Provider logic berada di:
+ * ============================================================
+ *
+ * Provider logic:
  *   /providers/veo.js
  *   /providers/minimax.js
  *   /providers/luma.js
  *   /providers/index.js
  *
- * Worker hanya menangani:
+ * Worker menangani:
  * - Auth
+ * - Role
  * - Credit
  * - Job
  * - Database
@@ -28,8 +30,17 @@ import {
  * ============================================================
  */
 
+/*
+ * ============================================================
+ * PROVIDER NORMALIZATION
+ * ============================================================
+ */
+
 function canonicalProvider(value) {
-  const raw = String(value || "").trim().toLowerCase();
+  const raw =
+    String(value || "")
+      .trim()
+      .toLowerCase();
 
   const aliases = {
     gemini: "veo",
@@ -42,10 +53,20 @@ function canonicalProvider(value) {
 }
 
 function providerId(value) {
-  const id = String(value || "").trim().toLowerCase();
+  const id =
+    String(value || "")
+      .trim()
+      .toLowerCase();
 
-  if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(id)) {
-    throw new HttpError("ID provider tidak valid.", 400);
+  if (
+    !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
+      id
+    )
+  ) {
+    throw new HttpError(
+      "ID provider tidak valid.",
+      400
+    );
   }
 
   if (id === "gemini") {
@@ -63,9 +84,12 @@ function adapterInfo(adapter) {
 }
 
 function inferAdapter(value) {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
-  const adapter = getAdapter(value);
+  const adapter =
+    getAdapter(value);
 
   if (adapter) {
     return adapter;
@@ -81,31 +105,60 @@ function inferAdapter(value) {
  */
 
 function corsHeaders(env) {
-  const origin = String(env.ALLOWED_ORIGIN || "*").trim();
+  const origin =
+    String(
+      env.ALLOWED_ORIGIN || "*"
+    ).trim();
 
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin":
+      origin,
+
     "Access-Control-Allow-Methods":
       "GET,POST,PUT,DELETE,OPTIONS",
+
     "Access-Control-Allow-Headers":
       "Content-Type, Authorization, Idempotency-Key",
-    "Access-Control-Max-Age": "86400",
-    "Vary": "Origin"
+
+    "Access-Control-Max-Age":
+      "86400",
+
+    Vary:
+      "Origin"
   };
 }
 
-function json(data, status = 200, env = {}) {
+function json(
+  data,
+  status = 200,
+  env = {}
+) {
   return new Response(
-    JSON.stringify(data, null, 2),
+    JSON.stringify(
+      data,
+      null,
+      2
+    ),
     {
       status,
+
       headers: {
-        ...corsHeaders(env),
+        ...corsHeaders(
+          env
+        ),
+
         "Content-Type":
           "application/json; charset=utf-8",
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-        "Referrer-Policy": "no-referrer",
+
+        "Cache-Control":
+          "no-store",
+
+        "X-Content-Type-Options":
+          "nosniff",
+
+        "Referrer-Policy":
+          "no-referrer",
+
         "Permissions-Policy":
           "camera=(), microphone=(), geolocation=()"
       }
@@ -113,13 +166,20 @@ function json(data, status = 200, env = {}) {
   );
 }
 
-async function safeJson(res) {
-  const text = await res.text();
+async function safeJson(
+  res
+) {
+  const text =
+    await res.text();
 
-  if (!text) return {};
+  if (!text) {
+    return {};
+  }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(
+      text
+    );
   } catch {
     return {
       raw: text
@@ -127,12 +187,21 @@ async function safeJson(res) {
   }
 }
 
-function requireJsonContentType(request) {
-  const ct = String(
-    request.headers.get("content-type") || ""
-  ).toLowerCase();
+function requireJsonContentType(
+  request
+) {
+  const ct =
+    String(
+      request.headers.get(
+        "content-type"
+      ) || ""
+    ).toLowerCase();
 
-  if (!ct.includes("application/json")) {
+  if (
+    !ct.includes(
+      "application/json"
+    )
+  ) {
     throw new HttpError(
       "Content-Type harus application/json.",
       415
@@ -140,12 +209,20 @@ function requireJsonContentType(request) {
   }
 }
 
-async function readJson(request, maxBytes = 65536) {
-  requireJsonContentType(request);
-
-  const len = Number(
-    request.headers.get("content-length") || 0
+async function readJson(
+  request,
+  maxBytes = 65536
+) {
+  requireJsonContentType(
+    request
   );
+
+  const len =
+    Number(
+      request.headers.get(
+        "content-length"
+      ) || 0
+    );
 
   if (
     Number.isFinite(len) &&
@@ -157,10 +234,13 @@ async function readJson(request, maxBytes = 65536) {
     );
   }
 
-  const text = await request.text();
+  const text =
+    await request.text();
 
   if (
-    new TextEncoder().encode(text).byteLength >
+    new TextEncoder()
+      .encode(text)
+      .byteLength >
     maxBytes
   ) {
     throw new HttpError(
@@ -170,7 +250,9 @@ async function readJson(request, maxBytes = 65536) {
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(
+      text
+    );
   } catch {
     throw new HttpError(
       "JSON tidak valid.",
@@ -179,9 +261,13 @@ async function readJson(request, maxBytes = 65536) {
   }
 }
 
-function apiError(data, fallback) {
+function apiError(
+  data,
+  fallback
+) {
   if (
-    typeof data?.error === "string"
+    typeof data?.error ===
+    "string"
   ) {
     return data.error;
   }
@@ -196,72 +282,129 @@ function apiError(data, fallback) {
 
 /*
  * ============================================================
+ * HTTP ERROR
+ * ============================================================
+ */
+
+class HttpError extends Error {
+  constructor(
+    message,
+    status
+  ) {
+    super(message);
+
+    this.name =
+      "HttpError";
+
+    this.status =
+      status;
+  }
+}
+
+/*
+ * ============================================================
  * SUPABASE
  * ============================================================
  */
 
 function sbHeaders(env) {
   return {
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    apikey:
+      env.SUPABASE_SERVICE_ROLE_KEY,
+
     Authorization:
       `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-    "Content-Type": "application/json"
+
+    "Content-Type":
+      "application/json"
   };
 }
 
-async function sb(path, options = {}, env) {
+async function sb(
+  path,
+  options = {},
+  env
+) {
   return fetch(
     `${env.SUPABASE_URL}${path}`,
     {
       ...options,
+
       headers: {
-        ...sbHeaders(env),
+        ...sbHeaders(
+          env
+        ),
+
         ...(options.headers || {})
       }
     }
   );
 }
 
-async function currentUser(request, env) {
-  const auth =
-    request.headers.get("Authorization") || "";
+/*
+ * ============================================================
+ * AUTH
+ * ============================================================
+ */
 
-  if (!auth.startsWith("Bearer ")) {
+async function currentUser(
+  request,
+  env
+) {
+  const auth =
+    request.headers.get(
+      "Authorization"
+    ) || "";
+
+  if (
+    !auth.startsWith(
+      "Bearer "
+    )
+  ) {
     return null;
   }
 
   const token =
-    auth.slice(7).trim();
+    auth
+      .slice(7)
+      .trim();
 
   if (!token) {
     return null;
   }
 
-  const res = await fetch(
-    `${env.SUPABASE_URL}/auth/v1/user`,
-    {
-      headers: {
-        apikey:
-          env.SUPABASE_SERVICE_ROLE_KEY,
-        Authorization:
-          `Bearer ${token}`
+  const res =
+    await fetch(
+      `${env.SUPABASE_URL}/auth/v1/user`,
+      {
+        headers: {
+          apikey:
+            env.SUPABASE_SERVICE_ROLE_KEY,
+
+          Authorization:
+            `Bearer ${token}`
+        }
       }
-    }
-  );
+    );
 
   return res.ok
     ? await res.json()
     : null;
 }
 
-async function requireUser(request, env) {
+async function requireUser(
+  request,
+  env
+) {
   const user =
     await currentUser(
       request,
       env
     );
 
-  if (!user?.id) {
+  if (
+    !user?.id
+  ) {
     throw new HttpError(
       "Unauthorized",
       401
@@ -271,45 +414,237 @@ async function requireUser(request, env) {
   return user;
 }
 
-async function requireAdmin(request, env) {
+/*
+ * ============================================================
+ * ROLE SYSTEM
+ * ============================================================
+ *
+ * Role berasal dari:
+ *
+ * public.user_roles.user_id
+ *        ↓
+ * auth.users.id
+ *
+ * Role yang valid:
+ * - user
+ * - admin
+ * - owner
+ *
+ * Owner juga memiliki hak admin.
+ * Tidak ada email owner yang di-hardcode.
+ * ============================================================
+ */
+
+const VALID_ROLES = [
+  "user",
+  "admin",
+  "owner"
+];
+
+function isValidRole(
+  role
+) {
+  return VALID_ROLES.includes(
+    String(
+      role || ""
+    ).toLowerCase()
+  );
+}
+
+function isAdminRole(
+  role
+) {
+  return (
+    role === "admin" ||
+    role === "owner"
+  );
+}
+
+async function getUserRole(
+  userId,
+  env
+) {
+  if (!userId) {
+    return null;
+  }
+
+  const roleRows =
+    await rows(
+      `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
+        userId
+      )}&select=user_id,role&limit=1`,
+      env
+    );
+
+  const role =
+    roleRows?.[0]?.role ||
+    null;
+
+  return isValidRole(
+    role
+  )
+    ? role
+    : null;
+}
+
+async function ensureUserRole(
+  userId,
+  env
+) {
+  if (!userId) {
+    throw new HttpError(
+      "User ID tidak valid.",
+      400
+    );
+  }
+
+  let role =
+    await getUserRole(
+      userId,
+      env
+    );
+
+  if (role) {
+    return role;
+  }
+
+  /*
+   * User baru otomatis dibuat
+   * sebagai role user.
+   *
+   * Tidak pernah otomatis menjadi
+   * admin atau owner.
+   */
+  const createRole =
+    await sb(
+      "/rest/v1/user_roles",
+      {
+        method:
+          "POST",
+
+        headers: {
+          Prefer:
+            "resolution=ignore-duplicates,return=representation"
+        },
+
+        body: JSON.stringify({
+          user_id:
+            userId,
+
+          role:
+            "user"
+        })
+      },
+      env
+    );
+
+  if (
+    !createRole.ok
+  ) {
+    /*
+     * Bisa terjadi race condition:
+     * request lain sudah membuat
+     * role user lebih dulu.
+     *
+     * Jadi kita baca ulang.
+     */
+    role =
+      await getUserRole(
+        userId,
+        env
+      );
+
+    if (role) {
+      return role;
+    }
+
+    console.error(
+      "ensureUserRole failed",
+      await safeJson(
+        createRole
+      )
+    );
+
+    throw new HttpError(
+      "Gagal membuat role user.",
+      500
+    );
+  }
+
+  role =
+    await getUserRole(
+      userId,
+      env
+    );
+
+  return (
+    role ||
+    "user"
+  );
+}
+
+async function requireAdmin(
+  request,
+  env
+) {
   const user =
     await requireUser(
       request,
       env
     );
 
-  const res = await sb(
-    `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
-      user.id
-    )}&role=eq.admin&select=user_id`,
-    {},
-    env
-  );
+  /*
+   * Admin DAN Owner boleh mengakses
+   * seluruh endpoint /api/admin/*
+   */
+  const res =
+    await sb(
+      `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
+        user.id
+      )}&role=in.(admin,owner)&select=user_id,role&limit=1`,
+      {},
+      env
+    );
 
-  if (!res.ok) {
+  if (
+    !res.ok
+  ) {
+    console.error(
+      "role admin check failed",
+      await safeJson(
+        res
+      )
+    );
+
     throw new HttpError(
       "Gagal memeriksa role admin.",
       500
     );
   }
 
-  const rows = await res.json();
+  const roleRows =
+    await res.json();
 
-  if (!rows.length) {
+  const role =
+    roleRows?.[0]?.role ||
+    null;
+
+  if (
+    !isAdminRole(
+      role
+    )
+  ) {
     throw new HttpError(
       "Akses admin ditolak.",
       403
     );
   }
 
-  return user;
-}
+  return {
+    ...user,
 
-class HttpError extends Error {
-  constructor(message, status) {
-    super(message);
-    this.status = status;
-  }
+    role
+  };
 }
 
 /*
@@ -321,27 +656,42 @@ class HttpError extends Error {
 const GENERATE_LIMIT_WINDOW_MS =
   60_000;
 
-const GENERATE_LIMIT_MAX = 5;
+const GENERATE_LIMIT_MAX =
+  5;
 
-const generateRate = new Map();
+const generateRate =
+  new Map();
 
-function checkGenerateRate(userId) {
-  const now = Date.now();
+function checkGenerateRate(
+  userId
+) {
+  const now =
+    Date.now();
 
-  const key = String(userId);
+  const key =
+    String(
+      userId
+    );
 
-  const hit = generateRate.get(key);
+  const hit =
+    generateRate.get(
+      key
+    );
 
   if (
     !hit ||
-    now - hit.startedAt >=
+    now -
+      hit.startedAt >=
       GENERATE_LIMIT_WINDOW_MS
   ) {
     generateRate.set(
       key,
       {
-        startedAt: now,
-        count: 1
+        startedAt:
+          now,
+
+        count:
+          1
       }
     );
 
@@ -373,7 +723,9 @@ async function getProvider(
   requireEnabled = true
 ) {
   const id =
-    canonicalProvider(provider);
+    canonicalProvider(
+      provider
+    );
 
   if (!id) {
     throw new HttpError(
@@ -382,15 +734,18 @@ async function getProvider(
     );
   }
 
-  const res = await sb(
-    `/rest/v1/providers?id=eq.${encodeURIComponent(
-      id
-    )}&select=id,name,adapter,api_key,enabled,config`,
-    {},
-    env
-  );
+  const res =
+    await sb(
+      `/rest/v1/providers?id=eq.${encodeURIComponent(
+        id
+      )}&select=id,name,adapter,api_key,enabled,config`,
+      {},
+      env
+    );
 
-  if (!res.ok) {
+  if (
+    !res.ok
+  ) {
     throw new HttpError(
       "Gagal mengambil konfigurasi provider.",
       500
@@ -398,7 +753,9 @@ async function getProvider(
   }
 
   const row =
-    (await res.json())?.[0];
+    (
+      await res.json()
+    )?.[0];
 
   if (!row) {
     throw new HttpError(
@@ -418,7 +775,9 @@ async function getProvider(
   }
 
   const adapter =
-    resolveAdapter(row);
+    resolveAdapter(
+      row
+    );
 
   if (!adapter) {
     throw new HttpError(
@@ -427,7 +786,9 @@ async function getProvider(
     );
   }
 
-  if (!row.api_key) {
+  if (
+    !row.api_key
+  ) {
     throw new HttpError(
       `API key ${id} belum dikonfigurasi admin.`,
       400
@@ -452,19 +813,26 @@ async function providerConfigured(
     return Boolean(
       p.api_key &&
       p.enabled &&
-      adapterSupported(p)
+      adapterSupported(
+        p
+      )
     );
   } catch {
     return false;
   }
 }
 
-function publicProvider(p) {
+function publicProvider(
+  p
+) {
   const info =
-    adapterInfo(p.adapter);
+    adapterInfo(
+      p.adapter
+    );
 
   return {
-    id: p.id,
+    id:
+      p.id,
 
     name:
       p.name ||
@@ -475,10 +843,14 @@ function publicProvider(p) {
       p.adapter,
 
     enabled:
-      Boolean(p.enabled),
+      Boolean(
+        p.enabled
+      ),
 
     configured:
-      Boolean(p.api_key),
+      Boolean(
+        p.api_key
+      ),
 
     capabilities:
       info?.capabilities ||
@@ -494,10 +866,12 @@ function publicProvider(p) {
 
 function parseDataUrl(
   value,
-  maxBytes = 12 * 1024 * 1024
+  maxBytes =
+    12 * 1024 * 1024
 ) {
   if (
-    typeof value !== "string"
+    typeof value !==
+    "string"
   ) {
     return null;
   }
@@ -512,17 +886,23 @@ function parseDataUrl(
   }
 
   const base64 =
-    m[2].replace(/\s/g, "");
+    m[2].replace(
+      /\s/g,
+      ""
+    );
 
   if (
-    base64.length * 0.75 >
+    base64.length *
+      0.75 >
     maxBytes
   ) {
     return null;
   }
 
   return {
-    mimeType: m[1],
+    mimeType:
+      m[1],
+
     base64
   };
 }
@@ -533,9 +913,14 @@ function normalizeDuration(
   fallback
 ) {
   const n =
-    Number(value || fallback);
+    Number(
+      value ||
+        fallback
+    );
 
-  return allowed.includes(n)
+  return allowed.includes(
+    n
+  )
     ? n
     : null;
 }
@@ -554,27 +939,42 @@ async function reserveJob(
   fingerprint,
   env
 ) {
-  const res = await sb(
-    "/rest/v1/rpc/start_video_job",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        p_user_id: userId,
-        p_provider: provider,
-        p_credit_cost: cost,
-        p_idempotency_key:
-          idempotencyKey,
-        p_request_fingerprint:
-          fingerprint
-      })
-    },
-    env
-  );
+  const res =
+    await sb(
+      "/rest/v1/rpc/start_video_job",
+      {
+        method:
+          "POST",
+
+        body:
+          JSON.stringify({
+            p_user_id:
+              userId,
+
+            p_provider:
+              provider,
+
+            p_credit_cost:
+              cost,
+
+            p_idempotency_key:
+              idempotencyKey,
+
+            p_request_fingerprint:
+              fingerprint
+          })
+      },
+      env
+    );
 
   const data =
-    await safeJson(res);
+    await safeJson(
+      res
+    );
 
-  if (!res.ok) {
+  if (
+    !res.ok
+  ) {
     throw new HttpError(
       apiError(
         data,
@@ -592,26 +992,35 @@ async function updateJob(
   patch,
   env
 ) {
-  const r = await sb(
-    `/rest/v1/video_jobs?id=eq.${encodeURIComponent(
-      jobId
-    )}`,
-    {
-      method: "PATCH",
-      headers: {
-        Prefer:
-          "return=minimal"
-      },
-      body: JSON.stringify({
-        ...patch,
-        updated_at:
-          new Date().toISOString()
-      })
-    },
-    env
-  );
+  const r =
+    await sb(
+      `/rest/v1/video_jobs?id=eq.${encodeURIComponent(
+        jobId
+      )}`,
+      {
+        method:
+          "PATCH",
 
-  if (!r.ok) {
+        headers: {
+          Prefer:
+            "return=minimal"
+        },
+
+        body:
+          JSON.stringify({
+            ...patch,
+
+            updated_at:
+              new Date()
+                .toISOString()
+          })
+      },
+      env
+    );
+
+  if (
+    !r.ok
+  ) {
     throw new HttpError(
       "Gagal memperbarui status job.",
       500
@@ -630,24 +1039,36 @@ async function recordJobEvent(
     await sb(
       "/rest/v1/rpc/record_video_job_event",
       {
-        method: "POST",
-        body: JSON.stringify({
-          p_job_id: jobId,
-          p_user_id: userId,
-          p_event_type: eventType,
-          p_provider_status:
-            extra?.providerStatus ||
-            null,
-          p_error_code:
-            extra?.errorCode ||
-            null,
-          p_message:
-            extra?.message ||
-            "",
-          p_metadata:
-            extra?.metadata ||
-            {}
-        })
+        method:
+          "POST",
+
+        body:
+          JSON.stringify({
+            p_job_id:
+              jobId,
+
+            p_user_id:
+              userId,
+
+            p_event_type:
+              eventType,
+
+            p_provider_status:
+              extra?.providerStatus ||
+              null,
+
+            p_error_code:
+              extra?.errorCode ||
+              null,
+
+            p_message:
+              extra?.message ||
+              "",
+
+            p_metadata:
+              extra?.metadata ||
+              {}
+          })
       },
       env
     );
@@ -663,16 +1084,21 @@ async function refundJob(
   jobId,
   env
 ) {
-  const res = await sb(
-    "/rest/v1/rpc/refund_video_job",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        p_job_id: jobId
-      })
-    },
-    env
-  );
+  const res =
+    await sb(
+      "/rest/v1/rpc/refund_video_job",
+      {
+        method:
+          "POST",
+
+        body:
+          JSON.stringify({
+            p_job_id:
+              jobId
+          })
+      },
+      env
+    );
 
   return res.ok;
 }
@@ -693,9 +1119,15 @@ async function getJob(
     )}&select=*`;
 
   const res =
-    await sb(q, {}, env);
+    await sb(
+      q,
+      {},
+      env
+    );
 
-  if (!res.ok) {
+  if (
+    !res.ok
+  ) {
     throw new HttpError(
       "Gagal membaca job video.",
       500
@@ -705,7 +1137,10 @@ async function getJob(
   const rows =
     await res.json();
 
-  return rows?.[0] || null;
+  return (
+    rows?.[0] ||
+    null
+  );
 }
 
 /*
@@ -726,7 +1161,9 @@ async function handleGenerate(
     ).toLowerCase();
 
   if (
-    !ct.includes("application/json")
+    !ct.includes(
+      "application/json"
+    )
   ) {
     throw new HttpError(
       "Content-Type harus application/json.",
@@ -740,13 +1177,17 @@ async function handleGenerate(
       env
     );
 
-  checkGenerateRate(user.id);
+  checkGenerateRate(
+    user.id
+  );
 
   let body;
 
   try {
     body =
-      await readJson(request);
+      await readJson(
+        request
+      );
   } catch {
     throw new HttpError(
       "JSON tidak valid.",
@@ -774,7 +1215,9 @@ async function handleGenerate(
     );
 
   const adapter =
-    resolveAdapter(provider);
+    resolveAdapter(
+      provider
+    );
 
   if (!adapter) {
     throw new HttpError(
@@ -785,7 +1228,8 @@ async function handleGenerate(
 
   const prompt =
     String(
-      body?.prompt || ""
+      body?.prompt ||
+        ""
     ).trim();
 
   if (
@@ -799,9 +1243,9 @@ async function handleGenerate(
   }
 
   /*
-   * Simpan parameter asli request untuk Riwayat Video.
-   * Jangan hanya mengandalkan result dari provider karena
-   * tidak semua provider mengembalikan semua parameter input.
+   * Parameter asli generation.
+   * Dipertahankan agar Riwayat Video
+   * selalu memiliki detail generation.
    */
   const requestedModel =
     body?.model != null
@@ -859,7 +1303,8 @@ async function handleGenerate(
 
   const fingerprintSource =
     JSON.stringify({
-      provider: id,
+      provider:
+        id,
 
       model:
         requestedModel,
@@ -891,12 +1336,18 @@ async function handleGenerate(
 
   const fingerprint =
     Array.from(
-      new Uint8Array(digest)
+      new Uint8Array(
+        digest
+      )
     )
-      .map(b =>
-        b
-          .toString(16)
-          .padStart(2, "0")
+      .map(
+        b =>
+          b
+            .toString(16)
+            .padStart(
+              2,
+              "0"
+            )
       )
       .join("");
 
@@ -925,7 +1376,8 @@ async function handleGenerate(
     reservation?.existing
   ) {
     if (
-      reservation.provider !== id
+      reservation.provider !==
+      id
     ) {
       throw new HttpError(
         "Idempotency key terkait provider berbeda.",
@@ -938,12 +1390,20 @@ async function handleGenerate(
     ) {
       return json(
         {
-          success: true,
-          idempotent: true,
+          success:
+            true,
+
+          idempotent:
+            true,
+
           jobId,
+
           externalId:
             reservation.external_id,
-          provider: id,
+
+          provider:
+            id,
+
           status:
             reservation.status ||
             "processing"
@@ -960,31 +1420,28 @@ async function handleGenerate(
   }
 
   try {
-    /*
-     * Simpan input generation sejak awal.
-     * Ini memastikan data Riwayat tetap tersedia walaupun
-     * provider tidak mengembalikan ulang prompt/input.
-     */
-    const initialMetadata = {
-      provider: id,
+    const initialMetadata =
+      {
+        provider:
+          id,
 
-      adapter:
-        provider.adapter,
+        adapter:
+          provider.adapter,
 
-      prompt,
+        prompt,
 
-      model:
-        requestedModel,
+        model:
+          requestedModel,
 
-      duration:
-        requestedDuration,
+        duration:
+          requestedDuration,
 
-      aspectRatio:
-        requestedAspectRatio,
+        aspectRatio:
+          requestedAspectRatio,
 
-      resolution:
-        requestedResolution
-    };
+        resolution:
+          requestedResolution
+      };
 
     await updateJob(
       jobId,
@@ -1029,37 +1486,37 @@ async function handleGenerate(
       );
     }
 
-    result.provider = id;
+    result.provider =
+      id;
 
-    /*
-     * Gabungkan metadata input dengan metadata provider.
-     * Metadata input tidak boleh hilang.
-     */
-    const metadata = {
-      ...initialMetadata,
-      ...result,
+    const metadata =
+      {
+        ...initialMetadata,
 
-      provider: id,
+        ...result,
 
-      adapter:
-        provider.adapter,
+        provider:
+          id,
 
-      prompt,
+        adapter:
+          provider.adapter,
 
-      model:
-        requestedModel ||
-        result.model ||
-        null,
+        prompt,
 
-      duration:
-        requestedDuration,
+        model:
+          requestedModel ||
+          result.model ||
+          null,
 
-      aspectRatio:
-        requestedAspectRatio,
+        duration:
+          requestedDuration,
 
-      resolution:
-        requestedResolution
-    };
+        aspectRatio:
+          requestedAspectRatio,
+
+        resolution:
+          requestedResolution
+      };
 
     await updateJob(
       jobId,
@@ -1071,15 +1528,18 @@ async function handleGenerate(
           result.status ||
           "processing",
 
-        attempt_count: 1,
+        attempt_count:
+          1,
 
         provider_status:
           result.status ||
           "processing",
 
-        last_error: null,
+        last_error:
+          null,
 
-        last_error_code: null,
+        last_error_code:
+          null,
 
         model:
           requestedModel ||
@@ -1110,10 +1570,16 @@ async function handleGenerate(
 
     return json(
       {
-        success: true,
+        success:
+          true,
+
         jobId,
+
         ...result,
-        provider: id,
+
+        provider:
+          id,
+
         creditsRemaining:
           reservation.credits_remaining
       },
@@ -1140,7 +1606,9 @@ async function handleGenerate(
           "failed"
       },
       env
-    ).catch(() => {});
+    ).catch(
+      () => {}
+    );
 
     await recordJobEvent(
       jobId,
@@ -1209,7 +1677,9 @@ async function handleStatus(
 
   try {
     body =
-      await readJson(request);
+      await readJson(
+        request
+      );
   } catch {
     throw new HttpError(
       "JSON status tidak valid.",
@@ -1267,7 +1737,9 @@ async function handleStatus(
     );
 
   const adapter =
-    resolveAdapter(provider);
+    resolveAdapter(
+      provider
+    );
 
   if (!adapter) {
     throw new HttpError(
@@ -1290,7 +1762,8 @@ async function handleStatus(
     );
   }
 
-  result.provider = id;
+  result.provider =
+    id;
 
   if (
     result.status ===
@@ -1303,52 +1776,54 @@ async function handleStatus(
         job.id
       )}`;
 
-    /*
-     * Pertahankan metadata generation sebelumnya.
-     * Jangan mengganti metadata hanya dengan metadata provider.
-     */
-    const previousMetadata = {
-      ...(job.metadata || {})
-    };
+    const previousMetadata =
+      {
+        ...(job.metadata ||
+          {})
+      };
 
-    const nextMetadata = {
-      ...previousMetadata,
+    const nextMetadata =
+      {
+        ...previousMetadata,
 
-      ...result,
+        ...result,
 
-      provider: id,
+        provider:
+          id,
 
-      adapter:
-        provider.adapter,
+        adapter:
+          provider.adapter,
 
-      prompt:
-        previousMetadata.prompt ||
-        result.prompt ||
-        null,
+        prompt:
+          previousMetadata.prompt ||
+          result.prompt ||
+          null,
 
-      model:
-        previousMetadata.model ||
-        result.model ||
-        job.model ||
-        null,
+        model:
+          previousMetadata.model ||
+          result.model ||
+          job.model ||
+          null,
 
-      duration:
-        previousMetadata.duration ??
-        result.duration ??
-        null,
+        duration:
+          previousMetadata.duration ??
+          result.duration ??
+          null,
 
-      aspectRatio:
-        previousMetadata.aspectRatio ||
-        result.aspectRatio ||
-        null,
+        aspectRatio:
+          previousMetadata.aspectRatio ||
+          result.aspectRatio ||
+          null,
 
-      resolution:
-        previousMetadata.resolution ||
-        result.resolution ||
-        null
-    };
+        resolution:
+          previousMetadata.resolution ||
+          result.resolution ||
+          null
+      };
 
-    if (result.fileId) {
+    if (
+      result.fileId
+    ) {
       nextMetadata.provider_file_id =
         result.fileId;
     }
@@ -1362,9 +1837,11 @@ async function handleStatus(
         provider_status:
           "completed",
 
-        last_error: null,
+        last_error:
+          null,
 
-        last_error_code: null,
+        last_error_code:
+          null,
 
         video_url:
           result.videoUrl ||
@@ -1407,7 +1884,8 @@ async function handleStatus(
     await updateJob(
       job.id,
       {
-        status: "failed",
+        status:
+          "failed",
 
         provider_status:
           "failed",
@@ -1482,10 +1960,11 @@ async function handleStatus(
         message:
           "Provider still processing",
 
-        metadata: {
-          adapter:
-            provider.adapter
-        }
+        metadata:
+          {
+            adapter:
+              provider.adapter
+          }
       },
       env
     );
@@ -1493,7 +1972,9 @@ async function handleStatus(
 
   return json(
     {
-      jobId: job.id,
+      jobId:
+        job.id,
+
       ...result
     },
     200,
@@ -1503,7 +1984,7 @@ async function handleStatus(
 
 /*
  * ============================================================
- * VIDEO PROXY ROUTER
+ * VIDEO PROXY
  * ============================================================
  */
 
@@ -1518,7 +1999,9 @@ async function handleVideo(
     );
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
   const id =
     canonicalProvider(
@@ -1559,7 +2042,9 @@ async function handleVideo(
       env
     );
 
-  if (!jobRows.ok) {
+  if (
+    !jobRows.ok
+  ) {
     throw new HttpError(
       "Gagal memeriksa job video.",
       500
@@ -1567,7 +2052,9 @@ async function handleVideo(
   }
 
   const job =
-    (await jobRows.json())?.[0];
+    (
+      await jobRows.json()
+    )?.[0];
 
   if (!job) {
     throw new HttpError(
@@ -1577,7 +2064,8 @@ async function handleVideo(
   }
 
   if (
-    job.provider !== id
+    job.provider !==
+    id
   ) {
     throw new HttpError(
       "Provider job tidak cocok.",
@@ -1603,7 +2091,9 @@ async function handleVideo(
     );
 
   const adapter =
-    resolveAdapter(provider);
+    resolveAdapter(
+      provider
+    );
 
   if (!adapter) {
     throw new HttpError(
@@ -1616,7 +2106,8 @@ async function handleVideo(
 
   if (
     String(
-      provider.adapter || ""
+      provider.adapter ||
+        ""
     ).toLowerCase() ===
     "minimax"
   ) {
@@ -1636,7 +2127,8 @@ async function handleVideo(
   } else {
     target =
       String(
-        job.video_url || ""
+        job.video_url ||
+          ""
       ).trim();
 
     if (
@@ -1666,7 +2158,9 @@ async function handleVideo(
     );
   }
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw new HttpError(
       `Gagal mengambil video (${response.status}).`,
       response.status
@@ -1676,10 +2170,13 @@ async function handleVideo(
   return new Response(
     response.body,
     {
-      status: 200,
+      status:
+        200,
 
       headers: {
-        ...corsHeaders(env),
+        ...corsHeaders(
+          env
+        ),
 
         "Content-Type":
           response.headers.get(
@@ -1711,7 +2208,9 @@ async function transactionApi(
     );
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
   const limit =
     Math.min(
@@ -1726,7 +2225,7 @@ async function transactionApi(
       )
     );
 
-  const rows =
+  const txRows =
     await sb(
       `/rest/v1/credit_transactions?user_id=eq.${encodeURIComponent(
         user.id
@@ -1735,9 +2234,13 @@ async function transactionApi(
       env
     );
 
-  if (!rows.ok) {
+  if (
+    !txRows.ok
+  ) {
     const data =
-      await safeJson(rows);
+      await safeJson(
+        txRows
+      );
 
     console.error(
       "credit transaction query failed",
@@ -1752,9 +2255,11 @@ async function transactionApi(
 
   return json(
     {
-      success: true,
+      success:
+        true,
+
       transactions:
-        await rows.json()
+        await txRows.json()
     },
     200,
     env
@@ -1778,7 +2283,9 @@ async function topupApi(
     );
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
   if (
     request.method ===
@@ -1806,7 +2313,9 @@ async function topupApi(
         env
       );
 
-    if (!r.ok) {
+    if (
+      !r.ok
+    ) {
       throw new HttpError(
         "Gagal mengambil request top-up.",
         500
@@ -1815,7 +2324,9 @@ async function topupApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
+
         requests:
           await r.json()
       },
@@ -1828,23 +2339,9 @@ async function topupApi(
     request.method ===
     "POST"
   ) {
-    const ct =
-      String(
-        request.headers.get(
-          "content-type"
-        ) || ""
-      ).toLowerCase();
-
-    if (
-      !ct.includes(
-        "application/json"
-      )
-    ) {
-      throw new HttpError(
-        "Content-Type harus application/json.",
-        415
-      );
-    }
+    requireJsonContentType(
+      request
+    );
 
     const body =
       await readJson(
@@ -1852,14 +2349,20 @@ async function topupApi(
       );
 
     const amount =
-      Number(body.amount);
+      Number(
+        body.amount
+      );
 
     const note =
       String(
-        body.note || ""
+        body.note ||
+          ""
       )
         .trim()
-        .slice(0, 500);
+        .slice(
+          0,
+          500
+        );
 
     if (
       !Number.isInteger(
@@ -1882,7 +2385,9 @@ async function topupApi(
         env
       );
 
-    if (pending.length) {
+    if (
+      pending.length
+    ) {
       throw new HttpError(
         "Anda masih memiliki request top-up yang menunggu diproses.",
         409
@@ -1893,29 +2398,35 @@ async function topupApi(
       await sb(
         "/rest/v1/credit_topup_requests",
         {
-          method: "POST",
+          method:
+            "POST",
 
           headers: {
             Prefer:
               "return=representation"
           },
 
-          body: JSON.stringify({
-            user_id:
-              user.id,
+          body:
+            JSON.stringify({
+              user_id:
+                user.id,
 
-            amount,
+              amount,
 
-            note
-          })
+              note
+            })
         },
         env
       );
 
-    if (!r.ok) {
+    if (
+      !r.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(r),
+          await safeJson(
+            r
+          ),
           "Gagal membuat request top-up."
         ),
         r.status
@@ -1924,10 +2435,13 @@ async function topupApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         request:
-          (await r.json())?.[0] ||
+          (
+            await r.json()
+          )?.[0] ||
           null
       },
       201,
@@ -1944,6 +2458,13 @@ async function topupApi(
 /*
  * ============================================================
  * ACCOUNT
+ * ============================================================
+ *
+ * PERBAIKAN UTAMA:
+ * - Role diambil berdasarkan UID.
+ * - Role user/admin/owner.
+ * - Owner dianggap admin.
+ * - roleValidated dikirim ke frontend.
  * ============================================================
  */
 
@@ -1963,19 +2484,21 @@ async function accountApi(
       env
     );
 
-  const roleRows =
-    await rows(
-      `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
-        user.id
-      )}&role=eq.admin&select=user_id`,
+  const role =
+    await ensureUserRole(
+      user.id,
       env
     );
 
+  const roleValidated =
+    isValidRole(
+      role
+    );
+
   const isAdmin =
-    Array.isArray(
-      roleRows
-    ) &&
-    roleRows.length > 0;
+    isAdminRole(
+      role
+    );
 
   const contactRes =
     await sb(
@@ -1991,10 +2514,12 @@ async function accountApi(
 
   return json(
     {
-      success: true,
+      success:
+        true,
 
       user: {
-        id: user.id,
+        id:
+          user.id,
 
         email:
           user.email ||
@@ -2004,8 +2529,13 @@ async function accountApi(
       credits:
         Number(
           creditRows?.[0]
-            ?.credits || 0
+            ?.credits ||
+            0
         ),
+
+      role,
+
+      roleValidated,
 
       isAdmin,
 
@@ -2032,7 +2562,9 @@ async function rowsForAccount(
       env
     );
 
-  if (!res.ok) {
+  if (
+    !res.ok
+  ) {
     throw new HttpError(
       "Gagal mengambil credit.",
       500
@@ -2059,7 +2591,15 @@ async function adminApi(
     );
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN JOBS
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -2092,7 +2632,9 @@ async function adminApi(
         "processing",
         "completed",
         "failed"
-      ].includes(status)
+      ].includes(
+        status
+      )
     ) {
       throw new HttpError(
         "Status job tidak valid.",
@@ -2114,7 +2656,9 @@ async function adminApi(
         env
       );
 
-    if (!r.ok) {
+    if (
+      !r.ok
+    ) {
       throw new HttpError(
         "Gagal mengambil job log.",
         500
@@ -2123,7 +2667,9 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
+
         jobs:
           await r.json()
       },
@@ -2131,6 +2677,12 @@ async function adminApi(
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * JOB EVENTS
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -2170,7 +2722,9 @@ async function adminApi(
         env
       );
 
-    if (!r.ok) {
+    if (
+      !r.ok
+    ) {
       throw new HttpError(
         "Gagal mengambil event log.",
         500
@@ -2179,7 +2733,9 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
+
         events:
           await r.json()
       },
@@ -2187,6 +2743,12 @@ async function adminApi(
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * PROVIDERS
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -2201,7 +2763,9 @@ async function adminApi(
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         "Gagal mengambil provider.",
         500
@@ -2213,12 +2777,15 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         providers:
           providerRows.map(
             p => ({
-              ...publicProvider(p),
+              ...publicProvider(
+                p
+              ),
 
               created_at:
                 p.created_at,
@@ -2259,14 +2826,20 @@ async function adminApi(
       );
 
     const id =
-      providerId(body.id);
+      providerId(
+        body.id
+      );
 
     const name =
       String(
-        body.name || id
+        body.name ||
+          id
       )
         .trim()
-        .slice(0, 100);
+        .slice(
+          0,
+          100
+        );
 
     if (!name) {
       throw new HttpError(
@@ -2277,15 +2850,20 @@ async function adminApi(
 
     let adapterValue =
       String(
-        body.adapter || ""
+        body.adapter ||
+          ""
       )
         .trim()
         .toLowerCase();
 
     if (!adapterValue) {
       const inferred =
-        inferAdapter(name) ||
-        inferAdapter(id);
+        inferAdapter(
+          name
+        ) ||
+        inferAdapter(
+          id
+        );
 
       if (inferred) {
         adapterValue =
@@ -2306,7 +2884,8 @@ async function adminApi(
 
     const key =
       String(
-        body.api_key || ""
+        body.api_key ||
+          ""
       ).trim();
 
     if (!key) {
@@ -2317,7 +2896,8 @@ async function adminApi(
     }
 
     const enabled =
-      body.enabled !== false;
+      body.enabled !==
+      false;
 
     const config =
       body.config &&
@@ -2332,7 +2912,8 @@ async function adminApi(
     if (
       JSON.stringify(
         config
-      ).length > 20000
+      ).length >
+      20000
     ) {
       throw new HttpError(
         "Config provider terlalu besar.",
@@ -2344,38 +2925,46 @@ async function adminApi(
       await sb(
         "/rest/v1/providers",
         {
-          method: "POST",
+          method:
+            "POST",
 
           headers: {
             Prefer:
               "return=minimal"
           },
 
-          body: JSON.stringify({
-            id,
+          body:
+            JSON.stringify({
+              id,
 
-            name,
+              name,
 
-            adapter:
-              adapterValue,
+              adapter:
+                adapterValue,
 
-            api_key: key,
+              api_key:
+                key,
 
-            enabled,
+              enabled,
 
-            config,
+              config,
 
-            updated_at:
-              new Date().toISOString()
-          })
+              updated_at:
+                new Date()
+                  .toISOString()
+            })
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal menambahkan provider."
         ),
         res.status
@@ -2384,14 +2973,17 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         message:
           "Provider berhasil ditambahkan.",
 
         provider: {
           id,
+
           name,
+
           adapter:
             adapterValue
         }
@@ -2438,7 +3030,10 @@ async function adminApi(
           body.name
         )
           .trim()
-          .slice(0, 100) ||
+          .slice(
+            0,
+            100
+          ) ||
         id;
     }
 
@@ -2512,7 +3107,8 @@ async function adminApi(
       if (
         JSON.stringify(
           body.config
-        ).length > 20000
+        ).length >
+        20000
       ) {
         throw new HttpError(
           "Config provider terlalu besar.",
@@ -2525,7 +3121,8 @@ async function adminApi(
     }
 
     patch.updated_at =
-      new Date().toISOString();
+      new Date()
+        .toISOString();
 
     const res =
       await sb(
@@ -2533,24 +3130,30 @@ async function adminApi(
           id
         )}`,
         {
-          method: "PATCH",
+          method:
+            "PATCH",
 
           headers: {
             Prefer:
               "return=minimal"
           },
 
-          body: JSON.stringify(
-            patch
-          )
+          body:
+            JSON.stringify(
+              patch
+            )
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal memperbarui provider."
         ),
         res.status
@@ -2559,7 +3162,8 @@ async function adminApi(
 
     return json(
       {
-        success: true
+        success:
+          true
       },
       200,
       env
@@ -2607,10 +3211,14 @@ async function adminApi(
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal menghapus provider."
         ),
         res.status
@@ -2619,7 +3227,8 @@ async function adminApi(
 
     return json(
       {
-        success: true
+        success:
+          true
       },
       200,
       env
@@ -2656,9 +3265,11 @@ async function adminApi(
       );
 
     const enabled =
-      enableHeader === "true"
+      enableHeader ===
+      "true"
         ? true
-        : enableHeader === "false"
+        : enableHeader ===
+          "false"
           ? false
           : !current.enabled;
 
@@ -2676,20 +3287,26 @@ async function adminApi(
               "return=minimal"
           },
 
-          body: JSON.stringify({
-            enabled,
+          body:
+            JSON.stringify({
+              enabled,
 
-            updated_at:
-              new Date().toISOString()
-          })
+              updated_at:
+                new Date()
+                  .toISOString()
+            })
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal mengubah status provider."
         ),
         res.status
@@ -2698,13 +3315,21 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
+
         enabled
       },
       200,
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * TOPUP REQUESTS
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -2716,7 +3341,8 @@ async function adminApi(
       String(
         url.searchParams.get(
           "status"
-        ) || "pending"
+        ) ||
+          "pending"
       ).trim();
 
     const limit =
@@ -2727,7 +3353,8 @@ async function adminApi(
           Number(
             url.searchParams.get(
               "limit"
-            ) || 100
+            ) ||
+              100
           )
         )
       );
@@ -2738,7 +3365,9 @@ async function adminApi(
         "approved",
         "rejected",
         "all"
-      ].includes(status)
+      ].includes(
+        status
+      )
     ) {
       throw new HttpError(
         "Status tidak valid.",
@@ -2747,7 +3376,8 @@ async function adminApi(
     }
 
     const q =
-      status === "all"
+      status ===
+      "all"
         ? ""
         : `&status=eq.${encodeURIComponent(
             status
@@ -2760,7 +3390,9 @@ async function adminApi(
         env
       );
 
-    if (!tx.ok) {
+    if (
+      !tx.ok
+    ) {
       throw new HttpError(
         "Gagal mengambil request top-up.",
         500
@@ -2769,7 +3401,8 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         requests:
           await tx.json()
@@ -2819,31 +3452,37 @@ async function adminApi(
           method:
             "POST",
 
-          body: JSON.stringify({
-            p_admin_user_id:
-              admin.id,
+          body:
+            JSON.stringify({
+              p_admin_user_id:
+                admin.id,
 
-            p_request_id:
-              requestId,
+              p_request_id:
+                requestId,
 
-            p_admin_note:
-              String(
-                body.note || ""
-              )
-                .trim()
-                .slice(
-                  0,
-                  500
+              p_admin_note:
+                String(
+                  body.note ||
+                    ""
                 )
-          })
+                  .trim()
+                  .slice(
+                    0,
+                    500
+                  )
+            })
         },
         env
       );
 
-    if (!r.ok) {
+    if (
+      !r.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(r),
+          await safeJson(
+            r
+          ),
           `Gagal ${
             action ===
             "approve"
@@ -2857,15 +3496,24 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         result:
-          await safeJson(r)
+          await safeJson(
+            r
+          )
       },
       200,
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN CONTACT
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -2880,17 +3528,18 @@ async function adminApi(
         env
       );
 
-    const rows =
+    const contactRows =
       res.ok
         ? await res.json()
         : [];
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         url:
-          rows?.[0]
+          contactRows?.[0]
             ?.setting_value ||
           ""
       },
@@ -2916,7 +3565,8 @@ async function adminApi(
 
     const contact =
       String(
-        body.url || ""
+        body.url ||
+          ""
       ).trim();
 
     if (contact) {
@@ -2956,24 +3606,30 @@ async function adminApi(
               "resolution=merge-duplicates,return=minimal"
           },
 
-          body: JSON.stringify({
-            setting_key:
-              "admin_contact_url",
+          body:
+            JSON.stringify({
+              setting_key:
+                "admin_contact_url",
 
-            setting_value:
-              contact,
+              setting_value:
+                contact,
 
-            updated_at:
-              new Date().toISOString()
-          })
+              updated_at:
+                new Date()
+                  .toISOString()
+            })
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal menyimpan kontak admin."
         ),
         res.status
@@ -2982,12 +3638,19 @@ async function adminApi(
 
     return json(
       {
-        success: true
+        success:
+          true
       },
       200,
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * USERS
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -3000,21 +3663,21 @@ async function adminApi(
         env
       );
 
-    const roles =
+    const roleRows =
       await rows(
         "/rest/v1/user_roles?select=user_id,role",
         env
       );
 
-    const credits =
+    const creditRows =
       await rows(
         "/rest/v1/user_credits?select=user_id,credits",
         env
       );
 
-    const rm =
+    const roleMap =
       new Map(
-        roles.map(
+        roleRows.map(
           x => [
             x.user_id,
             x.role
@@ -3022,13 +3685,14 @@ async function adminApi(
         )
       );
 
-    const cm =
+    const creditMap =
       new Map(
-        credits.map(
+        creditRows.map(
           x => [
             x.user_id,
             Number(
-              x.credits || 0
+              x.credits ||
+                0
             )
           ]
         )
@@ -3036,24 +3700,26 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         users:
           users.map(
             u => ({
-              id: u.id,
+              id:
+                u.id,
 
               email:
                 u.email,
 
               role:
-                rm.get(
+                roleMap.get(
                   u.id
                 ) ||
                 "user",
 
               credits:
-                cm.get(
+                creditMap.get(
                   u.id
                 ) ||
                 0,
@@ -3068,6 +3734,12 @@ async function adminApi(
     );
   }
 
+  /*
+   * ----------------------------------------------------------
+   * TRANSACTIONS
+   * ----------------------------------------------------------
+   */
+
   if (
     url.pathname ===
       "/api/admin/transactions" &&
@@ -3078,7 +3750,8 @@ async function adminApi(
       String(
         url.searchParams.get(
           "user_id"
-        ) || ""
+        ) ||
+          ""
       ).trim();
 
     if (
@@ -3101,7 +3774,8 @@ async function adminApi(
           Number(
             url.searchParams.get(
               "limit"
-            ) || 100
+            ) ||
+              100
           )
         )
       );
@@ -3122,9 +3796,13 @@ async function adminApi(
         env
       );
 
-    if (!tx.ok) {
+    if (
+      !tx.ok
+    ) {
       const data =
-        await safeJson(tx);
+        await safeJson(
+          tx
+        );
 
       console.error(
         "admin credit transaction query failed",
@@ -3139,7 +3817,8 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         transactions:
           await tx.json()
@@ -3148,6 +3827,12 @@ async function adminApi(
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * CREDIT ADJUSTMENT
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -3166,7 +3851,8 @@ async function adminApi(
 
     const userId =
       String(
-        body.user_id || ""
+        body.user_id ||
+          ""
       ).trim();
 
     if (
@@ -3186,11 +3872,11 @@ async function adminApi(
       );
 
     if (
-      !userId ||
       !Number.isInteger(
         amount
       ) ||
-      amount === 0
+      amount ===
+        0
     ) {
       throw new HttpError(
         "user_id dan amount integer non-zero wajib.",
@@ -3205,30 +3891,35 @@ async function adminApi(
           method:
             "POST",
 
-          body: JSON.stringify({
-            p_admin_user_id:
-              admin.id,
+          body:
+            JSON.stringify({
+              p_admin_user_id:
+                admin.id,
 
-            p_user_id:
-              userId,
+              p_user_id:
+                userId,
 
-            p_amount:
-              amount,
+              p_amount:
+                amount,
 
-            p_note:
-              String(
-                body.note ||
-                  "Admin adjustment"
-              )
-          })
+              p_note:
+                String(
+                  body.note ||
+                    "Admin adjustment"
+                )
+            })
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal mengubah credit."
         ),
         res.status
@@ -3237,12 +3928,23 @@ async function adminApi(
 
     return json(
       {
-        success: true
+        success:
+          true
       },
       200,
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * ADMIN LIST
+   * ----------------------------------------------------------
+   *
+   * PERBAIKAN:
+   * Owner ikut dianggap admin.
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -3250,9 +3952,9 @@ async function adminApi(
     request.method ===
       "GET"
   ) {
-    const roles =
+    const roleRows =
       await rows(
-        "/rest/v1/user_roles?role=eq.admin&select=user_id,role",
+        "/rest/v1/user_roles?role=in.(admin,owner)&select=user_id,role",
         env
       );
 
@@ -3261,7 +3963,7 @@ async function adminApi(
         env
       );
 
-    const um =
+    const userMap =
       new Map(
         users.map(
           u => [
@@ -3273,18 +3975,20 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         admins:
-          roles.map(
+          roleRows.map(
             r => ({
               user_id:
                 r.user_id,
 
               email:
-                um.get(
+                userMap.get(
                   r.user_id
-                ) || "",
+                ) ||
+                "",
 
               role:
                 r.role
@@ -3295,6 +3999,18 @@ async function adminApi(
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * ADD ADMIN
+   * ----------------------------------------------------------
+   *
+   * Email hanya digunakan untuk
+   * mencari UID.
+   *
+   * Yang disimpan tetap UID.
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -3313,29 +4029,65 @@ async function adminApi(
 
     const email =
       String(
-        body.email || ""
+        body.email ||
+          ""
       )
         .trim()
         .toLowerCase();
+
+    if (!email) {
+      throw new HttpError(
+        "Email wajib diisi.",
+        400
+      );
+    }
 
     const users =
       await listUsers(
         env
       );
 
-    const u =
+    const target =
       users.find(
         x =>
           String(
-            x.email || ""
+            x.email ||
+              ""
           ).toLowerCase() ===
           email
       );
 
-    if (!u) {
+    if (!target) {
       throw new HttpError(
         "User belum terdaftar.",
         404
+      );
+    }
+
+    /*
+     * Jangan mengubah Owner menjadi Admin.
+     * Jika sudah Owner, biarkan Owner.
+     */
+    const currentRole =
+      await getUserRole(
+        target.id,
+        env
+      );
+
+    if (
+      currentRole ===
+      "owner"
+    ) {
+      return json(
+        {
+          success:
+            true,
+
+          message:
+            "User tersebut sudah memiliki role owner."
+        },
+        200,
+        env
       );
     }
 
@@ -3348,24 +4100,29 @@ async function adminApi(
 
           headers: {
             Prefer:
-              "resolution=merge-duplicates"
+              "resolution=merge-duplicates,return=minimal"
           },
 
-          body: JSON.stringify({
-            user_id:
-              u.id,
+          body:
+            JSON.stringify({
+              user_id:
+                target.id,
 
-            role:
-              "admin"
-          })
+              role:
+                "admin"
+            })
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal menambahkan admin."
         ),
         res.status
@@ -3374,12 +4131,26 @@ async function adminApi(
 
     return json(
       {
-        success: true
+        success:
+          true,
+
+        message:
+          "Admin berhasil ditambahkan."
       },
       200,
       env
     );
   }
+
+  /*
+   * ----------------------------------------------------------
+   * REMOVE ADMIN
+   * ----------------------------------------------------------
+   *
+   * Owner tidak dapat dihapus melalui
+   * endpoint admin biasa.
+   * ----------------------------------------------------------
+   */
 
   if (
     url.pathname ===
@@ -3396,30 +4167,64 @@ async function adminApi(
         request
       );
 
-    if (
+    const targetId =
       String(
-        body.user_id
-      ) ===
+        body.user_id ||
+          ""
+      ).trim();
+
+    if (
+      !/^[0-9a-f-]{36}$/i.test(
+        targetId
+      )
+    ) {
+      throw new HttpError(
+        "user_id tidak valid.",
+        400
+      );
+    }
+
+    if (
+      targetId ===
       admin.id
     ) {
       throw new HttpError(
-        "Tidak dapat menghapus diri sendiri.",
+        "Tidak dapat menghapus role diri sendiri.",
         400
       );
     }
 
-    const targetId =
-      String(
-        body.user_id || ""
-      ).trim();
+    const targetRole =
+      await getUserRole(
+        targetId,
+        env
+      );
 
-    if (!targetId) {
+    if (
+      targetRole ===
+      "owner"
+    ) {
       throw new HttpError(
-        "user_id wajib.",
-        400
+        "Role owner tidak dapat dihapus melalui Admin Panel.",
+        403
       );
     }
 
+    if (
+      targetRole !==
+      "admin"
+    ) {
+      throw new HttpError(
+        "User tersebut bukan admin.",
+        404
+      );
+    }
+
+    /*
+     * Tetap menggunakan RPC existing
+     * supaya transaksi/logic database
+     * lama tidak berubah.
+     */
     const res =
       await sb(
         "/rest/v1/rpc/remove_admin",
@@ -3427,21 +4232,26 @@ async function adminApi(
           method:
             "POST",
 
-          body: JSON.stringify({
-            p_admin_user_id:
-              admin.id,
+          body:
+            JSON.stringify({
+              p_admin_user_id:
+                admin.id,
 
-            p_user_id:
-              targetId
-          })
+              p_user_id:
+                targetId
+            })
         },
         env
       );
 
-    if (!res.ok) {
+    if (
+      !res.ok
+    ) {
       throw new HttpError(
         apiError(
-          await safeJson(res),
+          await safeJson(
+            res
+          ),
           "Gagal menghapus admin."
         ),
         res.status
@@ -3450,10 +4260,13 @@ async function adminApi(
 
     return json(
       {
-        success: true,
+        success:
+          true,
 
         result:
-          await safeJson(res)
+          await safeJson(
+            res
+          )
       },
       200,
       env
@@ -3488,10 +4301,14 @@ async function rows(
     : [];
 }
 
-async function listUsers(env) {
-  const out = [];
+async function listUsers(
+  env
+) {
+  const out =
+    [];
 
-  let page = 1;
+  let page =
+    1;
 
   while (
     page <= 20
@@ -3510,7 +4327,9 @@ async function listUsers(env) {
         }
       );
 
-    if (!r.ok) {
+    if (
+      !r.ok
+    ) {
       break;
     }
 
@@ -3518,14 +4337,16 @@ async function listUsers(env) {
       await r.json();
 
     const batch =
-      d?.users || [];
+      d?.users ||
+      [];
 
     out.push(
       ...batch
     );
 
     if (
-      batch.length < 100
+      batch.length <
+      100
     ) {
       break;
     }
@@ -3555,10 +4376,11 @@ export default {
           method:
             "POST",
 
-          body: JSON.stringify({
-            p_max_age_minutes:
-              1440
-          })
+          body:
+            JSON.stringify({
+              p_max_age_minutes:
+                1440
+            })
         },
         env
       ).catch(
@@ -3582,7 +4404,8 @@ export default {
       return new Response(
         null,
         {
-          status: 204,
+          status:
+            204,
 
           headers:
             corsHeaders(
@@ -3598,6 +4421,12 @@ export default {
       );
 
     try {
+      /*
+       * ------------------------------------------------------
+       * CONFIG
+       * ------------------------------------------------------
+       */
+
       if (
         url.pathname ===
           "/api/config" &&
@@ -3606,7 +4435,8 @@ export default {
       ) {
         return json(
           {
-            success: true,
+            success:
+              true,
 
             supabaseUrl:
               env.SUPABASE_URL ||
@@ -3620,6 +4450,12 @@ export default {
           env
         );
       }
+
+      /*
+       * ------------------------------------------------------
+       * DIAGNOSTIC
+       * ------------------------------------------------------
+       */
 
       if (
         url.pathname ===
@@ -3635,7 +4471,8 @@ export default {
 
         return json(
           {
-            success: true,
+            success:
+              true,
 
             worker:
               "GEN-Z.AI",
@@ -3649,7 +4486,8 @@ export default {
             providers:
               ps.map(
                 p => ({
-                  id: p.id,
+                  id:
+                    p.id,
 
                   name:
                     p.name,
@@ -3677,12 +4515,19 @@ export default {
               ),
 
             timestamp:
-              new Date().toISOString()
+              new Date()
+                .toISOString()
           },
           200,
           env
         );
       }
+
+      /*
+       * ------------------------------------------------------
+       * PUBLIC PROVIDERS
+       * ------------------------------------------------------
+       */
 
       if (
         url.pathname ===
@@ -3698,7 +4543,8 @@ export default {
 
         return json(
           {
-            success: true,
+            success:
+              true,
 
             providers:
               ps
@@ -3718,6 +4564,12 @@ export default {
         );
       }
 
+      /*
+       * ------------------------------------------------------
+       * ADMIN
+       * ------------------------------------------------------
+       */
+
       if (
         url.pathname.startsWith(
           "/api/admin/"
@@ -3728,6 +4580,12 @@ export default {
           env
         );
       }
+
+      /*
+       * ------------------------------------------------------
+       * ACCOUNT
+       * ------------------------------------------------------
+       */
 
       if (
         url.pathname ===
@@ -3741,6 +4599,12 @@ export default {
         );
       }
 
+      /*
+       * ------------------------------------------------------
+       * TRANSACTIONS
+       * ------------------------------------------------------
+       */
+
       if (
         url.pathname ===
           "/api/account/transactions" &&
@@ -3753,6 +4617,12 @@ export default {
         );
       }
 
+      /*
+       * ------------------------------------------------------
+       * USER TOPUP
+       * ------------------------------------------------------
+       */
+
       if (
         url.pathname ===
         "/api/account/topup-requests"
@@ -3762,6 +4632,12 @@ export default {
           env
         );
       }
+
+      /*
+       * ------------------------------------------------------
+       * GENERATE
+       * ------------------------------------------------------
+       */
 
       if (
         url.pathname ===
@@ -3777,7 +4653,8 @@ export default {
           );
 
         if (
-          len > 65536
+          len >
+          65536
         ) {
           throw new HttpError(
             "Request generation terlalu besar.",
@@ -3791,6 +4668,12 @@ export default {
         );
       }
 
+      /*
+       * ------------------------------------------------------
+       * GENERATE STATUS
+       * ------------------------------------------------------
+       */
+
       if (
         url.pathname ===
           "/api/generate/status" &&
@@ -3802,6 +4685,12 @@ export default {
           env
         );
       }
+
+      /*
+       * ------------------------------------------------------
+       * VIDEO
+       * ------------------------------------------------------
+       */
 
       if (
         url.pathname ===
@@ -3815,14 +4704,23 @@ export default {
         );
       }
 
+      /*
+       * ------------------------------------------------------
+       * STATIC ASSETS
+       * ------------------------------------------------------
+       */
+
       return env.ASSETS.fetch(
         request
       );
-    } catch (err) {
+    } catch (
+      err
+    ) {
       console.error(
         "request failed",
         Number(
-          err?.status || 500
+          err?.status ||
+            500
         ),
         String(
           err?.message ||
@@ -3835,7 +4733,8 @@ export default {
 
       const status =
         Number(
-          err?.status || 500
+          err?.status ||
+            500
         );
 
       const message =
@@ -3848,8 +4747,11 @@ export default {
 
       return json(
         {
-          success: false,
-          error: message
+          success:
+            false,
+
+          error:
+            message
         },
         status,
         env
@@ -3857,4 +4759,3 @@ export default {
     }
   }
 };
-```
