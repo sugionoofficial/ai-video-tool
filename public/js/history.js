@@ -2,15 +2,10 @@
    GEN-Z.AI
    public/js/history.js
 
-   Riwayat video generation.
-   Sumber data:
-   - Supabase video_jobs
-   - User hanya dapat membaca job miliknya sendiri
-   - Video tetap diambil melalui Worker /api/video
+   RIWAYAT VIDEO GENERATION
 ========================================================= */
 
 (function () {
-
   "use strict";
 
   const GENZ =
@@ -28,7 +23,6 @@
   }
 
   function escapeHtml(value) {
-
     return String(value ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -37,236 +31,77 @@
       .replace(/'/g, "&#039;");
   }
 
-  function normalizeStatus(job) {
-
-    const value =
-      String(
-        job?.status ||
-        job?.provider_status ||
-        ""
-      )
-        .trim()
-        .toLowerCase();
-
-    if (
-      [
-        "completed",
-        "complete",
-        "success",
-        "successful",
-        "succeeded",
-        "done",
-        "finished",
-        "ready"
-      ].includes(value)
-    ) {
-      return "completed";
+  function normalizeSession(result) {
+    if (!result) {
+      return null;
     }
 
-    if (
-      [
-        "failed",
-        "failure",
-        "error",
-        "cancelled",
-        "canceled",
-        "rejected"
-      ].includes(value)
-    ) {
-      return "failed";
+    if (result?.data?.session) {
+      return result.data.session;
     }
 
-    return "processing";
-  }
-
-  function statusLabel(status) {
-
-    if (status === "completed") {
-      return "Selesai";
+    if (result?.session) {
+      return result.session;
     }
 
-    if (status === "failed") {
-      return "Gagal";
+    if (result?.user?.id) {
+      return result;
     }
 
-    return "Diproses";
+    return null;
   }
 
-  function providerLabel(provider) {
-
-    const id =
-      String(provider || "")
-        .trim()
-        .toLowerCase();
-
-    const names = {
-      veo: "Veo",
-      gemini: "Veo",
-      minimax: "MiniMax",
-      luma: "Luma"
-    };
-
-    return (
-      names[id] ||
-      provider ||
-      "Provider"
-    );
-  }
-
-  function metadata(job) {
-
-    if (
-      job?.metadata &&
-      typeof job.metadata === "object"
-    ) {
-      return job.metadata;
-    }
-
-    return {};
-  }
-
-  function promptOf(job) {
-
-    const meta =
-      metadata(job);
-
-    return (
-      meta.prompt ||
-      meta.originalPrompt ||
-      meta.text ||
-      meta.inputPrompt ||
-      job.prompt ||
-      ""
-    );
-  }
-
-  function modelOf(job) {
-
-    const meta =
-      metadata(job);
-
-    return (
-      job.model ||
-      meta.model ||
-      meta.requestedModel ||
-      "-"
-    );
-  }
-
-  function durationOf(job) {
-
-    const meta =
-      metadata(job);
-
-    return (
-      meta.duration ||
-      meta.videoDuration ||
-      "-"
-    );
-  }
-
-  function ratioOf(job) {
-
-    const meta =
-      metadata(job);
-
-    return (
-      meta.aspectRatio ||
-      meta.aspect_ratio ||
-      "-"
-    );
-  }
-
-  function resolutionOf(job) {
-
-    const meta =
-      metadata(job);
-
-    return (
-      meta.resolution ||
-      "-"
-    );
-  }
-
-  function dateOf(value) {
-
-    if (!value) {
-      return "-";
-    }
-
+  async function getSession() {
     try {
+      if (
+        window.GENZ_AUTH_CLIENT?.auth &&
+        typeof window.GENZ_AUTH_CLIENT.auth.getSession ===
+          "function"
+      ) {
+        const result =
+          await window.GENZ_AUTH_CLIENT.auth.getSession();
 
-      return new Date(value)
-        .toLocaleString(
-          "id-ID",
-          {
-            dateStyle: "medium",
-            timeStyle: "short"
-          }
-        );
+        const session =
+          normalizeSession(result);
 
-    } catch {
-      return String(value);
-    }
-  }
-
-  function videoUrlOf(job) {
-
-    if (
-      normalizeStatus(job) !==
-      "completed"
-    ) {
-      return "";
-    }
-
-    /*
-     * Selalu gunakan Worker proxy.
-     * Ini penting untuk MiniMax dan provider
-     * yang URL videonya tidak boleh dibuka
-     * langsung dari browser.
-     */
-
-    return (
-      `/api/video?provider=${encodeURIComponent(
-        job.provider
-      )}&jobId=${encodeURIComponent(
-        job.id
-      )}`
-    );
-  }
-
-  async function getAuthSession() {
-
-    if (
-      window.GENZ_AUTH_CLIENT &&
-      window.GENZ_AUTH_CLIENT.auth
-    ) {
-
-      const result =
-        await window.GENZ_AUTH_CLIENT
-          .auth
-          .getSession();
-
-      return (
-        result?.data?.session ||
-        null
+        if (session) {
+          return session;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "[GEN-Z.AI] GENZ_AUTH_CLIENT session error:",
+        error
       );
     }
 
-    if (
-      window.GENZ_AUTH &&
-      typeof window.GENZ_AUTH
-        .getSession === "function"
-    ) {
-      return await window.GENZ_AUTH
-        .getSession();
+    try {
+      if (
+        window.GENZ_AUTH &&
+        typeof window.GENZ_AUTH.getSession ===
+          "function"
+      ) {
+        const result =
+          await window.GENZ_AUTH.getSession();
+
+        const session =
+          normalizeSession(result);
+
+        if (session) {
+          return session;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "[GEN-Z.AI] GENZ_AUTH session error:",
+        error
+      );
     }
 
     return null;
   }
 
   async function getConfig() {
-
     const response =
       await fetch(
         "/api/config",
@@ -282,7 +117,7 @@
 
     if (!response.ok) {
       throw new Error(
-        "Gagal mengambil konfigurasi Supabase."
+        "Konfigurasi aplikasi gagal dimuat."
       );
     }
 
@@ -316,14 +151,212 @@
     };
   }
 
-  async function loadJobs() {
+  function normalizeStatus(job) {
+    const status =
+      String(
+        job?.status ||
+        job?.provider_status ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
 
+    if (
+      [
+        "completed",
+        "complete",
+        "success",
+        "successful",
+        "succeeded",
+        "done",
+        "finished",
+        "ready"
+      ].includes(status)
+    ) {
+      return "completed";
+    }
+
+    if (
+      [
+        "failed",
+        "failure",
+        "error",
+        "cancelled",
+        "canceled",
+        "rejected"
+      ].includes(status)
+    ) {
+      return "failed";
+    }
+
+    return "processing";
+  }
+
+  function statusLabel(status) {
+    if (status === "completed") {
+      return "Selesai";
+    }
+
+    if (status === "failed") {
+      return "Gagal";
+    }
+
+    return "Diproses";
+  }
+
+  function providerLabel(provider) {
+    const id =
+      String(provider || "")
+        .trim()
+        .toLowerCase();
+
+    const map = {
+      veo: "Veo",
+      gemini: "Veo",
+      minimax: "MiniMax",
+      luma: "Luma"
+    };
+
+    return (
+      map[id] ||
+      provider ||
+      "Provider"
+    );
+  }
+
+  function getMetadata(job) {
+    if (
+      job?.metadata &&
+      typeof job.metadata ===
+        "object"
+    ) {
+      return job.metadata;
+    }
+
+    return {};
+  }
+
+  function getPrompt(job) {
+    const metadata =
+      getMetadata(job);
+
+    return (
+      metadata.prompt ||
+      metadata.originalPrompt ||
+      metadata.inputPrompt ||
+      job?.prompt ||
+      ""
+    );
+  }
+
+  function getModel(job) {
+    const metadata =
+      getMetadata(job);
+
+    return (
+      job?.model ||
+      metadata.model ||
+      metadata.requestedModel ||
+      "-"
+    );
+  }
+
+  function getDuration(job) {
+    const metadata =
+      getMetadata(job);
+
+    return (
+      metadata.duration ||
+      metadata.videoDuration ||
+      job?.duration ||
+      "-"
+    );
+  }
+
+  function getAspectRatio(job) {
+    const metadata =
+      getMetadata(job);
+
+    return (
+      metadata.aspectRatio ||
+      metadata.aspect_ratio ||
+      job?.aspectRatio ||
+      "-"
+    );
+  }
+
+  function getResolution(job) {
+    const metadata =
+      getMetadata(job);
+
+    return (
+      metadata.resolution ||
+      job?.resolution ||
+      "-"
+    );
+  }
+
+  function formatDate(value) {
+    if (!value) {
+      return "-";
+    }
+
+    try {
+      return new Date(value)
+        .toLocaleString(
+          "id-ID",
+          {
+            dateStyle: "medium",
+            timeStyle: "short"
+          }
+        );
+    } catch {
+      return String(value);
+    }
+  }
+
+  function getVideoUrl(job) {
+    if (
+      normalizeStatus(job) !==
+      "completed"
+    ) {
+      return "";
+    }
+
+    if (!job?.id) {
+      return "";
+    }
+
+    if (!job?.provider) {
+      return "";
+    }
+
+    return (
+      "/api/video" +
+      "?provider=" +
+      encodeURIComponent(
+        job.provider
+      ) +
+      "&jobId=" +
+      encodeURIComponent(
+        job.id
+      )
+    );
+  }
+
+  async function loadJobs() {
     const session =
-      await getAuthSession();
+      await getSession();
 
     if (!session?.user?.id) {
       throw new Error(
-        "Sesi login tidak valid."
+        "Sesi login tidak ditemukan."
+      );
+    }
+
+    if (!session.access_token) {
+      throw new Error(
+        "Token login tidak tersedia."
       );
     }
 
@@ -333,17 +366,19 @@
     const userId =
       session.user.id;
 
-    const params = new URLSearchParams();
+    const query =
+      new URLSearchParams();
 
-    params.set(
+    query.set(
       "user_id",
       `eq.${userId}`
     );
 
-    params.set(
+    query.set(
       "select",
       [
         "id",
+        "user_id",
         "provider",
         "external_id",
         "status",
@@ -361,22 +396,22 @@
       ].join(",")
     );
 
-    params.set(
+    query.set(
       "order",
       "created_at.desc"
     );
 
-    params.set(
+    query.set(
       "limit",
       "100"
     );
 
     const response =
       await fetch(
-        `${config.supabaseUrl}/rest/v1/video_jobs?${params.toString()}`,
+        `${config.supabaseUrl}/rest/v1/video_jobs?${query.toString()}`,
         {
           method: "GET",
-
+          cache: "no-store",
           headers: {
             apikey:
               config.publishableKey,
@@ -386,19 +421,15 @@
 
             Accept:
               "application/json"
-          },
-
-          cache: "no-store"
+          }
         }
       );
 
     if (!response.ok) {
-
       let message =
         "Gagal mengambil riwayat video.";
 
       try {
-
         const data =
           await response.json();
 
@@ -406,19 +437,22 @@
           data?.message ||
           data?.error ||
           message;
-
       } catch (_) {}
 
-      throw new Error(
-        message
-      );
+      throw new Error(message);
     }
 
-    return await response.json();
+    const jobs =
+      await response.json();
+
+    if (!Array.isArray(jobs)) {
+      return [];
+    }
+
+    return jobs;
   }
 
   function render() {
-
     const grid =
       $("historyGrid");
 
@@ -438,7 +472,6 @@
     }
 
     if (!jobs.length) {
-
       grid.innerHTML = `
         <div class="history-empty">
           Belum ada video yang pernah digenerate.
@@ -449,161 +482,177 @@
     }
 
     grid.innerHTML =
-      jobs.map(
-        (job, index) => {
+      jobs
+        .map(
+          (job, index) => {
 
-          const status =
-            normalizeStatus(job);
+            const status =
+              normalizeStatus(job);
 
-          const provider =
-            providerLabel(
-              job.provider
-            );
+            const provider =
+              providerLabel(
+                job.provider
+              );
 
-          const prompt =
-            promptOf(job);
+            const prompt =
+              getPrompt(job);
 
-          const videoUrl =
-            videoUrlOf(job);
+            const videoUrl =
+              getVideoUrl(job);
 
-          const preview =
-            status === "completed" &&
-            videoUrl
-              ? `
+            let preview = "";
+
+            if (
+              status ===
+                "completed" &&
+              videoUrl
+            ) {
+              preview = `
                 <video
                   src="${escapeHtml(videoUrl)}"
                   muted
                   playsinline
                   preload="metadata"
                 ></video>
-              `
-              : `
+              `;
+            } else {
+              preview = `
                 <div class="history-placeholder">
                   ${
-                    status === "failed"
-                      ? "Video gagal dibuat"
+                    status ===
+                    "failed"
+                      ? "Generate gagal"
                       : "Video sedang diproses"
                   }
                 </div>
               `;
+            }
 
-          return `
-            <article
-              class="history-card"
-              data-history-index="${index}"
-            >
+            return `
+              <article
+                class="history-card"
+                data-history-index="${index}"
+              >
 
-              <div class="history-thumb">
+                <div class="history-thumb">
 
-                ${preview}
+                  ${preview}
 
-                <span class="history-badge">
-                  ${escapeHtml(
-                    statusLabel(status)
-                  )}
-                </span>
+                  <span class="history-badge">
+                    ${escapeHtml(
+                      statusLabel(status)
+                    )}
+                  </span>
 
-              </div>
-
-              <div class="history-info">
-
-                <div class="history-provider">
-                  ${escapeHtml(provider)}
                 </div>
 
-                <div class="history-date">
-                  ${escapeHtml(
-                    dateOf(job.created_at)
-                  )}
+                <div class="history-info">
+
+                  <div class="history-provider">
+                    ${escapeHtml(provider)}
+                  </div>
+
+                  <div class="history-date">
+                    ${escapeHtml(
+                      formatDate(
+                        job.created_at
+                      )
+                    )}
+                  </div>
+
+                  <div class="history-prompt">
+                    ${
+                      escapeHtml(
+                        prompt ||
+                        "Prompt tidak tersedia."
+                      )
+                    }
+                  </div>
+
                 </div>
 
-                <div class="history-prompt">
-                  ${
-                    escapeHtml(
-                      prompt ||
-                      "Prompt tidak tersimpan."
-                    )
-                  }
-                </div>
-
-              </div>
-
-            </article>
-          `;
-        }
-      )
-      .join("");
+              </article>
+            `;
+          }
+        )
+        .join("");
   }
 
-  function detailHtml(job) {
+  function openDetail(index) {
+    const job =
+      state.jobs?.[index];
+
+    if (!job) {
+      return;
+    }
+
+    state.selected =
+      job;
+
+    const modal =
+      $("historyModal");
+
+    const body =
+      $("historyDialogBody");
+
+    if (!modal || !body) {
+      return;
+    }
 
     const status =
       normalizeStatus(job);
+
+    const videoUrl =
+      getVideoUrl(job);
 
     const provider =
       providerLabel(
         job.provider
       );
 
-    const videoUrl =
-      videoUrlOf(job);
-
     const prompt =
-      promptOf(job);
+      getPrompt(job);
 
     const model =
-      modelOf(job);
+      getModel(job);
 
     const duration =
-      durationOf(job);
+      getDuration(job);
 
     const ratio =
-      ratioOf(job);
+      getAspectRatio(job);
 
     const resolution =
-      resolutionOf(job);
+      getResolution(job);
 
     const error =
       job.last_error ||
       "";
 
-    const player =
-      status === "completed" &&
-      videoUrl
-        ? `
-          <video
-            class="history-player"
-            controls
-            playsinline
-            preload="metadata"
-            src="${escapeHtml(videoUrl)}"
-          ></video>
-        `
-        : `
-          <div class="history-empty">
-            ${
-              status === "failed"
-                ? "Video gagal dibuat."
-                : "Video masih dalam proses."
-            }
-          </div>
-        `;
-
-    const download =
-      status === "completed"
-        ? `
-          <button
-            type="button"
-            class="history-download"
-            id="historyDownload"
-          >
-            Download Video
-          </button>
-        `
-        : "";
-
-    return `
-      ${player}
+    body.innerHTML = `
+      ${
+        status === "completed" &&
+        videoUrl
+          ? `
+            <video
+              id="historyDetailVideo"
+              class="history-player"
+              controls
+              playsinline
+              preload="metadata"
+              src="${escapeHtml(videoUrl)}"
+            ></video>
+          `
+          : `
+            <div class="history-empty">
+              ${
+                status === "failed"
+                  ? "Video gagal dibuat."
+                  : "Video masih dalam proses."
+              }
+            </div>
+          `
+      }
 
       <div class="history-detail-grid">
 
@@ -626,7 +675,9 @@
         <div class="history-detail-item">
           <span>Model</span>
           <strong>
-            ${escapeHtml(model)}
+            ${escapeHtml(
+              String(model)
+            )}
           </strong>
         </div>
 
@@ -661,7 +712,9 @@
           <span>Dibuat</span>
           <strong>
             ${escapeHtml(
-              dateOf(job.created_at)
+              formatDate(
+                job.created_at
+              )
             )}
           </strong>
         </div>
@@ -670,7 +723,9 @@
           <span>Job ID</span>
           <strong>
             ${escapeHtml(
-              String(job.id || "-")
+              String(
+                job.id || "-"
+              )
             )}
           </strong>
         </div>
@@ -684,7 +739,7 @@
           ${
             escapeHtml(
               prompt ||
-              "Prompt tidak tersimpan pada data job ini."
+              "Prompt tidak tersimpan pada job ini."
             )
           }
         </div>
@@ -700,34 +755,20 @@
           : ""
       }
 
-      ${download}
+      ${
+        status === "completed"
+          ? `
+            <button
+              type="button"
+              class="history-download"
+              id="historyDownload"
+            >
+              Download Video
+            </button>
+          `
+          : ""
+      }
     `;
-  }
-
-  function openDetail(index) {
-
-    const job =
-      state.jobs?.[index];
-
-    if (!job) {
-      return;
-    }
-
-    state.selected =
-      job;
-
-    const modal =
-      $("historyModal");
-
-    const body =
-      $("historyDialogBody");
-
-    if (!modal || !body) {
-      return;
-    }
-
-    body.innerHTML =
-      detailHtml(job);
 
     modal.classList.remove(
       "hidden"
@@ -742,7 +783,6 @@
       $("historyDownload");
 
     if (download) {
-
       download.addEventListener(
         "click",
         () => {
@@ -756,25 +796,22 @@
   }
 
   function closeDetail() {
-
     const modal =
       $("historyModal");
 
     const body =
       $("historyDialogBody");
 
-    if (!modal) {
-      return;
+    if (modal) {
+      modal.classList.add(
+        "hidden"
+      );
+
+      modal.setAttribute(
+        "aria-hidden",
+        "true"
+      );
     }
-
-    modal.classList.add(
-      "hidden"
-    );
-
-    modal.setAttribute(
-      "aria-hidden",
-      "true"
-    );
 
     if (body) {
       body.innerHTML = "";
@@ -785,18 +822,8 @@
   }
 
   async function downloadVideo(job) {
-
-    const status =
-      normalizeStatus(job);
-
-    if (
-      status !== "completed"
-    ) {
-      return;
-    }
-
     const url =
-      videoUrlOf(job);
+      getVideoUrl(job);
 
     if (!url) {
       return;
@@ -810,18 +837,30 @@
       "Download Video";
 
     try {
-
       if (button) {
         button.disabled = true;
         button.textContent =
           "Menyiapkan video...";
       }
 
-      const token =
+      let token = null;
+
+      if (
         typeof GENZ.auth?.token ===
         "function"
-          ? await GENZ.auth.token()
-          : null;
+      ) {
+        token =
+          await GENZ.auth.token();
+      }
+
+      if (!token) {
+        const session =
+          await getSession();
+
+        token =
+          session?.access_token ||
+          null;
+      }
 
       const headers = {};
 
@@ -836,7 +875,8 @@
           {
             method: "GET",
             headers,
-            credentials: "include"
+            credentials: "include",
+            cache: "no-store"
           }
         );
 
@@ -858,20 +898,24 @@
       const objectUrl =
         URL.createObjectURL(blob);
 
-      const a =
-        document.createElement("a");
+      const link =
+        document.createElement(
+          "a"
+        );
 
-      a.href =
+      link.href =
         objectUrl;
 
-      a.download =
+      link.download =
         `GEN-Z.AI-${job.id}.mp4`;
 
-      document.body.appendChild(a);
+      document.body.appendChild(
+        link
+      );
 
-      a.click();
+      link.click();
 
-      a.remove();
+      link.remove();
 
       setTimeout(
         () => {
@@ -879,11 +923,10 @@
             objectUrl
           );
         },
-        2000
+        3000
       );
 
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI] Download history error:",
         error
@@ -892,30 +935,32 @@
       if (button) {
         button.textContent =
           "Download gagal";
-      }
 
-      setTimeout(
-        () => {
-          if (button) {
+        setTimeout(
+          () => {
+            button.disabled =
+              false;
+
             button.textContent =
               original;
-          }
-        },
-        1800
-      );
+          },
+          1800
+        );
+      }
 
       return;
     }
 
     if (button) {
-      button.disabled = false;
+      button.disabled =
+        false;
+
       button.textContent =
         original;
     }
   }
 
   async function refresh() {
-
     if (state.loading) {
       return;
     }
@@ -932,7 +977,6 @@
     }
 
     try {
-
       state.jobs =
         await loadJobs();
 
@@ -946,7 +990,6 @@
       }
 
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI] History error:",
         error
@@ -962,18 +1005,20 @@
         $("historyGrid");
 
       if (grid) {
-        grid.innerHTML = "";
+        grid.innerHTML = `
+          <div class="history-empty">
+            Gagal memuat riwayat video.
+          </div>
+        `;
       }
 
     } finally {
-
       state.loading =
         false;
     }
   }
 
   function bind() {
-
     const grid =
       $("historyGrid");
 
@@ -990,7 +1035,6 @@
       $("historyBack");
 
     if (grid) {
-
       grid.addEventListener(
         "click",
         event => {
@@ -1014,15 +1058,13 @@
     }
 
     if (refreshButton) {
-
       refreshButton.addEventListener(
         "click",
-        () => refresh()
+        refresh
       );
     }
 
     if (close) {
-
       close.addEventListener(
         "click",
         closeDetail
@@ -1030,11 +1072,9 @@
     }
 
     if (modal) {
-
       modal.addEventListener(
         "click",
         event => {
-
           if (
             event.target ===
             modal
@@ -1046,20 +1086,14 @@
     }
 
     if (back) {
-
       back.addEventListener(
         "click",
         () => {
-
           if (
             typeof GENZ.showStudio ===
             "function"
           ) {
             GENZ.showStudio();
-          } else {
-            GENZ.emit?.(
-              "show-studio"
-            );
           }
         }
       );
@@ -1073,7 +1107,6 @@
           event.key ===
           "Escape"
         ) {
-
           const modal =
             $("historyModal");
 
@@ -1095,7 +1128,6 @@
     state,
 
     async load() {
-
       const container =
         document.getElementById(
           "pageContent"
@@ -1106,16 +1138,14 @@
       }
 
       try {
-
         await GENZ.loadComponent(
           "#pageContent",
           "/components/history.html"
         );
-
       } catch (error) {
 
         console.error(
-          "[GEN-Z.AI] Gagal memuat history.html:",
+          "[GEN-Z.AI] history.html gagal:",
           error
         );
 
