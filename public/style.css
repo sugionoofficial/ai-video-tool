@@ -2061,3 +2061,35 @@ left: 15px !important;
   }
 
 }
+
+/* =========================================================
+   HEADER POSITION — 20PX FROM LEFT
+   ========================================================= */
+
+.topbar-inner {
+  width: 100%;
+  max-width: 781px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.brand-info h1,
+.brand-info p {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .topbar-inner {
+    max-width: none;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 430px) {
+  .topbar-inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
