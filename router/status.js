@@ -48,19 +48,10 @@ export async function handleStatus(
     request
   );
 
-  let body;
-
-  try {
-    body =
-      await readJson(
-        request
-      );
-  } catch {
-    throw new HttpError(
-      "JSON status tidak valid.",
-      400
+  const body =
+    await readJson(
+      request
     );
-  }
 
   const id =
     canonicalProvider(
