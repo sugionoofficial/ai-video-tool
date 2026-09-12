@@ -654,8 +654,14 @@
       );
 
 
-      authPage.style.display =
-        'block';
+      /*
+       * Jangan memaksa display:block.
+       * Biarkan CSS .auth-page menentukan display:flex
+       * agar layout desktop/mobile tetap bekerja.
+       */
+      authPage.style.removeProperty(
+        'display'
+      );
     }
   }
 
@@ -1164,7 +1170,7 @@
 
   /* =========================================================
      EVENT DELEGATION
-     ========================================================= */
+  ========================================================= */
 
   function setupDelegatedEvents() {
 
