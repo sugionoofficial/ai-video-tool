@@ -72,19 +72,10 @@ export async function handleGenerate(
     user.id
   );
 
-  let body;
-
-  try {
-    body =
-      await readJson(
-        request
-      );
-  } catch {
-    throw new HttpError(
-      "JSON tidak valid.",
-      400
+  const body =
+    await readJson(
+      request
     );
-  }
 
   const id =
     canonicalProvider(
