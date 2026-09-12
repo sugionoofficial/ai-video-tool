@@ -38,6 +38,9 @@ import {
   checkGenerateRate
 } from "./security/rate-limit.js";
 
+import {
+  reserveJob
+} from "./jobs/jobs.js";
 
 /*
  * ============================================================
