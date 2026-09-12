@@ -241,11 +241,6 @@ input{
   color:#fff;
 }
 
-/*
-  Semua tombol topbar berada di kanan.
-  Admin Control berada sebagai tombol paling kanan.
-*/
-
 .top-actions{
   display:flex;
   align-items:center;
@@ -253,6 +248,17 @@ input{
   gap:9px;
   margin-left:auto;
   flex-shrink:0;
+}
+
+/* =========================================================
+   MOBILE ADMIN MENU
+   Default: hidden on desktop
+   ========================================================= */
+
+.mobile-admin-toggle,
+.mobile-admin-menu,
+.mobile-admin-backdrop{
+  display:none;
 }
 
 /* =========================================================
@@ -785,7 +791,8 @@ input{
 }
 
 /* =========================================================
-   MOBILE / TABLET
+   MOBILE
+   Desktop tetap tidak berubah
    ========================================================= */
 
 @media(max-width:780px){
@@ -827,11 +834,15 @@ input{
     padding:20px 15px 40px;
   }
 
+  /* =======================================================
+     TOPBAR HP
+     ======================================================= */
+
   .topbar{
     display:flex;
     align-items:center;
     width:100%;
-    gap:12px;
+    gap:10px;
     margin-bottom:20px;
   }
 
@@ -840,8 +851,66 @@ input{
     align-items:center;
     flex:1;
     min-width:0;
-    gap:10px;
+    gap:8px;
   }
+
+  /* =======================================================
+     HAMBURGER ADMIN CONTROL
+     ======================================================= */
+
+  .mobile-admin-toggle{
+    width:38px;
+    height:38px;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+
+    flex-shrink:0;
+
+    padding:0;
+
+    border:1px solid var(--line);
+    border-radius:11px;
+
+    background:rgba(255,255,255,.045);
+
+    color:#fff;
+
+    cursor:pointer;
+
+    transition:.2s ease;
+  }
+
+  .mobile-admin-toggle:hover,
+  .mobile-admin-toggle:active{
+    border-color:rgba(139,92,246,.4);
+    background:rgba(139,92,246,.12);
+  }
+
+  .mobile-admin-toggle span{
+    display:block;
+
+    width:17px;
+    height:2px;
+
+    border-radius:3px;
+
+    background:#fff;
+
+    transition:.2s ease;
+  }
+
+  /* Gear desktop tidak tampil di HP */
+  .desktop-admin-control{
+    display:none !important;
+  }
+
+  /* =======================================================
+     TOP ACTIONS HP
+     ======================================================= */
 
   .top-actions{
     display:flex;
@@ -854,20 +923,66 @@ input{
 
   .top-action{
     display:inline-flex;
+
+    align-items:center;
+    justify-content:center;
+
     height:38px;
     min-width:38px;
+
     padding:0 10px;
+
+    border-radius:10px;
   }
+
+  /*
+    GENERATE:
+    Selalu tampil sebagai tombol dengan tulisan GENERATE.
+    Tulisan berada tepat di tengah tombol.
+  */
 
   .top-action.generate{
-    padding:0 13px;
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    width:96px;
+    min-width:96px;
+
+    height:38px;
+
+    padding:0 10px;
+
+    font-size:10px;
+    font-weight:800;
+
+    letter-spacing:.08em;
+
+    white-space:nowrap;
   }
 
-  .top-actions .control-btn{
+  .top-action.generate .top-action-icon{
+    display:none;
+  }
+
+  .top-action.generate span:last-child{
+    display:block;
+
+    width:100%;
+
+    text-align:center;
+  }
+
+  /* Messages */
+  .top-action:not(.generate){
     width:38px;
-    height:38px;
-    border-radius:11px;
-    font-size:16px;
+    min-width:38px;
+    padding:0;
+  }
+
+  .top-action:not(.generate) .top-action-icon{
+    display:inline-flex;
   }
 
   .hero{
@@ -876,6 +991,202 @@ input{
 
   .kpi-grid{
     grid-template-columns:1fr 1fr;
+  }
+
+  /* =======================================================
+     MOBILE ADMIN MENU
+     ======================================================= */
+
+  .mobile-admin-menu{
+    display:block;
+
+    position:fixed;
+
+    top:0;
+    left:0;
+
+    width:min(310px,88vw);
+    height:100vh;
+
+    padding:18px 14px;
+
+    background:rgba(8,11,18,.98);
+
+    border-right:1px solid var(--line);
+
+    box-shadow:18px 0 50px rgba(0,0,0,.45);
+
+    transform:translateX(-105%);
+
+    transition:transform .25s ease;
+
+    z-index:1001;
+
+    overflow-y:auto;
+
+    overscroll-behavior:contain;
+  }
+
+  .mobile-admin-menu.open{
+    transform:translateX(0);
+  }
+
+  .mobile-admin-backdrop{
+    display:block;
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.62);
+
+    backdrop-filter:blur(3px);
+
+    opacity:0;
+
+    pointer-events:none;
+
+    transition:opacity .25s ease;
+
+    z-index:1000;
+  }
+
+  .mobile-admin-backdrop.open{
+    opacity:1;
+    pointer-events:auto;
+  }
+
+  .mobile-admin-menu-header{
+    display:flex;
+
+    align-items:center;
+    justify-content:space-between;
+
+    gap:12px;
+
+    padding:4px 4px 18px;
+
+    margin-bottom:12px;
+
+    border-bottom:1px solid var(--line);
+  }
+
+  .mobile-admin-menu-header > div{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+
+  .mobile-admin-brand{
+    color:#9b87ff;
+
+    font-size:12px;
+    font-weight:800;
+
+    letter-spacing:.14em;
+  }
+
+  .mobile-admin-menu-header strong{
+    color:#fff;
+
+    font-size:14px;
+    font-weight:800;
+
+    letter-spacing:.04em;
+  }
+
+  .mobile-admin-close{
+    width:36px;
+    height:36px;
+
+    display:grid;
+    place-items:center;
+
+    flex-shrink:0;
+
+    padding:0;
+
+    border:1px solid var(--line);
+    border-radius:10px;
+
+    background:rgba(255,255,255,.045);
+
+    color:#fff;
+
+    font-size:24px;
+    line-height:1;
+
+    cursor:pointer;
+  }
+
+  .mobile-admin-close:hover,
+  .mobile-admin-close:active{
+    background:rgba(255,255,255,.08);
+  }
+
+  .mobile-admin-nav{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .mobile-admin-nav a{
+    display:flex;
+
+    align-items:center;
+
+    gap:13px;
+
+    min-height:46px;
+
+    padding:0 13px;
+
+    border:1px solid transparent;
+    border-radius:12px;
+
+    color:rgba(255,255,255,.78);
+
+    font-size:14px;
+    font-weight:600;
+
+    transition:
+      background .18s ease,
+      color .18s ease,
+      border-color .18s ease;
+  }
+
+  .mobile-admin-nav a span:first-child{
+    width:22px;
+
+    flex-shrink:0;
+
+    display:grid;
+    place-items:center;
+
+    color:#9aa7ff;
+
+    font-size:17px;
+  }
+
+  .mobile-admin-nav a:hover,
+  .mobile-admin-nav a:active{
+    background:rgba(255,255,255,.06);
+
+    border-color:var(--line);
+
+    color:#fff;
+  }
+
+  .mobile-admin-nav a.active{
+    background:rgba(100,120,255,.12);
+
+    border-color:rgba(120,140,255,.25);
+
+    color:#fff;
+  }
+
+  body.mobile-admin-open{
+    overflow:hidden;
   }
 
 }
@@ -908,6 +1219,12 @@ input{
     font-size:10px;
   }
 
+  .mobile-admin-toggle{
+    width:38px;
+    min-width:38px;
+    height:38px;
+  }
+
   .top-actions{
     display:flex;
     align-items:center;
@@ -917,34 +1234,53 @@ input{
     flex-shrink:0;
   }
 
-  .top-action{
-    display:inline-flex !important;
-    width:38px;
-    min-width:38px;
-    height:38px;
-    padding:0 8px;
-    border-radius:10px;
-  }
+  /*
+    GENERATE tetap menggunakan teks.
+    Tidak berubah menjadi ikon pada HP kecil.
+  */
 
   .top-action.generate{
-    width:auto;
-    min-width:auto;
-    padding:0 10px;
+    display:flex !important;
+
+    align-items:center;
+    justify-content:center;
+
+    width:92px;
+    min-width:92px;
+
+    height:38px;
+
+    padding:0 8px;
+
+    font-size:10px;
+    font-weight:800;
+
+    letter-spacing:.06em;
+  }
+
+  .top-action.generate .top-action-icon{
+    display:none !important;
   }
 
   .top-action.generate span:last-child{
-    display:inline;
+    display:block !important;
+
+    width:100%;
+
+    text-align:center;
   }
 
-  .top-action-icon{
-    font-size:14px;
-  }
+  .top-action:not(.generate){
+    display:inline-flex !important;
 
-  .top-actions .control-btn{
     width:38px;
+    min-width:38px;
+
     height:38px;
+
+    padding:0;
+
     border-radius:10px;
-    font-size:15px;
   }
 
   .kpi-grid{
@@ -979,32 +1315,57 @@ input{
     font-size:9px;
   }
 
+  .mobile-admin-toggle{
+    width:35px;
+    min-width:35px;
+    height:36px;
+
+    border-radius:9px;
+  }
+
+  .mobile-admin-toggle span{
+    width:16px;
+  }
+
   .top-actions{
     gap:4px;
   }
 
-  .top-action{
-    width:35px;
-    min-width:35px;
-    height:36px;
-    padding:0 6px;
-  }
+  /*
+    Tetap pertahankan tulisan GENERATE.
+    Tombol diperkecil, bukan dihilangkan.
+  */
 
   .top-action.generate{
-    width:36px;
-    min-width:36px;
-    padding:0;
+    width:82px;
+    min-width:82px;
+
+    height:36px;
+
+    padding:0 5px;
+
+    font-size:9px;
+
+    letter-spacing:.04em;
+  }
+
+  .top-action.generate .top-action-icon{
+    display:none !important;
   }
 
   .top-action.generate span:last-child{
-    display:none;
+    display:block !important;
   }
 
-  .top-actions .control-btn{
+  .top-action:not(.generate){
     width:35px;
+    min-width:35px;
+
     height:36px;
+
+    padding:0;
+
     border-radius:9px;
-    font-size:15px;
   }
 
 }
@@ -1153,22 +1514,29 @@ input{
 
       <div class="topbar-left">
 
+        <!-- MOBILE ADMIN NAVIGATION -->
+
+        <button
+          class="mobile-admin-toggle"
+          id="mobileAdminToggle"
+          type="button"
+          aria-label="Buka menu Admin Control"
+          aria-expanded="false"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
         <div class="breadcrumb">
           Admin Console / <strong>Dashboard</strong>
         </div>
 
       </div>
 
-      <!--
-        HANYA ADA 3 TOMBOL:
-        1. Generate
-        2. Messages
-        3. Admin Control
-
-        Tombol Settings yang crash SUDAH DIHAPUS.
-      -->
-
       <div class="top-actions">
+
+        <!-- GENERATE -->
 
         <a
           class="top-action generate"
@@ -1177,8 +1545,10 @@ input{
           aria-label="Generate Video"
         >
           <span class="top-action-icon">✦</span>
-          <span>Generate</span>
+          <span>GENERATE</span>
         </a>
+
+        <!-- MESSAGES -->
 
         <a
           class="top-action"
@@ -1189,8 +1559,10 @@ input{
           <span class="top-action-icon">✉</span>
         </a>
 
+        <!-- ADMIN CONTROL DESKTOP -->
+
         <a
-          class="control-btn"
+          class="control-btn desktop-admin-control"
           href="/admin-control.html"
           title="Admin Control"
           aria-label="Admin Control"
@@ -1201,6 +1573,102 @@ input{
       </div>
 
     </header>
+
+    <!-- =====================================================
+         MOBILE ADMIN MENU
+         ===================================================== -->
+
+    <div
+      class="mobile-admin-backdrop"
+      id="mobileAdminBackdrop"
+    ></div>
+
+    <aside
+      class="mobile-admin-menu"
+      id="mobileAdminMenu"
+      aria-hidden="true"
+    >
+
+      <div class="mobile-admin-menu-header">
+
+        <div>
+
+          <span class="mobile-admin-brand">
+            GEN-Z.AI
+          </span>
+
+          <strong>
+            ADMIN CONTROL
+          </strong>
+
+        </div>
+
+        <button
+          class="mobile-admin-close"
+          id="mobileAdminClose"
+          type="button"
+          aria-label="Tutup menu"
+        >
+          ×
+        </button>
+
+      </div>
+
+      <nav class="mobile-admin-nav">
+
+        <a href="/admin.html">
+          <span>⌂</span>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="/admin-control.html">
+          <span>⚙</span>
+          <span>Admin Control</span>
+        </a>
+
+        <a href="/admin-users.html">
+          <span>♙</span>
+          <span>Users</span>
+        </a>
+
+        <a href="/admin-membership.html">
+          <span>◇</span>
+          <span>Membership</span>
+        </a>
+
+        <a href="/admin-affiliate.html">
+          <span>⌁</span>
+          <span>Affiliate</span>
+        </a>
+
+        <a href="/admin-providers.html">
+          <span>◈</span>
+          <span>Providers</span>
+        </a>
+
+        <a href="/admin-credit.html">
+          <span>✦</span>
+          <span>Credit</span>
+        </a>
+
+        <a href="/admin-jobs.html">
+          <span>▣</span>
+          <span>Jobs</span>
+        </a>
+
+        <a href="/admin-job-events.html">
+          <span>◌</span>
+          <span>Job Events</span>
+        </a>
+
+        <a href="/admin-topup.html">
+          <span>＋</span>
+          <span>Top-up</span>
+        </a>
+
+      </nav>
+
+    </aside>
 
     <!-- =====================================================
          HERO
@@ -1363,8 +1831,6 @@ input{
 
       <div>
 
-        <!-- PLATFORM ACTIVITY -->
-
         <article class="panel">
 
           <div class="panel-head">
@@ -1390,58 +1856,36 @@ input{
           <div class="chart">
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:34%"
-              ></div>
+              <div class="bar" style="height:34%"></div>
             </div>
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:51%"
-              ></div>
+              <div class="bar" style="height:51%"></div>
             </div>
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:43%"
-              ></div>
+              <div class="bar" style="height:43%"></div>
             </div>
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:67%"
-              ></div>
+              <div class="bar" style="height:67%"></div>
             </div>
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:58%"
-              ></div>
+              <div class="bar" style="height:58%"></div>
             </div>
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:82%"
-              ></div>
+              <div class="bar" style="height:82%"></div>
             </div>
 
             <div class="bar-wrap">
-              <div
-                class="bar"
-                style="height:72%"
-              ></div>
+              <div class="bar" style="height:72%"></div>
             </div>
 
           </div>
 
           <div class="chart-labels">
-
             <span>Mon</span>
             <span>Tue</span>
             <span>Wed</span>
@@ -1449,13 +1893,10 @@ input{
             <span>Fri</span>
             <span>Sat</span>
             <span>Sun</span>
-
           </div>
 
         </article>
 
-
-        <!-- RECENT ACTIVITY -->
 
         <article class="panel">
 
@@ -1592,8 +2033,6 @@ input{
 
       <div>
 
-        <!-- QUICK ACTIONS -->
-
         <article class="panel">
 
           <div class="panel-head">
@@ -1689,8 +2128,6 @@ input{
 
         </article>
 
-
-        <!-- SYSTEM STATUS -->
 
         <article class="panel">
 
@@ -1792,8 +2229,6 @@ input{
         </article>
 
 
-        <!-- INFRASTRUCTURE -->
-
         <article class="panel">
 
           <div class="panel-head">
@@ -1864,6 +2299,10 @@ input{
 
 <script src="/js/admin.js"></script>
 
+<!-- =========================================================
+     ADMIN EMAIL
+     ========================================================= -->
+
 <script>
 (function(){
 
@@ -1916,6 +2355,174 @@ input{
 
     }
   );
+
+})();
+</script>
+
+<!-- =========================================================
+     MOBILE ADMIN NAVIGATION
+     ========================================================= -->
+
+<script>
+(function(){
+
+  const toggle =
+    document.getElementById(
+      "mobileAdminToggle"
+    );
+
+  const menu =
+    document.getElementById(
+      "mobileAdminMenu"
+    );
+
+  const backdrop =
+    document.getElementById(
+      "mobileAdminBackdrop"
+    );
+
+  const close =
+    document.getElementById(
+      "mobileAdminClose"
+    );
+
+  if(
+    !toggle ||
+    !menu ||
+    !backdrop ||
+    !close
+  ){
+    return;
+  }
+
+  function openAdminMenu(){
+
+    menu.classList.add("open");
+
+    backdrop.classList.add("open");
+
+    document.body.classList.add(
+      "mobile-admin-open"
+    );
+
+    toggle.setAttribute(
+      "aria-expanded",
+      "true"
+    );
+
+    menu.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
+  }
+
+  function closeAdminMenu(){
+
+    menu.classList.remove("open");
+
+    backdrop.classList.remove("open");
+
+    document.body.classList.remove(
+      "mobile-admin-open"
+    );
+
+    toggle.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+    menu.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+  }
+
+  toggle.addEventListener(
+    "click",
+    function(){
+
+      if(
+        menu.classList.contains("open")
+      ){
+
+        closeAdminMenu();
+
+      }else{
+
+        openAdminMenu();
+
+      }
+
+    }
+  );
+
+  close.addEventListener(
+    "click",
+    closeAdminMenu
+  );
+
+  backdrop.addEventListener(
+    "click",
+    closeAdminMenu
+  );
+
+  document.addEventListener(
+    "keydown",
+    function(event){
+
+      if(
+        event.key === "Escape" &&
+        menu.classList.contains("open")
+      ){
+
+        closeAdminMenu();
+
+      }
+
+    }
+  );
+
+  /*
+    Tutup menu setelah memilih halaman.
+  */
+
+  menu
+    .querySelectorAll("a")
+    .forEach(function(link){
+
+      link.addEventListener(
+        "click",
+        closeAdminMenu
+      );
+
+    });
+
+  /*
+    Tandai halaman yang sedang aktif.
+  */
+
+  const currentPath =
+    window.location.pathname;
+
+  menu
+    .querySelectorAll("a")
+    .forEach(function(link){
+
+      const href =
+        link.getAttribute("href");
+
+      if(
+        href &&
+        href === currentPath
+      ){
+
+        link.classList.add("active");
+
+      }
+
+    });
 
 })();
 </script>
