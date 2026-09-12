@@ -11,6 +11,27 @@ const GENERATE_LIMIT_MAX =
 const generateRate =
   new Map();
 
+function cleanupExpiredRates(
+  now
+) {
+  for (
+    const [
+      key,
+      hit
+    ] of generateRate
+  ) {
+    if (
+      now -
+        hit.startedAt >=
+      GENERATE_LIMIT_WINDOW_MS
+    ) {
+      generateRate.delete(
+        key
+      );
+    }
+  }
+}
+
 export function checkGenerateRate(
   userId
 ) {
@@ -58,4 +79,17 @@ export function checkGenerateRate(
   }
 
   hit.count++;
+
+  /*
+   * Bersihkan entry lama secara
+   * berkala tanpa mengubah limit.
+   */
+  if (
+    generateRate.size >
+    100
+  ) {
+    cleanupExpiredRates(
+      now
+    );
+  }
 }
