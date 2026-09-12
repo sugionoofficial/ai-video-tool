@@ -245,15 +245,6 @@
 
   /* =======================================================
      STANDALONE ADMIN PAGE
-     
-     admin.html adalah halaman standalone.
-     Tidak mempunyai:
-     - #pageContent
-     - #adminContent
-     - app.js
-     
-     Karena itu admin.js harus dapat melakukan bootstrap
-     auth sendiri tanpa mengganti HTML statis admin.html.
   ======================================================= */
 
   function isStandaloneAdminPage() {
@@ -368,90 +359,346 @@
   }
 
 
+  /* =======================================================
+     STANDALONE AUTH
+     
+     SERVER ADALAH SUMBER KEBENARAN ROLE
+     
+     Admin dan Owner diterima.
+  ======================================================= */
+
   async function ensureStandaloneAuth() {
 
-    if (
-      !GENZ.auth ||
-      typeof GENZ.auth.getSession !== "function"
-    ) {
+    try {
 
-      await loadScript(
-        "/js/auth.js",
-        "auth"
-      );
+      /*
+       * -----------------------------------------------------
+       * Pastikan auth.js tersedia
+       * -----------------------------------------------------
+       */
 
-    }
+      if (
+        !GENZ.auth ||
+        typeof GENZ.auth.getSession !== "function"
+      ) {
 
+        await loadScript(
+          "/js/auth.js",
+          "auth"
+        );
 
-    if (
-      !GENZ.account ||
-      typeof GENZ.account.refresh !== "function"
-    ) {
-
-      await loadScript(
-        "/js/account.js",
-        "account"
-      );
-
-    }
+      }
 
 
-    if (
-      !GENZ.auth ||
-      typeof GENZ.auth.getSession !== "function"
-    ) {
+      if (
+        !GENZ.auth ||
+        typeof GENZ.auth.getSession !== "function"
+      ) {
 
-      throw new Error(
-        "Modul autentikasi GEN-Z.AI belum tersedia."
-      );
+        throw new Error(
+          "Modul autentikasi GEN-Z.AI belum tersedia."
+        );
 
-    }
-
-
-    if (
-      !GENZ.account ||
-      typeof GENZ.account.refresh !== "function"
-    ) {
-
-      throw new Error(
-        "Modul account GEN-Z.AI belum tersedia."
-      );
-
-    }
+      }
 
 
-    GENZ.state =
-      GENZ.state || {
+      /*
+       * -----------------------------------------------------
+       * Pastikan state tersedia
+       * -----------------------------------------------------
+       */
 
-        loggedIn: false,
+      GENZ.state =
+        GENZ.state || {
 
-        user: null,
+          loggedIn: false,
 
-        account: null
+          user: null,
+
+          account: null
+
+        };
+
+
+      /*
+       * -----------------------------------------------------
+       * Ambil session Supabase
+       * -----------------------------------------------------
+       */
+
+      const session =
+        await GENZ.auth.getSession();
+
+
+      if (
+        !session ||
+        !session.user ||
+        !session.access_token
+      ) {
+
+        GENZ.state.loggedIn =
+          false;
+
+        GENZ.state.user =
+          null;
+
+        GENZ.state.account = {
+
+          isAdmin: false,
+
+          roleValidated: false,
+
+          role: null
+
+        };
+
+
+        console.warn(
+          "[GEN-Z.AI] Session tidak ditemukan."
+        );
+
+
+        return false;
+
+      }
+
+
+      /*
+       * -----------------------------------------------------
+       * Simpan user
+       * -----------------------------------------------------
+       */
+
+      GENZ.state.loggedIn =
+        true;
+
+      GENZ.state.user =
+        session.user;
+
+
+      /*
+       * Reset status sebelum validasi server.
+       */
+
+      GENZ.state.account = {
+
+        ...(GENZ.state.account || {}),
+
+        isAdmin: false,
+
+        roleValidated: false,
+
+        role: null
 
       };
 
 
-    const session =
-      await GENZ.auth.getSession();
+      /*
+       * -----------------------------------------------------
+       * VALIDASI ROLE LANGSUNG KE SERVER
+       * -----------------------------------------------------
+       *
+       * Endpoint:
+       *
+       * GET /api/account/credits
+       *
+       * Server akan mengambil role berdasarkan UID
+       * user dari database Supabase.
+       */
+
+      const response =
+        await fetch(
+          "/api/account/credits",
+          {
+            method: "GET",
+
+            headers: {
+
+              Authorization:
+                `Bearer ${session.access_token}`,
+
+              Accept:
+                "application/json"
+
+            },
+
+            credentials:
+              "include",
+
+            cache:
+              "no-store"
+
+          }
+        );
 
 
-    if (
-      !session ||
-      !session.user
-    ) {
+      let data = null;
 
-      GENZ.state.loggedIn =
-        false;
 
-      GENZ.state.user =
-        null;
+      try {
+
+        data =
+          await response.json();
+
+      } catch (_) {
+
+        data = null;
+
+      }
+
+
+      /*
+       * -----------------------------------------------------
+       * SERVER ERROR
+       * -----------------------------------------------------
+       */
+
+      if (!response.ok) {
+
+        console.error(
+          "[GEN-Z.AI] Validasi server gagal:",
+          response.status,
+          data
+        );
+
+
+        GENZ.state.account = {
+
+          ...(GENZ.state.account || {}),
+
+          isAdmin: false,
+
+          roleValidated: false,
+
+          role: null
+
+        };
+
+
+        return false;
+
+      }
+
+
+      /*
+       * -----------------------------------------------------
+       * AMBIL ROLE DARI SERVER
+       * -----------------------------------------------------
+       */
+
+      const role =
+        String(
+          data?.role ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+
+      const roleValidated =
+        data?.roleValidated === true;
+
+
+      /*
+       * Admin dan Owner dianggap administrator.
+       */
+
+      const isAdmin =
+        (
+          role === "admin" ||
+          role === "owner"
+        ) &&
+        roleValidated;
+
+
+      /*
+       * -----------------------------------------------------
+       * SIMPAN HASIL VALIDASI SERVER
+       * -----------------------------------------------------
+       */
 
       GENZ.state.account = {
 
+        ...(GENZ.state.account || {}),
+
+        credits:
+          Number(
+            data?.credits || 0
+          ),
+
+        role,
+
+        roleValidated,
+
+        isAdmin,
+
+        adminContactUrl:
+          data?.adminContactUrl ||
+          ""
+
+      };
+
+
+      /*
+       * -----------------------------------------------------
+       * DEBUG AMAN
+       *
+       * Access token TIDAK PERNAH ditampilkan.
+       * -----------------------------------------------------
+       */
+
+      console.log(
+        "[GEN-Z.AI] Admin server validation:",
+        {
+          userId:
+            session.user.id,
+
+          email:
+            session.user.email ||
+            null,
+
+          role,
+
+          roleValidated,
+
+          isAdmin
+
+        }
+      );
+
+
+      /*
+       * -----------------------------------------------------
+       * HASIL AKHIR
+       * -----------------------------------------------------
+       */
+
+      return (
+        isAdmin === true &&
+        roleValidated === true
+      );
+
+    } catch (error) {
+
+      console.error(
+        "[GEN-Z.AI] Standalone authentication error:",
+        error
+      );
+
+
+      GENZ.state =
+        GENZ.state || {};
+
+
+      GENZ.state.account = {
+
+        ...(GENZ.state.account || {}),
+
         isAdmin: false,
 
-        roleValidated: false
+        roleValidated: false,
+
+        role: null
 
       };
 
@@ -459,42 +706,6 @@
       return false;
 
     }
-
-
-    GENZ.state.loggedIn =
-      true;
-
-    GENZ.state.user =
-      session.user;
-
-
-    GENZ.state.account = {
-
-      ...(GENZ.state.account || {}),
-
-      isAdmin: false,
-
-      roleValidated: false
-
-    };
-
-
-    /*
-     * Account.refresh() mengambil:
-     *
-     * GET /api/account/credits
-     *
-     * dan menjadikan response server sebagai
-     * sumber kebenaran role admin.
-     */
-
-    await GENZ.account.refresh();
-
-
-    return (
-      GENZ.state.account?.isAdmin === true &&
-      GENZ.state.account?.roleValidated === true
-    );
 
   }
 
@@ -673,6 +884,7 @@
         "[GEN-Z.AI] Standalone admin authenticated."
       );
 
+
     } catch (error) {
 
       console.error(
@@ -690,12 +902,6 @@
 
   /* =======================================================
      AUTH CHECK
-     
-     Admin hanya dianggap valid apabila:
-     1. Backend sudah mengembalikan isAdmin = true
-     2. Role tersebut sudah divalidasi server
-     
-     Tidak menggunakan email atau username.
   ======================================================= */
 
   function isAdmin() {
@@ -722,25 +928,6 @@
      * =====================================================
      * STANDALONE MODE
      * =====================================================
-     *
-     * Jangan pernah mengganti HTML admin.html.
-     *
-     * admin.html sudah memiliki seluruh section:
-     * - Dashboard
-     * - Users
-     * - Membership
-     * - Affiliate
-     * - Providers
-     * - Top-up
-     * - Credit
-     * - Jobs
-     * - Job Events
-     * - Admin
-     * - Kontak
-     * - Pengaturan
-     *
-     * Pada tahap ini kita hanya melakukan bootstrap
-     * autentikasi dan mempertahankan struktur statis.
      */
 
     if (
@@ -758,13 +945,6 @@
      * =====================================================
      * LEGACY / EMBEDDED MODE
      * =====================================================
-     *
-     * Perilaku lama tetap dipertahankan.
-     */
-
-    /*
-     * Jangan pernah membuka Admin Panel
-     * sebelum role berhasil divalidasi.
      */
 
     if (!isAdmin()) {
@@ -1036,10 +1216,6 @@
     section
   ) {
 
-    /*
-     * Validasi ulang setiap perpindahan section.
-     */
-
     if (!isAdmin()) {
 
       if (
@@ -1258,41 +1434,25 @@
         <div class="admin-stat-grid">
 
           <div class="admin-stat">
-
-            <span>
-              Total User
-            </span>
-
+            <span>Total User</span>
             <strong>
               ${formatNumber(
                 state.users.length
               )}
             </strong>
-
           </div>
 
-
           <div class="admin-stat">
-
-            <span>
-              Total Kredit
-            </span>
-
+            <span>Total Kredit</span>
             <strong>
               ${formatNumber(
                 credits
               )}
             </strong>
-
           </div>
 
-
           <div class="admin-stat">
-
-            <span>
-              Provider Aktif
-            </span>
-
+            <span>Provider Aktif</span>
             <strong>
               ${formatNumber(
                 state.providers.filter(
@@ -1301,67 +1461,42 @@
                 ).length
               )}
             </strong>
-
           </div>
 
-
           <div class="admin-stat">
-
-            <span>
-              Top-up Pending
-            </span>
-
+            <span>Top-up Pending</span>
             <strong>
               ${formatNumber(
                 state.topups.length
               )}
             </strong>
-
           </div>
 
-
           <div class="admin-stat">
-
-            <span>
-              Job Berhasil
-            </span>
-
+            <span>Job Berhasil</span>
             <strong>
               ${formatNumber(
                 completed
               )}
             </strong>
-
           </div>
 
-
           <div class="admin-stat">
-
-            <span>
-              Job Diproses
-            </span>
-
+            <span>Job Diproses</span>
             <strong>
               ${formatNumber(
                 processing
               )}
             </strong>
-
           </div>
 
-
           <div class="admin-stat">
-
-            <span>
-              Job Gagal
-            </span>
-
+            <span>Job Gagal</span>
             <strong>
               ${formatNumber(
                 failed
               )}
             </strong>
-
           </div>
 
         </div>
@@ -1391,8 +1526,7 @@
                 ? state.providers.map(
                     provider => `
 
-                      <div
-                        class="admin-list-row">
+                      <div class="admin-list-row">
 
                         <div>
 
@@ -1414,12 +1548,8 @@
 
                         ${
                           provider.enabled
-                            ? statusBadge(
-                                "enabled"
-                              )
-                            : statusBadge(
-                                "disabled"
-                              )
+                            ? statusBadge("enabled")
+                            : statusBadge("disabled")
                         }
 
                       </div>
@@ -1427,11 +1557,9 @@
                     `
                   ).join("")
                 : `
-
                   <div class="admin-empty">
                     Belum ada provider.
                   </div>
-
                 `
             }
 
@@ -1464,8 +1592,7 @@
                   .map(
                     topup => `
 
-                      <div
-                        class="admin-list-row">
+                      <div class="admin-list-row">
 
                         <div>
 
@@ -1492,11 +1619,9 @@
                     `
                   ).join("")
               : `
-
                 <div class="admin-empty">
                   Tidak ada top-up pending.
                 </div>
-
               `
           }
 
@@ -1664,9 +1789,7 @@
       </div>
 
 
-      <div
-        id="userAdminPanel">
-      </div>
+      <div id="userAdminPanel"></div>
 
     `;
 
@@ -1775,7 +1898,6 @@
             value="${esc(userId)}"
           >
 
-
           <label>
             Jumlah Kredit
           </label>
@@ -1788,7 +1910,6 @@
             required
           >
 
-
           <label>
             Catatan
           </label>
@@ -1799,7 +1920,6 @@
             placeholder="Alasan penyesuaian kredit"
           ></textarea>
 
-
           <button
             type="submit"
             class="admin-primary-btn">
@@ -1809,9 +1929,7 @@
         </form>
 
 
-        <div
-          id="creditAdjustStatus">
-        </div>
+        <div id="creditAdjustStatus"></div>
 
       </div>
 
@@ -1964,8 +2082,7 @@
               ? transactions.map(
                   transaction => `
 
-                    <div
-                      class="admin-list-row">
+                    <div class="admin-list-row">
 
                       <div>
 
@@ -2067,16 +2184,14 @@
         </div>
 
 
-        <div
-          id="providerList">
+        <div id="providerList">
 
           ${
             state.providers.length
               ? state.providers.map(
                   provider => `
 
-                    <div
-                      class="admin-list-row">
+                    <div class="admin-list-row">
 
                       <div>
 
@@ -2111,13 +2226,11 @@
                       </div>
 
 
-                      <div
-                        class="admin-actions">
+                      <div class="admin-actions">
 
                         ${
                           provider.enabled
                             ? `
-
                               <button
                                 type="button"
                                 data-provider-action="toggle"
@@ -2126,10 +2239,8 @@
                                 )}">
                                 Nonaktifkan
                               </button>
-
                             `
                             : `
-
                               <button
                                 type="button"
                                 data-provider-action="toggle"
@@ -2138,7 +2249,6 @@
                                 )}">
                                 Aktifkan
                               </button>
-
                             `
                         }
 
@@ -2182,9 +2292,7 @@
       </div>
 
 
-      <div
-        id="providerEditor">
-      </div>
+      <div id="providerEditor"></div>
 
     `;
 
@@ -2294,7 +2402,6 @@
           ${
             provider
               ? `
-
                 <input
                   type="hidden"
                   id="providerId"
@@ -2302,10 +2409,8 @@
                     provider.id
                   )}"
                 >
-
               `
               : `
-
                 <label>
                   ID Provider
                 </label>
@@ -2315,7 +2420,6 @@
                   placeholder="contoh: gemini-production"
                   required
                 >
-
               `
           }
 
@@ -2409,8 +2513,7 @@
           }</textarea>
 
 
-          <label
-            class="admin-checkbox">
+          <label class="admin-checkbox">
 
             <input
               id="providerEnabled"
@@ -2427,8 +2530,7 @@
           </label>
 
 
-          <div
-            class="admin-actions">
+          <div class="admin-actions">
 
             <button
               type="submit"
@@ -2445,9 +2547,7 @@
           </div>
 
 
-          <div
-            id="providerFormStatus">
-          </div>
+          <div id="providerFormStatus"></div>
 
         </form>
 
@@ -2625,11 +2725,6 @@
 
         };
 
-
-        /*
-         * API key hanya dikirim jika admin
-         * benar-benar memasukkan key baru.
-         */
 
         if (apiKey) {
 
@@ -2828,8 +2923,7 @@
               ? state.topups.map(
                   topup => `
 
-                    <div
-                      class="admin-list-row">
+                    <div class="admin-list-row">
 
                       <div>
 
@@ -2857,16 +2951,12 @@
                         ${
                           topup.note
                             ? `
-
                               <small>
-
                                 Catatan:
                                 ${esc(
                                   topup.note
                                 )}
-
                               </small>
-
                             `
                             : ""
                         }
@@ -2874,8 +2964,7 @@
                       </div>
 
 
-                      <div
-                        class="admin-actions">
+                      <div class="admin-actions">
 
                         ${statusBadge(
                           topup.status
@@ -2886,7 +2975,6 @@
                           topup.status ===
                           "pending"
                             ? `
-
                               <button
                                 type="button"
                                 data-topup-action="approve"
@@ -2904,7 +2992,6 @@
                                 )}">
                                 Tolak
                               </button>
-
                             `
                             : ""
                         }
@@ -2916,11 +3003,9 @@
                   `
                 ).join("")
               : `
-
                 <div class="admin-empty">
                   Belum ada request top-up.
                 </div>
-
               `
           }
 
@@ -3062,29 +3147,17 @@
 
               <tr>
 
-                <th>
-                  Provider
-                </th>
+                <th>Provider</th>
 
-                <th>
-                  Status
-                </th>
+                <th>Status</th>
 
-                <th>
-                  Model
-                </th>
+                <th>Model</th>
 
-                <th>
-                  Credit
-                </th>
+                <th>Credit</th>
 
-                <th>
-                  Created
-                </th>
+                <th>Created</th>
 
-                <th>
-                  Error
-                </th>
+                <th>Error</th>
 
               </tr>
 
@@ -3147,15 +3220,11 @@
                       `
                     ).join("")
                   : `
-
                     <tr>
-
                       <td colspan="6">
                         Belum ada job.
                       </td>
-
                     </tr>
-
                   `
               }
 
@@ -3234,9 +3303,7 @@
         </form>
 
 
-        <div
-          id="adminFormStatus">
-        </div>
+        <div id="adminFormStatus"></div>
 
 
         <div class="admin-list">
@@ -3246,8 +3313,7 @@
               ? state.admins.map(
                   admin => `
 
-                    <div
-                      class="admin-list-row">
+                    <div class="admin-list-row">
 
                       <div>
 
@@ -3281,11 +3347,9 @@
                   `
                 ).join("")
               : `
-
                 <div class="admin-empty">
                   Belum ada admin.
                 </div>
-
               `
           }
 
@@ -3502,9 +3566,7 @@
         </form>
 
 
-        <div
-          id="contactStatus">
-        </div>
+        <div id="contactStatus"></div>
 
       </div>
 
@@ -3606,10 +3668,6 @@
 
   /* =======================================================
      STANDALONE AUTO START
-     
-     admin.html tidak memanggil app.js.
-     Karena itu admin.js harus memulai bootstrap
-     sendiri ketika mendeteksi halaman standalone.
   ======================================================= */
 
   if (
