@@ -87,10 +87,6 @@ src,
 moduleName
 ) {
 
-/* -----------------------------------------------------
-   Module sudah tersedia
-   ----------------------------------------------------- */
-
 if (
   moduleName === 'topupSettings' &&
   GENZ.topupSettings &&
@@ -102,7 +98,6 @@ if (
   );
 
 }
-
 
 if (
   moduleName === 'dashboard' &&
@@ -116,11 +111,6 @@ if (
 
 }
 
-
-/* -----------------------------------------------------
-   Module sedang dimuat
-   ----------------------------------------------------- */
-
 if (
   moduleName === 'topupSettings' &&
   topupSettingsLoading
@@ -129,7 +119,6 @@ if (
   return topupSettingsLoading;
 
 }
-
 
 if (
   moduleName === 'dashboard' &&
@@ -140,30 +129,16 @@ if (
 
 }
 
-
 const promise =
   new Promise(
     function (resolve, reject) {
-
-      /* -------------------------------------------------
-         Cari script yang sudah ada
-         ------------------------------------------------- */
 
       const existing =
         document.querySelector(
           `script[data-genz-module="${moduleName}"]`
         );
 
-
-      /* =================================================
-         SCRIPT SUDAH ADA
-         ================================================= */
-
       if (existing) {
-
-        /* -----------------------------------------------
-           Module sudah tersedia
-           ----------------------------------------------- */
 
         if (
           moduleName === 'topupSettings' &&
@@ -179,7 +154,6 @@ const promise =
 
         }
 
-
         if (
           moduleName === 'dashboard' &&
           GENZ.dashboard &&
@@ -193,11 +167,6 @@ const promise =
           return;
 
         }
-
-
-        /* -----------------------------------------------
-           Helper validasi module
-           ----------------------------------------------- */
 
         function resolveModule() {
 
@@ -215,7 +184,6 @@ const promise =
 
           }
 
-
           if (
             moduleName === 'dashboard' &&
             GENZ.dashboard &&
@@ -230,15 +198,9 @@ const promise =
 
           }
 
-
           return false;
 
         }
-
-
-        /* -----------------------------------------------
-           Script sudah selesai dimuat
-           ----------------------------------------------- */
 
         if (
           existing.dataset.genzLoaded === 'true'
@@ -267,17 +229,11 @@ const promise =
 
         }
 
-
-        /* -----------------------------------------------
-           Script masih loading
-           ----------------------------------------------- */
-
         const onLoad =
           function () {
 
             existing.dataset.genzLoaded =
               'true';
-
 
             if (
               !resolveModule()
@@ -293,7 +249,6 @@ const promise =
 
           };
 
-
         const onError =
           function () {
 
@@ -305,7 +260,6 @@ const promise =
 
           };
 
-
         existing.addEventListener(
           'load',
           onLoad,
@@ -314,7 +268,6 @@ const promise =
           }
         );
 
-
         existing.addEventListener(
           'error',
           onError,
@@ -322,13 +275,6 @@ const promise =
             once: true
           }
         );
-
-
-        /* -----------------------------------------------
-           Safety check.
-           Script mungkin sudah selesai sebelum listener
-           dipasang.
-           ----------------------------------------------- */
 
         setTimeout(
           function () {
@@ -346,21 +292,14 @@ const promise =
           0
         );
 
-
         return;
 
       }
-
-
-      /* =================================================
-         BUAT SCRIPT BARU
-         ================================================= */
 
       const script =
         document.createElement(
           'script'
         );
-
 
       script.src =
         src;
@@ -371,13 +310,11 @@ const promise =
       script.dataset.genzModule =
         moduleName;
 
-
       script.onload =
         function () {
 
           script.dataset.genzLoaded =
             'true';
-
 
           if (
             moduleName === 'topupSettings' &&
@@ -393,7 +330,6 @@ const promise =
 
           }
 
-
           if (
             moduleName === 'dashboard' &&
             GENZ.dashboard &&
@@ -408,7 +344,6 @@ const promise =
 
           }
 
-
           reject(
             new Error(
               `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
@@ -416,7 +351,6 @@ const promise =
           );
 
         };
-
 
       script.onerror =
         function () {
@@ -429,7 +363,6 @@ const promise =
 
         };
 
-
       document.head.appendChild(
         script
       );
@@ -437,18 +370,12 @@ const promise =
     }
   );
 
-
-/* -----------------------------------------------------
-   Simpan promise module
-   ----------------------------------------------------- */
-
 if (
   moduleName === 'topupSettings'
 ) {
 
   topupSettingsLoading =
     promise;
-
 
   promise.finally(
     function () {
@@ -468,14 +395,12 @@ if (
 
 }
 
-
 if (
   moduleName === 'dashboard'
 ) {
 
   dashboardLoading =
     promise;
-
 
   promise.finally(
     function () {
@@ -495,7 +420,6 @@ if (
 
 }
 
-
 return promise;
 
 }
@@ -514,7 +438,6 @@ if (
   return GENZ.topupSettings;
 
 }
-
 
 return await loadScriptOnce(
   '/js/topup-settings.js',
@@ -538,7 +461,6 @@ if (
 
 }
 
-
 return await loadScriptOnce(
   '/js/dashboard.js',
   'dashboard'
@@ -555,7 +477,6 @@ async function loadComponents() {
 const app =
   $('app');
 
-
 if (!app) {
 
   throw new Error(
@@ -564,13 +485,11 @@ if (!app) {
 
 }
 
-
 app.innerHTML = `
 
   <div
     id="auth-container">
   </div>
-
 
   <div
     id="application-container"
@@ -580,11 +499,9 @@ app.innerHTML = `
       id="header-container">
     </div>
 
-
     <main
       id="main-container">
     </main>
-
 
     <div
       id="pageContent"
@@ -594,7 +511,6 @@ app.innerHTML = `
   </div>
 
 `;
-
 
 if (
   typeof GENZ.loadComponent !== 'function'
@@ -606,14 +522,8 @@ if (
 
 }
 
-
-/* =====================================================
-   AUTH COMPONENT
-   ===================================================== */
-
 const authContainer =
   $('auth-container');
-
 
 if (!authContainer) {
 
@@ -622,7 +532,6 @@ if (!authContainer) {
   );
 
 }
-
 
 try {
 
@@ -637,7 +546,6 @@ try {
     'Gagal memuat auth.html:',
     authComponentError
   );
-
 
   authContainer.innerHTML = `
 
@@ -666,7 +574,6 @@ try {
 
         </div>
 
-
         <form
           id="authForm">
 
@@ -688,7 +595,6 @@ try {
 
           </div>
 
-
           <div
             class="form-group">
 
@@ -707,13 +613,11 @@ try {
 
           </div>
 
-
           <div
             id="authMsg"
             class="auth-message"
             aria-live="polite">
           </div>
-
 
           <button
             id="login"
@@ -723,7 +627,6 @@ try {
             LOGIN
 
           </button>
-
 
           <div
             class="auth-actions">
@@ -736,7 +639,6 @@ try {
               DAFTAR
 
             </button>
-
 
             <button
               id="forgotPassword"
@@ -759,14 +661,8 @@ try {
 
 }
 
-
-/* =====================================================
-   HEADER COMPONENT
-   ===================================================== */
-
 const headerContainer =
   $('header-container');
-
 
 if (!headerContainer) {
 
@@ -775,7 +671,6 @@ if (!headerContainer) {
   );
 
 }
-
 
 try {
 
@@ -790,7 +685,6 @@ try {
     'Gagal memuat header.html:',
     headerError
   );
-
 
   headerContainer.innerHTML = `
 
@@ -811,14 +705,8 @@ try {
 
 }
 
-
-/* =====================================================
-   GENERATOR COMPONENT
-   ===================================================== */
-
 const main =
   $('main-container');
-
 
 if (!main) {
 
@@ -827,7 +715,6 @@ if (!main) {
   );
 
 }
-
 
 try {
 
@@ -842,7 +729,6 @@ try {
     'Gagal memuat generator.html:',
     componentError
   );
-
 
   main.innerHTML = `
 
@@ -867,11 +753,6 @@ try {
   `;
 
 }
-
-
-/* =====================================================
-   ACCOUNT
-   ===================================================== */
 
 if (
   GENZ.account &&
@@ -912,11 +793,6 @@ try {
   let session =
     null;
 
-
-  /* ---------------------------------------------------
-     Gunakan auth.js jika tersedia
-     --------------------------------------------------- */
-
   if (
     window.GENZ_AUTH &&
     typeof window.GENZ_AUTH.getSession === 'function'
@@ -925,18 +801,10 @@ try {
     session =
       await window.GENZ_AUTH.getSession();
 
-  }
-
-
-  /* ---------------------------------------------------
-     Fallback Supabase client
-     --------------------------------------------------- */
-
-  else {
+  } else {
 
     const client =
       window.GENZ_AUTH_CLIENT;
-
 
     if (
       !client ||
@@ -948,31 +816,22 @@ try {
         '[GEN-Z.AI] Auth client belum tersedia'
       );
 
-
       await handleLogout(
         false
       );
-
 
       return false;
 
     }
 
-
     const result =
       await client.auth.getSession();
-
 
     session =
       result?.data?.session ||
       null;
 
   }
-
-
-  /* ---------------------------------------------------
-     SESSION AKTIF
-     --------------------------------------------------- */
 
   if (
     session &&
@@ -985,21 +844,14 @@ try {
     GENZ.state.user =
       session.user;
 
-
     await handleLogin(
       session.user,
       false
     );
 
-
     return true;
 
   }
-
-
-  /* ---------------------------------------------------
-     TIDAK LOGIN
-     --------------------------------------------------- */
 
   GENZ.state.loggedIn =
     false;
@@ -1007,14 +859,11 @@ try {
   GENZ.state.user =
     null;
 
-
   await handleLogout(
     false
   );
 
-
   return false;
-
 
 } catch (authError) {
 
@@ -1023,11 +872,9 @@ try {
     authError
   );
 
-
   await handleLogout(
     false
   );
-
 
   return false;
 
@@ -1054,17 +901,11 @@ if (user) {
 
 }
 
-
 if (!GENZ.state.user) {
 
   return;
 
 }
-
-
-/* =====================================================
-   RESET PRIVILEGE SEBELUM VALIDASI SERVER
-   ===================================================== */
 
 GENZ.state.account = {
 
@@ -1077,11 +918,6 @@ GENZ.state.account = {
     false
 
 };
-
-
-/* =====================================================
-   ACCOUNT UI
-   ===================================================== */
 
 if (
   GENZ.account &&
@@ -1102,11 +938,6 @@ if (
   }
 
 }
-
-
-/* =====================================================
-   UPDATE USER
-   ===================================================== */
 
 if (
   GENZ.account &&
@@ -1130,12 +961,6 @@ if (
 
 }
 
-
-/* =====================================================
-   ACCOUNT REFRESH
-   SERVER ADALAH SUMBER KEBENARAN ROLE
-   ===================================================== */
-
 if (
   GENZ.account &&
   typeof GENZ.account.refresh === 'function'
@@ -1155,11 +980,6 @@ if (
   }
 
 }
-
-
-/* =====================================================
-   PROVIDERS
-   ===================================================== */
 
 if (
   GENZ.providers &&
@@ -1181,11 +1001,6 @@ if (
 
 }
 
-
-/* =====================================================
-   UPLOAD MODULE
-   ===================================================== */
-
 if (
   GENZ.upload &&
   typeof GENZ.upload.init === 'function'
@@ -1205,11 +1020,6 @@ if (
   }
 
 }
-
-
-/* =====================================================
-   GENERATOR MODULE
-   ===================================================== */
 
 if (
   GENZ.generator &&
@@ -1231,17 +1041,7 @@ if (
 
 }
 
-
-/* =====================================================
-   TAMPILKAN STUDIO
-   ===================================================== */
-
 showStudio();
-
-
-/* =====================================================
-   EVENT INTERNAL
-   ===================================================== */
 
 if (
   emitEvent &&
@@ -1271,11 +1071,6 @@ GENZ.state.loggedIn =
 GENZ.state.user =
   null;
 
-
-/* =====================================================
-   RESET ACCOUNT / ADMIN
-   ===================================================== */
-
 GENZ.state.account = {
 
   isAdmin:
@@ -1285,11 +1080,6 @@ GENZ.state.account = {
     false
 
 };
-
-
-/* =====================================================
-   HENTIKAN POLLING VIDEO
-   ===================================================== */
 
 if (
   GENZ.video &&
@@ -1304,11 +1094,6 @@ if (
 
 }
 
-
-/* =====================================================
-   BERSIHKAN VIDEO
-   ===================================================== */
-
 if (
   GENZ.video &&
   typeof GENZ.video.clear === 'function'
@@ -1321,11 +1106,6 @@ if (
   } catch (_) {}
 
 }
-
-
-/* =====================================================
-   TUTUP ACCOUNT MENU
-   ===================================================== */
 
 if (
   GENZ.account &&
@@ -1340,14 +1120,8 @@ if (
 
 }
 
-
-/* =====================================================
-   SEMBUNYIKAN APPLICATION
-   ===================================================== */
-
 const application =
   $('application-container');
-
 
 if (application) {
 
@@ -1357,14 +1131,8 @@ if (application) {
 
 }
 
-
-/* =====================================================
-   TAMPILKAN LOGIN
-   ===================================================== */
-
 const authContainer =
   $('auth-container');
-
 
 if (authContainer) {
 
@@ -1373,7 +1141,6 @@ if (authContainer) {
   );
 
 }
-
 
 if (
   GENZ.auth &&
@@ -1391,7 +1158,6 @@ if (
   const auth =
     $('auth');
 
-
   if (auth) {
 
     auth.style.display =
@@ -1405,22 +1171,14 @@ if (
 
 }
 
-
-/* =====================================================
-   RESET PAGE
-   ===================================================== */
-
 GENZ.state.currentPage =
   'studio';
-
 
 const main =
   $('main-container');
 
-
 const pages =
   $('pageContent');
-
 
 if (main) {
 
@@ -1429,7 +1187,6 @@ if (main) {
   );
 
 }
-
 
 if (pages) {
 
@@ -1441,11 +1198,6 @@ if (pages) {
     '';
 
 }
-
-
-/* =====================================================
-   RESET DASHBOARD STATE
-   ===================================================== */
 
 if (
   GENZ.dashboard &&
@@ -1459,11 +1211,6 @@ if (
     null;
 
 }
-
-
-/* =====================================================
-   EVENT INTERNAL
-   ===================================================== */
 
 if (
   emitEvent &&
@@ -1490,14 +1237,8 @@ if (authBound) {
 
 }
 
-
 authBound =
   true;
-
-
-/* =====================================================
-   LOGIN EVENT
-   ===================================================== */
 
 window.addEventListener(
   'genz-auth-login',
@@ -1506,7 +1247,6 @@ window.addEventListener(
     const detail =
       event?.detail ||
       {};
-
 
     const user =
       detail?.user ||
@@ -1517,13 +1257,11 @@ window.addEventListener(
           : GENZ.state.user
       );
 
-
     if (!user) {
 
       return;
 
     }
-
 
     handleLogin(
       user,
@@ -1541,11 +1279,6 @@ window.addEventListener(
 
   }
 );
-
-
-/* =====================================================
-   LOGOUT EVENT
-   ===================================================== */
 
 window.addEventListener(
   'genz-auth-logout',
@@ -1578,22 +1311,14 @@ function showStudio() {
 const authContainer =
   $('auth-container');
 
-
 const application =
   $('application-container');
-
 
 const main =
   $('main-container');
 
-
 const pages =
   $('pageContent');
-
-
-/* =====================================================
-   HIDE LOGIN
-   ===================================================== */
 
 if (authContainer) {
 
@@ -1603,10 +1328,8 @@ if (authContainer) {
 
 }
 
-
 const auth =
   $('auth');
-
 
 if (auth) {
 
@@ -1614,11 +1337,6 @@ if (auth) {
     'none';
 
 }
-
-
-/* =====================================================
-   SHOW APPLICATION
-   ===================================================== */
 
 if (application) {
 
@@ -1628,7 +1346,6 @@ if (application) {
 
 }
 
-
 if (pages) {
 
   pages.classList.add(
@@ -1636,7 +1353,6 @@ if (pages) {
   );
 
 }
-
 
 if (main) {
 
@@ -1646,14 +1362,11 @@ if (main) {
 
 }
 
-
 GENZ.state.currentPage =
   'studio';
 
-
 const back =
   $('backToStudio');
-
 
 if (back) {
 
@@ -1662,11 +1375,6 @@ if (back) {
   );
 
 }
-
-
-/* -----------------------------------------------------
-   Tutup Dashboard preview jika masih terbuka
-   ----------------------------------------------------- */
 
 if (
   GENZ.dashboard &&
@@ -1699,11 +1407,6 @@ if (!page) {
 
 }
 
-
-/* -----------------------------------------------------
-   Semua halaman internal membutuhkan login.
-   ----------------------------------------------------- */
-
 if (!isLoggedIn()) {
 
   await handleLogout(
@@ -1714,14 +1417,11 @@ if (!isLoggedIn()) {
 
 }
 
-
 const main =
   $('main-container');
 
-
 const pages =
   $('pageContent');
-
 
 if (!pages) {
 
@@ -1733,11 +1433,6 @@ if (!pages) {
 
 }
 
-
-/* -----------------------------------------------------
-   Tampilkan area halaman
-   ----------------------------------------------------- */
-
 if (main) {
 
   main.classList.add(
@@ -1746,19 +1441,15 @@ if (main) {
 
 }
 
-
 pages.classList.remove(
   'hidden'
 );
 
-
 GENZ.state.currentPage =
   page;
 
-
 const back =
   $('backToStudio');
-
 
 if (back) {
 
@@ -1768,13 +1459,11 @@ if (back) {
 
 }
 
-
 /* =====================================================
    ROUTING
-   ===================================================== */
+===================================================== */
 
 switch (page) {
-
 
   /* ===================================================
      DASHBOARD
@@ -1786,7 +1475,6 @@ switch (page) {
 
       const dashboard =
         await ensureDashboard();
-
 
       if (
         dashboard &&
@@ -1811,7 +1499,6 @@ switch (page) {
         dashboardError
       );
 
-
       showModuleUnavailable(
         'Dashboard',
         '/js/dashboard.js'
@@ -1820,7 +1507,6 @@ switch (page) {
     }
 
     break;
-
 
   /* ===================================================
      PROFILE / RIWAYAT
@@ -1844,7 +1530,6 @@ switch (page) {
           profileError
         );
 
-
         showModuleUnavailable(
           'Profile',
           '/js/profile.js'
@@ -1862,7 +1547,6 @@ switch (page) {
     }
 
     break;
-
 
   /* ===================================================
      CREDIT
@@ -1886,7 +1570,6 @@ switch (page) {
           creditError
         );
 
-
         showModuleUnavailable(
           'Credit',
           '/js/credit.js'
@@ -1905,13 +1588,9 @@ switch (page) {
 
     break;
 
-
   /* ===================================================
      TOP UP
      LEGACY ROUTE
-     
-     Semua menu Top Up sekarang menggunakan
-     halaman Credit.
      =================================================== */
 
   case 'topup':
@@ -1921,7 +1600,6 @@ switch (page) {
     );
 
     break;
-
 
   /* ===================================================
      TOP UP SETTING
@@ -1940,12 +1618,10 @@ switch (page) {
 
     }
 
-
     try {
 
       const topupSettings =
         await ensureTopupSettings();
-
 
       if (
         topupSettings &&
@@ -1970,7 +1646,6 @@ switch (page) {
         moduleError
       );
 
-
       showModuleUnavailable(
         'Top Up Setting',
         '/js/topup-settings.js'
@@ -1980,9 +1655,12 @@ switch (page) {
 
     break;
 
-
   /* ===================================================
      ADMIN PANEL
+     
+     Untuk tahap ini Admin diarahkan ke admin.html
+     statis agar seluruh struktur panel dapat terlihat
+     terlebih dahulu.
      =================================================== */
 
   case 'admin':
@@ -1997,42 +1675,10 @@ switch (page) {
 
     }
 
-
-    if (
-      GENZ.admin &&
-      typeof GENZ.admin.load === 'function'
-    ) {
-
-      try {
-
-        await GENZ.admin.load();
-
-      } catch (adminError) {
-
-        error(
-          'Admin module error:',
-          adminError
-        );
-
-
-        showModuleUnavailable(
-          'Admin Panel',
-          '/js/admin.js'
-        );
-
-      }
-
-    } else {
-
-      showModuleUnavailable(
-        'Admin Panel',
-        '/js/admin.js'
-      );
-
-    }
+    window.location.href =
+      '/admin.html';
 
     break;
-
 
   /* ===================================================
      CONTACT ADMIN
@@ -2051,11 +1697,9 @@ switch (page) {
 
     }
 
-
     showContactAdmin();
 
     break;
-
 
   /* ===================================================
      MEMBERSHIP
@@ -2074,11 +1718,9 @@ switch (page) {
 
     }
 
-
     showMembership();
 
     break;
-
 
   /* ===================================================
      AFFILIATE
@@ -2090,7 +1732,6 @@ switch (page) {
     showAffiliate();
 
     break;
-
 
   /* ===================================================
      DEFAULT
@@ -2117,13 +1758,11 @@ message
 const pages =
   $('pageContent');
 
-
 if (!pages) {
 
   return;
 
 }
-
 
 pages.innerHTML = `
 
@@ -2141,7 +1780,6 @@ pages.innerHTML = `
         ←
 
       </button>
-
 
       <div>
 
@@ -2164,10 +1802,8 @@ pages.innerHTML = `
 
 `;
 
-
 const back =
   $('accessDeniedBack');
-
 
 if (back) {
 
@@ -2195,13 +1831,11 @@ fileName
 const pages =
   $('pageContent');
 
-
 if (!pages) {
 
   return;
 
 }
-
 
 pages.innerHTML = `
 
@@ -2220,7 +1854,6 @@ pages.innerHTML = `
 
       </button>
 
-
       <div>
 
         <h2>
@@ -2236,7 +1869,6 @@ pages.innerHTML = `
       </div>
 
     </div>
-
 
     <div
       class="contact-admin">
@@ -2258,10 +1890,8 @@ pages.innerHTML = `
 
 `;
 
-
 const back =
   $('moduleUnavailableBack');
-
 
 if (back) {
 
@@ -2286,13 +1916,11 @@ function showContactAdmin() {
 const pages =
   $('pageContent');
 
-
 if (!pages) {
 
   return;
 
 }
-
 
 pages.innerHTML = `
 
@@ -2311,7 +1939,6 @@ pages.innerHTML = `
 
       </button>
 
-
       <div>
 
         <h2>
@@ -2325,7 +1952,6 @@ pages.innerHTML = `
       </div>
 
     </div>
-
 
     <div
       class="contact-admin">
@@ -2342,10 +1968,8 @@ pages.innerHTML = `
 
 `;
 
-
 const back =
   $('contactBack');
-
 
 if (back) {
 
@@ -2370,13 +1994,11 @@ function showMembership() {
 const pages =
   $('pageContent');
 
-
 if (!pages) {
 
   return;
 
 }
-
 
 pages.innerHTML = `
 
@@ -2395,7 +2017,6 @@ pages.innerHTML = `
 
       </button>
 
-
       <div>
 
         <h2>
@@ -2409,7 +2030,6 @@ pages.innerHTML = `
       </div>
 
     </div>
-
 
     <div
       class="contact-admin">
@@ -2425,10 +2045,8 @@ pages.innerHTML = `
 
 `;
 
-
 const back =
   $('membershipBack');
-
 
 if (back) {
 
@@ -2453,13 +2071,11 @@ function showAffiliate() {
 const pages =
   $('pageContent');
 
-
 if (!pages) {
 
   return;
 
 }
-
 
 pages.innerHTML = `
 
@@ -2478,7 +2094,6 @@ pages.innerHTML = `
 
       </button>
 
-
       <div>
 
         <h2>
@@ -2492,7 +2107,6 @@ pages.innerHTML = `
       </div>
 
     </div>
-
 
     <div
       class="contact-admin">
@@ -2508,10 +2122,8 @@ pages.innerHTML = `
 
 `;
 
-
 const back =
   $('affiliateBack');
-
 
 if (back) {
 
@@ -2545,7 +2157,6 @@ if (
   );
 
 }
-
 
 return String(value ?? '')
   .replace(
@@ -2583,14 +2194,8 @@ if (navigationBound) {
 
 }
 
-
 navigationBound =
   true;
-
-
-/* =====================================================
-   ACCOUNT MENU / DATA PAGE
-   ===================================================== */
 
 document.addEventListener(
   'click',
@@ -2598,7 +2203,6 @@ document.addEventListener(
 
     const target =
       event.target;
-
 
     if (
       !target ||
@@ -2609,12 +2213,10 @@ document.addEventListener(
 
     }
 
-
     const button =
       target.closest(
         '[data-page]'
       );
-
 
     if (!button) {
 
@@ -2622,10 +2224,8 @@ document.addEventListener(
 
     }
 
-
     const page =
       button.dataset.page;
-
 
     if (!page) {
 
@@ -2633,9 +2233,7 @@ document.addEventListener(
 
     }
 
-
     event.preventDefault();
-
 
     showPage(
       page
@@ -2653,18 +2251,12 @@ document.addEventListener(
   }
 );
 
-
-/* =====================================================
-   DATA BACK STUDIO
-   ===================================================== */
-
 document.addEventListener(
   'click',
   function (event) {
 
     const target =
       event.target;
-
 
     if (
       !target ||
@@ -2674,33 +2266,24 @@ document.addEventListener(
       return;
 
     }
-
 
     const button =
       target.closest(
         '[data-back-studio]'
       );
 
-
     if (!button) {
 
       return;
 
     }
 
-
     event.preventDefault();
-
 
     showStudio();
 
   }
 );
-
-
-/* =====================================================
-   HEADER BACK BUTTON
-   ===================================================== */
 
 document.addEventListener(
   'click',
@@ -2708,7 +2291,6 @@ document.addEventListener(
 
     const target =
       event.target;
-
 
     if (
       !target ||
@@ -2719,12 +2301,10 @@ document.addEventListener(
 
     }
 
-
     const button =
       target.closest(
         '#backToStudio'
       );
-
 
     if (!button) {
 
@@ -2732,19 +2312,12 @@ document.addEventListener(
 
     }
 
-
     event.preventDefault();
-
 
     showStudio();
 
   }
 );
-
-
-/* =====================================================
-   EVENT BUS
-   ===================================================== */
 
 if (
   typeof GENZ.on === 'function'
@@ -2754,7 +2327,6 @@ if (
     'show-studio',
     showStudio
   );
-
 
   GENZ.on(
     'show-page',
@@ -2792,22 +2364,15 @@ if (started) {
 
 }
 
-
 log(
   'APPLICATION START'
 );
 
-
 try {
-
-  /* ---------------------------------------------------
-     Pastikan state dasar tersedia
-     --------------------------------------------------- */
 
   GENZ.state =
     GENZ.state ||
     {};
-
 
   GENZ.state.account =
     GENZ.state.account ||
@@ -2821,39 +2386,20 @@ try {
 
     };
 
-
   GENZ.state.loggedIn =
     GENZ.state.loggedIn === true;
 
-
   GENZ.state.initialized =
     false;
-
-
-  /* ---------------------------------------------------
-     Bind event terlebih dahulu
-     --------------------------------------------------- */
 
   bindNavigation();
 
   bindAuth();
 
-
-  /* ---------------------------------------------------
-     Load components
-     --------------------------------------------------- */
-
   await loadComponents();
-
-
-  /* ---------------------------------------------------
-     Aplikasi internal disembunyikan
-     sebelum session selesai diperiksa
-     --------------------------------------------------- */
 
   const application =
     $('application-container');
-
 
   if (application) {
 
@@ -2863,42 +2409,30 @@ try {
 
   }
 
-
-  /* ---------------------------------------------------
-     Sinkronisasi session
-     --------------------------------------------------- */
-
   await syncAuth();
-
 
   started =
     true;
 
-
   GENZ.state.initialized =
     true;
-
 
   log(
     'APPLICATION READY'
   );
-
 
 } catch (startupError) {
 
   GENZ.state.initialized =
     false;
 
-
   error(
     'APPLICATION START ERROR:',
     startupError
   );
 
-
   const app =
     $('app');
-
 
   if (app) {
 
@@ -2906,12 +2440,10 @@ try {
       startupError?.message ||
       'Unknown error';
 
-
     const safeMessage =
       escapeHtml(
         errorMessage
       );
-
 
     app.innerHTML = `
 
