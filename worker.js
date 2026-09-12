@@ -110,54 +110,6 @@ function inferAdapter(value) {
 
 /*
  * ============================================================
- * HTTP / CORS
- * ============================================================
- */
-
-
-
-function apiError(
-  data,
-  fallback
-) {
-  if (
-    typeof data?.error ===
-    "string"
-  ) {
-    return data.error;
-  }
-
-  return (
-    data?.error?.message ||
-    data?.message ||
-    data?.raw ||
-    fallback
-  );
-}
-
-/*
- * ============================================================
- * HTTP ERROR
- * ============================================================
- */
-
-class HttpError extends Error {
-  constructor(
-    message,
-    status
-  ) {
-    super(message);
-
-    this.name =
-      "HttpError";
-
-    this.status =
-      status;
-  }
-}
-
-/*
- * ============================================================
  * SUPABASE
  * ============================================================
  */
