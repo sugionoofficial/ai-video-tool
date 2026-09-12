@@ -39,9 +39,9 @@ import {
 } from "./security/rate-limit.js";
 
 import {
-  reserveJob
+  reserveJob,
+  refundJob
 } from "./jobs/jobs.js";
-
 /*
  * ============================================================
  * GEN-Z.AI WORKER
