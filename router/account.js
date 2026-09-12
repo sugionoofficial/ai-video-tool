@@ -17,10 +17,6 @@ import {
   sb
 } from "../lib/supabase.js";
 
-import {
-  accountApi
-} from "./router/account.js";
-
 /*
  * ============================================================
  * ACCOUNT
