@@ -63,26 +63,3 @@ export async function reserveJob(
 
   return data;
 }
-
-export async function refundJob(
-  jobId,
-  env
-) {
-  const res =
-    await sb(
-      "/rest/v1/rpc/refund_video_job",
-      {
-        method:
-          "POST",
-
-        body:
-          JSON.stringify({
-            p_job_id:
-              jobId
-          })
-      },
-      env
-    );
-
-  return res.ok;
-}
