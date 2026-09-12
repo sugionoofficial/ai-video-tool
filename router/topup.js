@@ -171,11 +171,32 @@ export async function topupApi(
     if (
       !r.ok
     ) {
+      const data =
+        await safeJson(
+          r
+        );
+
+      /*
+       * Database memiliki unique partial index untuk
+       * memastikan satu pending request per user.
+       *
+       * Jika dua POST berjalan bersamaan, pengecekan
+       * pending di atas bisa sama-sama lolos. Request
+       * kedua kemudian ditolak database dengan 409.
+       */
+      if (
+        r.status ===
+        409
+      ) {
+        throw new HttpError(
+          "Anda masih memiliki request top-up yang menunggu diproses.",
+          409
+        );
+      }
+
       throw new HttpError(
         apiError(
-          await safeJson(
-            r
-          ),
+          data,
           "Gagal membuat request top-up."
         ),
         r.status
