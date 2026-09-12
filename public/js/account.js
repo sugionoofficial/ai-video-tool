@@ -55,6 +55,68 @@
 
 
   /* =======================================================
+     GET ACCESS TOKEN
+  ======================================================= */
+
+  async function getAccessToken() {
+
+    try {
+
+      /*
+       * Auth module GEN-Z.AI
+       */
+      if (
+        GENZ.auth &&
+        typeof GENZ.auth.token === "function"
+      ) {
+
+        const token =
+          await GENZ.auth.token();
+
+        if (token) {
+          return String(token).trim();
+        }
+
+      }
+
+
+      /*
+       * Fallback langsung ke GENZ_AUTH_CLIENT
+       */
+      if (
+        window.GENZ_AUTH_CLIENT &&
+        window.GENZ_AUTH_CLIENT.auth &&
+        typeof window.GENZ_AUTH_CLIENT.auth.getSession === "function"
+      ) {
+
+        const result =
+          await window.GENZ_AUTH_CLIENT.auth.getSession();
+
+        const token =
+          result?.data?.session?.access_token;
+
+        if (token) {
+          return String(token).trim();
+        }
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "[ACCOUNT] Gagal mengambil access token:",
+        error
+      );
+
+    }
+
+
+    return null;
+
+  }
+
+
+  /* =======================================================
      UPDATE MENU ROLE
   ======================================================= */
 
@@ -81,7 +143,9 @@
 
 
     /*
-     * ADMIN
+     * =====================================================
+     * ADMIN / OWNER
+     * =====================================================
      */
 
     if (adminState) {
@@ -92,9 +156,19 @@
           "hidden"
         );
 
+        adminMenu.removeAttribute(
+          "hidden"
+        );
+
         adminMenu.style.setProperty(
           "display",
           "block",
+          "important"
+        );
+
+        adminMenu.style.setProperty(
+          "visibility",
+          "visible",
           "important"
         );
 
@@ -107,9 +181,19 @@
           "hidden"
         );
 
+        topupSetting.removeAttribute(
+          "hidden"
+        );
+
         topupSetting.style.setProperty(
           "display",
           "block",
+          "important"
+        );
+
+        topupSetting.style.setProperty(
+          "visibility",
+          "visible",
           "important"
         );
 
@@ -163,8 +247,11 @@
 
     }
 
+
     /*
+     * =====================================================
      * USER BIASA
+     * =====================================================
      */
 
     else {
@@ -217,6 +304,10 @@
           "hidden"
         );
 
+        contactAdmin.removeAttribute(
+          "hidden"
+        );
+
         contactAdmin.style.setProperty(
           "display",
           "block",
@@ -233,6 +324,10 @@
       if (membership) {
 
         membership.classList.remove(
+          "hidden"
+        );
+
+        membership.removeAttribute(
           "hidden"
         );
 
@@ -285,14 +380,33 @@
       getElement("accountMenu");
 
 
+    /*
+     * Load component jika belum tersedia.
+     */
+
     if (!button || !menu) {
 
       try {
+
+        if (
+          typeof GENZ.loadComponent !==
+          "function"
+        ) {
+
+          console.error(
+            "[ACCOUNT] GENZ.loadComponent tidak tersedia"
+          );
+
+          return false;
+
+        }
+
 
         await GENZ.loadComponent(
           container,
           "/components/account.html"
         );
+
 
       } catch (error) {
 
@@ -326,6 +440,11 @@
     }
 
 
+    /*
+     * Pastikan tombol account selalu terlihat
+     * setelah user berhasil login.
+     */
+
     button.classList.remove(
       "hidden"
     );
@@ -333,7 +452,6 @@
     button.removeAttribute(
       "hidden"
     );
-
 
     button.style.setProperty(
       "display",
@@ -359,7 +477,7 @@
      */
 
     const currentAccount =
-      GENZ.state.account || {};
+      GENZ.state?.account || {};
 
 
     updateMenuVisibility(
@@ -407,12 +525,18 @@
       "hidden"
     );
 
+    menu.removeAttribute(
+      "hidden"
+    );
+
 
     GENZ.account.menuOpen =
       true;
 
 
-    setExpanded(true);
+    setExpanded(
+      true
+    );
 
   }
 
@@ -441,7 +565,9 @@
       false;
 
 
-    setExpanded(false);
+    setExpanded(
+      false
+    );
 
   }
 
@@ -476,6 +602,10 @@
     if (!user) {
       return;
     }
+
+
+    GENZ.state =
+      GENZ.state || {};
 
 
     GENZ.state.user =
@@ -514,26 +644,178 @@
 
 
   /* =======================================================
+     FORMAT CREDIT
+  ======================================================= */
+
+  function normalizeCredit(value) {
+
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+
+      return 0;
+
+    }
+
+
+    /*
+     * Supabase biasanya mengembalikan
+     * numeric sebagai number atau string.
+     */
+
+    const number =
+      Number(value);
+
+
+    if (
+      !Number.isFinite(number)
+    ) {
+
+      return 0;
+
+    }
+
+
+    return number;
+
+  }
+
+
+  /* =======================================================
      UPDATE CREDIT
   ======================================================= */
 
   function updateCredits(amount) {
 
+    const value =
+      normalizeCredit(amount);
+
+
+    /*
+     * Elemen utama account menu.
+     */
+
     const element =
       getElement("credits");
 
 
-    if (!element) {
-      return;
+    if (element) {
+
+      element.textContent =
+        `${value.toLocaleString("id-ID")} credit`;
+
     }
 
 
-    const value =
-      Number(amount || 0);
+    /*
+     * Header credit jika tersedia.
+     */
+
+    const headerCredits =
+      getElement("headerCredits");
 
 
-    element.textContent =
-      `${value} credit`;
+    if (headerCredits) {
+
+      headerCredits.textContent =
+        `${value.toLocaleString("id-ID")} credit`;
+
+    }
+
+
+    /*
+     * Simpan ke state.
+     */
+
+    GENZ.state =
+      GENZ.state || {};
+
+
+    GENZ.state.account =
+      GENZ.state.account || {};
+
+
+    GENZ.state.account.credits =
+      value;
+
+
+    return value;
+
+  }
+
+
+  /* =======================================================
+     READ CREDIT FROM RESPONSE
+  ======================================================= */
+
+  function getCreditFromResponse(data) {
+
+    if (!data) {
+      return 0;
+    }
+
+
+    const candidates = [
+
+      data.credits,
+
+      data.credit,
+
+      data.balance,
+
+      data.credit_balance,
+
+      data.creditBalance,
+
+      data.data?.credits,
+
+      data.data?.credit,
+
+      data.data?.balance,
+
+      data.data?.credit_balance,
+
+      data.account?.credits,
+
+      data.account?.credit,
+
+      data.account?.balance,
+
+      data.account?.credit_balance
+
+    ];
+
+
+    for (
+      const candidate of candidates
+    ) {
+
+      if (
+        candidate !== null &&
+        candidate !== undefined &&
+        candidate !== ""
+      ) {
+
+        const number =
+          Number(candidate);
+
+
+        if (
+          Number.isFinite(number)
+        ) {
+
+          return number;
+
+        }
+
+      }
+
+    }
+
+
+    return 0;
 
   }
 
@@ -546,6 +828,10 @@
 
     const adminState =
       isAdmin === true;
+
+
+    GENZ.state =
+      GENZ.state || {};
 
 
     GENZ.state.account =
@@ -570,9 +856,17 @@
 
   function invalidateAdmin() {
 
+    GENZ.state =
+      GENZ.state || {};
+
+
     GENZ.state.account =
       GENZ.state.account || {};
 
+
+    /*
+     * Jangan menghapus credit yang sudah diketahui.
+     */
 
     GENZ.state.account.isAdmin =
       false;
@@ -582,7 +876,9 @@
       false;
 
 
-    updateMenuVisibility(false);
+    updateMenuVisibility(
+      false
+    );
 
   }
 
@@ -594,10 +890,10 @@
   async function refresh() {
 
     if (
-      GENZ.state.loggedIn !== true
+      GENZ.state?.loggedIn !== true
     ) {
 
-      return;
+      return false;
 
     }
 
@@ -607,36 +903,111 @@
 
     try {
 
+      /*
+       * ===================================================
+       * AMBIL ACCESS TOKEN
+       * ===================================================
+       */
+
+      const accessToken =
+        await getAccessToken();
+
+
+      if (!accessToken) {
+
+        console.warn(
+          "[ACCOUNT] Access token belum tersedia."
+        );
+
+        /*
+         * Jangan menghapus role.
+         * Session bisa saja masih dalam proses
+         * INITIAL_SESSION / TOKEN_REFRESHED.
+         */
+
+        return false;
+
+      }
+
+
+      /*
+       * ===================================================
+       * REQUEST ACCOUNT
+       * ===================================================
+       */
+
       const response =
         await fetch(
           "/api/account/credits",
           {
+
             method: "GET",
 
             credentials: "include",
 
+            cache: "no-store",
+
             headers: {
+
               "Accept":
-                "application/json"
+                "application/json",
+
+              "Authorization":
+                `Bearer ${accessToken}`
+
             }
 
           }
         );
 
 
-      if (!response.ok) {
+      /*
+       * ===================================================
+       * UNAUTHORIZED
+       * ===================================================
+       */
 
-        invalidateAdmin();
+      if (
+        response.status === 401
+      ) {
+
+        console.warn(
+          "[ACCOUNT] Worker menolak session: 401"
+        );
+
+        /*
+         * Jangan langsung menganggap
+         * user bukan admin.
+         */
+
+        return false;
+
+      }
+
+
+      /*
+       * ===================================================
+       * ERROR SERVER
+       * ===================================================
+       */
+
+      if (!response.ok) {
 
         console.warn(
           "[ACCOUNT] credits request:",
           response.status
         );
 
-        return;
+        return false;
 
       }
 
+
+      /*
+       * ===================================================
+       * PARSE RESPONSE
+       * ===================================================
+       */
 
       const data =
         await response.json();
@@ -647,37 +1018,56 @@
         data.success === false
       ) {
 
-        invalidateAdmin();
+        console.warn(
+          "[ACCOUNT] Response account tidak valid:",
+          data
+        );
 
-        return;
+        return false;
 
       }
 
 
       /*
-       * Simpan data account
+       * ===================================================
+       * SIMPAN DATA ACCOUNT
+       * ===================================================
        */
+
+      GENZ.state =
+        GENZ.state || {};
+
 
       GENZ.state.account =
         data;
 
 
       /*
-       * Credit
+       * ===================================================
+       * CREDIT
+       * ===================================================
        */
 
+      const credit =
+        getCreditFromResponse(
+          data
+        );
+
+
       updateCredits(
-        data.credits ??
-        data.balance ??
-        0
+        credit
       );
 
 
       /*
+       * ===================================================
+       * ROLE
+       * ===================================================
+       *
        * Server adalah sumber kebenaran.
        *
-       * Hanya data.isAdmin === true
-       * yang boleh dianggap admin.
+       * data.isAdmin === true
+       * berarti role admin atau owner.
        */
 
       const serverIsAdmin =
@@ -689,8 +1079,8 @@
 
 
       /*
-       * Tandai role sudah divalidasi
-       * setelah response server berhasil.
+       * Role sudah berhasil divalidasi
+       * oleh Worker.
        */
 
       GENZ.state.account.roleValidated =
@@ -698,7 +1088,23 @@
 
 
       /*
-       * Terapkan menu.
+       * Simpan role jika tersedia.
+       */
+
+      if (
+        data.role
+      ) {
+
+        GENZ.state.account.role =
+          data.role;
+
+      }
+
+
+      /*
+       * ===================================================
+       * UPDATE MENU
+       * ===================================================
        */
 
       updateMenuVisibility(
@@ -706,20 +1112,52 @@
       );
 
 
+      /*
+       * ===================================================
+       * LOG
+       * ===================================================
+       */
+
+      console.log(
+        "[ACCOUNT] Account berhasil dimuat:",
+        {
+
+          credits:
+            GENZ.state.account.credits,
+
+          role:
+            GENZ.state.account.role ||
+            "unknown",
+
+          isAdmin:
+            serverIsAdmin,
+
+          roleValidated:
+            true
+
+        }
+      );
+
+
+      return true;
+
+
     } catch (error) {
-
-      invalidateAdmin();
-
 
       console.error(
         "[ACCOUNT] refresh error",
         error
       );
 
+      /*
+       * Jangan invalidate admin hanya karena
+       * jaringan atau session sedang refresh.
+       */
+
+      return false;
+
     }
 
-
-    await ensureUI();
 
   }
 
@@ -730,10 +1168,14 @@
 
   function hasAdminAccess() {
 
-    return (
-      GENZ.state.account &&
+    return Boolean(
+
+      GENZ.state?.account &&
+
       GENZ.state.account.isAdmin === true &&
+
       GENZ.state.account.roleValidated === true
+
     );
 
   }
@@ -746,6 +1188,10 @@
   function navigate(page) {
 
     closeMenu();
+
+
+    GENZ.state =
+      GENZ.state || {};
 
 
     GENZ.state.currentPage =
@@ -791,7 +1237,9 @@
       function (event) {
 
         /*
+         * =================================================
          * ACCOUNT BUTTON
+         * =================================================
          */
 
         const button =
@@ -812,7 +1260,9 @@
 
 
         /*
+         * =================================================
          * PAGE BUTTON
+         * =================================================
          */
 
         const pageButton =
@@ -829,9 +1279,6 @@
 
           /*
            * ADMIN PAGE
-           *
-           * Frontend guard.
-           * Backend tetap otoritas utama.
            */
 
           if (
@@ -852,8 +1299,6 @@
 
           /*
            * TOP UP SETTING
-           *
-           * Hanya admin.
            */
 
           if (
@@ -873,8 +1318,7 @@
 
 
           /*
-           * Membership dan Hub Admin
-           * hanya tersedia pada menu user.
+           * USER ONLY
            */
 
           if (
@@ -896,7 +1340,9 @@
           }
 
 
-          navigate(page);
+          navigate(
+            page
+          );
 
           return;
 
@@ -904,7 +1350,9 @@
 
 
         /*
+         * =================================================
          * CLICK DI LUAR MENU
+         * =================================================
          */
 
         if (
@@ -921,9 +1369,9 @@
     );
 
 
-    /*
-     * AUTH LOGIN
-     */
+    /* =====================================================
+       AUTH LOGIN
+    ===================================================== */
 
     if (
       typeof GENZ.on ===
@@ -934,24 +1382,43 @@
         "auth-login",
         async function (user) {
 
+          GENZ.state =
+            GENZ.state || {};
+
+
           GENZ.state.loggedIn =
             true;
 
 
-          GENZ.state.account = {
+          /*
+           * Jangan langsung menganggap user
+           * bukan admin sebagai status permanen.
+           */
 
-            isAdmin: false,
+          GENZ.state.account =
+            {
 
-            roleValidated: false
+              isAdmin:
+                false,
 
-          };
+              roleValidated:
+                false
+
+            };
 
 
-          updateUser(user);
+          updateUser(
+            user
+          );
 
 
           await ensureUI();
 
+
+          /*
+           * Beri sedikit waktu agar
+           * Supabase session tersedia.
+           */
 
           await refresh();
 
@@ -959,13 +1426,17 @@
       );
 
 
-      /*
-       * AUTH LOGOUT
-       */
+      /* ===================================================
+         AUTH LOGOUT
+      =================================================== */
 
       GENZ.on(
         "auth-logout",
         function () {
+
+          GENZ.state =
+            GENZ.state || {};
+
 
           GENZ.state.loggedIn =
             false;
@@ -975,17 +1446,28 @@
             null;
 
 
-          GENZ.state.account = {
+          GENZ.state.account =
+            {
 
-            isAdmin: false,
+              isAdmin:
+                false,
 
-            roleValidated: false
+              roleValidated:
+                false,
 
-          };
+              credits:
+                0
+
+            };
 
 
           updateMenuVisibility(
             false
+          );
+
+
+          updateCredits(
+            0
           );
 
 
@@ -1004,6 +1486,21 @@
   ======================================================= */
 
   async function init() {
+
+    GENZ.state =
+      GENZ.state || {
+
+        loggedIn:
+          false,
+
+        user:
+          null,
+
+        account:
+          null
+
+      };
+
 
     await ensureUI();
 
@@ -1069,6 +1566,10 @@
 
   GENZ.account.invalidateAdmin =
     invalidateAdmin;
+
+
+  GENZ.account.getAccessToken =
+    getAccessToken;
 
 
 })();
