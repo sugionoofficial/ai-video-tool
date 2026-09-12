@@ -65,6 +65,7 @@
       /*
        * Auth module GEN-Z.AI
        */
+
       if (
         GENZ.auth &&
         typeof GENZ.auth.token === "function"
@@ -83,6 +84,7 @@
       /*
        * Fallback langsung ke GENZ_AUTH_CLIENT
        */
+
       if (
         window.GENZ_AUTH_CLIENT &&
         window.GENZ_AUTH_CLIENT.auth &&
@@ -142,11 +144,9 @@
       isAdmin === true;
 
 
-    /*
-     * =====================================================
-     * ADMIN / OWNER
-     * =====================================================
-     */
+    /* =====================================================
+       ADMIN / OWNER
+       ===================================================== */
 
     if (adminState) {
 
@@ -248,11 +248,9 @@
     }
 
 
-    /*
-     * =====================================================
-     * USER BIASA
-     * =====================================================
-     */
+    /* =====================================================
+       USER BIASA
+       ===================================================== */
 
     else {
 
@@ -694,7 +692,11 @@
 
 
     /*
-     * Elemen utama account menu.
+     * =====================================================
+     * CREDIT DI ACCOUNT MENU
+     * =====================================================
+     *
+     * Tetap menggunakan tulisan "credit".
      */
 
     const element =
@@ -710,7 +712,19 @@
 
 
     /*
-     * Header credit jika tersedia.
+     * =====================================================
+     * CREDIT DI HEADER
+     * =====================================================
+     *
+     * HANYA MENAMPILKAN ANGKA.
+     *
+     * Sebelumnya:
+     *
+     * C 10.000 credit
+     *
+     * Sekarang:
+     *
+     * C 10.000
      */
 
     const headerCredits =
@@ -720,13 +734,15 @@
     if (headerCredits) {
 
       headerCredits.textContent =
-        `${value.toLocaleString("id-ID")} credit`;
+        value.toLocaleString("id-ID");
 
     }
 
 
     /*
-     * Simpan ke state.
+     * =====================================================
+     * SIMPAN KE STATE
+     * =====================================================
      */
 
     GENZ.state =
@@ -1157,7 +1173,6 @@
       return false;
 
     }
-
 
   }
 
