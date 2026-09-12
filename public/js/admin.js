@@ -244,6 +244,451 @@
 
 
   /* =======================================================
+     STANDALONE ADMIN PAGE
+     
+     admin.html adalah halaman standalone.
+     Tidak mempunyai:
+     - #pageContent
+     - #adminContent
+     - app.js
+     
+     Karena itu admin.js harus dapat melakukan bootstrap
+     auth sendiri tanpa mengganti HTML statis admin.html.
+  ======================================================= */
+
+  function isStandaloneAdminPage() {
+
+    return Boolean(
+      $("adminEmail") &&
+      !$("pageContent") &&
+      !$("adminContent")
+    );
+
+  }
+
+
+  function loadScript(
+    src,
+    marker
+  ) {
+
+    return new Promise(
+      (resolve, reject) => {
+
+        const existing =
+          document.querySelector(
+            `script[data-genz-admin-loader="${marker}"]`
+          );
+
+
+        if (existing) {
+
+          if (
+            marker === "auth" &&
+            GENZ.auth &&
+            typeof GENZ.auth.getSession === "function"
+          ) {
+
+            resolve();
+            return;
+
+          }
+
+
+          if (
+            marker === "account" &&
+            GENZ.account &&
+            typeof GENZ.account.refresh === "function"
+          ) {
+
+            resolve();
+            return;
+
+          }
+
+
+          existing.addEventListener(
+            "load",
+            () => resolve(),
+            { once: true }
+          );
+
+
+          existing.addEventListener(
+            "error",
+            () => reject(
+              new Error(
+                `Gagal memuat ${src}`
+              )
+            ),
+            { once: true }
+          );
+
+
+          return;
+
+        }
+
+
+        const script =
+          document.createElement(
+            "script"
+          );
+
+
+        script.src =
+          src;
+
+        script.async =
+          false;
+
+        script.dataset.genzAdminLoader =
+          marker;
+
+
+        script.onload =
+          () => resolve();
+
+
+        script.onerror =
+          () => reject(
+            new Error(
+              `Gagal memuat ${src}`
+            )
+          );
+
+
+        document.head.appendChild(
+          script
+        );
+
+      }
+    );
+
+  }
+
+
+  async function ensureStandaloneAuth() {
+
+    if (
+      !GENZ.auth ||
+      typeof GENZ.auth.getSession !== "function"
+    ) {
+
+      await loadScript(
+        "/js/auth.js",
+        "auth"
+      );
+
+    }
+
+
+    if (
+      !GENZ.account ||
+      typeof GENZ.account.refresh !== "function"
+    ) {
+
+      await loadScript(
+        "/js/account.js",
+        "account"
+      );
+
+    }
+
+
+    if (
+      !GENZ.auth ||
+      typeof GENZ.auth.getSession !== "function"
+    ) {
+
+      throw new Error(
+        "Modul autentikasi GEN-Z.AI belum tersedia."
+      );
+
+    }
+
+
+    if (
+      !GENZ.account ||
+      typeof GENZ.account.refresh !== "function"
+    ) {
+
+      throw new Error(
+        "Modul account GEN-Z.AI belum tersedia."
+      );
+
+    }
+
+
+    GENZ.state =
+      GENZ.state || {
+
+        loggedIn: false,
+
+        user: null,
+
+        account: null
+
+      };
+
+
+    const session =
+      await GENZ.auth.getSession();
+
+
+    if (
+      !session ||
+      !session.user
+    ) {
+
+      GENZ.state.loggedIn =
+        false;
+
+      GENZ.state.user =
+        null;
+
+      GENZ.state.account = {
+
+        isAdmin: false,
+
+        roleValidated: false
+
+      };
+
+
+      return false;
+
+    }
+
+
+    GENZ.state.loggedIn =
+      true;
+
+    GENZ.state.user =
+      session.user;
+
+
+    GENZ.state.account = {
+
+      ...(GENZ.state.account || {}),
+
+      isAdmin: false,
+
+      roleValidated: false
+
+    };
+
+
+    /*
+     * Account.refresh() mengambil:
+     *
+     * GET /api/account/credits
+     *
+     * dan menjadikan response server sebagai
+     * sumber kebenaran role admin.
+     */
+
+    await GENZ.account.refresh();
+
+
+    return (
+      GENZ.state.account?.isAdmin === true &&
+      GENZ.state.account?.roleValidated === true
+    );
+
+  }
+
+
+  function setupStandaloneAdminNavigation() {
+
+    const links =
+      document.querySelectorAll(
+        ".admin-nav-item[href^='#']"
+      );
+
+
+    links.forEach(
+      link => {
+
+        link.addEventListener(
+          "click",
+          () => {
+
+            const hash =
+              link.getAttribute(
+                "href"
+              );
+
+
+            if (!hash) {
+              return;
+            }
+
+
+            document
+              .querySelectorAll(
+                ".admin-nav-item"
+              )
+              .forEach(
+                item => {
+
+                  item.classList.toggle(
+                    "active",
+                    item === link
+                  );
+
+                }
+              );
+
+          }
+        );
+
+      }
+    );
+
+
+    function syncActiveLink() {
+
+      const current =
+        window.location.hash ||
+        "#dashboard";
+
+
+      document
+        .querySelectorAll(
+          ".admin-nav-item"
+        )
+        .forEach(
+          link => {
+
+            link.classList.toggle(
+              "active",
+              link.getAttribute(
+                "href"
+              ) === current
+            );
+
+          }
+        );
+
+    }
+
+
+    window.addEventListener(
+      "hashchange",
+      syncActiveLink
+    );
+
+
+    syncActiveLink();
+
+  }
+
+
+  function renderStandaloneDenied() {
+
+    const main =
+      document.querySelector(
+        "main.shell"
+      ) ||
+      document.querySelector(
+        "main"
+      );
+
+
+    if (!main) {
+      return;
+    }
+
+
+    main.innerHTML = `
+
+      <section class="card">
+
+        <h2>
+          Akses Ditolak
+        </h2>
+
+        <p>
+          Halaman ini hanya dapat diakses oleh
+          Admin / Owner yang telah divalidasi server.
+        </p>
+
+        <p>
+
+          <a
+            class="admin-nav-item"
+            href="/"
+          >
+            ← Kembali ke GEN-Z.AI
+          </a>
+
+        </p>
+
+      </section>
+
+    `;
+
+  }
+
+
+  async function loadStandaloneAdmin() {
+
+    try {
+
+      const authorized =
+        await ensureStandaloneAuth();
+
+
+      if (!authorized) {
+
+        renderStandaloneDenied();
+
+        return;
+
+      }
+
+
+      const email =
+        GENZ.state?.user?.email ||
+        "Admin";
+
+
+      const emailElement =
+        $("adminEmail");
+
+
+      if (emailElement) {
+
+        emailElement.textContent =
+          email;
+
+      }
+
+
+      setupStandaloneAdminNavigation();
+
+
+      console.log(
+        "[GEN-Z.AI] Standalone admin authenticated."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "[GEN-Z.AI] Standalone admin bootstrap error:",
+        error
+      );
+
+
+      renderStandaloneDenied();
+
+    }
+
+  }
+
+
+  /* =======================================================
      AUTH CHECK
      
      Admin hanya dianggap valid apabila:
@@ -272,6 +717,50 @@
   ======================================================= */
 
   async function load() {
+
+    /*
+     * =====================================================
+     * STANDALONE MODE
+     * =====================================================
+     *
+     * Jangan pernah mengganti HTML admin.html.
+     *
+     * admin.html sudah memiliki seluruh section:
+     * - Dashboard
+     * - Users
+     * - Membership
+     * - Affiliate
+     * - Providers
+     * - Top-up
+     * - Credit
+     * - Jobs
+     * - Job Events
+     * - Admin
+     * - Kontak
+     * - Pengaturan
+     *
+     * Pada tahap ini kita hanya melakukan bootstrap
+     * autentikasi dan mempertahankan struktur statis.
+     */
+
+    if (
+      isStandaloneAdminPage()
+    ) {
+
+      await loadStandaloneAdmin();
+
+      return;
+
+    }
+
+
+    /*
+     * =====================================================
+     * LEGACY / EMBEDDED MODE
+     * =====================================================
+     *
+     * Perilaku lama tetap dipertahankan.
+     */
 
     /*
      * Jangan pernah membuka Admin Panel
@@ -553,7 +1042,17 @@
 
     if (!isAdmin()) {
 
-      renderDenied();
+      if (
+        isStandaloneAdminPage()
+      ) {
+
+        renderStandaloneDenied();
+
+      } else {
+
+        renderDenied();
+
+      }
 
       return;
 
@@ -3103,6 +3602,41 @@
     state
 
   };
+
+
+  /* =======================================================
+     STANDALONE AUTO START
+     
+     admin.html tidak memanggil app.js.
+     Karena itu admin.js harus memulai bootstrap
+     sendiri ketika mendeteksi halaman standalone.
+  ======================================================= */
+
+  if (
+    isStandaloneAdminPage()
+  ) {
+
+    if (
+      document.readyState === "loading"
+    ) {
+
+      document.addEventListener(
+        "DOMContentLoaded",
+        () => {
+          load();
+        },
+        {
+          once: true
+        }
+      );
+
+    } else {
+
+      load();
+
+    }
+
+  }
 
 
 })();
