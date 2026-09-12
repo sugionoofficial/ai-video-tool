@@ -40,7 +40,7 @@ import {
  * ============================================================
  */
 
-async function handleGenerate(
+export async function handleGenerate(
   request,
   env
 ) {
@@ -133,11 +133,6 @@ async function handleGenerate(
     );
   }
 
-  /*
-   * Parameter asli generation.
-   * Dipertahankan agar Riwayat Video
-   * selalu memiliki detail generation.
-   */
   const requestedModel =
     body?.model != null
       ? String(
