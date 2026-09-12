@@ -25,6 +25,16 @@ import {
   currentUser,
   requireUser
 } from "./auth/auth.js";
+
+import {
+  isValidRole,
+  isAdminRole,
+  getUserRole,
+  ensureUserRole,
+  requireAdmin
+} from "./auth/role.js";
+
+
 /*
  * ============================================================
  * GEN-Z.AI WORKER
