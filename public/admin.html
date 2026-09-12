@@ -1,859 +1,543 @@
 <!doctype html>
+
 <html lang="id">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>GEN-Z.AI Admin Panel</title>
+  <title>GEN-Z.AI Admin Dashboard</title>
+
   <link rel="stylesheet" href="/style.css">
 
   <style>
-    .admin-header-actions {
-      margin-left:auto;
-      display:flex;
-      align-items:center;
-      gap:10px;
+    .admin-layout {
+      min-height:100vh;
     }
 
-    .admin-menu-toggle {
-      display:none;
-      width:42px;
-      height:42px;
+    .admin-topbar {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:24px;
+    }
+
+    .admin-control-button {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:44px;
+      height:44px;
       padding:0;
       border:1px solid rgba(255,255,255,.12);
       border-radius:12px;
-      background:rgba(255,255,255,.04);
+      background:rgba(255,255,255,.05);
       color:inherit;
-      font-size:22px;
-      font-weight:700;
-      line-height:1;
+      text-decoration:none;
+      font-size:20px;
       cursor:pointer;
-      letter-spacing:2px;
+      transition:
+        background .2s ease,
+        border-color .2s ease,
+        transform .2s ease;
     }
 
-    .admin-menu-toggle:hover {
-      background:rgba(255,255,255,.08);
+    .admin-control-button:hover {
+      background:rgba(255,255,255,.09);
+      border-color:rgba(255,255,255,.2);
+      transform:translateY(-1px);
     }
 
-    .admin-nav {
+    .admin-brand {
+      min-width:0;
+    }
+
+    .admin-brand h1 {
+      margin:0;
+    }
+
+    .admin-brand p {
+      margin:4px 0 0;
+      opacity:.7;
+    }
+
+    .admin-account {
+      margin-left:auto;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:2px;
+    }
+
+    .admin-account span {
+      font-size:13px;
+      opacity:.7;
+    }
+
+    .admin-account strong {
+      font-size:11px;
+      letter-spacing:.08em;
+      opacity:.8;
+    }
+
+    .admin-navigation {
       display:flex;
       flex-wrap:wrap;
+      align-items:center;
       gap:8px;
-      margin:0 0 24px;
+      margin-bottom:24px;
     }
 
-    .admin-nav-item {
-      text-decoration:none;
-      padding:10px 14px;
+    .admin-navigation a {
+      display:inline-flex;
+      align-items:center;
+      min-height:40px;
+      padding:0 14px;
       border:1px solid rgba(255,255,255,.09);
       border-radius:10px;
       color:inherit;
-      transition:background .2s ease,border-color .2s ease;
+      text-decoration:none;
+      background:rgba(255,255,255,.025);
+      transition:
+        background .2s ease,
+        border-color .2s ease;
     }
 
-    .admin-nav-item:hover {
+    .admin-navigation a:hover,
+    .admin-navigation a.active {
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.18);
+    }
+
+    .admin-navigation .admin-main-nav {
+      font-size:20px;
+      font-weight:700;
+      letter-spacing:2px;
+      padding:0 15px;
+    }
+
+    .admin-dashboard-grid {
+      display:grid;
+      grid-template-columns:repeat(
+        auto-fit,
+        minmax(180px,1fr)
+      );
+      gap:12px;
+    }
+
+    .admin-stat-card {
+      padding:18px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .admin-stat-card strong {
+      display:block;
+      font-size:13px;
+      opacity:.7;
+    }
+
+    .admin-stat-card h3 {
+      margin:8px 0 0;
+      font-size:28px;
+    }
+
+    .admin-section {
+      margin-bottom:20px;
+    }
+
+    .admin-section-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .admin-section-header h2 {
+      margin:0;
+    }
+
+    .admin-section-header p {
+      margin:4px 0 0;
+      opacity:.7;
+    }
+
+    .admin-feature-grid {
+      display:grid;
+      grid-template-columns:repeat(
+        auto-fit,
+        minmax(220px,1fr)
+      );
+      gap:12px;
+    }
+
+    .admin-feature-card {
+      display:block;
+      padding:18px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      color:inherit;
+      text-decoration:none;
+      background:rgba(255,255,255,.025);
+      transition:
+        transform .2s ease,
+        background .2s ease,
+        border-color .2s ease;
+    }
+
+    .admin-feature-card:hover {
+      transform:translateY(-2px);
       background:rgba(255,255,255,.05);
       border-color:rgba(255,255,255,.16);
     }
 
+    .admin-feature-card strong {
+      display:block;
+      margin-bottom:6px;
+      font-size:16px;
+    }
+
+    .admin-feature-card span {
+      display:block;
+      font-size:13px;
+      line-height:1.5;
+      opacity:.65;
+    }
+
+    .admin-status-message {
+      min-height:20px;
+      margin-bottom:16px;
+    }
+
     @media (max-width:760px) {
-      .admin-header-actions {
-        position:relative;
+      .admin-topbar {
+        align-items:flex-start;
       }
 
-      .admin-menu-toggle {
-        display:inline-flex;
-        align-items:center;
+      .admin-account {
+        display:none;
+      }
+
+      .admin-navigation {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .admin-navigation a {
+        width:100%;
+        box-sizing:border-box;
         justify-content:center;
       }
 
-      .admin-nav {
-        display:none;
-        flex-direction:column;
-        flex-wrap:nowrap;
-        gap:6px;
-        margin:0 0 20px;
-        padding:10px;
-        border:1px solid rgba(255,255,255,.08);
-        border-radius:14px;
-        background:rgba(255,255,255,.025);
-      }
-
-      .admin-nav.is-open {
-        display:flex;
-      }
-
-      .admin-nav-item {
-        width:100%;
-        box-sizing:border-box;
+      .admin-navigation .admin-main-nav {
+        grid-column:1 / -1;
       }
     }
   </style>
+
 </head>
 
 <body>
 
-<main class="shell">
+<main class="shell admin-layout">
 
-  <!-- =========================================================
-       ADMIN HEADER
-       ========================================================= -->
+  <header class="admin-topbar">
 
-  <header class="topbar">
+```
+<a
+  class="admin-control-button"
+  href="/admin-control.html"
+  aria-label="Buka Admin Control"
+  title="Admin Control"
+>⚙</a>
 
-    <a
-      class="icon-btn link-btn"
-      href="/"
-      aria-label="Kembali ke studio"
-    >←</a>
+<div class="admin-brand">
+  <h1>GEN-Z.AI</h1>
+  <p>Admin Dashboard</p>
+</div>
 
-    <div class="brand">
-      <h1>GEN-Z.AI</h1>
-      <p>Admin Control Panel</p>
-    </div>
-
-    <div class="admin-header-actions">
-
-      <div class="account">
-        <span id="adminEmail">—</span>
-        <strong>ADMIN</strong>
-      </div>
-
-      <button
-        id="adminMenuToggle"
-        class="admin-menu-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="adminNav"
-        aria-label="Buka menu admin"
-      >|||</button>
-
-    </div>
+<div class="admin-account">
+  <span id="adminEmail">—</span>
+  <strong>ADMIN</strong>
+</div>
+```
 
   </header>
 
-  <!-- =========================================================
-       ADMIN NAVIGATION
-       ========================================================= -->
-
   <nav
-    id="adminNav"
-    class="admin-nav"
+    class="admin-navigation"
     aria-label="Navigasi Admin"
   >
 
-    <a
-      class="admin-nav-item"
-      href="#dashboard"
-    >
-      Dashboard
-    </a>
+```
+<a
+  class="admin-main-nav active"
+  href="/"
+  aria-label="Navigasi utama"
+  title="Navigasi utama"
+>|||</a>
 
-    <a
-      class="admin-nav-item"
-      href="#users"
-    >
-      Users
-    </a>
+<a
+  href="/admin.html"
+  class="active"
+>
+  Dashboard
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#membership"
-    >
-      Membership
-    </a>
+<a href="/admin-users.html">
+  Users
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#affiliate"
-    >
-      Affiliate
-    </a>
+<a href="/admin-membership.html">
+  Membership
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#providers"
-    >
-      Providers
-    </a>
+<a href="/admin-affiliate.html">
+  Affiliate
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#topup"
-    >
-      Top-up
-    </a>
+<a href="/admin-providers.html">
+  Providers
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#credit"
-    >
-      Kredit
-    </a>
+<a href="/admin-topup.html">
+  Top-up
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#jobs"
-    >
-      Jobs
-    </a>
+<a href="/admin-credit.html">
+  Kredit
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#job-events"
-    >
-      Job Events
-    </a>
+<a href="/admin-jobs.html">
+  Jobs
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#admin"
-    >
-      Admin
-    </a>
+<a href="/admin-job-events.html">
+  Job Events
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#contact-section"
-    >
-      Kontak
-    </a>
+<a href="/admin-admins.html">
+  Admin
+</a>
 
-    <a
-      class="admin-nav-item"
-      href="#settings"
-    >
-      Pengaturan
-    </a>
+<a href="/admin-contact.html">
+  Kontak
+</a>
+
+<a href="/admin-settings.html">
+  Pengaturan
+</a>
+```
 
   </nav>
 
-  <!-- =========================================================
-       DASHBOARD
-       ========================================================= -->
+  <div
+    id="adminStatus"
+    class="admin-status-message"
+  ></div>
 
-  <section
-    class="card"
-    id="dashboard"
-  >
+  <section class="card admin-section">
 
+```
+<div class="admin-section-header">
+
+  <div>
     <h2>Dashboard</h2>
-
     <p>
       Ringkasan kondisi sistem GEN-Z.AI.
     </p>
+  </div>
 
-    <div
-      class="grid"
-      style="
-        grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-      "
-    >
+</div>
 
-      <div class="card">
-        <strong>Total User</strong>
-        <h3 id="statTotalUsers">—</h3>
-      </div>
+<div class="admin-dashboard-grid">
 
-      <div class="card">
-        <strong>Total Kredit</strong>
-        <h3 id="statTotalCredits">—</h3>
-      </div>
+  <div class="admin-stat-card">
+    <strong>Total User</strong>
+    <h3 id="statTotalUsers">—</h3>
+  </div>
 
-      <div class="card">
-        <strong>Provider Aktif</strong>
-        <h3 id="statActiveProviders">—</h3>
-      </div>
+  <div class="admin-stat-card">
+    <strong>Total Kredit</strong>
+    <h3 id="statTotalCredits">—</h3>
+  </div>
 
-      <div class="card">
-        <strong>Top-up Pending</strong>
-        <h3 id="statPendingTopups">—</h3>
-      </div>
+  <div class="admin-stat-card">
+    <strong>Provider Aktif</strong>
+    <h3 id="statActiveProviders">—</h3>
+  </div>
 
-      <div class="card">
-        <strong>Job Berhasil</strong>
-        <h3 id="statCompletedJobs">—</h3>
-      </div>
+  <div class="admin-stat-card">
+    <strong>Top-up Pending</strong>
+    <h3 id="statPendingTopups">—</h3>
+  </div>
 
-      <div class="card">
-        <strong>Job Diproses</strong>
-        <h3 id="statProcessingJobs">—</h3>
-      </div>
+  <div class="admin-stat-card">
+    <strong>Job Berhasil</strong>
+    <h3 id="statCompletedJobs">—</h3>
+  </div>
 
-      <div class="card">
-        <strong>Job Gagal</strong>
-        <h3 id="statFailedJobs">—</h3>
-      </div>
+  <div class="admin-stat-card">
+    <strong>Job Diproses</strong>
+    <h3 id="statProcessingJobs">—</h3>
+  </div>
 
-    </div>
+  <div class="admin-stat-card">
+    <strong>Job Gagal</strong>
+    <h3 id="statFailedJobs">—</h3>
+  </div>
 
-  </section>
-
-  <!-- =========================================================
-       USERS
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="users"
-  >
-
-    <h2>Users</h2>
-
-    <p>
-      Daftar pengguna, status akun, saldo kredit, dan aktivitas user.
-    </p>
-
-    <button id="refreshUsers">
-      Refresh User
-    </button>
-
-    <div
-      id="userTable"
-      class="user-table"
-    ></div>
+</div>
+```
 
   </section>
 
-  <!-- =========================================================
-       MEMBERSHIP
-       ========================================================= -->
+  <section class="card admin-section">
 
-  <section
-    class="card"
-    id="membership"
-  >
+```
+<div class="admin-section-header">
 
-    <h2>Membership</h2>
-
+  <div>
+    <h2>Admin Features</h2>
     <p>
-      Kelola paket membership dan status langganan pengguna.
+      Pilih modul Admin Control yang ingin dikelola.
     </p>
+  </div>
 
-    <div class="grid">
+</div>
 
-      <label>
-        Paket Membership
-        <select id="membershipPlanFilter">
-          <option value="">Semua Paket</option>
-          <option value="free">Free</option>
-          <option value="pro">Pro</option>
-          <option value="premium">Premium</option>
-        </select>
-      </label>
+<div class="admin-feature-grid">
 
-      <label>
-        Status
-        <select id="membershipStatusFilter">
-          <option value="all">Semua</option>
-          <option value="active">Aktif</option>
-          <option value="expired">Expired</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </label>
-
-    </div>
-
-    <div
-      id="membershipTable"
-      class="admin-history"
-    >
-      Membership belum dihubungkan ke API.
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       AFFILIATE
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="affiliate"
+  <a
+    class="admin-feature-card"
+    href="/admin-users.html"
   >
+    <strong>Users</strong>
+    <span>
+      Kelola pengguna, status akun, saldo kredit,
+      dan aktivitas user.
+    </span>
+  </a>
 
-    <h2>Affiliate</h2>
-
-    <p>
-      Kelola referral, komisi, affiliate, dan payout.
-    </p>
-
-    <div class="grid">
-
-      <div class="card">
-        <strong>Total Affiliate</strong>
-        <h3 id="statAffiliates">—</h3>
-      </div>
-
-      <div class="card">
-        <strong>Total Referral</strong>
-        <h3 id="statReferrals">—</h3>
-      </div>
-
-      <div class="card">
-        <strong>Komisi Pending</strong>
-        <h3 id="statPendingCommission">—</h3>
-      </div>
-
-      <div class="card">
-        <strong>Payout Pending</strong>
-        <h3 id="statPendingPayouts">—</h3>
-      </div>
-
-    </div>
-
-    <div
-      id="affiliateTable"
-      class="admin-history"
-    >
-      Affiliate belum dihubungkan ke API.
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       PROVIDERS
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="providers"
+  <a
+    class="admin-feature-card"
+    href="/admin-membership.html"
   >
+    <strong>Membership</strong>
+    <span>
+      Kelola paket membership dan status langganan.
+    </span>
+  </a>
 
-    <h2>Provider Management</h2>
-
-    <p>
-      Provider dapat ditambah, diedit, diaktifkan/nonaktifkan,
-      atau dihapus. API key hanya disimpan di server.
-    </p>
-
-    <div class="grid">
-
-      <label>
-        Provider ID
-        <input
-          id="providerId"
-          placeholder="contoh: veo"
-        >
-      </label>
-
-      <label>
-        Nama Provider
-        <input
-          id="providerName"
-          placeholder="Nama yang tampil"
-        >
-      </label>
-
-      <label>
-        Adapter
-        <select id="adapter">
-          <option value="veo">Veo</option>
-          <option value="minimax">MiniMax</option>
-          <option value="luma">Luma</option>
-        </select>
-      </label>
-
-    </div>
-
-    <label>
-      API Key
-      <input
-        id="key"
-        type="password"
-        autocomplete="new-password"
-        placeholder="Masukkan key baru"
-      >
-    </label>
-
-    <label class="check">
-      <input
-        id="enabled"
-        type="checkbox"
-        checked
-      >
-      Aktif
-    </label>
-
-    <div>
-
-      <button id="saveProvider">
-        Tambah Provider
-      </button>
-
-      <button
-        id="cancelEdit"
-        class="hidden"
-      >
-        Batal Edit
-      </button>
-
-    </div>
-
-    <div id="providerState"></div>
-
-  </section>
-
-  <!-- =========================================================
-       TOP-UP
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="topup"
+  <a
+    class="admin-feature-card"
+    href="/admin-affiliate.html"
   >
+    <strong>Affiliate</strong>
+    <span>
+      Kelola referral, komisi, affiliate,
+      dan payout.
+    </span>
+  </a>
 
-    <h2>Request Top-up</h2>
-
-    <p>
-      Periksa request top-up user lalu setujui atau tolak.
-    </p>
-
-    <div class="admin-history">
-
-      <label>
-        Status
-        <select id="topupStatus">
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="all">Semua</option>
-        </select>
-      </label>
-
-      <button id="refreshTopups">
-        Refresh
-      </button>
-
-      <div id="topupRequests">
-        Memuat...
-      </div>
-
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       CREDIT MANAGEMENT
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="credit"
+  <a
+    class="admin-feature-card"
+    href="/admin-providers.html"
   >
+    <strong>Providers</strong>
+    <span>
+      Kelola provider video dan konfigurasi
+      provider.
+    </span>
+  </a>
 
-    <h2>Top-up / Kelola Kredit</h2>
-
-    <p>
-      Admin dapat menambah atau mengurangi kredit user.
-    </p>
-
-    <button id="refreshUsersCredit">
-      Refresh User
-    </button>
-
-    <div
-      id="creditUserTable"
-      class="user-table"
-    ></div>
-
-    <div class="admin-history">
-
-      <h3>Riwayat Credit</h3>
-
-      <div class="grid">
-
-        <label>
-          User
-          <select id="historyUser">
-            <option value="">
-              Pilih user
-            </option>
-          </select>
-        </label>
-
-      </div>
-
-      <div id="historyState">
-        Pilih user untuk melihat transaksi.
-      </div>
-
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       JOBS
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="jobs"
+  <a
+    class="admin-feature-card"
+    href="/admin-topup.html"
   >
+    <strong>Top-up</strong>
+    <span>
+      Periksa, setujui, atau tolak request
+      top-up pengguna.
+    </span>
+  </a>
 
-    <h2>Video Jobs</h2>
-
-    <p>
-      Monitor seluruh proses pembuatan video user.
-    </p>
-
-    <div class="grid">
-
-      <label>
-        Status
-        <select id="jobStatusFilter">
-          <option value="all">Semua</option>
-          <option value="reserved">Reserved</option>
-          <option value="processing">Processing</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-        </select>
-      </label>
-
-      <label>
-        Provider
-        <select id="jobProviderFilter">
-          <option value="">Semua Provider</option>
-          <option value="veo">Veo</option>
-          <option value="minimax">MiniMax</option>
-          <option value="luma">Luma</option>
-        </select>
-      </label>
-
-    </div>
-
-    <button id="refreshJobs">
-      Refresh Jobs
-    </button>
-
-    <div
-      id="jobsTable"
-      class="admin-history"
-    >
-      Data Jobs belum dihubungkan ke API.
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       JOB EVENTS
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="job-events"
+  <a
+    class="admin-feature-card"
+    href="/admin-credit.html"
   >
+    <strong>Kredit</strong>
+    <span>
+      Tambah, kurangi, dan lihat riwayat
+      kredit pengguna.
+    </span>
+  </a>
 
-    <h2>Job Events / Logs</h2>
-
-    <p>
-      Riwayat event dan aktivitas setiap video job.
-    </p>
-
-    <div class="grid">
-
-      <label>
-        Job ID
-        <input
-          id="jobEventFilter"
-          placeholder="Masukkan Job ID"
-        >
-      </label>
-
-      <label>
-        Event Type
-        <select id="jobEventTypeFilter">
-          <option value="">Semua Event</option>
-          <option value="created">Created</option>
-          <option value="reserved">Reserved</option>
-          <option value="processing">Processing</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-          <option value="refunded">Refunded</option>
-        </select>
-      </label>
-
-    </div>
-
-    <button id="refreshJobEvents">
-      Refresh Events
-    </button>
-
-    <div
-      id="jobEventsTable"
-      class="admin-history"
-    >
-      Job Events belum dihubungkan ke API.
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       ADMIN MANAGEMENT
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="admin"
+  <a
+    class="admin-feature-card"
+    href="/admin-jobs.html"
   >
+    <strong>Jobs</strong>
+    <span>
+      Monitor seluruh proses pembuatan video.
+    </span>
+  </a>
 
-    <h2>Admin Management</h2>
-
-    <p>
-      Kelola administrator dan hak akses panel kontrol.
-    </p>
-
-    <div
-      id="adminUsersTable"
-      class="admin-history"
-    >
-      Manajemen admin belum dihubungkan ke API.
-    </div>
-
-  </section>
-
-  <!-- =========================================================
-       CONTACT
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="contact-section"
+  <a
+    class="admin-feature-card"
+    href="/admin-job-events.html"
   >
+    <strong>Job Events</strong>
+    <span>
+      Lihat event dan log setiap video job.
+    </span>
+  </a>
 
-    <h2>Kontak Admin</h2>
-
-    <p>
-      Atur URL kontak yang digunakan user untuk menghubungi admin.
-    </p>
-
-    <input
-      id="contactUrl"
-      placeholder="https://wa.me/... atau URL kontak"
-    >
-
-    <button id="saveContact">
-      Simpan Kontak
-    </button>
-
-  </section>
-
-  <!-- =========================================================
-       SETTINGS
-       ========================================================= -->
-
-  <section
-    class="card"
-    id="settings"
+  <a
+    class="admin-feature-card"
+    href="/admin-admins.html"
   >
+    <strong>Admin Management</strong>
+    <span>
+      Kelola administrator dan hak akses.
+    </span>
+  </a>
 
-    <h2>Pengaturan</h2>
+  <a
+    class="admin-feature-card"
+    href="/admin-contact.html"
+  >
+    <strong>Kontak</strong>
+    <span>
+      Atur informasi kontak yang digunakan
+      oleh pengguna.
+    </span>
+  </a>
 
-    <p>
-      Pengaturan umum sistem GEN-Z.AI.
-    </p>
+  <a
+    class="admin-feature-card"
+    href="/admin-settings.html"
+  >
+    <strong>Pengaturan</strong>
+    <span>
+      Kelola pengaturan umum sistem GEN-Z.AI.
+    </span>
+  </a>
 
-    <div class="grid">
-
-      <label>
-        Generation Credit Cost
-        <input
-          id="generationCreditCost"
-          type="number"
-          min="0"
-          step="1"
-          placeholder="1"
-        >
-      </label>
-
-      <label>
-        Status Sistem
-        <select id="systemStatus">
-          <option value="active">Aktif</option>
-          <option value="maintenance">Maintenance</option>
-        </select>
-      </label>
-
-    </div>
-
-    <div
-      id="settingsState"
-      class="admin-history"
-    >
-      Pengaturan belum dihubungkan ke API.
-    </div>
+</div>
+```
 
   </section>
 
 </main>
 
-<!-- =========================================================
-     SCRIPTS
-     ========================================================= -->
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
 <script src="/js/config.js"></script>
 
 <script src="/js/admin.js"></script>
-
-<script>
-  (() => {
-    const toggle = document.getElementById("adminMenuToggle");
-    const nav = document.getElementById("adminNav");
-
-    if (!toggle || !nav) return;
-
-    toggle.addEventListener("click", () => {
-      const isOpen = nav.classList.toggle("is-open");
-
-      toggle.setAttribute(
-        "aria-expanded",
-        String(isOpen)
-      );
-
-      toggle.setAttribute(
-        "aria-label",
-        isOpen
-          ? "Tutup menu admin"
-          : "Buka menu admin"
-      );
-    });
-
-    nav.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", () => {
-        if (window.innerWidth > 760) return;
-
-        nav.classList.remove("is-open");
-
-        toggle.setAttribute(
-          "aria-expanded",
-          "false"
-        );
-
-        toggle.setAttribute(
-          "aria-label",
-          "Buka menu admin"
-        );
-      });
-    });
-
-    window.addEventListener("resize", () => {
-      if (window.innerWidth > 760) {
-        nav.classList.remove("is-open");
-
-        toggle.setAttribute(
-          "aria-expanded",
-          "false"
-        );
-
-        toggle.setAttribute(
-          "aria-label",
-          "Buka menu admin"
-        );
-      }
-    });
-  })();
-</script>
 
 </body>
 </html>
