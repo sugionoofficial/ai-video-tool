@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Settings — GEN-Z.AI</title>
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #111827;
+      --primary-soft: #f3f4f6;
+      --success: #15803d;
+      --warning: #b45309;
+      --danger: #b91c1c;
+      --radius: 18px;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.07);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 68px;
+      padding: 12px 24px;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+    }
+
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .back-button {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .brand strong {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .top-spacer {
+      flex: 1;
+    }
+
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .admin-badge::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .layout {
+      display: flex;
+      min-height: calc(100vh - 68px);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 68px;
+      width: 250px;
+      height: calc(100vh - 68px);
+      overflow-y: auto;
+      padding: 20px 14px;
+      background: #fff;
+      border-right: 1px solid var(--border);
+    }
+
+    .nav-title {
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 9px 12px;
+      border-radius: 11px;
+      color: #4b5563;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .nav a:hover {
+      background: var(--primary-soft);
+      color: var(--text);
+    }
+
+    .nav a.active {
+      background: #111827;
+      color: #fff;
+    }
+
+    .nav-icon {
+      width: 22px;
+      text-align: center;
+      opacity: 0.85;
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      padding: 30px;
+    }
+
+    .container {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 700px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .notice {
+      margin-bottom: 22px;
+      padding: 16px 18px;
+      border: 1px solid #fde68a;
+      border-radius: 15px;
+      background: #fffbeb;
+      color: #78350f;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 18px;
+    }
+
+    .card-title {
+      margin: 0 0 5px;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .card-description {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #6b7280;
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 15px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field label {
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      outline: none;
+      background: #f9fafb;
+      color: #374151;
+      font-size: 13px;
+    }
+
+    .field textarea {
+      min-height: 105px;
+      resize: vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: #9ca3af;
+      background: #fff;
+    }
+
+    .field input:disabled,
+    .field select:disabled,
+    .field textarea:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 0;
+      border-bottom: 1px solid #f0f1f3;
+    }
+
+    .toggle-row:last-child {
+      border-bottom: 0;
+    }
+
+    .toggle-copy {
+      min-width: 0;
+    }
+
+    .toggle-title {
+      margin-bottom: 3px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toggle-description {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .toggle {
+      position: relative;
+      flex: 0 0 auto;
+      width: 42px;
+      height: 24px;
+    }
+
+    .toggle input {
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #d1d5db;
+      cursor: not-allowed;
+      transition: 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .button.primary {
+      background: #111827;
+      border-color: #111827;
+      color: #fff;
+    }
+
+    .integration {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .integration-icon {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: #f3f4f6;
+      font-size: 18px;
+    }
+
+    .integration h3 {
+      margin: 0 0 5px;
+      font-size: 14px;
+    }
+
+    .integration p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .footer-note {
+      margin-top: 20px;
+      color: #9ca3af;
+      font-size: 11px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(245, 247, 251, 0.92);
+      backdrop-filter: blur(5px);
+    }
+
+    .loading-card {
+      padding: 22px 26px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .loading-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .loading-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .sidebar {
+        width: 220px;
+      }
+
+      .section-grid {
+        grid-template-columns: 1fr;
+      }
+
+      main {
+        padding: 22px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar {
+        padding: 10px 14px;
+      }
+
+      .brand span {
+        display: none;
+      }
+
+      .admin-badge {
+        display: none;
+      }
+
+      .layout {
+        display: block;
+      }
+
+      .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        padding: 10px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .nav {
+        display: flex;
+        overflow-x: auto;
+        gap: 4px;
+      }
+
+      .nav a {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+
+      .nav-title {
+        display: none;
+      }
+
+      main {
+        padding: 18px 14px 30px;
+      }
+
+      .hero {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .card {
+        padding: 18px;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="loading" class="loading">
+    <div class="loading-card">
+      <strong>Memeriksa akses admin...</strong>
+      <span>Mohon tunggu sebentar.</span>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="top-left">
+      <a
+        class="back-button"
+        href="/admin-control.html"
+        aria-label="Kembali ke Admin Control"
+        title="Kembali ke Admin Control"
+      >
+        ←
+      </a>
+
+```
+  <div class="brand">
+    <strong>GEN-Z.AI</strong>
+    <span>Admin Settings</span>
+  </div>
+</div>
+
+<div class="top-spacer"></div>
+
+<div id="adminBadge" class="admin-badge">
+  ADMIN
+</div>
+```
+
+  </header>
+
+  <div class="layout">
+
+```
+<aside class="sidebar">
+  <div class="nav-title">Navigasi</div>
+
+  <nav class="nav">
+    <a href="/">
+      <span class="nav-icon">|||</span>
+      <span>Generator</span>
+    </a>
+
+    <a href="/admin.html">
+      <span class="nav-icon">⌂</span>
+      <span>Dashboard</span>
+    </a>
+
+    <a href="/admin-control.html">
+      <span class="nav-icon">⚙</span>
+      <span>Admin Control</span>
+    </a>
+
+    <a href="/admin-users.html">
+      <span class="nav-icon">◉</span>
+      <span>Users</span>
+    </a>
+
+    <a href="/admin-membership.html">
+      <span class="nav-icon">◇</span>
+      <span>Membership</span>
+    </a>
+
+    <a href="/admin-affiliate.html">
+      <span class="nav-icon">↗</span>
+      <span>Affiliate</span>
+    </a>
+
+    <a href="/admin-providers.html">
+      <span class="nav-icon">▦</span>
+      <span>Providers</span>
+    </a>
+
+    <a href="/admin-topup.html">
+      <span class="nav-icon">＋</span>
+      <span>Top-up</span>
+    </a>
+
+    <a href="/admin-credit.html">
+      <span class="nav-icon">◆</span>
+      <span>Credit</span>
+    </a>
+
+    <a href="/admin-jobs.html">
+      <span class="nav-icon">▣</span>
+      <span>Jobs</span>
+    </a>
+
+    <a href="/admin-job-events.html">
+      <span class="nav-icon">◌</span>
+      <span>Events</span>
+    </a>
+
+    <a href="/admin-admins.html">
+      <span class="nav-icon">♟</span>
+      <span>Admins</span>
+    </a>
+
+    <a href="/admin-contact.html">
+      <span class="nav-icon">✉</span>
+      <span>Contact</span>
+    </a>
+
+    <a class="active" href="/admin-settings.html">
+      <span class="nav-icon">⚙</span>
+      <span>Settings</span>
+    </a>
+  </nav>
+</aside>
+
+<main>
+  <div class="container">
+
+    <section class="hero">
+      <div>
+        <h1>Settings</h1>
+        <p>
+          Pengaturan global untuk konfigurasi dan perilaku sistem
+          GEN-Z.AI.
+        </p>
+      </div>
+    </section>
+
+    <div class="notice">
+      <strong>Backend settings belum tersedia.</strong>
+      Repository saat ini belum memiliki implementasi endpoint khusus
+      untuk admin system settings. Semua kontrol di halaman ini sengaja
+      dibuat nonaktif sampai backend settings resmi tersedia.
+    </div>
+
+    <section class="section-grid">
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">General Settings</h2>
+            <p class="card-description">
+              Informasi umum aplikasi dan konfigurasi dasar.
+            </p>
+          </div>
+
+          <span class="status">UI Only</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="appName">Nama aplikasi</label>
+            <input
+              id="appName"
+              type="text"
+              value="GEN-Z.AI"
+              disabled
+            >
+          </div>
+
+          <div class="field">
+            <label for="appDescription">Deskripsi aplikasi</label>
+            <textarea
+              id="appDescription"
+              disabled
+            >AI video generation platform</textarea>
+          </div>
+
+          <div class="field">
+            <label for="maintenanceMessage">
+              Pesan maintenance
+            </label>
+            <input
+              id="maintenanceMessage"
+              type="text"
+              placeholder="Pesan yang ditampilkan ketika maintenance"
+              disabled
+            >
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button class="button primary" disabled>
+            Simpan perubahan
+          </button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">System Controls</h2>
+            <p class="card-description">
+              Kontrol status dan perilaku sistem secara global.
+            </p>
+          </div>
+
+          <span class="status">UI Only</span>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <div class="toggle-title">
+              Maintenance Mode
+            </div>
+            <div class="toggle-description">
+              Menonaktifkan akses pengguna sementara.
+            </div>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <div class="toggle-title">
+              Registrasi pengguna
+            </div>
+            <div class="toggle-description">
+              Mengizinkan pengguna baru membuat akun.
+            </div>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" disabled checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <div class="toggle-title">
+              Generator aktif
+            </div>
+            <div class="toggle-description">
+              Mengizinkan proses pembuatan video.
+            </div>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" disabled checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Credit Settings</h2>
+            <p class="card-description">
+              Konfigurasi default yang berhubungan dengan credit.
+            </p>
+          </div>
+
+          <span class="status">UI Only</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="signupCredits">
+              Credit pengguna baru
+            </label>
+            <input
+              id="signupCredits"
+              type="number"
+              value="0"
+              min="0"
+              disabled
+            >
+          </div>
+
+          <div class="field">
+            <label for="minimumCredit">
+              Minimum credit
+            </label>
+            <input
+              id="minimumCredit"
+              type="number"
+              value="0"
+              min="0"
+              disabled
+            >
+          </div>
+
+          <div class="field">
+            <label for="creditExpiration">
+              Expiration policy
+            </label>
+            <select id="creditExpiration" disabled>
+              <option>Never</option>
+              <option>30 hari</option>
+              <option>60 hari</option>
+              <option>90 hari</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button class="button primary" disabled>
+            Simpan credit settings
+          </button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Notification Settings</h2>
+            <p class="card-description">
+              Pengaturan notifikasi sistem dan admin.
+            </p>
+          </div>
+
+          <span class="status">UI Only</span>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <div class="toggle-title">
+              Notifikasi job selesai
+            </div>
+            <div class="toggle-description">
+              Memberi tahu pengguna ketika job selesai.
+            </div>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <div class="toggle-title">
+              Notifikasi job gagal
+            </div>
+            <div class="toggle-description">
+              Memberi tahu pengguna ketika proses gagal.
+            </div>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <div class="toggle-title">
+              Admin alerts
+            </div>
+            <div class="toggle-description">
+              Mengaktifkan notifikasi penting untuk administrator.
+            </div>
+          </div>
+
+          <label class="toggle">
+            <input type="checkbox" disabled>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Security</h2>
+            <p class="card-description">
+              Pengaturan keamanan tingkat aplikasi.
+            </p>
+          </div>
+
+          <span class="status">UI Only</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="sessionDuration">
+              Session duration
+            </label>
+            <select id="sessionDuration" disabled>
+              <option>Default</option>
+              <option>1 jam</option>
+              <option>12 jam</option>
+              <option>24 jam</option>
+              <option>7 hari</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="loginAttempts">
+              Maximum login attempts
+            </label>
+            <input
+              id="loginAttempts"
+              type="number"
+              value="5"
+              min="1"
+              disabled
+            >
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button class="button primary" disabled>
+            Simpan security settings
+          </button>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Application Configuration</h2>
+            <p class="card-description">
+              Konfigurasi tingkat aplikasi yang nantinya dapat
+              dikelola dari satu tempat.
+            </p>
+          </div>
+
+          <span class="status">UI Only</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="defaultProvider">
+              Default provider
+            </label>
+            <select id="defaultProvider" disabled>
+              <option>Belum dikonfigurasi</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="maxConcurrentJobs">
+              Maximum concurrent jobs
+            </label>
+            <input
+              id="maxConcurrentJobs"
+              type="number"
+              value="0"
+              min="0"
+              disabled
+            >
+          </div>
+
+          <div class="field">
+            <label for="defaultJobTimeout">
+              Default job timeout
+            </label>
+            <input
+              id="defaultJobTimeout"
+              type="number"
+              value="0"
+              min="0"
+              placeholder="Dalam detik"
+              disabled
+            >
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button class="button primary" disabled>
+            Simpan configuration
+          </button>
+        </div>
+      </article>
+
+    </section>
+
+    <article class="card">
+      <div class="integration">
+        <div class="integration-icon">⚙</div>
+
+        <div>
+          <h3>Integration Status</h3>
+          <p>
+            Halaman ini sudah dipisahkan menjadi halaman admin tersendiri,
+            tetapi belum terhubung ke backend settings karena repository
+            belum memiliki endpoint atau service khusus untuk pengaturan
+            sistem. Tidak ada endpoint baru yang dibuat secara asumsi.
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <div class="footer-note">
+      GEN-Z.AI Admin Settings · UI foundation
+    </div>
+
+  </div>
+</main>
+```
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="/js/config.js"></script>
+
+  <script src="/js/auth.js"></script>
+
+  <script src="/js/account.js"></script>
+
+  <script>
+    (async function () {
+      const loading = document.getElementById("loading");
+
+      try {
+        if (
+          !window.GENZ ||
+          !window.GENZ.auth ||
+          !window.GENZ.account
+        ) {
+          window.location.href = "/admin.html";
+          return;
+        }
+
+        await window.GENZ.auth.getSession();
+        await window.GENZ.account.refresh();
+
+        const account = window.GENZ.state &&
+          window.GENZ.state.account
+          ? window.GENZ.state.account
+          : null;
+
+        if (
+          !account ||
+          account.isAdmin !== true ||
+          account.roleValidated !== true
+        ) {
+          window.location.href = "/";
+          return;
+        }
+
+        const emailElement = document.getElementById("adminBadge");
+
+        if (emailElement && account.email) {
+          emailElement.textContent = account.email;
+        }
+
+        loading.style.display = "none";
+      } catch (error) {
+        console.error(
+          "GEN-Z.AI Admin Settings:",
+          error
+        );
+
+        window.location.href = "/admin.html";
+      }
+    })();
+  </script>
+
+</body>
+</html>
