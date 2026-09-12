@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Contact — GEN-Z.AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="/js/config.js"></script>
+
+  <style>
+    :root {
+      --bg: #07080d;
+      --panel: #0d1018;
+      --panel-2: #111521;
+      --border: rgba(255,255,255,.08);
+      --text: #f5f7fb;
+      --muted: #8992a5;
+      --accent: #8b5cf6;
+      --accent-2: #6366f1;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(99,102,241,.13), transparent 30%),
+        radial-gradient(circle at 85% 10%, rgba(139,92,246,.10), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(7,8,13,.86);
+      backdrop-filter: blur(18px);
+    }
+
+    .back-button {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 18px;
+      transition: .2s ease;
+    }
+
+    .back-button:hover {
+      border-color: rgba(139,92,246,.45);
+      background: var(--panel-2);
+      transform: translateY(-1px);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 150px;
+    }
+
+    .brand strong {
+      font-size: 15px;
+      letter-spacing: .02em;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav a {
+      white-space: nowrap;
+      padding: 9px 12px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      transition: .2s ease;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+    }
+
+    .nav a.active {
+      box-shadow: inset 0 0 0 1px rgba(139,92,246,.28);
+    }
+
+    .admin-user {
+      margin-left: auto;
+    }
+
+    .admin-badge {
+      padding: 7px 10px;
+      border: 1px solid rgba(139,92,246,.35);
+      border-radius: 9px;
+      background: rgba(139,92,246,.10);
+      color: #c4b5fd;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+
+    .container {
+      width: min(1440px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 42px 0 70px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 30px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin-bottom: 9px;
+      color: #a78bfa;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .hero p {
+      max-width: 680px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 13px;
+      border: 1px solid rgba(245,158,11,.24);
+      border-radius: 12px;
+      background: rgba(245,158,11,.07);
+      color: #fbbf24;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .notice {
+      margin-bottom: 24px;
+      padding: 18px 20px;
+      border: 1px solid rgba(245,158,11,.20);
+      border-radius: 16px;
+      background: rgba(245,158,11,.055);
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .notice p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+      gap: 20px;
+    }
+
+    .panel {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(13,16,24,.78);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header strong {
+      font-size: 14px;
+    }
+
+    .panel-header span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .panel-body {
+      padding: 20px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .field {
+      flex: 1 1 180px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      height: 43px;
+      padding: 0 13px;
+      outline: none;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .field input::placeholder {
+      color: #626b7c;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: rgba(139,92,246,.5);
+    }
+
+    .button {
+      height: 43px;
+      padding: 0 15px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 650;
+      transition: .2s ease;
+    }
+
+    .button:hover:not(:disabled) {
+      background: var(--panel-2);
+      border-color: rgba(255,255,255,.14);
+    }
+
+    .button.primary {
+      border-color: rgba(139,92,246,.4);
+      background: linear-gradient(135deg, rgba(139,92,246,.24), rgba(99,102,241,.18));
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .42;
+    }
+
+    .tickets {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ticket {
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: rgba(255,255,255,.018);
+    }
+
+    .ticket-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .ticket-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .ticket-status {
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: rgba(245,158,11,.08);
+      color: #fbbf24;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .ticket-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .empty {
+      padding: 55px 20px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 15px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .empty strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .empty p {
+      max-width: 500px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 7px;
+      color: #aab2c2;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .form-grid input,
+    .form-grid select,
+    .form-grid textarea {
+      width: 100%;
+      outline: none;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .form-grid input,
+    .form-grid select {
+      height: 43px;
+      padding: 0 13px;
+    }
+
+    .form-grid textarea {
+      min-height: 145px;
+      padding: 13px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .form-grid input:focus,
+    .form-grid select:focus,
+    .form-grid textarea:focus {
+      border-color: rgba(139,92,246,.5);
+    }
+
+    .form-grid input::placeholder,
+    .form-grid textarea::placeholder {
+      color: #626b7c;
+    }
+
+    .contact-card {
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: rgba(255,255,255,.018);
+    }
+
+    .contact-card + .contact-card {
+      margin-top: 11px;
+    }
+
+    .contact-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      border-radius: 11px;
+      background: rgba(139,92,246,.10);
+      color: #c4b5fd;
+    }
+
+    .contact-card strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .contact-card span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .integration {
+      margin-top: 20px;
+      padding: 18px 20px;
+      border: 1px dashed rgba(139,92,246,.25);
+      border-radius: 16px;
+      background: rgba(139,92,246,.045);
+    }
+
+    .integration strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .integration p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1050px) {
+      .nav {
+        display: none;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        padding: 0 14px;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .admin-user {
+        display: none;
+      }
+
+      .container {
+        width: min(100% - 24px, 1440px);
+        padding-top: 28px;
+      }
+
+      .hero {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  <header class="topbar">
+    <a class="back-button" href="/admin-control.html" aria-label="Kembali ke Admin Control">⚙</a>
+
+```
+<div class="brand">
+  <strong>GEN-Z.AI Admin</strong>
+  <span>Contact Center</span>
+</div>
+
+<nav class="nav" aria-label="Admin navigation">
+  <a href="/">|||</a>
+  <a href="/admin.html">Dashboard</a>
+  <a href="/admin-control.html">Admin Control</a>
+  <a href="/admin-users.html">Users</a>
+  <a href="/admin-membership.html">Membership</a>
+  <a href="/admin-affiliate.html">Affiliate</a>
+  <a href="/admin-providers.html">Providers</a>
+  <a href="/admin-topup.html">Top-up</a>
+  <a href="/admin-credit.html">Credit</a>
+  <a href="/admin-jobs.html">Jobs</a>
+  <a href="/admin-job-events.html">Events</a>
+  <a href="/admin-admins.html">Admins</a>
+  <a class="active" href="/admin-contact.html">Contact</a>
+</nav>
+
+<div class="admin-user">
+  <span class="admin-badge">ADMIN</span>
+</div>
+```
+
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Admin Control / Support</div>
+        <h1>Contact Center</h1>
+        <p>
+          Pusat komunikasi admin untuk menangani pesan, pertanyaan, dan
+          permintaan bantuan dari pengguna.
+        </p>
+      </div>
+
+```
+  <div class="status">
+    <span class="status-dot"></span>
+    Backend belum terhubung
+  </div>
+</section>
+
+<section class="notice">
+  <strong>Contact backend belum ditemukan</strong>
+  <p>
+    Repository saat ini belum memiliki endpoint khusus untuk inbox,
+    ticket, atau contact management. Karena itu halaman ini hanya
+    menyiapkan struktur UI dan tidak membuat asumsi terhadap database
+    atau endpoint yang belum tersedia.
+  </p>
+</section>
+
+<section class="layout">
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <strong>Messages & Tickets</strong>
+          <span> — support inbox</span>
+        </div>
+        <span>Belum ada data</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="toolbar">
+          <div class="field">
+            <input
+              type="search"
+              placeholder="Cari user, email, atau subject..."
+              disabled
+            >
+          </div>
+
+          <div class="field">
+            <select disabled>
+              <option>Semua status</option>
+              <option>Open</option>
+              <option>Pending</option>
+              <option>Resolved</option>
+            </select>
+          </div>
+
+          <button class="button primary" type="button" disabled>
+            Refresh
+          </button>
+        </div>
+
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-top">
+              <div class="ticket-title">Contoh ticket support</div>
+              <span class="ticket-status">Backend belum aktif</span>
+            </div>
+
+            <div class="ticket-meta">
+              <span>user@example.com</span>
+              <span>Ticket ID —</span>
+              <span>Created —</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty">
+          <div class="empty-icon">✉</div>
+          <strong>Belum ada pesan support</strong>
+          <p>
+            Inbox akan menampilkan pesan pengguna setelah sistem contact
+            atau ticket backend tersedia.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <strong>Compose Message</strong>
+          <span> — admin response</span>
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <div class="form-grid">
+          <div>
+            <label class="form-label" for="recipient">Recipient</label>
+            <input
+              id="recipient"
+              type="email"
+              placeholder="user@example.com"
+              disabled
+            >
+          </div>
+
+          <div>
+            <label class="form-label" for="subject">Subject</label>
+            <input
+              id="subject"
+              type="text"
+              placeholder="Subject pesan..."
+              disabled
+            >
+          </div>
+
+          <div>
+            <label class="form-label" for="message">Message</label>
+            <textarea
+              id="message"
+              placeholder="Tulis pesan untuk user..."
+              disabled
+            ></textarea>
+          </div>
+
+          <button class="button primary" type="button" disabled>
+            Send Message
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-card">
+      <div class="contact-icon">◎</div>
+      <strong>User Support</strong>
+      <span>
+        Area untuk komunikasi langsung dengan pengguna.
+      </span>
+    </div>
+
+    <div class="contact-card">
+      <div class="contact-icon">!</div>
+      <strong>Escalation</strong>
+      <span>
+        Area untuk kasus yang membutuhkan penanganan administrator.
+      </span>
+    </div>
+
+    <div class="contact-card">
+      <div class="contact-icon">✓</div>
+      <strong>Resolved</strong>
+      <span>
+        Riwayat percakapan yang sudah diselesaikan.
+      </span>
+    </div>
+  </aside>
+</section>
+
+<section class="integration">
+  <strong>Integration point</strong>
+  <p>
+    Saat contact backend tersedia, halaman ini dapat dihubungkan ke inbox,
+    ticket lifecycle, reply message, assignment admin, status resolution,
+    dan history tanpa perlu menggabungkan halaman ini dengan Users atau
+    Admin Management.
+  </p>
+</section>
+```
+
+  </main>
+
+  <script src="/js/auth.js"></script>
+
+  <script src="/js/account.js"></script>
+
+  <script>
+    (async function () {
+      try {
+        if (!window.GENZ || !GENZ.auth || !GENZ.account) {
+          window.location.replace('/');
+          return;
+        }
+
+        const session = await GENZ.auth.getSession();
+
+        if (!session || !session.user) {
+          window.location.replace('/');
+          return;
+        }
+
+        await GENZ.account.refresh();
+
+        const account = GENZ.state && GENZ.state.account
+          ? GENZ.state.account
+          : null;
+
+        const isAdmin =
+          account &&
+          account.isAdmin === true &&
+          account.roleValidated === true;
+
+        if (!isAdmin) {
+          window.location.replace('/');
+          return;
+        }
+
+        const adminUser = document.querySelector('.admin-user');
+
+        if (adminUser && session.user.email) {
+          adminUser.setAttribute('title', session.user.email);
+        }
+      } catch (error) {
+        console.error('Admin Contact auth error:', error);
+        window.location.replace('/');
+      }
+    })();
+  </script>
+
+</body>
+</html>
