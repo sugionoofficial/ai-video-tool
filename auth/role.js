@@ -7,6 +7,10 @@ import {
   sb
 } from "../lib/supabase.js";
 
+import {
+  requireUser
+} from "./auth.js";
+
 const VALID_ROLES = [
   "user",
   "admin",
