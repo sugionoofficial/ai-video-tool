@@ -40,19 +40,36 @@ export async function getUserRole(
     return null;
   }
 
-  const roleRows =
-    await rows(
+  const res =
+    await sb(
       `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
         userId
       )}&select=user_id,role&limit=1`,
+      {},
       env
     );
+
+  if (!res.ok) {
+    console.error(
+      "getUserRole failed",
+      await safeJson(
+        res
+      )
+    );
+
+    return null;
+  }
+
+  const roleRows =
+    await res.json();
 
   const role =
     roleRows?.[0]?.role ||
     null;
 
-  return isValidRole(role)
+  return isValidRole(
+    role
+  )
     ? role
     : null;
 }
