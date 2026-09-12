@@ -1,11 +1,8 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GEN-Z.AI Admin Console</title>
-
-<style>
+<title>GEN-Z.AI Admin Console</title><style>
 :root{
   --bg:#07090f;
   --panel:rgba(16,20,30,.82);
@@ -19,13 +16,9 @@
   --radius:20px;
 }
 
-*{
-  box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
-html{
-  scroll-behavior:smooth;
-}
+html{scroll-behavior:smooth}
 
 body{
   margin:0;
@@ -39,24 +32,11 @@ body{
   font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
-a{
-  color:inherit;
-  text-decoration:none;
-}
+a{color:inherit;text-decoration:none}
 
-button,
-input{
-  font:inherit;
-}
+button,input{font:inherit}
 
-.app{
-  display:flex;
-  min-height:100vh;
-}
-
-/* =========================================================
-   SIDEBAR DESKTOP
-   ========================================================= */
+.app{display:flex;min-height:100vh}
 
 .sidebar{
   position:fixed;
@@ -87,11 +67,7 @@ input{
   font-weight:900;
 }
 
-.brand strong{
-  display:block;
-  font-size:15px;
-  letter-spacing:-.02em;
-}
+.brand strong{display:block;font-size:15px;letter-spacing:-.02em}
 
 .brand span{
   display:block;
@@ -109,10 +85,7 @@ input{
   text-transform:uppercase;
 }
 
-.nav{
-  display:grid;
-  gap:5px;
-}
+.nav{display:grid;gap:5px}
 
 .nav a{
   display:flex;
@@ -144,10 +117,7 @@ input{
   border-color:rgba(139,92,246,.25);
 }
 
-.nav-icon{
-  width:19px;
-  text-align:center;
-}
+.nav-icon{width:19px;text-align:center}
 
 .sidebar-bottom{
   position:absolute;
@@ -180,9 +150,7 @@ input{
   font-weight:800;
 }
 
-.admin-info{
-  min-width:0;
-}
+.admin-info{min-width:0}
 
 .admin-info strong{
   display:block;
@@ -198,19 +166,11 @@ input{
   font-weight:700;
 }
 
-/* =========================================================
-   MAIN
-   ========================================================= */
-
 .main{
   width:calc(100% - 260px);
   margin-left:260px;
   padding:26px 32px 50px;
 }
-
-/* =========================================================
-   TOPBAR
-   ========================================================= */
 
 .topbar{
   display:flex;
@@ -237,9 +197,7 @@ input{
   text-overflow:ellipsis;
 }
 
-.breadcrumb strong{
-  color:#fff;
-}
+.breadcrumb strong{color:#fff}
 
 .top-actions{
   display:flex;
@@ -250,20 +208,9 @@ input{
   flex-shrink:0;
 }
 
-/* =========================================================
-   MOBILE ADMIN MENU
-   DEFAULT HIDDEN
-   ========================================================= */
-
 .mobile-admin-toggle,
 .mobile-admin-menu,
-.mobile-admin-backdrop{
-  display:none;
-}
-
-/* =========================================================
-   ADMIN CONTROL DESKTOP
-   ========================================================= */
+.mobile-admin-backdrop{display:none}
 
 .control-btn{
   width:44px;
@@ -285,13 +232,7 @@ input{
   background:rgba(139,92,246,.12);
 }
 
-.top-actions .control-btn{
-  flex-shrink:0;
-}
-
-/* =========================================================
-   TOP ACTION
-   ========================================================= */
+.top-actions .control-btn{flex-shrink:0}
 
 .top-action{
   min-width:40px;
@@ -320,22 +261,14 @@ input{
 
 .top-action.generate{
   border-color:rgba(139,92,246,.45);
-  background:linear-gradient(
-    135deg,
-    #8b5cf6,
-    #6366f1
-  );
+  background:linear-gradient(135deg,#8b5cf6,#6366f1);
   color:#fff;
   box-shadow:0 8px 24px rgba(99,102,241,.25);
 }
 
 .top-action.generate:hover{
   border-color:rgba(167,139,250,.7);
-  background:linear-gradient(
-    135deg,
-    #9b6cff,
-    #716df5
-  );
+  background:linear-gradient(135deg,#9b6cff,#716df5);
   box-shadow:0 12px 30px rgba(99,102,241,.35);
 }
 
@@ -346,10 +279,6 @@ input{
   line-height:1;
   font-size:15px;
 }
-
-/* =========================================================
-   HERO
-   ========================================================= */
 
 .hero{
   position:relative;
@@ -424,10 +353,6 @@ input{
   line-height:1.7;
 }
 
-/* =========================================================
-   KPI
-   ========================================================= */
-
 .kpi-grid{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
@@ -489,14 +414,7 @@ input{
   font-size:10px;
 }
 
-.up{
-  color:var(--success);
-  font-weight:800;
-}
-
-/* =========================================================
-   CONTENT
-   ========================================================= */
+.up{color:var(--success);font-weight:800}
 
 .content-grid{
   display:grid;
@@ -513,9 +431,7 @@ input{
   backdrop-filter:blur(18px);
 }
 
-.panel + .panel{
-  margin-top:20px;
-}
+.panel + .panel{margin-top:20px}
 
 .panel-head{
   display:flex;
@@ -542,10 +458,6 @@ input{
   font-size:11px;
   font-weight:700;
 }
-
-/* =========================================================
-   CHART
-   ========================================================= */
 
 .chart{
   height:235px;
@@ -580,10 +492,6 @@ input{
   text-align:center;
 }
 
-/* =========================================================
-   QUICK ACTIONS
-   ========================================================= */
-
 .quick-grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
@@ -605,15 +513,9 @@ input{
   background:rgba(139,92,246,.07);
 }
 
-.quick-icon{
-  margin-bottom:10px;
-  font-size:20px;
-}
+.quick-icon{margin-bottom:10px;font-size:20px}
 
-.quick strong{
-  display:block;
-  font-size:11px;
-}
+.quick strong{display:block;font-size:11px}
 
 .quick span{
   display:block;
@@ -623,14 +525,7 @@ input{
   line-height:1.5;
 }
 
-/* =========================================================
-   STATUS
-   ========================================================= */
-
-.status-list{
-  display:grid;
-  gap:10px;
-}
+.status-list{display:grid;gap:10px}
 
 .status{
   display:flex;
@@ -664,24 +559,14 @@ input{
   box-shadow:0 0 10px rgba(245,158,11,.5);
 }
 
-.status-name{
-  font-size:11px;
-  font-weight:700;
-}
+.status-name{font-size:11px;font-weight:700}
 
 .status-state{
   color:var(--muted);
   font-size:9px;
 }
 
-/* =========================================================
-   ACTIVITY
-   ========================================================= */
-
-.activity{
-  display:grid;
-  gap:2px;
-}
+.activity{display:grid;gap:2px}
 
 .activity-item{
   display:grid;
@@ -692,9 +577,7 @@ input{
   border-bottom:1px solid rgba(255,255,255,.045);
 }
 
-.activity-item:last-child{
-  border-bottom:0;
-}
+.activity-item:last-child{border-bottom:0}
 
 .activity-icon{
   width:32px;
@@ -705,10 +588,7 @@ input{
   background:rgba(99,102,241,.1);
 }
 
-.activity-text strong{
-  display:block;
-  font-size:10px;
-}
+.activity-text strong{display:block;font-size:10px}
 
 .activity-text span{
   display:block;
@@ -721,10 +601,6 @@ input{
   color:#626b7b;
   font-size:9px;
 }
-
-/* =========================================================
-   SYSTEM
-   ========================================================= */
 
 .system-card{
   padding:16px;
@@ -740,10 +616,7 @@ input{
   margin-bottom:13px;
 }
 
-.system-title{
-  font-size:11px;
-  font-weight:800;
-}
+.system-title{font-size:11px;font-weight:800}
 
 .online{
   color:var(--success);
@@ -774,38 +647,14 @@ input{
   font-size:9px;
 }
 
-/* =========================================================
-   TABLET
-   ========================================================= */
-
 @media(max-width:1100px){
-
-  .kpi-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .content-grid{
-    grid-template-columns:1fr;
-  }
-
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .content-grid{grid-template-columns:1fr}
 }
-
-/* =========================================================
-   MOBILE
-   ========================================================= */
 
 @media(max-width:780px){
 
-  /*
-    PENTING:
-    Sidebar desktop TIDAK boleh tampil di HP.
-    Navigasi Admin Control menggunakan tombol ☰
-    yang berada di kiri topbar.
-  */
-
-  .sidebar{
-    display:none !important;
-  }
+  .sidebar{display:none !important}
 
   .app{
     display:block;
@@ -818,170 +667,101 @@ input{
     padding:16px 15px 40px;
   }
 
-  /* =======================================================
-     TOPBAR HP
-     ======================================================= */
-
   .topbar{
     display:flex;
     align-items:center;
     justify-content:space-between;
-
     width:100%;
-
     gap:8px;
-
     margin:0 0 20px;
-
     min-height:40px;
   }
 
   .topbar-left{
     display:flex;
     align-items:center;
-
     flex:1;
     min-width:0;
-
     gap:8px;
   }
 
   .breadcrumb{
     min-width:0;
-
     color:var(--muted);
-
     font-size:11px;
-
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
   }
 
-  .breadcrumb strong{
-    color:#fff;
-  }
-
-  /* =======================================================
-     TOMBOL FITUR ADMIN DI KIRI
-     ======================================================= */
+  .breadcrumb strong{color:#fff}
 
   .mobile-admin-toggle{
     width:38px;
     height:38px;
-
     display:flex;
-
     flex-direction:column;
-
     align-items:center;
     justify-content:center;
-
     gap:4px;
-
     flex-shrink:0;
-
     padding:0;
-
     border:1px solid var(--line);
-
     border-radius:11px;
-
     background:rgba(255,255,255,.045);
-
     color:#fff;
-
     cursor:pointer;
-
     transition:.2s ease;
   }
 
   .mobile-admin-toggle:hover,
   .mobile-admin-toggle:active{
     border-color:rgba(139,92,246,.4);
-
     background:rgba(139,92,246,.12);
   }
 
   .mobile-admin-toggle span{
     display:block;
-
     width:17px;
     height:2px;
-
     border-radius:3px;
-
     background:#fff;
-
     transition:.2s ease;
   }
 
-  /*
-    Gear Admin Control desktop tidak ditampilkan
-    pada HP karena tombol fitur sudah berada di kiri.
-  */
-
-  .desktop-admin-control{
-    display:none !important;
-  }
-
-  /* =======================================================
-     TOP ACTIONS HP
-     ======================================================= */
+  .desktop-admin-control{display:none !important}
 
   .top-actions{
     display:flex;
-
     align-items:center;
     justify-content:flex-end;
-
     gap:6px;
-
     margin-left:auto;
-
     flex-shrink:0;
   }
 
   .top-action{
     display:inline-flex;
-
     align-items:center;
     justify-content:center;
-
     height:38px;
-
     min-width:38px;
-
     padding:0 10px;
-
     border-radius:10px;
   }
 
-  /* =======================================================
-     GENERATE
-     ======================================================= */
-
   .top-action.generate{
     display:flex;
-
     align-items:center;
     justify-content:center;
-
     width:96px;
     min-width:96px;
-
     height:38px;
-
     padding:0 8px;
-
     font-size:10px;
-
     font-weight:800;
-
     letter-spacing:.08em;
-
     white-space:nowrap;
-
     text-align:center;
   }
 
@@ -991,186 +771,110 @@ input{
 
   .top-action.generate span:last-child{
     display:block !important;
-
     width:100%;
-
     text-align:center;
   }
 
-  /* =======================================================
-     MESSAGES
-     ======================================================= */
-
   .top-action:not(.generate){
     width:38px;
-
     min-width:38px;
-
     height:38px;
-
     padding:0;
-
     display:inline-flex;
-
     align-items:center;
     justify-content:center;
   }
 
   .top-action:not(.generate) .top-action-icon{
     display:inline-flex;
-
     align-items:center;
     justify-content:center;
   }
 
-  /* =======================================================
-     HERO
-     ======================================================= */
+  .hero{padding:22px}
 
-  .hero{
-    padding:22px;
-  }
-
-  /* =======================================================
-     KPI
-     ======================================================= */
-
-  .kpi-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  /* =======================================================
-     MOBILE ADMIN MENU
-     ======================================================= */
+  .kpi-grid{grid-template-columns:1fr 1fr}
 
   .mobile-admin-menu{
     display:block;
-
     position:fixed;
-
     top:0;
     left:0;
-
     width:min(310px,88vw);
-
     height:100vh;
-
     padding:18px 14px;
-
     background:rgba(8,11,18,.98);
-
     border-right:1px solid var(--line);
-
     box-shadow:18px 0 50px rgba(0,0,0,.45);
-
     transform:translateX(-105%);
-
     transition:transform .25s ease;
-
     z-index:1001;
-
     overflow-y:auto;
-
     overscroll-behavior:contain;
   }
 
-  .mobile-admin-menu.open{
-    transform:translateX(0);
-  }
+  .mobile-admin-menu.open{transform:translateX(0)}
 
   .mobile-admin-backdrop{
     display:block;
-
     position:fixed;
-
     inset:0;
-
     background:rgba(0,0,0,.62);
-
     backdrop-filter:blur(3px);
-
     opacity:0;
-
     pointer-events:none;
-
     transition:opacity .25s ease;
-
     z-index:1000;
   }
 
   .mobile-admin-backdrop.open{
     opacity:1;
-
     pointer-events:auto;
   }
 
   .mobile-admin-menu-header{
     display:flex;
-
     align-items:center;
     justify-content:space-between;
-
     gap:12px;
-
     padding:4px 4px 18px;
-
     margin-bottom:12px;
-
     border-bottom:1px solid var(--line);
   }
 
   .mobile-admin-menu-header > div{
     display:flex;
-
     flex-direction:column;
-
     gap:3px;
   }
 
   .mobile-admin-brand{
     color:#9b87ff;
-
     font-size:12px;
-
     font-weight:800;
-
     letter-spacing:.14em;
   }
 
   .mobile-admin-menu-header strong{
     color:#fff;
-
     font-size:14px;
-
     font-weight:800;
-
     letter-spacing:.04em;
   }
 
   .mobile-admin-close{
     width:36px;
     height:36px;
-
     display:grid;
-
     place-items:center;
-
     flex-shrink:0;
-
     padding:0;
-
     border:1px solid var(--line);
-
     border-radius:10px;
-
     background:rgba(255,255,255,.045);
-
     color:#fff;
-
     font-size:24px;
-
     line-height:1;
-
     cursor:pointer;
   }
 
@@ -1181,33 +885,21 @@ input{
 
   .mobile-admin-nav{
     display:flex;
-
     flex-direction:column;
-
     gap:6px;
   }
 
   .mobile-admin-nav a{
     display:flex;
-
     align-items:center;
-
     gap:13px;
-
     min-height:46px;
-
     padding:0 13px;
-
     border:1px solid transparent;
-
     border-radius:12px;
-
     color:rgba(255,255,255,.78);
-
     font-size:14px;
-
     font-weight:600;
-
     transition:
       background .18s ease,
       color .18s ease,
@@ -1216,44 +908,28 @@ input{
 
   .mobile-admin-nav a span:first-child{
     width:22px;
-
     flex-shrink:0;
-
     display:grid;
-
     place-items:center;
-
     color:#9aa7ff;
-
     font-size:17px;
   }
 
   .mobile-admin-nav a:hover,
   .mobile-admin-nav a:active{
     background:rgba(255,255,255,.06);
-
     border-color:var(--line);
-
     color:#fff;
   }
 
   .mobile-admin-nav a.active{
     background:rgba(100,120,255,.12);
-
     border-color:rgba(120,140,255,.25);
-
     color:#fff;
   }
 
-  body.mobile-admin-open{
-    overflow:hidden;
-  }
-
+  body.mobile-admin-open{overflow:hidden}
 }
-
-/* =========================================================
-   SMALL MOBILE
-   ========================================================= */
 
 @media(max-width:500px){
 
@@ -1263,78 +939,48 @@ input{
 
   .topbar{
     display:flex;
-
     align-items:center;
     justify-content:space-between;
-
     width:100%;
-
     gap:6px;
-
     margin:0 0 18px;
-
     min-height:38px;
   }
 
   .topbar-left{
     flex:1;
-
     min-width:0;
-
     gap:7px;
   }
 
-  .breadcrumb{
-    font-size:10px;
-  }
+  .breadcrumb{font-size:10px}
 
   .mobile-admin-toggle{
     width:38px;
-
     min-width:38px;
-
     height:38px;
   }
 
   .top-actions{
     display:flex;
-
     align-items:center;
-
     justify-content:flex-end;
-
     gap:5px;
-
     margin-left:auto;
-
     flex-shrink:0;
   }
 
-  /*
-    GENERATE tetap teks.
-    Tidak berubah menjadi ikon.
-  */
-
   .top-action.generate{
     display:flex !important;
-
     align-items:center;
     justify-content:center;
-
     width:92px;
-
     min-width:92px;
-
     height:38px;
-
     padding:0 8px;
-
     font-size:10px;
-
     font-weight:800;
-
     letter-spacing:.06em;
-
     text-align:center;
   }
 
@@ -1344,46 +990,27 @@ input{
 
   .top-action.generate span:last-child{
     display:block !important;
-
     width:100%;
-
     text-align:center;
   }
 
   .top-action:not(.generate){
     display:inline-flex !important;
-
     align-items:center;
     justify-content:center;
-
     width:38px;
-
     min-width:38px;
-
     height:38px;
-
     padding:0;
-
     border-radius:10px;
   }
 
-  .kpi-grid{
-    grid-template-columns:1fr;
-  }
+  .kpi-grid{grid-template-columns:1fr}
 
-  .hero h1{
-    font-size:26px;
-  }
+  .hero h1{font-size:26px}
 
-  .quick-grid{
-    grid-template-columns:1fr;
-  }
-
+  .quick-grid{grid-template-columns:1fr}
 }
-
-/* =========================================================
-   VERY SMALL PHONE
-   ========================================================= */
 
 @media(max-width:360px){
 
@@ -1392,54 +1019,30 @@ input{
     padding-right:10px;
   }
 
-  .topbar{
-    gap:5px;
-  }
+  .topbar{gap:5px}
 
-  .topbar-left{
-    gap:5px;
-  }
+  .topbar-left{gap:5px}
 
-  .breadcrumb{
-    font-size:9px;
-  }
+  .breadcrumb{font-size:9px}
 
   .mobile-admin-toggle{
     width:35px;
-
     min-width:35px;
-
     height:36px;
-
     border-radius:9px;
   }
 
-  .mobile-admin-toggle span{
-    width:16px;
-  }
+  .mobile-admin-toggle span{width:16px}
 
-  .top-actions{
-    gap:4px;
-  }
-
-  /*
-    Generate tetap menggunakan tulisan.
-    Tombol diperkecil tanpa menghilangkan teks.
-  */
+  .top-actions{gap:4px}
 
   .top-action.generate{
     width:82px;
-
     min-width:82px;
-
     height:36px;
-
     padding:0 5px;
-
     font-size:9px;
-
     letter-spacing:.04em;
-
     text-align:center;
   }
 
@@ -1449,934 +1052,863 @@ input{
 
   .top-action.generate span:last-child{
     display:block !important;
-
     width:100%;
-
     text-align:center;
   }
 
   .top-action:not(.generate){
     width:35px;
-
     min-width:35px;
-
     height:36px;
-
     padding:0;
-
     border-radius:9px;
   }
-
 }
-</style>
-</head>
+</style></head><body><div class="app">  <aside class="sidebar"><a class="brand" href="/admin.html">
 
-<body>
+  <div class="brand-mark">G</div>
 
-<div class="app">
+  <div>
+    <strong>GEN-Z.AI</strong>
+    <span>ADMIN CONSOLE</span>
+  </div>
 
-  <!-- =======================================================
-       SIDEBAR DESKTOP
-       ======================================================= -->
+</a>
 
-  <aside class="sidebar">
+<div class="sidebar-section">
+  Workspace
+</div>
 
-    <a class="brand" href="/admin.html">
+<nav class="nav">
 
-      <div class="brand-mark">G</div>
+  <a href="/">
+    <span class="nav-icon">|||</span>
+    <span>Workspace</span>
+  </a>
 
-      <div>
-        <strong>GEN-Z.AI</strong>
-        <span>ADMIN CONSOLE</span>
+  <a href="/admin.html" class="active">
+    <span class="nav-icon">⌂</span>
+    <span>Dashboard</span>
+  </a>
+
+  <a href="/admin-control.html">
+    <span class="nav-icon">⚙</span>
+    <span>Admin Control</span>
+  </a>
+
+</nav>
+
+<div class="sidebar-section">
+  Management
+</div>
+
+<nav class="nav">
+
+  <a href="/admin-users.html">
+    <span class="nav-icon">♙</span>
+    <span>Users</span>
+  </a>
+
+  <a href="/admin-membership.html">
+    <span class="nav-icon">◇</span>
+    <span>Membership</span>
+  </a>
+
+  <a href="/admin-affiliate.html">
+    <span class="nav-icon">⌁</span>
+    <span>Affiliate</span>
+  </a>
+
+  <!-- DIPERBAIKI: halaman Provider yang benar -->
+  <a href="/providers.html">
+    <span class="nav-icon">◈</span>
+    <span>Providers</span>
+  </a>
+
+</nav>
+
+<div class="sidebar-section">
+  Operations
+</div>
+
+<nav class="nav">
+
+  <a href="/admin-credit.html">
+    <span class="nav-icon">✦</span>
+    <span>Credit</span>
+  </a>
+
+  <a href="/admin-jobs.html">
+    <span class="nav-icon">▣</span>
+    <span>Jobs</span>
+  </a>
+
+  <a href="/admin-job-events.html">
+    <span class="nav-icon">◌</span>
+    <span>Job Events</span>
+  </a>
+
+  <a href="/admin-topup.html">
+    <span class="nav-icon">＋</span>
+    <span>Top-up</span>
+  </a>
+
+</nav>
+
+<div class="sidebar-bottom">
+
+  <div class="admin-card">
+
+    <div class="admin-card-top">
+
+      <div class="avatar">A</div>
+
+      <div class="admin-info">
+
+        <strong id="adminEmail">
+          Administrator
+        </strong>
+
+        <span>
+          ● Online
+        </span>
+
       </div>
 
+    </div>
+
+  </div>
+
+</div>
+
+  </aside>  <main class="main"><header class="topbar">
+
+  <div class="topbar-left">
+
+    <button
+      class="mobile-admin-toggle"
+      id="mobileAdminToggle"
+      type="button"
+      aria-label="Buka menu Admin Control"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="breadcrumb">
+      Admin Console / <strong>Dashboard</strong>
+    </div>
+
+  </div>
+
+  <div class="top-actions">
+
+    <a
+      class="top-action generate"
+      href="/index.html"
+      title="Generate Video"
+      aria-label="Generate Video"
+    >
+      <span class="top-action-icon">✦</span>
+      <span>GENERATE</span>
     </a>
 
-    <div class="sidebar-section">
-      Workspace
+    <a
+      class="control-btn desktop-admin-control"
+      href="/admin-control.html"
+      title="Admin Control"
+      aria-label="Admin Control"
+    >
+      ⚙
+    </a>
+
+  </div>
+
+</header>
+
+<div
+  class="mobile-admin-backdrop"
+  id="mobileAdminBackdrop"
+></div>
+
+<aside
+  class="mobile-admin-menu"
+  id="mobileAdminMenu"
+  aria-hidden="true"
+>
+
+  <div class="mobile-admin-menu-header">
+
+    <div>
+
+      <span class="mobile-admin-brand">
+        GEN-Z.AI
+      </span>
+
+      <strong>
+        ADMIN CONTROL
+      </strong>
+
     </div>
 
-    <nav class="nav">
+    <button
+      class="mobile-admin-close"
+      id="mobileAdminClose"
+      type="button"
+      aria-label="Tutup menu"
+    >
+      ×
+    </button>
 
-      <a href="/">
-        <span class="nav-icon">|||</span>
-        <span>Workspace</span>
-      </a>
+  </div>
 
-      <a href="/admin.html" class="active">
-        <span class="nav-icon">⌂</span>
-        <span>Dashboard</span>
-      </a>
+  <nav class="mobile-admin-nav">
 
-      <a href="/admin-control.html">
-        <span class="nav-icon">⚙</span>
-        <span>Admin Control</span>
-      </a>
+    <a href="/admin.html">
+      <span>⌂</span>
+      <span>Dashboard</span>
+    </a>
 
-    </nav>
+    <a href="/admin-control.html">
+      <span>⚙</span>
+      <span>Admin Control</span>
+    </a>
 
-    <div class="sidebar-section">
-      Management
+    <a href="/admin-users.html">
+      <span>♙</span>
+      <span>Users</span>
+    </a>
+
+    <a href="/admin-membership.html">
+      <span>◇</span>
+      <span>Membership</span>
+    </a>
+
+    <a href="/admin-affiliate.html">
+      <span>⌁</span>
+      <span>Affiliate</span>
+    </a>
+
+    <!-- DIPERBAIKI: halaman Provider yang benar -->
+    <a href="/providers.html">
+      <span>◈</span>
+      <span>Providers</span>
+    </a>
+
+    <a href="/admin-credit.html">
+      <span>✦</span>
+      <span>Credit</span>
+    </a>
+
+    <a href="/admin-jobs.html">
+      <span>▣</span>
+      <span>Jobs</span>
+    </a>
+
+    <a href="/admin-job-events.html">
+      <span>◌</span>
+      <span>Job Events</span>
+    </a>
+
+    <a href="/admin-topup.html">
+      <span>＋</span>
+      <span>Top-up</span>
+    </a>
+
+  </nav>
+
+</aside>
+
+<section class="hero">
+
+  <div class="hero-content">
+
+    <div class="eyebrow">
+      <span class="dot"></span>
+      System Operational
     </div>
 
-    <nav class="nav">
+    <h1>
+      Good evening, Admin.
+    </h1>
 
-      <a href="/admin-users.html">
-        <span class="nav-icon">♙</span>
-        <span>Users</span>
-      </a>
+    <p>
+      Monitor your GEN-Z.AI platform from one premium command center.
+      Manage users, credits, jobs, providers, transactions and system activity.
+    </p>
 
-      <a href="/admin-membership.html">
-        <span class="nav-icon">◇</span>
-        <span>Membership</span>
-      </a>
+  </div>
 
-      <a href="/admin-affiliate.html">
-        <span class="nav-icon">⌁</span>
-        <span>Affiliate</span>
-      </a>
+</section>
 
-      <a href="/admin-providers.html">
-        <span class="nav-icon">◈</span>
-        <span>Providers</span>
-      </a>
+<section class="kpi-grid">
 
-    </nav>
+  <article class="kpi">
 
-    <div class="sidebar-section">
-      Operations
+    <div class="kpi-head">
+
+      <span class="kpi-label">
+        TOTAL USERS
+      </span>
+
+      <span class="kpi-icon">
+        ♙
+      </span>
+
     </div>
 
-    <nav class="nav">
+    <div
+      class="kpi-value"
+      id="statTotalUsers"
+    >
+      —
+    </div>
 
-      <a href="/admin-credit.html">
-        <span class="nav-icon">✦</span>
-        <span>Credit</span>
-      </a>
+    <div class="kpi-meta">
+      <span class="up">
+        ● Active platform
+      </span>
+    </div>
 
-      <a href="/admin-jobs.html">
-        <span class="nav-icon">▣</span>
-        <span>Jobs</span>
-      </a>
+  </article>
 
-      <a href="/admin-job-events.html">
-        <span class="nav-icon">◌</span>
-        <span>Job Events</span>
-      </a>
+  <article class="kpi">
 
-      <a href="/admin-topup.html">
-        <span class="nav-icon">＋</span>
-        <span>Top-up</span>
-      </a>
+    <div class="kpi-head">
 
-    </nav>
+      <span class="kpi-label">
+        TOTAL CREDITS
+      </span>
 
-    <div class="sidebar-bottom">
+      <span class="kpi-icon">
+        ✦
+      </span>
 
-      <div class="admin-card">
+    </div>
 
-        <div class="admin-card-top">
+    <div
+      class="kpi-value"
+      id="statTotalCredits"
+    >
+      —
+    </div>
 
-          <div class="avatar">A</div>
+    <div class="kpi-meta">
+      <span class="up">
+        ● Current balance
+      </span>
+    </div>
 
-          <div class="admin-info">
+  </article>
 
-            <strong id="adminEmail">
-              Administrator
+  <article class="kpi">
+
+    <div class="kpi-head">
+
+      <span class="kpi-label">
+        ACTIVE PROVIDERS
+      </span>
+
+      <span class="kpi-icon">
+        ◈
+      </span>
+
+    </div>
+
+    <div
+      class="kpi-value"
+      id="statActiveProviders"
+    >
+      —
+    </div>
+
+    <div class="kpi-meta">
+      <span class="up">
+        ● Provider health
+      </span>
+    </div>
+
+  </article>
+
+  <article class="kpi">
+
+    <div class="kpi-head">
+
+      <span class="kpi-label">
+        PENDING TOP-UP
+      </span>
+
+      <span class="kpi-icon">
+        ＋
+      </span>
+
+    </div>
+
+    <div
+      class="kpi-value"
+      id="statPendingTopups"
+    >
+      —
+    </div>
+
+    <div class="kpi-meta">
+      <span>
+        Awaiting review
+      </span>
+    </div>
+
+  </article>
+
+</section>
+
+<section class="content-grid">
+
+  <div>
+
+    <article class="panel">
+
+      <div class="panel-head">
+
+        <div>
+
+          <h2 class="panel-title">
+            Platform Activity
+          </h2>
+
+          <div class="panel-subtitle">
+            Activity overview for the current period
+          </div>
+
+        </div>
+
+        <span class="view-all">
+          Last 7 days
+        </span>
+
+      </div>
+
+      <div class="chart">
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:34%"></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:51%"></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:43%"></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:67%"></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:58%"></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:82%"></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar" style="height:72%"></div>
+        </div>
+
+      </div>
+
+      <div class="chart-labels">
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
+        <span>Sun</span>
+      </div>
+
+    </article>
+
+    <article class="panel">
+
+      <div class="panel-head">
+
+        <div>
+
+          <h2 class="panel-title">
+            Recent Activity
+          </h2>
+
+          <div class="panel-subtitle">
+            Latest platform events
+          </div>
+
+        </div>
+
+        <a
+          class="view-all"
+          href="/admin-job-events.html"
+        >
+          View all
+        </a>
+
+      </div>
+
+      <div class="activity">
+
+        <div class="activity-item">
+
+          <div class="activity-icon">
+            ♙
+          </div>
+
+          <div class="activity-text">
+
+            <strong>
+              User activity
             </strong>
 
             <span>
-              ● Online
+              Platform user management
             </span>
 
+          </div>
+
+          <div class="activity-time">
+            Now
+          </div>
+
+        </div>
+
+        <div class="activity-item">
+
+          <div class="activity-icon">
+            ▣
+          </div>
+
+          <div class="activity-text">
+
+            <strong>
+              Job processing
+            </strong>
+
+            <span>
+              Video generation queue
+            </span>
+
+          </div>
+
+          <div class="activity-time">
+            Today
+          </div>
+
+        </div>
+
+        <div class="activity-item">
+
+          <div class="activity-icon">
+            ✦
+          </div>
+
+          <div class="activity-text">
+
+            <strong>
+              Credit activity
+            </strong>
+
+            <span>
+              Credit balance monitoring
+            </span>
+
+          </div>
+
+          <div class="activity-time">
+            Today
+          </div>
+
+        </div>
+
+        <div class="activity-item">
+
+          <div class="activity-icon">
+            ＋
+          </div>
+
+          <div class="activity-text">
+
+            <strong>
+              Top-up monitoring
+            </strong>
+
+            <span>
+              Payment transactions
+            </span>
+
+          </div>
+
+          <div class="activity-time">
+            Today
           </div>
 
         </div>
 
       </div>
 
-    </div>
+    </article>
 
-  </aside>
+  </div>
 
-  <!-- =======================================================
-       MAIN
-       ======================================================= -->
+  <div>
 
-  <main class="main">
+    <article class="panel">
 
-    <!-- =====================================================
-         TOPBAR
-         ===================================================== -->
+      <div class="panel-head">
 
-    <header class="topbar">
+        <div>
 
-      <div class="topbar-left">
+          <h2 class="panel-title">
+            Quick Actions
+          </h2>
 
-        <!-- TOMBOL FITUR ADMIN HP -->
+          <div class="panel-subtitle">
+            Jump directly to management tools
+          </div>
 
-        <button
-          class="mobile-admin-toggle"
-          id="mobileAdminToggle"
-          type="button"
-          aria-label="Buka menu Admin Control"
-          aria-expanded="false"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-
-        <div class="breadcrumb">
-          Admin Console / <strong>Dashboard</strong>
         </div>
 
       </div>
 
-      <div class="top-actions">
-
-        <!-- GENERATE -->
+      <div class="quick-grid">
 
         <a
-          class="top-action generate"
-          href="/index.html"
-          title="Generate Video"
-          aria-label="Generate Video"
+          class="quick"
+          href="/admin-users.html"
         >
-          <span class="top-action-icon">✦</span>
-          <span>GENERATE</span>
+          <div class="quick-icon">
+            ♙
+          </div>
+
+          <strong>
+            Users
+          </strong>
+
+          <span>
+            Manage platform accounts
+          </span>
         </a>
 
-        
-        <!-- ADMIN CONTROL DESKTOP -->
+        <a
+          class="quick"
+          href="/admin-credit.html"
+        >
+          <div class="quick-icon">
+            ✦
+          </div>
+
+          <strong>
+            Credit
+          </strong>
+
+          <span>
+            Manage user credit
+          </span>
+        </a>
 
         <a
-          class="control-btn desktop-admin-control"
-          href="/admin-control.html"
-          title="Admin Control"
-          aria-label="Admin Control"
+          class="quick"
+          href="/admin-jobs.html"
         >
-          ⚙
+          <div class="quick-icon">
+            ▣
+          </div>
+
+          <strong>
+            Jobs
+          </strong>
+
+          <span>
+            Monitor generation jobs
+          </span>
+        </a>
+
+        <a
+          class="quick"
+          href="/admin-topup.html"
+        >
+          <div class="quick-icon">
+            ＋
+          </div>
+
+          <strong>
+            Top-up
+          </strong>
+
+          <span>
+            Review top-up activity
+          </span>
         </a>
 
       </div>
 
-    </header>
+    </article>
 
-    <!-- =====================================================
-         MOBILE ADMIN MENU
-         ===================================================== -->
+    <article class="panel">
 
-    <div
-      class="mobile-admin-backdrop"
-      id="mobileAdminBackdrop"
-    ></div>
-
-    <aside
-      class="mobile-admin-menu"
-      id="mobileAdminMenu"
-      aria-hidden="true"
-    >
-
-      <div class="mobile-admin-menu-header">
+      <div class="panel-head">
 
         <div>
 
-          <span class="mobile-admin-brand">
-            GEN-Z.AI
+          <h2 class="panel-title">
+            System Status
+          </h2>
+
+          <div class="panel-subtitle">
+            Core service availability
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="status-list">
+
+        <div class="status">
+
+          <div class="status-left">
+
+            <span class="status-dot green"></span>
+
+            <span class="status-name">
+              Authentication
+            </span>
+
+          </div>
+
+          <span class="status-state">
+            Operational
+          </span>
+
+        </div>
+
+        <div class="status">
+
+          <div class="status-left">
+
+            <span class="status-dot green"></span>
+
+            <span class="status-name">
+              Database
+            </span>
+
+          </div>
+
+          <span class="status-state">
+            Operational
+          </span>
+
+        </div>
+
+        <div class="status">
+
+          <div class="status-left">
+
+            <span class="status-dot green"></span>
+
+            <span class="status-name">
+              Video Engine
+            </span>
+
+          </div>
+
+          <span class="status-state">
+            Operational
+          </span>
+
+        </div>
+
+        <div class="status">
+
+          <div class="status-left">
+
+            <span class="status-dot yellow"></span>
+
+            <span class="status-name">
+              Queue
+            </span>
+
+          </div>
+
+          <span class="status-state">
+            Monitoring
+          </span>
+
+        </div>
+
+      </div>
+
+    </article>
+
+    <article class="panel">
+
+      <div class="panel-head">
+
+        <div>
+
+          <h2 class="panel-title">
+            Infrastructure
+          </h2>
+
+          <div class="panel-subtitle">
+            Platform resource usage
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="system-card">
+
+        <div class="system-top">
+
+          <span class="system-title">
+            System Load
+          </span>
+
+          <span class="online">
+            HEALTHY
+          </span>
+
+        </div>
+
+        <div class="progress">
+          <span></span>
+        </div>
+
+        <div class="system-meta">
+
+          <span>
+            Current usage
           </span>
 
           <strong>
-            ADMIN CONTROL
+            78%
           </strong>
 
         </div>
 
-        <button
-          class="mobile-admin-close"
-          id="mobileAdminClose"
-          type="button"
-          aria-label="Tutup menu"
-        >
-          ×
-        </button>
-
       </div>
 
-      <nav class="mobile-admin-nav">
+    </article>
 
-        <a href="/admin.html">
-          <span>⌂</span>
-          <span>Dashboard</span>
-        </a>
+  </div>
 
-        <a href="/admin-control.html">
-          <span>⚙</span>
-          <span>Admin Control</span>
-        </a>
+</section>
 
-        <a href="/admin-users.html">
-          <span>♙</span>
-          <span>Users</span>
-        </a>
-
-        <a href="/admin-membership.html">
-          <span>◇</span>
-          <span>Membership</span>
-        </a>
-
-        <a href="/admin-affiliate.html">
-          <span>⌁</span>
-          <span>Affiliate</span>
-        </a>
-
-        <a href="/admin-providers.html">
-          <span>◈</span>
-          <span>Providers</span>
-        </a>
-
-        <a href="/admin-credit.html">
-          <span>✦</span>
-          <span>Credit</span>
-        </a>
-
-        <a href="/admin-jobs.html">
-          <span>▣</span>
-          <span>Jobs</span>
-        </a>
-
-        <a href="/admin-job-events.html">
-          <span>◌</span>
-          <span>Job Events</span>
-        </a>
-
-        <a href="/admin-topup.html">
-          <span>＋</span>
-          <span>Top-up</span>
-        </a>
-
-      </nav>
-
-    </aside>
-
-    <!-- =====================================================
-         HERO
-         ===================================================== -->
-
-    <section class="hero">
-
-      <div class="hero-content">
-
-        <div class="eyebrow">
-          <span class="dot"></span>
-          System Operational
-        </div>
-
-        <h1>
-          Good evening, Admin.
-        </h1>
-
-        <p>
-          Monitor your GEN-Z.AI platform from one premium command center.
-          Manage users, credits, jobs, providers, transactions and system activity.
-        </p>
-
-      </div>
-
-    </section>
-
-    <!-- =====================================================
-         KPI
-         ===================================================== -->
-
-    <section class="kpi-grid">
-
-      <article class="kpi">
-
-        <div class="kpi-head">
-
-          <span class="kpi-label">
-            TOTAL USERS
-          </span>
-
-          <span class="kpi-icon">
-            ♙
-          </span>
-
-        </div>
-
-        <div
-          class="kpi-value"
-          id="statTotalUsers"
-        >
-          —
-        </div>
-
-        <div class="kpi-meta">
-          <span class="up">
-            ● Active platform
-          </span>
-        </div>
-
-      </article>
-
-      <article class="kpi">
-
-        <div class="kpi-head">
-
-          <span class="kpi-label">
-            TOTAL CREDITS
-          </span>
-
-          <span class="kpi-icon">
-            ✦
-          </span>
-
-        </div>
-
-        <div
-          class="kpi-value"
-          id="statTotalCredits"
-        >
-          —
-        </div>
-
-        <div class="kpi-meta">
-          <span class="up">
-            ● Current balance
-          </span>
-        </div>
-
-      </article>
-
-      <article class="kpi">
-
-        <div class="kpi-head">
-
-          <span class="kpi-label">
-            ACTIVE PROVIDERS
-          </span>
-
-          <span class="kpi-icon">
-            ◈
-          </span>
-
-        </div>
-
-        <div
-          class="kpi-value"
-          id="statActiveProviders"
-        >
-          —
-        </div>
-
-        <div class="kpi-meta">
-          <span class="up">
-            ● Provider health
-          </span>
-        </div>
-
-      </article>
-
-      <article class="kpi">
-
-        <div class="kpi-head">
-
-          <span class="kpi-label">
-            PENDING TOP-UP
-          </span>
-
-          <span class="kpi-icon">
-            ＋
-          </span>
-
-        </div>
-
-        <div
-          class="kpi-value"
-          id="statPendingTopups"
-        >
-          —
-        </div>
-
-        <div class="kpi-meta">
-          <span>
-            Awaiting review
-          </span>
-        </div>
-
-      </article>
-
-    </section>
-
-    <!-- =====================================================
-         CONTENT
-         ===================================================== -->
-
-    <section class="content-grid">
-
-      <div>
-
-        <article class="panel">
-
-          <div class="panel-head">
-
-            <div>
-
-              <h2 class="panel-title">
-                Platform Activity
-              </h2>
-
-              <div class="panel-subtitle">
-                Activity overview for the current period
-              </div>
-
-            </div>
-
-            <span class="view-all">
-              Last 7 days
-            </span>
-
-          </div>
-
-          <div class="chart">
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:34%"></div>
-            </div>
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:51%"></div>
-            </div>
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:43%"></div>
-            </div>
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:67%"></div>
-            </div>
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:58%"></div>
-            </div>
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:82%"></div>
-            </div>
-
-            <div class="bar-wrap">
-              <div class="bar" style="height:72%"></div>
-            </div>
-
-          </div>
-
-          <div class="chart-labels">
-            <span>Mon</span>
-            <span>Tue</span>
-            <span>Wed</span>
-            <span>Thu</span>
-            <span>Fri</span>
-            <span>Sat</span>
-            <span>Sun</span>
-          </div>
-
-        </article>
-
-        <article class="panel">
-
-          <div class="panel-head">
-
-            <div>
-
-              <h2 class="panel-title">
-                Recent Activity
-              </h2>
-
-              <div class="panel-subtitle">
-                Latest platform events
-              </div>
-
-            </div>
-
-            <a
-              class="view-all"
-              href="/admin-job-events.html"
-            >
-              View all
-            </a>
-
-          </div>
-
-          <div class="activity">
-
-            <div class="activity-item">
-
-              <div class="activity-icon">
-                ♙
-              </div>
-
-              <div class="activity-text">
-
-                <strong>
-                  User activity
-                </strong>
-
-                <span>
-                  Platform user management
-                </span>
-
-              </div>
-
-              <div class="activity-time">
-                Now
-              </div>
-
-            </div>
-
-            <div class="activity-item">
-
-              <div class="activity-icon">
-                ▣
-              </div>
-
-              <div class="activity-text">
-
-                <strong>
-                  Job processing
-                </strong>
-
-                <span>
-                  Video generation queue
-                </span>
-
-              </div>
-
-              <div class="activity-time">
-                Today
-              </div>
-
-            </div>
-
-            <div class="activity-item">
-
-              <div class="activity-icon">
-                ✦
-              </div>
-
-              <div class="activity-text">
-
-                <strong>
-                  Credit activity
-                </strong>
-
-                <span>
-                  Credit balance monitoring
-                </span>
-
-              </div>
-
-              <div class="activity-time">
-                Today
-              </div>
-
-            </div>
-
-            <div class="activity-item">
-
-              <div class="activity-icon">
-                ＋
-              </div>
-
-              <div class="activity-text">
-
-                <strong>
-                  Top-up monitoring
-                </strong>
-
-                <span>
-                  Payment transactions
-                </span>
-
-              </div>
-
-              <div class="activity-time">
-                Today
-              </div>
-
-            </div>
-
-          </div>
-
-        </article>
-
-      </div>
-
-      <div>
-
-        <article class="panel">
-
-          <div class="panel-head">
-
-            <div>
-
-              <h2 class="panel-title">
-                Quick Actions
-              </h2>
-
-              <div class="panel-subtitle">
-                Jump directly to management tools
-              </div>
-
-            </div>
-
-          </div>
-
-          <div class="quick-grid">
-
-            <a
-              class="quick"
-              href="/admin-users.html"
-            >
-              <div class="quick-icon">
-                ♙
-              </div>
-
-              <strong>
-                Users
-              </strong>
-
-              <span>
-                Manage platform accounts
-              </span>
-            </a>
-
-            <a
-              class="quick"
-              href="/admin-credit.html"
-            >
-              <div class="quick-icon">
-                ✦
-              </div>
-
-              <strong>
-                Credit
-              </strong>
-
-              <span>
-                Manage user credit
-              </span>
-            </a>
-
-            <a
-              class="quick"
-              href="/admin-jobs.html"
-            >
-              <div class="quick-icon">
-                ▣
-              </div>
-
-              <strong>
-                Jobs
-              </strong>
-
-              <span>
-                Monitor generation jobs
-              </span>
-            </a>
-
-            <a
-              class="quick"
-              href="/admin-topup.html"
-            >
-              <div class="quick-icon">
-                ＋
-              </div>
-
-              <strong>
-                Top-up
-              </strong>
-
-              <span>
-                Review top-up activity
-              </span>
-            </a>
-
-          </div>
-
-        </article>
-
-        <article class="panel">
-
-          <div class="panel-head">
-
-            <div>
-
-              <h2 class="panel-title">
-                System Status
-              </h2>
-
-              <div class="panel-subtitle">
-                Core service availability
-              </div>
-
-            </div>
-
-          </div>
-
-          <div class="status-list">
-
-            <div class="status">
-
-              <div class="status-left">
-
-                <span class="status-dot green"></span>
-
-                <span class="status-name">
-                  Authentication
-                </span>
-
-              </div>
-
-              <span class="status-state">
-                Operational
-              </span>
-
-            </div>
-
-            <div class="status">
-
-              <div class="status-left">
-
-                <span class="status-dot green"></span>
-
-                <span class="status-name">
-                  Database
-                </span>
-
-              </div>
-
-              <span class="status-state">
-                Operational
-              </span>
-
-            </div>
-
-            <div class="status">
-
-              <div class="status-left">
-
-                <span class="status-dot green"></span>
-
-                <span class="status-name">
-                  Video Engine
-                </span>
-
-              </div>
-
-              <span class="status-state">
-                Operational
-              </span>
-
-            </div>
-
-            <div class="status">
-
-              <div class="status-left">
-
-                <span class="status-dot yellow"></span>
-
-                <span class="status-name">
-                  Queue
-                </span>
-
-              </div>
-
-              <span class="status-state">
-                Monitoring
-              </span>
-
-            </div>
-
-          </div>
-
-        </article>
-
-        <article class="panel">
-
-          <div class="panel-head">
-
-            <div>
-
-              <h2 class="panel-title">
-                Infrastructure
-              </h2>
-
-              <div class="panel-subtitle">
-                Platform resource usage
-              </div>
-
-            </div>
-
-          </div>
-
-          <div class="system-card">
-
-            <div class="system-top">
-
-              <span class="system-title">
-                System Load
-              </span>
-
-              <span class="online">
-                HEALTHY
-              </span>
-
-            </div>
-
-            <div class="progress">
-              <span></span>
-            </div>
-
-            <div class="system-meta">
-
-              <span>
-                Current usage
-              </span>
-
-              <strong>
-                78%
-              </strong>
-
-            </div>
-
-          </div>
-
-        </article>
-
-      </div>
-
-    </section>
-
-  </main>
-
-</div>
-
-<!-- =========================================================
-     SCRIPTS
-     ========================================================= -->
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script src="/js/config.js"></script>
-
-<script src="/js/admin.js"></script>
-
-<!-- =========================================================
-     ADMIN EMAIL
-     ========================================================= -->
-
-<script>
+  </main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/js/config.js"></script><script src="/js/admin.js"></script><script>
 (function(){
 
   function setAdminEmail(){
@@ -2430,13 +1962,7 @@ input{
   );
 
 })();
-</script>
-
-<!-- =========================================================
-     MOBILE ADMIN NAVIGATION
-     ========================================================= -->
-
-<script>
+</script><script>
 (function(){
 
   const toggle =
@@ -2557,10 +2083,6 @@ input{
     }
   );
 
-  /*
-    Tutup menu setelah memilih halaman.
-  */
-
   menu
     .querySelectorAll("a")
     .forEach(function(link){
@@ -2571,10 +2093,6 @@ input{
       );
 
     });
-
-  /*
-    Tandai halaman yang sedang aktif.
-  */
 
   const currentPath =
     window.location.pathname;
@@ -2598,7 +2116,5 @@ input{
     });
 
 })();
-</script>
-
-</body>
+</script></body>
 </html>
