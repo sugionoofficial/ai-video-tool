@@ -447,8 +447,8 @@ AUTH BRAND
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 62px;
+  height: 62px;
   border: 1px solid rgba(167, 139, 250, 0.45);
   border-radius: 15px;
   background:
@@ -464,7 +464,7 @@ AUTH BRAND
 
 .auth-brand-mark span {
   color: #fff;
-  font-size: 24px;
+  font-size: 31px;
   font-weight: 900;
   letter-spacing: -0.08em;
 }
@@ -477,7 +477,7 @@ AUTH BRAND
 
 .auth-brand-text strong {
   color: #fff;
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 900;
   letter-spacing: -0.045em;
 }
@@ -1022,17 +1022,17 @@ DESKTOP AUTH LAYOUT
   }
 
   .auth-brand-mark {
-    width: 58px;
-    height: 58px;
+    width: 72px;
+    height: 72px;
     border-radius: 16px;
   }
 
   .auth-brand-mark span {
-    font-size: 27px;
+    font-size: 35px;
   }
 
   .auth-brand-text strong {
-    font-size: 28px;
+    font-size: 32px;
   }
 
   .auth-brand-text small {
@@ -1172,17 +1172,17 @@ RESPONSIVE
   }
 
   .auth-brand-mark {
-    width: 46px;
-    height: 46px;
+    width: 56px;
+    height: 56px;
     border-radius: 14px;
   }
 
   .auth-brand-mark span {
-    font-size: 22px;
+    font-size: 28px;
   }
 
   .auth-brand-text strong {
-    font-size: 22px;
+    font-size: 26px;
   }
 
   .auth-brand-text small {
