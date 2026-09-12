@@ -1,0 +1,810 @@
+<style>
+  /* =========================================================
+     GEN-Z.AI
+     DASHBOARD
+     Halaman referensi video
+     ========================================================= */
+
+  .genz-dashboard {
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 22px;
+    color: #ffffff;
+  }
+
+  /* =========================================================
+     HEADER
+     ========================================================= */
+
+  .genz-dashboard-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .genz-dashboard-title {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.15;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+  }
+
+  .genz-dashboard-subtitle {
+    margin: 7px 0 0;
+    max-width: 620px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* =========================================================
+     CATEGORY
+     ========================================================= */
+
+  .genz-dashboard-categories {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .genz-dashboard-categories::-webkit-scrollbar {
+    display: none;
+  }
+
+  .genz-dashboard-category {
+    flex: 0 0 auto;
+
+    min-height: 36px;
+    padding: 0 15px;
+
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+
+    background: rgba(255, 255, 255, 0.035);
+
+    color: rgba(255, 255, 255, 0.58);
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition:
+      background 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .genz-dashboard-category:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+  }
+
+  .genz-dashboard-category.active {
+    background: rgba(110, 180, 255, 0.13);
+    border-color: rgba(110, 180, 255, 0.35);
+    color: #ffffff;
+  }
+
+  .genz-dashboard-category:active {
+    transform: scale(0.97);
+  }
+
+  /* =========================================================
+     GRID
+     ========================================================= */
+
+  .genz-dashboard-grid {
+    display: grid;
+
+    grid-template-columns:
+      repeat(
+        auto-fill,
+        minmax(220px, 1fr)
+      );
+
+    gap: 16px;
+  }
+
+  /* =========================================================
+     VIDEO CARD
+     ========================================================= */
+
+  .genz-reference-card {
+    overflow: hidden;
+
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(17, 29, 43, 0.88),
+        rgba(6, 12, 19, 0.96)
+      );
+
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.20);
+
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .genz-reference-card:hover {
+    transform: translateY(-3px);
+
+    border-color:
+      rgba(110, 180, 255, 0.25);
+
+    box-shadow:
+      0 18px 50px rgba(0, 0, 0, 0.32);
+  }
+
+  /* =========================================================
+     VIDEO PREVIEW
+     ========================================================= */
+
+  .genz-reference-preview {
+    position: relative;
+
+    width: 100%;
+    aspect-ratio: 9 / 16;
+
+    overflow: hidden;
+
+    background:
+      linear-gradient(
+        145deg,
+        #101d2b,
+        #050a10
+      );
+  }
+
+  .genz-reference-preview video {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    background: #050a10;
+  }
+
+  .genz-reference-placeholder {
+    position: absolute;
+
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+
+    text-align: center;
+
+    background:
+      radial-gradient(
+        circle at 50% 35%,
+        rgba(70, 150, 220, 0.15),
+        transparent 42%
+      );
+  }
+
+  .genz-reference-placeholder-icon {
+    width: 52px;
+    height: 52px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 12px;
+
+    border-radius: 50%;
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    background:
+      rgba(255, 255, 255, 0.05);
+
+    font-size: 19px;
+  }
+
+  .genz-reference-placeholder-title {
+    color: rgba(255, 255, 255, 0.82);
+
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .genz-reference-placeholder-text {
+    margin-top: 6px;
+
+    color: rgba(255, 255, 255, 0.38);
+
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  /* =========================================================
+     PLAY BUTTON
+     ========================================================= */
+
+  .genz-reference-play {
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 52px;
+    height: 52px;
+
+    transform: translate(-50%, -50%);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 50%;
+
+    background:
+      rgba(0, 0, 0, 0.55);
+
+    color: #ffffff;
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    font-size: 17px;
+
+    cursor: pointer;
+
+    transition:
+      transform 0.18s ease,
+      background 0.18s ease;
+  }
+
+  .genz-reference-play:hover {
+    transform:
+      translate(-50%, -50%)
+      scale(1.08);
+
+    background:
+      rgba(20, 50, 75, 0.82);
+  }
+
+  /* =========================================================
+     CARD CONTENT
+     ========================================================= */
+
+  .genz-reference-content {
+    padding: 14px;
+  }
+
+  .genz-reference-category {
+    display: inline-flex;
+
+    margin-bottom: 8px;
+
+    padding: 4px 8px;
+
+    border-radius: 999px;
+
+    background:
+      rgba(110, 180, 255, 0.10);
+
+    color:
+      rgba(150, 205, 255, 0.82);
+
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .genz-reference-title {
+    margin: 0;
+
+    color: #ffffff;
+
+    font-size: 14px;
+    font-weight: 900;
+
+    line-height: 1.3;
+  }
+
+  .genz-reference-description {
+    margin: 7px 0 0;
+
+    color: rgba(255, 255, 255, 0.43);
+
+    font-size: 10px;
+    line-height: 1.55;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+
+    overflow: hidden;
+  }
+
+  /* =========================================================
+     META
+     ========================================================= */
+
+  .genz-reference-meta {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    margin-top: 11px;
+  }
+
+  .genz-reference-meta span {
+    padding: 4px 7px;
+
+    border-radius: 6px;
+
+    background:
+      rgba(255, 255, 255, 0.045);
+
+    color:
+      rgba(255, 255, 255, 0.45);
+
+    font-size: 8px;
+    font-weight: 700;
+  }
+
+  /* =========================================================
+     EMPTY
+     ========================================================= */
+
+  .genz-dashboard-empty {
+    padding: 55px 20px;
+
+    text-align: center;
+
+    border: 1px dashed rgba(255, 255, 255, 0.10);
+    border-radius: 16px;
+
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  .genz-dashboard-empty strong {
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: rgba(255, 255, 255, 0.78);
+
+    font-size: 14px;
+  }
+
+  .genz-dashboard-empty span {
+    font-size: 11px;
+  }
+
+  /* =========================================================
+     MODAL
+     ========================================================= */
+
+  .genz-dashboard-modal {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 9999;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 18px;
+
+    box-sizing: border-box;
+
+    background:
+      rgba(0, 0, 0, 0.78);
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .genz-dashboard-modal.hidden {
+    display: none !important;
+  }
+
+  .genz-dashboard-modal-box {
+    position: relative;
+
+    width: min(
+      1100px,
+      100%
+    );
+
+    max-height: 92vh;
+
+    display: grid;
+
+    grid-template-columns:
+      minmax(250px, 430px)
+      minmax(0, 1fr);
+
+    overflow: hidden;
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+
+    background:
+      #071019;
+
+    box-shadow:
+      0 30px 100px rgba(0, 0, 0, 0.65);
+  }
+
+  .genz-dashboard-modal-video {
+    min-height: 0;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background: #02060a;
+  }
+
+  .genz-dashboard-modal-video video {
+    display: block;
+
+    width: 100%;
+    height: 92vh;
+
+    max-height: 92vh;
+
+    object-fit: contain;
+  }
+
+  .genz-dashboard-modal-info {
+    padding: 25px;
+
+    overflow-y: auto;
+  }
+
+  .genz-dashboard-modal-close {
+    position: absolute;
+
+    top: 12px;
+    right: 12px;
+
+    z-index: 2;
+
+    width: 38px;
+    height: 38px;
+
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 50%;
+
+    background:
+      rgba(0, 0, 0, 0.55);
+
+    color: #ffffff;
+
+    font-size: 17px;
+
+    cursor: pointer;
+  }
+
+  .genz-dashboard-modal-close:hover {
+    background:
+      rgba(255, 255, 255, 0.10);
+  }
+
+  .genz-dashboard-modal-category {
+    color:
+      rgba(150, 205, 255, 0.82);
+
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .genz-dashboard-modal-title {
+    margin: 8px 0 0;
+
+    color: #ffffff;
+
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1.25;
+  }
+
+  .genz-dashboard-modal-description {
+    margin: 12px 0 0;
+
+    color: rgba(255, 255, 255, 0.55);
+
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .genz-dashboard-modal-details {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 8px;
+
+    margin-top: 20px;
+  }
+
+  .genz-dashboard-modal-detail {
+    padding: 10px;
+
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 9px;
+
+    background:
+      rgba(255, 255, 255, 0.025);
+  }
+
+  .genz-dashboard-modal-detail small {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: rgba(255, 255, 255, 0.32);
+
+    font-size: 8px;
+    font-weight: 800;
+
+    text-transform: uppercase;
+  }
+
+  .genz-dashboard-modal-detail span {
+    color: rgba(255, 255, 255, 0.72);
+
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* =========================================================
+     MOBILE
+     ========================================================= */
+
+  @media (max-width: 700px) {
+
+    .genz-dashboard {
+      padding: 15px;
+    }
+
+    .genz-dashboard-title {
+      font-size: 22px;
+    }
+
+    .genz-dashboard-grid {
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+      gap: 10px;
+    }
+
+    .genz-reference-content {
+      padding: 10px;
+    }
+
+    .genz-reference-title {
+      font-size: 12px;
+    }
+
+    .genz-reference-description {
+      font-size: 9px;
+    }
+
+    .genz-reference-meta span {
+      font-size: 7px;
+    }
+
+    .genz-dashboard-modal-box {
+      display: flex;
+      flex-direction: column;
+
+      max-height: 94vh;
+    }
+
+    .genz-dashboard-modal-video video {
+      height: 58vh;
+      max-height: 58vh;
+    }
+
+    .genz-dashboard-modal-info {
+      padding: 18px;
+
+      max-height: 35vh;
+    }
+
+    .genz-dashboard-modal-title {
+      font-size: 18px;
+    }
+
+  }
+
+  @media (max-width: 380px) {
+
+    .genz-dashboard-grid {
+      grid-template-columns:
+        1fr;
+    }
+
+  }
+
+  /* =========================================================
+     REDUCED MOTION
+     ========================================================= */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .genz-reference-card,
+    .genz-dashboard-category,
+    .genz-reference-play {
+      transition: none;
+    }
+
+  }
+</style><section
+  class="genz-dashboard"
+  id="genzDashboard"
+>  <header
+    class="genz-dashboard-header"
+  ><div>
+
+  <h1
+    class="genz-dashboard-title"
+  >
+    GEN-Z.AI
+  </h1>
+
+  <p
+    class="genz-dashboard-subtitle"
+  >
+    Inspirasi video hasil generate GEN-Z.AI.
+    Jelajahi berbagai contoh video untuk mendapatkan
+    ide sebelum membuat video sendiri.
+  </p>
+
+</div>
+
+  </header>  <nav
+    class="genz-dashboard-categories"
+    id="dashboardCategories"
+    aria-label="Kategori video"
+  ><button
+  type="button"
+  class="genz-dashboard-category active"
+  data-category="all"
+>
+  Semua
+</button>
+
+<button
+  type="button"
+  class="genz-dashboard-category"
+  data-category="vlog"
+>
+  Vlog Daily
+</button>
+
+<button
+  type="button"
+  class="genz-dashboard-category"
+  data-category="motion"
+>
+  Motion Control
+</button>
+
+<button
+  type="button"
+  class="genz-dashboard-category"
+  data-category="affiliate"
+>
+  Video Affiliate
+</button>
+
+<button
+  type="button"
+  class="genz-dashboard-category"
+  data-category="fashion"
+>
+  Fashion
+</button>
+
+<button
+  type="button"
+  class="genz-dashboard-category"
+  data-category="product"
+>
+  Product Showcase
+</button>
+
+  </nav>  <div
+    id="dashboardVideoGrid"
+    class="genz-dashboard-grid"
+  ></div></section><!-- =========================================================
+     VIDEO PREVIEW MODAL
+     ========================================================= --><div
+  id="dashboardVideoModal"
+  class="genz-dashboard-modal hidden"
+  aria-hidden="true"
+>  <div
+    class="genz-dashboard-modal-box"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="dashboardModalTitle"
+  ><button
+  id="dashboardModalClose"
+  class="genz-dashboard-modal-close"
+  type="button"
+  aria-label="Tutup preview"
+>
+  ×
+</button>
+
+
+<div
+  class="genz-dashboard-modal-video"
+>
+
+  <video
+    id="dashboardModalVideo"
+    controls
+    playsinline
+  ></video>
+
+</div>
+
+
+<div
+  class="genz-dashboard-modal-info"
+>
+
+  <div
+    id="dashboardModalCategory"
+    class="genz-dashboard-modal-category"
+  ></div>
+
+  <h2
+    id="dashboardModalTitle"
+    class="genz-dashboard-modal-title"
+  ></h2>
+
+  <p
+    id="dashboardModalDescription"
+    class="genz-dashboard-modal-description"
+  ></p>
+
+
+  <div
+    id="dashboardModalDetails"
+    class="genz-dashboard-modal-details"
+  ></div>
+
+</div>
+
+  </div></div>
