@@ -1,3 +1,4 @@
+```js
 import { sb } from "../lib/supabase.js";
 import { HttpError } from "../lib/http.js";
 
@@ -26,13 +27,13 @@ export async function getProvider(
       "&enabled=eq.true&select=*";
 
   const response = await sb(
-    env,
     "/rest/v1/providers" + query,
     {
       headers: {
         Accept: "application/json"
       }
-    }
+    },
+    env
   );
 
   if (!response.ok) {
@@ -77,3 +78,4 @@ export function publicProvider(provider) {
       : ""
   };
 }
+```
