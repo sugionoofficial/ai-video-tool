@@ -16,6 +16,10 @@ import {
   apiError
 } from "./lib/http.js";
 
+import {
+  sbHeaders,
+  sb
+} from "./lib/supabase.js";
 /*
  * ============================================================
  * GEN-Z.AI WORKER
