@@ -34,6 +34,10 @@ import {
   requireAdmin
 } from "./auth/role.js";
 
+import {
+  checkGenerateRate
+} from "./security/rate-limit.js";
+
 
 /*
  * ============================================================
