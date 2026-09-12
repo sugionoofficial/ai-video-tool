@@ -1,4 +1,3 @@
-```js
 import { sb } from "../lib/supabase.js";
 import { HttpError } from "../lib/http.js";
 
@@ -78,4 +77,3 @@ export function publicProvider(provider) {
       : ""
   };
 }
-```
