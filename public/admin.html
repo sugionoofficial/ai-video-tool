@@ -1,8 +1,11 @@
-<!DOCTYPE html><html lang="id">
+<!DOCTYPE html>
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GEN-Z.AI Admin Console</title><style>
+<title>GEN-Z.AI Admin Console</title>
+
+<style>
 :root{
   --bg:#07090f;
   --panel:rgba(16,20,30,.82);
@@ -16,9 +19,13 @@
   --radius:20px;
 }
 
-*{box-sizing:border-box}
+*{
+  box-sizing:border-box;
+}
 
-html{scroll-behavior:smooth}
+html{
+  scroll-behavior:smooth;
+}
 
 body{
   margin:0;
@@ -37,12 +44,19 @@ a{
   text-decoration:none;
 }
 
-button,input{font:inherit}
+button,
+input{
+  font:inherit;
+}
 
 .app{
   display:flex;
   min-height:100vh;
 }
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
 
 .sidebar{
   position:fixed;
@@ -122,7 +136,11 @@ button,input{font:inherit}
 
 .nav a.active{
   color:#fff;
-  background:linear-gradient(135deg,rgba(139,92,246,.2),rgba(99,102,241,.1));
+  background:linear-gradient(
+    135deg,
+    rgba(139,92,246,.2),
+    rgba(99,102,241,.1)
+  );
   border-color:rgba(139,92,246,.25);
 }
 
@@ -180,6 +198,10 @@ button,input{font:inherit}
   font-weight:700;
 }
 
+/* =========================================================
+   MAIN
+   ========================================================= */
+
 .main{
   width:calc(100% - 260px);
   margin-left:260px;
@@ -201,9 +223,41 @@ button,input{font:inherit}
 .topbar-left{
   display:flex;
   align-items:center;
-  gap:12px;
+  flex:1;
   min-width:0;
+  gap:12px;
 }
+
+.breadcrumb{
+  min-width:0;
+  color:var(--muted);
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.breadcrumb strong{
+  color:#fff;
+}
+
+/*
+  Semua tombol topbar berada di kanan.
+  Admin Control berada sebagai tombol paling kanan.
+*/
+
+.top-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:9px;
+  margin-left:auto;
+  flex-shrink:0;
+}
+
+/* =========================================================
+   ADMIN CONTROL BUTTON
+   ========================================================= */
 
 .control-btn{
   width:44px;
@@ -225,31 +279,13 @@ button,input{font:inherit}
   background:rgba(139,92,246,.12);
 }
 
-.breadcrumb{
-  min-width:0;
-  color:var(--muted);
-  font-size:12px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.breadcrumb strong{
-  color:#fff;
-}
-
-/*
-  Tombol selalu didorong ke sisi kanan.
-  margin-left:auto adalah kunci posisi pojok kanan.
-*/
-.top-actions{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:9px;
-  margin-left:auto;
+.top-actions .control-btn{
   flex-shrink:0;
 }
+
+/* =========================================================
+   TOP ACTION
+   ========================================================= */
 
 .top-action{
   min-width:40px;
@@ -278,14 +314,22 @@ button,input{font:inherit}
 
 .top-action.generate{
   border-color:rgba(139,92,246,.45);
-  background:linear-gradient(135deg,#8b5cf6,#6366f1);
+  background:linear-gradient(
+    135deg,
+    #8b5cf6,
+    #6366f1
+  );
   color:#fff;
   box-shadow:0 8px 24px rgba(99,102,241,.25);
 }
 
 .top-action.generate:hover{
   border-color:rgba(167,139,250,.7);
-  background:linear-gradient(135deg,#9b6cff,#716df5);
+  background:linear-gradient(
+    135deg,
+    #9b6cff,
+    #716df5
+  );
   box-shadow:0 12px 30px rgba(99,102,241,.35);
 }
 
@@ -309,7 +353,11 @@ button,input{font:inherit}
   border:1px solid rgba(139,92,246,.2);
   border-radius:24px;
   background:
-    linear-gradient(135deg,rgba(139,92,246,.15),rgba(99,102,241,.05)),
+    linear-gradient(
+      135deg,
+      rgba(139,92,246,.15),
+      rgba(99,102,241,.05)
+    ),
     rgba(15,18,28,.8);
   box-shadow:0 25px 70px rgba(0,0,0,.25);
 }
@@ -489,6 +537,10 @@ button,input{font:inherit}
   font-weight:700;
 }
 
+/* =========================================================
+   CHART
+   ========================================================= */
+
 .chart{
   height:235px;
   display:flex;
@@ -521,6 +573,10 @@ button,input{font:inherit}
   font-size:9px;
   text-align:center;
 }
+
+/* =========================================================
+   QUICK ACTIONS
+   ========================================================= */
 
 .quick-grid{
   display:grid;
@@ -560,6 +616,10 @@ button,input{font:inherit}
   font-size:9px;
   line-height:1.5;
 }
+
+/* =========================================================
+   STATUS
+   ========================================================= */
 
 .status-list{
   display:grid;
@@ -608,6 +668,10 @@ button,input{font:inherit}
   font-size:9px;
 }
 
+/* =========================================================
+   ACTIVITY
+   ========================================================= */
+
 .activity{
   display:grid;
   gap:2px;
@@ -651,6 +715,10 @@ button,input{font:inherit}
   color:#626b7b;
   font-size:9px;
 }
+
+/* =========================================================
+   SYSTEM
+   ========================================================= */
 
 .system-card{
   padding:16px;
@@ -759,10 +827,6 @@ button,input{font:inherit}
     padding:20px 15px 40px;
   }
 
-  /*
-    Topbar tetap full width.
-    Tombol akan selalu berada di kanan.
-  */
   .topbar{
     display:flex;
     align-items:center;
@@ -799,6 +863,13 @@ button,input{font:inherit}
     padding:0 13px;
   }
 
+  .top-actions .control-btn{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    font-size:16px;
+  }
+
   .hero{
     padding:22px;
   }
@@ -833,21 +904,10 @@ button,input{font:inherit}
     gap:7px;
   }
 
-  .control-btn{
-    width:38px;
-    height:38px;
-    border-radius:11px;
-    font-size:16px;
-  }
-
   .breadcrumb{
     font-size:10px;
   }
 
-  /*
-    SEMUA tombol top-right tetap tampil.
-    Tidak ada lagi display:none untuk Settings.
-  */
   .top-actions{
     display:flex;
     align-items:center;
@@ -866,9 +926,6 @@ button,input{font:inherit}
     border-radius:10px;
   }
 
-  /*
-    Generate tetap menampilkan teks ketika ruang mencukupi.
-  */
   .top-action.generate{
     width:auto;
     min-width:auto;
@@ -881,6 +938,13 @@ button,input{font:inherit}
 
   .top-action-icon{
     font-size:14px;
+  }
+
+  .top-actions .control-btn{
+    width:38px;
+    height:38px;
+    border-radius:10px;
+    font-size:15px;
   }
 
   .kpi-grid{
@@ -915,11 +979,6 @@ button,input{font:inherit}
     font-size:9px;
   }
 
-  .control-btn{
-    width:36px;
-    height:36px;
-  }
-
   .top-actions{
     gap:4px;
   }
@@ -937,452 +996,929 @@ button,input{font:inherit}
     padding:0;
   }
 
-  /*
-    Pada HP sangat kecil, Generate hanya icon
-    agar Settings tetap berada di kanan dan tidak overflow.
-  */
   .top-action.generate span:last-child{
     display:none;
   }
 
+  .top-actions .control-btn{
+    width:35px;
+    height:36px;
+    border-radius:9px;
+    font-size:15px;
+  }
+
 }
-</style></head><body><div class="app">  <aside class="sidebar"><a class="brand" href="/admin.html">
-  <div class="brand-mark">G</div>
-  <div>
-    <strong>GEN-Z.AI</strong>
-    <span>ADMIN CONSOLE</span>
-  </div>
-</a><div class="sidebar-section">Workspace</div><nav class="nav">  <a href="/">
-    <span class="nav-icon">|||</span>
-    <span>Workspace</span>
-  </a>  <a href="/admin.html" class="active">
-    <span class="nav-icon">⌂</span>
-    <span>Dashboard</span>
-  </a>  <a href="/admin-control.html">
-    <span class="nav-icon">⚙</span>
-    <span>Admin Control</span>
-  </a></nav><div class="sidebar-section">Management</div><nav class="nav">  <a href="/admin-users.html">
-    <span class="nav-icon">♙</span>
-    <span>Users</span>
-  </a>  <a href="/admin-membership.html">
-    <span class="nav-icon">◇</span>
-    <span>Membership</span>
-  </a>  <a href="/admin-affiliate.html">
-    <span class="nav-icon">⌁</span>
-    <span>Affiliate</span>
-  </a>  <a href="/admin-providers.html">
-    <span class="nav-icon">◈</span>
-    <span>Providers</span>
-  </a></nav><div class="sidebar-section">Operations</div><nav class="nav">  <a href="/admin-credit.html">
-    <span class="nav-icon">✦</span>
-    <span>Credit</span>
-  </a>  <a href="/admin-jobs.html">
-    <span class="nav-icon">▣</span>
-    <span>Jobs</span>
-  </a>  <a href="/admin-job-events.html">
-    <span class="nav-icon">◌</span>
-    <span>Job Events</span>
-  </a>  <a href="/admin-topup.html">
-    <span class="nav-icon">＋</span>
-    <span>Top-up</span>
-  </a></nav><div class="sidebar-bottom">  <div class="admin-card"><div class="admin-card-top">
+</style>
+</head>
 
-  <div class="avatar">A</div>
+<body>
 
-  <div class="admin-info">
-    <strong id="adminEmail">Administrator</strong>
-    <span>● Online</span>
-  </div>
+<div class="app">
 
-</div>
+  <!-- =======================================================
+       SIDEBAR
+       ======================================================= -->
 
-  </div></div>  </aside>  <main class="main"><header class="topbar">  <div class="topbar-left"><a class="control-btn" href="/admin-control.html" aria-label="Admin Control">⚙</a>
+  <aside class="sidebar">
 
-<div class="breadcrumb">
-  Admin Console / <strong>Dashboard</strong>
-</div>
+    <a class="brand" href="/admin.html">
 
-  </div>  <div class="top-actions"><a class="top-action generate" href="/generate.html" title="Generate Video">
-  <span class="top-action-icon">✦</span>
-  <span>Generate</span>
-</a>
+      <div class="brand-mark">G</div>
 
-<a class="top-action" href="/admin-contact.html" title="Messages" aria-label="Messages">
-  <span class="top-action-icon">✉</span>
-</a>
-
-<a class="top-action" href="/admin-settings.html" title="Settings" aria-label="Settings">
-  <span class="top-action-icon">⚙</span>
-</a>
-
-  </div></header><section class="hero">  <div class="hero-content"><div class="eyebrow">
-  <span class="dot"></span>
-  System Operational
-</div>
-
-<h1>Good evening, Admin.</h1>
-
-<p>
-  Monitor your GEN-Z.AI platform from one premium command center.
-  Manage users, credits, jobs, providers, transactions and system activity.
-</p>
-
-  </div></section><section class="kpi-grid">  <article class="kpi"><div class="kpi-head">
-  <span class="kpi-label">TOTAL USERS</span>
-  <span class="kpi-icon">♙</span>
-</div>
-
-<div class="kpi-value" id="statTotalUsers">—</div>
-
-<div class="kpi-meta">
-  <span class="up">● Active platform</span>
-</div>
-
-  </article>  <article class="kpi"><div class="kpi-head">
-  <span class="kpi-label">TOTAL CREDITS</span>
-  <span class="kpi-icon">✦</span>
-</div>
-
-<div class="kpi-value" id="statTotalCredits">—</div>
-
-<div class="kpi-meta">
-  <span class="up">● Current balance</span>
-</div>
-
-  </article>  <article class="kpi"><div class="kpi-head">
-  <span class="kpi-label">ACTIVE PROVIDERS</span>
-  <span class="kpi-icon">◈</span>
-</div>
-
-<div class="kpi-value" id="statActiveProviders">—</div>
-
-<div class="kpi-meta">
-  <span class="up">● Provider health</span>
-</div>
-
-  </article>  <article class="kpi"><div class="kpi-head">
-  <span class="kpi-label">PENDING TOP-UP</span>
-  <span class="kpi-icon">＋</span>
-</div>
-
-<div class="kpi-value" id="statPendingTopups">—</div>
-
-<div class="kpi-meta">
-  <span>Awaiting review</span>
-</div>
-
-  </article></section><section class="content-grid">  <div><article class="panel">
-
-  <div class="panel-head">
-
-    <div>
-      <h2 class="panel-title">Platform Activity</h2>
-      <div class="panel-subtitle">
-        Activity overview for the current period
+      <div>
+        <strong>GEN-Z.AI</strong>
+        <span>ADMIN CONSOLE</span>
       </div>
-    </div>
 
-    <span class="view-all">Last 7 days</span>
-
-  </div>
-
-  <div class="chart">
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:34%"></div>
-    </div>
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:51%"></div>
-    </div>
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:43%"></div>
-    </div>
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:67%"></div>
-    </div>
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:58%"></div>
-    </div>
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:82%"></div>
-    </div>
-
-    <div class="bar-wrap">
-      <div class="bar" style="height:72%"></div>
-    </div>
-
-  </div>
-
-  <div class="chart-labels">
-    <span>Mon</span>
-    <span>Tue</span>
-    <span>Wed</span>
-    <span>Thu</span>
-    <span>Fri</span>
-    <span>Sat</span>
-    <span>Sun</span>
-  </div>
-
-</article>
-
-<article class="panel">
-
-  <div class="panel-head">
-
-    <div>
-      <h2 class="panel-title">Recent Activity</h2>
-      <div class="panel-subtitle">
-        Latest platform events
-      </div>
-    </div>
-
-    <a class="view-all" href="/admin-job-events.html">
-      View all
     </a>
 
-  </div>
+    <div class="sidebar-section">
+      Workspace
+    </div>
 
-  <div class="activity">
+    <nav class="nav">
 
-    <div class="activity-item">
+      <a href="/">
+        <span class="nav-icon">|||</span>
+        <span>Workspace</span>
+      </a>
 
-      <div class="activity-icon">♙</div>
+      <a href="/admin.html" class="active">
+        <span class="nav-icon">⌂</span>
+        <span>Dashboard</span>
+      </a>
 
-      <div class="activity-text">
-        <strong>User activity</strong>
-        <span>Platform user management</span>
+      <a href="/admin-control.html">
+        <span class="nav-icon">⚙</span>
+        <span>Admin Control</span>
+      </a>
+
+    </nav>
+
+    <div class="sidebar-section">
+      Management
+    </div>
+
+    <nav class="nav">
+
+      <a href="/admin-users.html">
+        <span class="nav-icon">♙</span>
+        <span>Users</span>
+      </a>
+
+      <a href="/admin-membership.html">
+        <span class="nav-icon">◇</span>
+        <span>Membership</span>
+      </a>
+
+      <a href="/admin-affiliate.html">
+        <span class="nav-icon">⌁</span>
+        <span>Affiliate</span>
+      </a>
+
+      <a href="/admin-providers.html">
+        <span class="nav-icon">◈</span>
+        <span>Providers</span>
+      </a>
+
+    </nav>
+
+    <div class="sidebar-section">
+      Operations
+    </div>
+
+    <nav class="nav">
+
+      <a href="/admin-credit.html">
+        <span class="nav-icon">✦</span>
+        <span>Credit</span>
+      </a>
+
+      <a href="/admin-jobs.html">
+        <span class="nav-icon">▣</span>
+        <span>Jobs</span>
+      </a>
+
+      <a href="/admin-job-events.html">
+        <span class="nav-icon">◌</span>
+        <span>Job Events</span>
+      </a>
+
+      <a href="/admin-topup.html">
+        <span class="nav-icon">＋</span>
+        <span>Top-up</span>
+      </a>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+
+      <div class="admin-card">
+
+        <div class="admin-card-top">
+
+          <div class="avatar">A</div>
+
+          <div class="admin-info">
+
+            <strong id="adminEmail">
+              Administrator
+            </strong>
+
+            <span>
+              ● Online
+            </span>
+
+          </div>
+
+        </div>
+
       </div>
 
-      <div class="activity-time">Now</div>
-
     </div>
 
-    <div class="activity-item">
+  </aside>
 
-      <div class="activity-icon">▣</div>
+  <!-- =======================================================
+       MAIN
+       ======================================================= -->
 
-      <div class="activity-text">
-        <strong>Job processing</strong>
-        <span>Video generation queue</span>
+  <main class="main">
+
+    <!-- =====================================================
+         TOPBAR
+         ===================================================== -->
+
+    <header class="topbar">
+
+      <div class="topbar-left">
+
+        <div class="breadcrumb">
+          Admin Console / <strong>Dashboard</strong>
+        </div>
+
       </div>
 
-      <div class="activity-time">Today</div>
+      <!--
+        HANYA ADA 3 TOMBOL:
+        1. Generate
+        2. Messages
+        3. Admin Control
 
-    </div>
+        Tombol Settings yang crash SUDAH DIHAPUS.
+      -->
 
-    <div class="activity-item">
+      <div class="top-actions">
 
-      <div class="activity-icon">✦</div>
+        <a
+          class="top-action generate"
+          href="/generate.html"
+          title="Generate Video"
+          aria-label="Generate Video"
+        >
+          <span class="top-action-icon">✦</span>
+          <span>Generate</span>
+        </a>
 
-      <div class="activity-text">
-        <strong>Credit activity</strong>
-        <span>Credit balance monitoring</span>
+        <a
+          class="top-action"
+          href="/admin-contact.html"
+          title="Messages"
+          aria-label="Messages"
+        >
+          <span class="top-action-icon">✉</span>
+        </a>
+
+        <a
+          class="control-btn"
+          href="/admin-control.html"
+          title="Admin Control"
+          aria-label="Admin Control"
+        >
+          ⚙
+        </a>
+
       </div>
 
-      <div class="activity-time">Today</div>
+    </header>
 
-    </div>
+    <!-- =====================================================
+         HERO
+         ===================================================== -->
 
-    <div class="activity-item">
+    <section class="hero">
 
-      <div class="activity-icon">＋</div>
+      <div class="hero-content">
 
-      <div class="activity-text">
-        <strong>Top-up monitoring</strong>
-        <span>Payment transactions</span>
+        <div class="eyebrow">
+          <span class="dot"></span>
+          System Operational
+        </div>
+
+        <h1>
+          Good evening, Admin.
+        </h1>
+
+        <p>
+          Monitor your GEN-Z.AI platform from one premium command center.
+          Manage users, credits, jobs, providers, transactions and system activity.
+        </p>
+
       </div>
 
-      <div class="activity-time">Today</div>
+    </section>
 
-    </div>
+    <!-- =====================================================
+         KPI
+         ===================================================== -->
 
-  </div>
+    <section class="kpi-grid">
 
-</article>
+      <article class="kpi">
 
-  </div>  <div><article class="panel">
+        <div class="kpi-head">
 
-  <div class="panel-head">
+          <span class="kpi-label">
+            TOTAL USERS
+          </span>
 
-    <div>
-      <h2 class="panel-title">Quick Actions</h2>
-      <div class="panel-subtitle">
-        Jump directly to management tools
+          <span class="kpi-icon">
+            ♙
+          </span>
+
+        </div>
+
+        <div
+          class="kpi-value"
+          id="statTotalUsers"
+        >
+          —
+        </div>
+
+        <div class="kpi-meta">
+          <span class="up">
+            ● Active platform
+          </span>
+        </div>
+
+      </article>
+
+
+      <article class="kpi">
+
+        <div class="kpi-head">
+
+          <span class="kpi-label">
+            TOTAL CREDITS
+          </span>
+
+          <span class="kpi-icon">
+            ✦
+          </span>
+
+        </div>
+
+        <div
+          class="kpi-value"
+          id="statTotalCredits"
+        >
+          —
+        </div>
+
+        <div class="kpi-meta">
+          <span class="up">
+            ● Current balance
+          </span>
+        </div>
+
+      </article>
+
+
+      <article class="kpi">
+
+        <div class="kpi-head">
+
+          <span class="kpi-label">
+            ACTIVE PROVIDERS
+          </span>
+
+          <span class="kpi-icon">
+            ◈
+          </span>
+
+        </div>
+
+        <div
+          class="kpi-value"
+          id="statActiveProviders"
+        >
+          —
+        </div>
+
+        <div class="kpi-meta">
+          <span class="up">
+            ● Provider health
+          </span>
+        </div>
+
+      </article>
+
+
+      <article class="kpi">
+
+        <div class="kpi-head">
+
+          <span class="kpi-label">
+            PENDING TOP-UP
+          </span>
+
+          <span class="kpi-icon">
+            ＋
+          </span>
+
+        </div>
+
+        <div
+          class="kpi-value"
+          id="statPendingTopups"
+        >
+          —
+        </div>
+
+        <div class="kpi-meta">
+          <span>
+            Awaiting review
+          </span>
+        </div>
+
+      </article>
+
+    </section>
+
+    <!-- =====================================================
+         CONTENT
+         ===================================================== -->
+
+    <section class="content-grid">
+
+      <div>
+
+        <!-- PLATFORM ACTIVITY -->
+
+        <article class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2 class="panel-title">
+                Platform Activity
+              </h2>
+
+              <div class="panel-subtitle">
+                Activity overview for the current period
+              </div>
+
+            </div>
+
+            <span class="view-all">
+              Last 7 days
+            </span>
+
+          </div>
+
+          <div class="chart">
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:34%"
+              ></div>
+            </div>
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:51%"
+              ></div>
+            </div>
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:43%"
+              ></div>
+            </div>
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:67%"
+              ></div>
+            </div>
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:58%"
+              ></div>
+            </div>
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:82%"
+              ></div>
+            </div>
+
+            <div class="bar-wrap">
+              <div
+                class="bar"
+                style="height:72%"
+              ></div>
+            </div>
+
+          </div>
+
+          <div class="chart-labels">
+
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+            <span>Sun</span>
+
+          </div>
+
+        </article>
+
+
+        <!-- RECENT ACTIVITY -->
+
+        <article class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2 class="panel-title">
+                Recent Activity
+              </h2>
+
+              <div class="panel-subtitle">
+                Latest platform events
+              </div>
+
+            </div>
+
+            <a
+              class="view-all"
+              href="/admin-job-events.html"
+            >
+              View all
+            </a>
+
+          </div>
+
+          <div class="activity">
+
+            <div class="activity-item">
+
+              <div class="activity-icon">
+                ♙
+              </div>
+
+              <div class="activity-text">
+
+                <strong>
+                  User activity
+                </strong>
+
+                <span>
+                  Platform user management
+                </span>
+
+              </div>
+
+              <div class="activity-time">
+                Now
+              </div>
+
+            </div>
+
+
+            <div class="activity-item">
+
+              <div class="activity-icon">
+                ▣
+              </div>
+
+              <div class="activity-text">
+
+                <strong>
+                  Job processing
+                </strong>
+
+                <span>
+                  Video generation queue
+                </span>
+
+              </div>
+
+              <div class="activity-time">
+                Today
+              </div>
+
+            </div>
+
+
+            <div class="activity-item">
+
+              <div class="activity-icon">
+                ✦
+              </div>
+
+              <div class="activity-text">
+
+                <strong>
+                  Credit activity
+                </strong>
+
+                <span>
+                  Credit balance monitoring
+                </span>
+
+              </div>
+
+              <div class="activity-time">
+                Today
+              </div>
+
+            </div>
+
+
+            <div class="activity-item">
+
+              <div class="activity-icon">
+                ＋
+              </div>
+
+              <div class="activity-text">
+
+                <strong>
+                  Top-up monitoring
+                </strong>
+
+                <span>
+                  Payment transactions
+                </span>
+
+              </div>
+
+              <div class="activity-time">
+                Today
+              </div>
+
+            </div>
+
+          </div>
+
+        </article>
+
       </div>
-    </div>
 
-  </div>
 
-  <div class="quick-grid">
+      <div>
 
-    <a class="quick" href="/admin-users.html">
-      <div class="quick-icon">♙</div>
-      <strong>Users</strong>
-      <span>Manage platform accounts</span>
-    </a>
+        <!-- QUICK ACTIONS -->
 
-    <a class="quick" href="/admin-credit.html">
-      <div class="quick-icon">✦</div>
-      <strong>Credit</strong>
-      <span>Manage user credit</span>
-    </a>
+        <article class="panel">
 
-    <a class="quick" href="/admin-jobs.html">
-      <div class="quick-icon">▣</div>
-      <strong>Jobs</strong>
-      <span>Monitor generation jobs</span>
-    </a>
+          <div class="panel-head">
 
-    <a class="quick" href="/admin-topup.html">
-      <div class="quick-icon">＋</div>
-      <strong>Top-up</strong>
-      <span>Review top-up activity</span>
-    </a>
+            <div>
 
-  </div>
+              <h2 class="panel-title">
+                Quick Actions
+              </h2>
 
-</article>
+              <div class="panel-subtitle">
+                Jump directly to management tools
+              </div>
 
-<article class="panel">
+            </div>
 
-  <div class="panel-head">
+          </div>
 
-    <div>
-      <h2 class="panel-title">System Status</h2>
-      <div class="panel-subtitle">
-        Core service availability
+          <div class="quick-grid">
+
+            <a
+              class="quick"
+              href="/admin-users.html"
+            >
+              <div class="quick-icon">
+                ♙
+              </div>
+
+              <strong>
+                Users
+              </strong>
+
+              <span>
+                Manage platform accounts
+              </span>
+            </a>
+
+
+            <a
+              class="quick"
+              href="/admin-credit.html"
+            >
+              <div class="quick-icon">
+                ✦
+              </div>
+
+              <strong>
+                Credit
+              </strong>
+
+              <span>
+                Manage user credit
+              </span>
+            </a>
+
+
+            <a
+              class="quick"
+              href="/admin-jobs.html"
+            >
+              <div class="quick-icon">
+                ▣
+              </div>
+
+              <strong>
+                Jobs
+              </strong>
+
+              <span>
+                Monitor generation jobs
+              </span>
+            </a>
+
+
+            <a
+              class="quick"
+              href="/admin-topup.html"
+            >
+              <div class="quick-icon">
+                ＋
+              </div>
+
+              <strong>
+                Top-up
+              </strong>
+
+              <span>
+                Review top-up activity
+              </span>
+            </a>
+
+          </div>
+
+        </article>
+
+
+        <!-- SYSTEM STATUS -->
+
+        <article class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2 class="panel-title">
+                System Status
+              </h2>
+
+              <div class="panel-subtitle">
+                Core service availability
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="status-list">
+
+            <div class="status">
+
+              <div class="status-left">
+
+                <span class="status-dot green"></span>
+
+                <span class="status-name">
+                  Authentication
+                </span>
+
+              </div>
+
+              <span class="status-state">
+                Operational
+              </span>
+
+            </div>
+
+
+            <div class="status">
+
+              <div class="status-left">
+
+                <span class="status-dot green"></span>
+
+                <span class="status-name">
+                  Database
+                </span>
+
+              </div>
+
+              <span class="status-state">
+                Operational
+              </span>
+
+            </div>
+
+
+            <div class="status">
+
+              <div class="status-left">
+
+                <span class="status-dot green"></span>
+
+                <span class="status-name">
+                  Video Engine
+                </span>
+
+              </div>
+
+              <span class="status-state">
+                Operational
+              </span>
+
+            </div>
+
+
+            <div class="status">
+
+              <div class="status-left">
+
+                <span class="status-dot yellow"></span>
+
+                <span class="status-name">
+                  Queue
+                </span>
+
+              </div>
+
+              <span class="status-state">
+                Monitoring
+              </span>
+
+            </div>
+
+          </div>
+
+        </article>
+
+
+        <!-- INFRASTRUCTURE -->
+
+        <article class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2 class="panel-title">
+                Infrastructure
+              </h2>
+
+              <div class="panel-subtitle">
+                Platform resource usage
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="system-card">
+
+            <div class="system-top">
+
+              <span class="system-title">
+                System Load
+              </span>
+
+              <span class="online">
+                HEALTHY
+              </span>
+
+            </div>
+
+            <div class="progress">
+              <span></span>
+            </div>
+
+            <div class="system-meta">
+
+              <span>
+                Current usage
+              </span>
+
+              <strong>
+                78%
+              </strong>
+
+            </div>
+
+          </div>
+
+        </article>
+
       </div>
-    </div>
 
-  </div>
+    </section>
 
-  <div class="status-list">
+  </main>
 
-    <div class="status">
+</div>
 
-      <div class="status-left">
-        <span class="status-dot green"></span>
-        <span class="status-name">Authentication</span>
-      </div>
+<!-- =========================================================
+     SCRIPTS
+     ========================================================= -->
 
-      <span class="status-state">Operational</span>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    </div>
+<script src="/js/config.js"></script>
 
-    <div class="status">
+<script src="/js/admin.js"></script>
 
-      <div class="status-left">
-        <span class="status-dot green"></span>
-        <span class="status-name">Database</span>
-      </div>
-
-      <span class="status-state">Operational</span>
-
-    </div>
-
-    <div class="status">
-
-      <div class="status-left">
-        <span class="status-dot green"></span>
-        <span class="status-name">Video Engine</span>
-      </div>
-
-      <span class="status-state">Operational</span>
-
-    </div>
-
-    <div class="status">
-
-      <div class="status-left">
-        <span class="status-dot yellow"></span>
-        <span class="status-name">Queue</span>
-      </div>
-
-      <span class="status-state">Monitoring</span>
-
-    </div>
-
-  </div>
-
-</article>
-
-<article class="panel">
-
-  <div class="panel-head">
-
-    <div>
-      <h2 class="panel-title">Infrastructure</h2>
-      <div class="panel-subtitle">
-        Platform resource usage
-      </div>
-    </div>
-
-  </div>
-
-  <div class="system-card">
-
-    <div class="system-top">
-      <span class="system-title">System Load</span>
-      <span class="online">HEALTHY</span>
-    </div>
-
-    <div class="progress">
-      <span></span>
-    </div>
-
-    <div class="system-meta">
-      <span>Current usage</span>
-      <strong>78%</strong>
-    </div>
-
-  </div>
-
-</article>
-
-  </div></section>  </main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/js/config.js"></script><script src="/js/admin.js"></script><script>
+<script>
 (function(){
 
   function setAdminEmail(){
 
-    const element=document.getElementById("adminEmail");
+    const element =
+      document.getElementById("adminEmail");
 
     if(!element){
       return;
     }
 
-    const account=
+    const account =
       window.GENZ &&
       window.GENZ.state &&
       window.GENZ.state.account;
 
-    const email=
+    const email =
       account &&
       (account.email || account.userEmail);
 
     if(email){
-      element.textContent=email;
+      element.textContent = email;
     }
 
   }
 
   setAdminEmail();
 
-  document.addEventListener("DOMContentLoaded",function(){
-    setAdminEmail();
-  });
+  document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+      setAdminEmail();
+    }
+  );
 
-  window.addEventListener("load",function(){
+  window.addEventListener(
+    "load",
+    function(){
 
-    setTimeout(setAdminEmail,500);
-    setTimeout(setAdminEmail,1500);
+      setTimeout(
+        setAdminEmail,
+        500
+      );
 
-  });
+      setTimeout(
+        setAdminEmail,
+        1500
+      );
+
+    }
+  );
 
 })();
-</script></body>
+</script>
+
+</body>
 </html>
