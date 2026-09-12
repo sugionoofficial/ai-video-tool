@@ -392,61 +392,6 @@ function normalizeDuration(
  * ============================================================
  */
 
-async function reserveJob(
-  userId,
-  provider,
-  cost,
-  idempotencyKey,
-  fingerprint,
-  env
-) {
-  const res =
-    await sb(
-      "/rest/v1/rpc/start_video_job",
-      {
-        method:
-          "POST",
-
-        body:
-          JSON.stringify({
-            p_user_id:
-              userId,
-
-            p_provider:
-              provider,
-
-            p_credit_cost:
-              cost,
-
-            p_idempotency_key:
-              idempotencyKey,
-
-            p_request_fingerprint:
-              fingerprint
-          })
-      },
-      env
-    );
-
-  const data =
-    await safeJson(
-      res
-    );
-
-  if (
-    !res.ok
-  ) {
-    throw new HttpError(
-      apiError(
-        data,
-        "Credit tidak mencukupi."
-      ),
-      402
-    );
-  }
-
-  return data;
-}
 
 async function updateJob(
   jobId,
