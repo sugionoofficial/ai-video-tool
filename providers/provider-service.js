@@ -1,14 +1,28 @@
-import { sb } from "../lib/supabase.js";
-import { HttpError } from "../lib/http.js";
+import {
+  sb
+} from "../lib/supabase.js";
+
+import {
+  HttpError
+} from "../lib/http.js";
+
+/*
+ * ============================================================
+ * PROVIDER SERVICE
+ * ============================================================
+ */
 
 export async function getProvider(
   id,
   env,
   includeDisabled = false
 ) {
-  const providerId = String(id || "")
-    .trim()
-    .toLowerCase();
+  const providerId =
+    String(
+      id || ""
+    )
+      .trim()
+      .toLowerCase();
 
   if (!providerId) {
     throw new HttpError(
@@ -17,23 +31,31 @@ export async function getProvider(
     );
   }
 
-  const query = includeDisabled
-    ? "?id=eq." +
-      encodeURIComponent(providerId) +
-      "&select=*"
-    : "?id=eq." +
-      encodeURIComponent(providerId) +
-      "&enabled=eq.true&select=*";
+  const query =
+    includeDisabled
+      ? "?id=eq." +
+        encodeURIComponent(
+          providerId
+        ) +
+        "&select=*"
+      : "?id=eq." +
+        encodeURIComponent(
+          providerId
+        ) +
+        "&enabled=eq.true&select=*";
 
-  const response = await sb(
-    "/rest/v1/providers" + query,
-    {
-      headers: {
-        Accept: "application/json"
-      }
-    },
-    env
-  );
+  const response =
+    await sb(
+      "/rest/v1/providers" +
+        query,
+      {
+        headers: {
+          Accept:
+            "application/json"
+        }
+      },
+      env
+    );
 
   if (!response.ok) {
     throw new HttpError(
@@ -42,11 +64,13 @@ export async function getProvider(
     );
   }
 
-  const rows = await response.json();
+  const rows =
+    await response.json();
 
-  const provider = Array.isArray(rows)
-    ? rows[0]
-    : null;
+  const provider =
+    Array.isArray(rows)
+      ? rows[0]
+      : null;
 
   if (!provider) {
     throw new HttpError(
@@ -58,22 +82,49 @@ export async function getProvider(
   return provider;
 }
 
-export function publicProvider(provider) {
+/*
+ * ============================================================
+ * PUBLIC PROVIDER
+ * ============================================================
+ *
+ * Jangan expose provider.config mentah.
+ * Config internal dapat berisi credential atau secret
+ * tambahan di masa depan.
+ */
+
+export function publicProvider(
+  provider
+) {
   if (!provider) {
     return null;
   }
 
   return {
-    id: provider.id,
-    name: provider.name,
-    adapter: provider.adapter,
-    enabled: Boolean(provider.enabled),
-    config: provider.config || {},
-    apiKeySet: Boolean(
-      String(provider.api_key || "").trim()
-    ),
-    api_key_masked: provider.api_key
-      ? "••••••••"
-      : ""
+    id:
+      provider.id,
+
+    name:
+      provider.name,
+
+    adapter:
+      provider.adapter,
+
+    enabled:
+      Boolean(
+        provider.enabled
+      ),
+
+    apiKeySet:
+      Boolean(
+        String(
+          provider.api_key ||
+            ""
+        ).trim()
+      ),
+
+    api_key_masked:
+      provider.api_key
+        ? "••••••••"
+        : ""
   };
 }
