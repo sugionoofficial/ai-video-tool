@@ -23,12 +23,21 @@
   const state = {
     providers: [],
     editingId: null,
-    loading: false
+    loading: false,
+    initialized: false
   };
+
+  const API_TIMEOUT = 15000;
+
+
+  /* =========================================================
+     DOM HELPER
+     ========================================================= */
 
   function $(id) {
     return document.getElementById(id);
   }
+
 
   /* =========================================================
      STATUS MESSAGE
@@ -49,6 +58,7 @@
       type;
   }
 
+
   /* =========================================================
      ESCAPE HTML
      ========================================================= */
@@ -63,6 +73,171 @@
       .replaceAll("'", "&#039;");
   }
 
+
+  /* =========================================================
+     WAIT AUTH SYSTEM
+     ========================================================= */
+
+  async function waitForAuth() {
+
+    /*
+     * GENZ_AUTH_INITIALIZED adalah Promise.
+     */
+
+    if (
+      window.GENZ_AUTH_INITIALIZED &&
+      typeof window.GENZ_AUTH_INITIALIZED.then ===
+        "function"
+    ) {
+
+      try {
+
+        await Promise.race([
+          window.GENZ_AUTH_INITIALIZED,
+          new Promise((_, reject) => {
+
+            setTimeout(
+              () => {
+                reject(
+                  new Error(
+                    "Inisialisasi login terlalu lama."
+                  )
+                );
+              },
+              API_TIMEOUT
+            );
+
+          })
+        ]);
+
+      } catch (error) {
+
+        console.warn(
+          "[GEN-Z ADMIN PROVIDERS] Auth initialization warning:",
+          error
+        );
+
+      }
+    }
+
+
+    /*
+     * Pastikan API auth tersedia.
+     */
+
+    if (
+      !window.GENZ ||
+      !window.GENZ.auth
+    ) {
+
+      throw new Error(
+        "Sistem login GEN-Z.AI belum tersedia."
+      );
+    }
+
+
+    /*
+     * Tunggu sebentar jika client auth
+     * masih dibuat oleh auth.js.
+     */
+
+    let attempts = 0;
+
+    while (
+      attempts < 20 &&
+      typeof window.GENZ.auth.token !==
+        "function"
+    ) {
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            250
+          )
+      );
+
+      attempts++;
+    }
+
+
+    if (
+      typeof window.GENZ.auth.token !==
+        "function"
+    ) {
+
+      throw new Error(
+        "Modul autentikasi tidak siap."
+      );
+    }
+  }
+
+
+  /* =========================================================
+     GET TOKEN
+     ========================================================= */
+
+  async function getAuthToken() {
+
+    await waitForAuth();
+
+    let token = null;
+
+    try {
+
+      token =
+        await window.GENZ.auth.token();
+
+    } catch (error) {
+
+      console.error(
+        "[GEN-Z ADMIN PROVIDERS] Token error:",
+        error
+      );
+
+      throw new Error(
+        "Gagal membaca session login."
+      );
+    }
+
+
+    /*
+     * Jika token belum tersedia,
+     * coba ambil session secara langsung.
+     */
+
+    if (!token) {
+
+      try {
+
+        const session =
+          await window.GENZ.auth.getSession();
+
+        token =
+          session?.access_token ||
+          null;
+
+      } catch (error) {
+
+        console.error(
+          "[GEN-Z ADMIN PROVIDERS] Session error:",
+          error
+        );
+      }
+    }
+
+
+    if (!token) {
+
+      throw new Error(
+        "Session login tidak ditemukan. Silakan login kembali."
+      );
+    }
+
+    return token;
+  }
+
+
   /* =========================================================
      API REQUEST
      ========================================================= */
@@ -73,67 +248,122 @@
   ) {
 
     const token =
-      await window.GENZ?.auth?.token?.();
+      await getAuthToken();
 
-    if (!token) {
-      throw new Error(
-        "Session login tidak ditemukan."
-      );
-    }
 
-    const response =
-      await fetch(
-        path,
-        {
-          ...options,
+    const controller =
+      new AbortController();
 
-          headers: {
-
-            Accept:
-              "application/json",
-
-            ...(options.body
-              ? {
-                  "Content-Type":
-                    "application/json"
-                }
-              }
-              : {}),
-
-            ...(options.headers || {}),
-
-            Authorization:
-              `Bearer ${token}`
-          },
-
-          cache:
-            "no-store"
-        }
+    const timeout =
+      setTimeout(
+        () => {
+          controller.abort();
+        },
+        API_TIMEOUT
       );
 
-    let data = null;
 
     try {
 
-      data =
-        await response.json();
+      const response =
+        await fetch(
+          path,
+          {
+            ...options,
 
-    } catch (_) {
+            headers: {
 
-      data = null;
+              Accept:
+                "application/json",
+
+              ...(options.body
+                ? {
+                    "Content-Type":
+                      "application/json"
+                  }
+                : {}),
+
+              ...(options.headers || {}),
+
+              Authorization:
+                `Bearer ${token}`
+            },
+
+            cache:
+              "no-store",
+
+            signal:
+              controller.signal
+          }
+        );
+
+
+      let data = null;
+
+      try {
+
+        data =
+          await response.json();
+
+      } catch (_) {
+
+        data = null;
+      }
+
+
+      if (!response.ok) {
+
+        if (
+          response.status === 401
+        ) {
+
+          throw new Error(
+            "Session login tidak valid atau sudah kedaluwarsa. Silakan login kembali."
+          );
+        }
+
+
+        if (
+          response.status === 403
+        ) {
+
+          throw new Error(
+            "Akses admin ditolak."
+          );
+        }
+
+
+        throw new Error(
+          data?.error ||
+          data?.message ||
+          `Request gagal (${response.status}).`
+        );
+      }
+
+
+      return data || {};
+
+    } catch (error) {
+
+      if (
+        error?.name ===
+        "AbortError"
+      ) {
+
+        throw new Error(
+          "Request ke server terlalu lama. Periksa Worker dan koneksi."
+        );
+      }
+
+      throw error;
+
+    } finally {
+
+      clearTimeout(timeout);
+
     }
-
-    if (!response.ok) {
-
-      throw new Error(
-        data?.error ||
-        data?.message ||
-        `Request gagal (${response.status}).`
-      );
-    }
-
-    return data || {};
   }
+
 
   /* =========================================================
      VERIFY ADMIN
@@ -141,19 +371,28 @@
 
   async function verifyAdmin() {
 
+    setStatus(
+      "Memeriksa akses administrator...",
+      "info"
+    );
+
+
     const response =
       await api(
         "/api/account/credits"
       );
+
 
     const role =
       String(
         response?.role || ""
       ).toLowerCase();
 
+
     const validRole =
       role === "admin" ||
       role === "owner";
+
 
     if (
       response?.roleValidated !== true ||
@@ -166,20 +405,36 @@
       );
     }
 
+
     const email =
       response?.user?.email ||
       "Administrator";
 
+
     const emailEl =
       $("providerAdminEmail");
 
+
     if (emailEl) {
+
       emailEl.textContent =
         email;
+
     }
+
+
+    console.log(
+      "[GEN-Z ADMIN PROVIDERS] Admin verified:",
+      {
+        role,
+        email
+      }
+    );
+
 
     return response;
   }
+
 
   /* =========================================================
      SHOW / HIDE PAGE
@@ -196,18 +451,22 @@
     const app =
       $("providerApp");
 
+
     if (loading) {
       loading.hidden = true;
     }
+
 
     if (denied) {
       denied.hidden = true;
     }
 
+
     if (app) {
       app.hidden = false;
     }
   }
+
 
   function showDenied(message) {
 
@@ -220,20 +479,25 @@
     const app =
       $("providerApp");
 
+
     if (loading) {
       loading.hidden = true;
     }
+
 
     if (app) {
       app.hidden = true;
     }
 
+
     if (denied) {
 
       denied.hidden = false;
 
+
       const paragraphs =
         denied.querySelectorAll("p");
+
 
       if (
         paragraphs.length > 0 &&
@@ -245,6 +509,7 @@
       }
     }
   }
+
 
   /* =========================================================
      NORMALIZE PROVIDER
@@ -290,6 +555,7 @@
     };
   }
 
+
   /* =========================================================
      RENDER PROVIDER LIST
      ========================================================= */
@@ -302,14 +568,17 @@
     const count =
       $("providerCount");
 
+
     if (!list) {
       return;
     }
+
 
     const providers =
       state.providers.map(
         normalizeProvider
       );
+
 
     if (count) {
 
@@ -317,6 +586,7 @@
         `${providers.length} provider` +
         `${providers.length === 1 ? "" : "s"}`;
     }
+
 
     if (!providers.length) {
 
@@ -331,6 +601,7 @@
 
       return;
     }
+
 
     list.innerHTML =
       providers
@@ -415,6 +686,7 @@
         .join("");
   }
 
+
   /* =========================================================
      LOAD PROVIDERS
      ========================================================= */
@@ -425,12 +697,15 @@
       return;
     }
 
+
     state.loading = true;
+
 
     setStatus(
       "Memuat provider...",
       "info"
     );
+
 
     try {
 
@@ -439,6 +714,7 @@
           "/api/admin/providers"
         );
 
+
       state.providers =
         Array.isArray(
           response?.providers
@@ -446,12 +722,15 @@
           ? response.providers
           : [];
 
+
       renderProviders();
+
 
       setStatus(
         "Daftar provider berhasil dimuat.",
         "success"
       );
+
 
     } catch (error) {
 
@@ -460,17 +739,21 @@
         error
       );
 
+
       setStatus(
         error?.message ||
         "Gagal memuat provider.",
         "error"
       );
 
+
     } finally {
 
-      state.loading = false;
+      state.loading =
+        false;
     }
   }
+
 
   /* =========================================================
      RENDER PROVIDER EDITOR
@@ -483,12 +766,16 @@
     const editor =
       $("providerEditor");
 
+
     if (!editor) {
       return;
     }
 
+
     state.editingId =
-      provider?.id || null;
+      provider?.id ||
+      null;
+
 
     const configText =
       JSON.stringify(
@@ -496,6 +783,7 @@
         null,
         2
       );
+
 
     editor.innerHTML = `
 
@@ -710,8 +998,10 @@
       </div>
     `;
 
+
     const cancelButton =
       $("cancelProviderBtn");
+
 
     if (cancelButton) {
 
@@ -721,8 +1011,10 @@
       );
     }
 
+
     const form =
       $("providerForm");
+
 
     if (form) {
 
@@ -733,6 +1025,7 @@
     }
   }
 
+
   /* =========================================================
      CLOSE EDITOR
      ========================================================= */
@@ -742,13 +1035,18 @@
     state.editingId =
       null;
 
+
     const editor =
       $("providerEditor");
 
+
     if (editor) {
-      editor.innerHTML = "";
+
+      editor.innerHTML =
+        "";
     }
   }
+
 
   /* =========================================================
      PARSE CONFIG
@@ -759,6 +1057,7 @@
   ) {
 
     let config;
+
 
     try {
 
@@ -774,6 +1073,7 @@
       );
     }
 
+
     if (
       !config ||
       typeof config !== "object" ||
@@ -785,8 +1085,10 @@
       );
     }
 
+
     return config;
   }
+
 
   /* =========================================================
      SAVE PROVIDER
@@ -798,30 +1100,36 @@
 
     event.preventDefault();
 
+
     const id =
       $("providerIdInput")
         ?.value
         .trim();
+
 
     const name =
       $("providerNameInput")
         ?.value
         .trim();
 
+
     const adapter =
       $("providerAdapterInput")
         ?.value
         .trim();
 
+
     const apiKey =
       $("providerApiKeyInput")
         ?.value || "";
+
 
     const enabled =
       Boolean(
         $("providerEnabledInput")
           ?.checked
       );
+
 
     if (
       !id ||
@@ -837,7 +1145,9 @@
       return;
     }
 
+
     let config;
+
 
     try {
 
@@ -857,6 +1167,7 @@
       return;
     }
 
+
     const payload = {
 
       id,
@@ -866,24 +1177,31 @@
       enabled
     };
 
+
     /*
-     * API key hanya dikirim jika:
-     * - provider baru
-     * - atau admin memasukkan API key baru saat edit
+     * PENTING:
+     *
+     * Backend admin.js menggunakan:
+     *
+     * body.api_key
+     *
+     * bukan body.apiKey.
      */
 
     if (
       apiKey.trim()
     ) {
 
-      payload.apiKey =
+      payload.api_key =
         apiKey.trim();
     }
+
 
     const editing =
       Boolean(
         state.editingId
       );
+
 
     const endpoint =
       editing
@@ -892,12 +1210,14 @@
           )}`
         : "/api/admin/providers";
 
+
     try {
 
       setStatus(
         "Menyimpan provider...",
         "info"
       );
+
 
       await api(
         endpoint,
@@ -914,9 +1234,12 @@
         }
       );
 
+
       closeEditor();
 
+
       await loadProviders();
+
 
       setStatus(
         editing
@@ -925,12 +1248,14 @@
         "success"
       );
 
+
     } catch (error) {
 
       console.error(
         "[GEN-Z ADMIN PROVIDERS]",
         error
       );
+
 
       setStatus(
         error?.message ||
@@ -939,6 +1264,7 @@
       );
     }
   }
+
 
   /* =========================================================
      EDIT PROVIDER
@@ -957,6 +1283,7 @@
             String(id)
         );
 
+
     if (!provider) {
 
       setStatus(
@@ -967,12 +1294,15 @@
       return;
     }
 
+
     renderEditor(
       provider
     );
 
+
     const editor =
       $("providerEditor");
+
 
     if (editor) {
 
@@ -982,6 +1312,7 @@
       });
     }
   }
+
 
   /* =========================================================
      TOGGLE PROVIDER
@@ -998,6 +1329,7 @@
         "info"
       );
 
+
       await api(
         `/api/admin/providers/${encodeURIComponent(
           id
@@ -1007,12 +1339,15 @@
         }
       );
 
+
       await loadProviders();
+
 
       setStatus(
         "Status provider berhasil diubah.",
         "success"
       );
+
 
     } catch (error) {
 
@@ -1021,6 +1356,7 @@
         error
       );
 
+
       setStatus(
         error?.message ||
         "Gagal mengubah status provider.",
@@ -1028,6 +1364,7 @@
       );
     }
   }
+
 
   /* =========================================================
      DELETE PROVIDER
@@ -1046,8 +1383,11 @@
             String(id)
         );
 
+
     const label =
-      provider?.name || id;
+      provider?.name ||
+      id;
+
 
     const confirmed =
       window.confirm(
@@ -1055,9 +1395,11 @@
         "Tindakan ini tidak dapat dibatalkan."
       );
 
+
     if (!confirmed) {
       return;
     }
+
 
     try {
 
@@ -1065,6 +1407,7 @@
         "Menghapus provider...",
         "info"
       );
+
 
       await api(
         `/api/admin/providers/${encodeURIComponent(
@@ -1075,14 +1418,18 @@
         }
       );
 
+
       closeEditor();
 
+
       await loadProviders();
+
 
       setStatus(
         "Provider berhasil dihapus.",
         "success"
       );
+
 
     } catch (error) {
 
@@ -1091,6 +1438,7 @@
         error
       );
 
+
       setStatus(
         error?.message ||
         "Gagal menghapus provider.",
@@ -1098,6 +1446,7 @@
       );
     }
   }
+
 
   /* =========================================================
      BIND EVENTS
@@ -1108,11 +1457,13 @@
     const backButton =
       $("providerBackBtn");
 
+
     if (backButton) {
 
       backButton.addEventListener(
         "click",
         () => {
+
           window.location.href =
             "/admin.html";
         }
@@ -1122,6 +1473,7 @@
 
     const refreshButton =
       $("refreshProvidersBtn");
+
 
     if (refreshButton) {
 
@@ -1135,6 +1487,7 @@
     const addButton =
       $("addProviderBtn");
 
+
     if (addButton) {
 
       addButton.addEventListener(
@@ -1143,8 +1496,10 @@
 
           renderEditor();
 
+
           const editor =
             $("providerEditor");
+
 
           if (editor) {
 
@@ -1161,6 +1516,7 @@
     const list =
       $("providerList");
 
+
     if (list) {
 
       list.addEventListener(
@@ -1172,15 +1528,19 @@
               "[data-action]"
             );
 
+
           if (!button) {
             return;
           }
 
+
           const action =
             button.dataset.action;
 
+
           const id =
             button.dataset.id;
+
 
           if (
             action === "edit"
@@ -1205,38 +1565,63 @@
     }
   }
 
+
   /* =========================================================
      INITIALIZE
      ========================================================= */
 
   async function init() {
 
+    if (
+      state.initialized
+    ) {
+
+      return;
+    }
+
+
+    state.initialized =
+      true;
+
+
     bindEvents();
+
+
+    setStatus(
+      "Memeriksa akses administrator...",
+      "info"
+    );
+
 
     try {
 
       /*
-       * Tunggu auth selesai membaca
-       * session Supabase.
+       * Pastikan sistem autentikasi tersedia.
        */
 
-      if (
-        window.GENZ_AUTH_INITIALIZED
-      ) {
+      await waitForAuth();
 
-        await window.GENZ_AUTH_INITIALIZED;
-      }
 
       /*
-       * Pastikan user memiliki
-       * role admin atau owner.
+       * Verifikasi role melalui backend.
        */
 
       await verifyAdmin();
 
+
+      /*
+       * Admin valid.
+       */
+
       showApp();
 
+
+      /*
+       * Muat daftar provider.
+       */
+
       await loadProviders();
+
 
     } catch (error) {
 
@@ -1245,6 +1630,7 @@
         error
       );
 
+
       showDenied(
         error?.message ||
         "Akses admin tidak tersedia."
@@ -1252,10 +1638,28 @@
     }
   }
 
+
   /* =========================================================
      START
      ========================================================= */
 
-  init();
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      init,
+      {
+        once: true
+      }
+    );
+
+  } else {
+
+    init();
+
+  }
 
 })();
