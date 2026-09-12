@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Job Events — GEN-Z.AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="/js/config.js"></script>
+
+  <style>
+    :root {
+      --bg: #07080d;
+      --panel: #0d1018;
+      --panel-2: #111521;
+      --border: rgba(255,255,255,.08);
+      --text: #f5f7fb;
+      --muted: #8992a5;
+      --accent: #8b5cf6;
+      --accent-2: #6366f1;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(99,102,241,.13), transparent 30%),
+        radial-gradient(circle at 85% 10%, rgba(139,92,246,.10), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(7,8,13,.86);
+      backdrop-filter: blur(18px);
+    }
+
+    .back-button {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 18px;
+      transition: .2s ease;
+    }
+
+    .back-button:hover {
+      border-color: rgba(139,92,246,.45);
+      background: var(--panel-2);
+      transform: translateY(-1px);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 150px;
+    }
+
+    .brand strong {
+      font-size: 15px;
+      letter-spacing: .02em;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav a {
+      white-space: nowrap;
+      padding: 9px 12px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      transition: .2s ease;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+    }
+
+    .nav a.active {
+      box-shadow: inset 0 0 0 1px rgba(139,92,246,.28);
+    }
+
+    .admin-user {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .admin-badge {
+      padding: 7px 10px;
+      border: 1px solid rgba(139,92,246,.35);
+      border-radius: 9px;
+      background: rgba(139,92,246,.10);
+      color: #c4b5fd;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+
+    .container {
+      width: min(1440px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 42px 0 70px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 30px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin-bottom: 9px;
+      color: #a78bfa;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .hero p {
+      max-width: 680px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 13px;
+      border: 1px solid rgba(245,158,11,.24);
+      border-radius: 12px;
+      background: rgba(245,158,11,.07);
+      color: #fbbf24;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .notice {
+      margin-bottom: 24px;
+      padding: 18px 20px;
+      border: 1px solid rgba(245,158,11,.20);
+      border-radius: 16px;
+      background: rgba(245,158,11,.055);
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .notice p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      min-height: 126px;
+      padding: 19px;
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stat-value {
+      margin-top: 17px;
+      font-size: 28px;
+      font-weight: 750;
+      letter-spacing: -.03em;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .field {
+      flex: 1 1 180px;
+      min-width: 160px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      height: 43px;
+      padding: 0 13px;
+      outline: none;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .field input::placeholder {
+      color: #626b7c;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: rgba(139,92,246,.5);
+    }
+
+    .button {
+      height: 43px;
+      padding: 0 15px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 650;
+      transition: .2s ease;
+    }
+
+    .button:hover:not(:disabled) {
+      background: var(--panel-2);
+      border-color: rgba(255,255,255,.14);
+    }
+
+    .button.primary {
+      border-color: rgba(139,92,246,.4);
+      background: linear-gradient(135deg, rgba(139,92,246,.24), rgba(99,102,241,.18));
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .42;
+    }
+
+    .panel {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(13,16,24,.78);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header strong {
+      font-size: 14px;
+    }
+
+    .panel-header span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 15px 18px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,.055);
+      font-size: 12px;
+    }
+
+    th {
+      color: #717b8f;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,.018);
+    }
+
+    td {
+      color: #cfd5e1;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty {
+      padding: 70px 24px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 15px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .empty strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .empty p {
+      max-width: 520px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .7fr);
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .detail-box {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(13,16,24,.72);
+    }
+
+    .detail-box h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .detail-box > p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      gap: 12px;
+    }
+
+    .timeline-dot {
+      width: 9px;
+      height: 9px;
+      margin-top: 5px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .timeline-content {
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+
+    .timeline-content strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .timeline-content span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .integration {
+      margin-top: 20px;
+      padding: 18px 20px;
+      border: 1px dashed rgba(139,92,246,.25);
+      border-radius: 16px;
+      background: rgba(139,92,246,.045);
+    }
+
+    .integration strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .integration p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1100px) {
+      .stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .nav {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        padding: 0 14px;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .admin-user {
+        display: none;
+      }
+
+      .container {
+        width: min(100% - 24px, 1440px);
+        padding-top: 28px;
+      }
+
+      .hero {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .status {
+        width: 100%;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  <header class="topbar">
+    <a class="back-button" href="/admin-control.html" aria-label="Kembali ke Admin Control">⚙</a>
+
+```
+<div class="brand">
+  <strong>GEN-Z.AI Admin</strong>
+  <span>Job Events Control</span>
+</div>
+
+<nav class="nav" aria-label="Admin navigation">
+  <a href="/">|||</a>
+  <a href="/admin.html">Dashboard</a>
+  <a href="/admin-control.html">Admin Control</a>
+  <a href="/admin-users.html">Users</a>
+  <a href="/admin-membership.html">Membership</a>
+  <a href="/admin-affiliate.html">Affiliate</a>
+  <a href="/admin-providers.html">Providers</a>
+  <a href="/admin-topup.html">Top-up</a>
+  <a href="/admin-credit.html">Credit</a>
+  <a href="/admin-jobs.html">Jobs</a>
+  <a class="active" href="/admin-job-events.html">Events</a>
+</nav>
+
+<div class="admin-user">
+  <span class="admin-badge">ADMIN</span>
+</div>
+```
+
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Admin Control / Job Events</div>
+        <h1>Job Events</h1>
+        <p>
+          Monitor timeline dan event yang terjadi selama lifecycle video job.
+          Halaman ini sudah disiapkan sebagai modul terpisah agar event monitoring
+          tidak bercampur dengan halaman Jobs.
+        </p>
+      </div>
+
+```
+  <div class="status">
+    <span class="status-dot"></span>
+    Backend belum terhubung
+  </div>
+</section>
+
+<section class="notice">
+  <strong>Job Events backend belum ditemukan</strong>
+  <p>
+    Repository saat ini belum memiliki endpoint atau implementasi khusus
+    untuk membaca job events. Karena itu halaman ini tidak mengarang endpoint,
+    data, atau struktur database baru. Setelah backend event tersedia,
+    modul ini dapat dihubungkan tanpa mengubah struktur halaman.
+  </p>
+</section>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">Total Events</div>
+    <div class="stat-value">—</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">Queued</div>
+    <div class="stat-value">—</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">Processing</div>
+    <div class="stat-value">—</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">Success</div>
+    <div class="stat-value">—</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">Error</div>
+    <div class="stat-value">—</div>
+  </div>
+</section>
+
+<section class="toolbar">
+  <div class="field">
+    <input
+      id="eventSearch"
+      type="search"
+      placeholder="Cari Job ID, Event ID, atau user..."
+      disabled
+    >
+  </div>
+
+  <div class="field">
+    <select id="eventType" disabled>
+      <option value="">Semua event</option>
+      <option value="queued">Queued</option>
+      <option value="processing">Processing</option>
+      <option value="completed">Completed</option>
+      <option value="failed">Failed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <select id="eventProvider" disabled>
+      <option value="">Semua provider</option>
+    </select>
+  </div>
+
+  <button class="button primary" type="button" disabled>
+    Refresh Events
+  </button>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <strong>Event Log</strong>
+      <span> — realtime event history</span>
+    </div>
+    <span>Belum ada data</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event ID</th>
+          <th>Job ID</th>
+          <th>Event</th>
+          <th>Provider</th>
+          <th>User</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td colspan="7">
+            <div class="empty">
+              <div class="empty-icon">◌</div>
+              <strong>Belum ada event untuk ditampilkan</strong>
+              <p>
+                Data akan muncul setelah backend Job Events tersedia dan
+                halaman ini dihubungkan ke sumber event yang sebenarnya.
+              </p>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="detail-grid">
+  <section class="detail-box">
+    <h2>Event Timeline</h2>
+    <p>
+      Timeline event untuk job yang sedang dipilih akan ditampilkan di area ini.
+    </p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <span class="timeline-dot"></span>
+        <div class="timeline-content">
+          <strong>Job Created</strong>
+          <span>Menunggu backend event source.</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <span class="timeline-dot"></span>
+        <div class="timeline-content">
+          <strong>Provider Processing</strong>
+          <span>Menunggu backend event source.</span>
+        </div>
+      </div>
+
+      <div class="timeline-item">
+        <span class="timeline-dot"></span>
+        <div class="timeline-content">
+          <strong>Job Completed</strong>
+          <span>Menunggu backend event source.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-box">
+    <h2>Event Detail</h2>
+    <p>
+      Detail payload, timestamp, provider response, dan metadata event akan
+      ditempatkan di panel ini.
+    </p>
+
+    <button class="button" type="button" disabled>
+      View Raw Event
+    </button>
+
+    <button class="button" type="button" disabled style="margin-left: 7px;">
+      Copy Payload
+    </button>
+  </section>
+</div>
+
+<section class="integration">
+  <strong>Integration point</strong>
+  <p>
+    Modul ini sengaja tidak memanggil API yang belum ditemukan di repository.
+    Saat endpoint Job Events sudah tersedia, pencarian, filter, refresh,
+    timeline, detail payload, dan realtime monitoring dapat diaktifkan
+    hanya dari file ini atau modul JavaScript khusus tanpa menggabungkan
+    halaman dengan Jobs.
+  </p>
+</section>
+```
+
+  </main>
+
+  <script src="/js/auth.js"></script>
+
+  <script src="/js/account.js"></script>
+
+  <script>
+    (async function () {
+      try {
+        if (!window.GENZ || !GENZ.auth || !GENZ.account) {
+          window.location.replace('/');
+          return;
+        }
+
+        const session = await GENZ.auth.getSession();
+
+        if (!session || !session.user) {
+          window.location.replace('/');
+          return;
+        }
+
+        await GENZ.account.refresh();
+
+        const account = GENZ.state && GENZ.state.account
+          ? GENZ.state.account
+          : null;
+
+        const isAdmin =
+          account &&
+          account.isAdmin === true &&
+          account.roleValidated === true;
+
+        if (!isAdmin) {
+          window.location.replace('/');
+          return;
+        }
+
+        const emailElement = document.querySelector('.admin-user');
+
+        if (emailElement && session.user.email) {
+          emailElement.setAttribute('title', session.user.email);
+        }
+      } catch (error) {
+        console.error('Admin Job Events auth error:', error);
+        window.location.replace('/');
+      }
+    })();
+  </script>
+
+</body>
+</html>
