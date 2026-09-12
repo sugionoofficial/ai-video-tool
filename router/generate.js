@@ -1,3 +1,39 @@
+import {
+  HttpError,
+  json,
+  readJson
+} from "../lib/http.js";
+
+import {
+  requireUser
+} from "../auth/auth.js";
+
+import {
+  checkGenerateRate
+} from "../security/rate-limit.js";
+
+import {
+  canonicalProvider
+} from "../providers/provider-utils.js";
+
+import {
+  getProvider
+} from "../providers/provider-service.js";
+
+import {
+  resolveAdapter
+} from "../providers/index.js";
+
+import {
+  reserveJob
+} from "../jobs/jobs.js";
+
+import {
+  updateJob,
+  recordJobEvent,
+  refundJob
+} from "../jobs/job-service.js";
+
 /*
  * ============================================================
  * GENERATE ROUTER
