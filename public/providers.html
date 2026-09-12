@@ -16,13 +16,9 @@
   >
 
   <title>
-    GEN-Z.AI - Providers
+    GEN-Z.AI - Provider Management
   </title>
 
-
-  <!--
-    CSS utama GEN-Z.AI
-  -->
   <link
     rel="stylesheet"
     href="/css/style.css"
@@ -33,16 +29,14 @@
     href="/css/admin.css"
   >
 
-
 </head>
 
 
 <body>
 
-
   <!-- =====================================================
        HEADER
-  ====================================================== -->
+       ===================================================== -->
 
   <header class="admin-header">
 
@@ -61,9 +55,7 @@
 
     <div>
 
-      <span
-        id="providerAdminEmail"
-      >
+      <span id="providerAdminEmail">
         Memeriksa...
       </span>
 
@@ -74,7 +66,7 @@
 
   <!-- =====================================================
        MAIN
-  ====================================================== -->
+       ===================================================== -->
 
   <main
     class="shell"
@@ -84,7 +76,7 @@
 
     <!-- ===================================================
          LOADING
-    ==================================================== -->
+         =================================================== -->
 
     <section
       class="card"
@@ -104,7 +96,7 @@
 
     <!-- ===================================================
          ACCESS DENIED
-    ==================================================== -->
+         =================================================== -->
 
     <section
       class="card"
@@ -136,8 +128,8 @@
 
 
     <!-- ===================================================
-         PROVIDER APPLICATION
-    ==================================================== -->
+         PROVIDER APP
+         =================================================== -->
 
     <section
       id="providerApp"
@@ -146,12 +138,13 @@
 
 
       <!-- ===============================================
-           PAGE HEADER
-      ================================================ -->
+           PROVIDER HEADER
+           =============================================== -->
 
       <div class="admin-card">
 
         <div class="admin-card-header">
+
 
           <div>
 
@@ -198,22 +191,19 @@
         </div>
 
 
-        <!-- =============================================
-             STATUS
-        ============================================== -->
+        <!-- STATUS -->
 
         <div
           id="providerStatus"
           class="admin-status-message"
         ></div>
 
-
       </div>
 
 
       <!-- ===============================================
            PROVIDER LIST
-      ================================================ -->
+           =============================================== -->
 
       <div
         class="admin-card"
@@ -226,9 +216,7 @@
             Daftar Provider
           </h3>
 
-          <span
-            id="providerCount"
-          >
+          <span id="providerCount">
             0 provider
           </span>
 
@@ -251,7 +239,7 @@
 
       <!-- ===============================================
            PROVIDER EDITOR
-      ================================================ -->
+           =============================================== -->
 
       <div
         id="providerEditor"
@@ -260,24 +248,29 @@
 
     </section>
 
-
   </main>
 
 
   <!-- =====================================================
        JAVASCRIPT
-  ====================================================== -->
+       ===================================================== -->
 
-  <!-- Supabase / Auth -->
-  <script
-    src="/js/auth.js"
-  ></script>
+  <!-- AUTH WAJIB DIMUAT TERLEBIH DAHULU -->
+
+  <script src="/js/auth.js"></script>
 
 
-  <!-- Provider Module -->
-  <script
-    src="/js/admin-providers.js"
-  ></script>
+  <!--
+    PENTING:
+
+    Jangan menggunakan /js/providers.js di halaman ini.
+
+    providers.js adalah engine provider utama aplikasi.
+
+    admin-providers.js adalah CRUD Provider untuk Admin.
+  -->
+
+  <script src="/js/admin-providers.js"></script>
 
 
 </body>
