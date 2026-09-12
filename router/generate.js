@@ -21,7 +21,8 @@ import {
 } from "../providers/provider-service.js";
 
 import {
-  resolveAdapter
+  resolveAdapter,
+  getAdapterInfo
 } from "../providers/index.js";
 
 import {
@@ -137,6 +138,56 @@ export async function handleGenerate(
           body.duration
         )
       : null;
+
+  if (
+    body?.duration != null &&
+    !Number.isFinite(
+      requestedDuration
+    )
+  ) {
+    throw new HttpError(
+      "Duration tidak valid.",
+      400
+    );
+  }
+
+  if (
+    body?.duration != null
+  ) {
+    const info =
+      getAdapterInfo(
+        provider.adapter
+      );
+
+    const allowed =
+      Array.isArray(
+        info?.durations
+      )
+        ? info.durations.map(
+            value =>
+              Number(
+                String(
+                  value
+                ).replace(
+                  /s$/i,
+                  ""
+                )
+              )
+          )
+        : [];
+
+    if (
+      allowed.length &&
+      !allowed.includes(
+        requestedDuration
+      )
+    ) {
+      throw new HttpError(
+        "Duration tidak didukung oleh provider.",
+        400
+      );
+    }
+  }
 
   const requestedAspectRatio =
     body?.aspectRatio != null
