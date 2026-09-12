@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Top-up - GEN-Z.AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="/js/config.js"></script>
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #111827;
+      --primary-hover: #1f2937;
+      --success: #15803d;
+      --warning: #b45309;
+      --danger: #dc2626;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-height: 72px;
+      padding: 12px 24px;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
+
+    .back-button {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 20px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s ease;
+    }
+
+    .back-button:hover {
+      background: var(--surface-soft);
+      transform: translateY(-1px);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .topbar-spacer {
+      flex: 1;
+    }
+
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .container {
+      width: min(1400px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 60px;
+    }
+
+    .navigation {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 26px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: #374151;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+      transition: 0.2s ease;
+    }
+
+    .nav-link:hover {
+      background: var(--surface-soft);
+    }
+
+    .nav-link.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      max-width: 700px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .notice {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      padding: 16px 18px;
+      border: 1px solid #fde68a;
+      border-radius: 14px;
+      background: #fffbeb;
+      color: #78350f;
+    }
+
+    .notice-icon {
+      flex: 0 0 auto;
+      font-size: 18px;
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .notice span {
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .stat-value {
+      margin-top: 8px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .panel {
+      margin-bottom: 24px;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-description {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      min-height: 40px;
+      padding: 0 15px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .button:hover {
+      background: var(--surface-soft);
+    }
+
+    .button.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .button.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr auto;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field label {
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #9ca3af;
+      box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.14);
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 850px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 15px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: #4b5563;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty-state {
+      padding: 44px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .empty-state span {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .status-pill.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-pill.approved {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-pill.rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-pill.empty {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .disabled-area {
+      opacity: 0.72;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .form-actions {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .integration-box {
+      padding: 18px;
+      border: 1px dashed #d1d5db;
+      border-radius: 14px;
+      background: var(--surface-soft);
+    }
+
+    .integration-box h3 {
+      margin: 0 0 7px;
+      font-size: 15px;
+    }
+
+    .integration-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .footer {
+      padding-top: 10px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1050px) {
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .filters {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .topbar {
+        padding: 10px 15px;
+      }
+
+      .container {
+        width: min(100% - 24px, 1400px);
+        padding-top: 18px;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .filters,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .navigation {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 3px;
+      }
+
+      .nav-link {
+        flex: 0 0 auto;
+      }
+
+      .admin-badge {
+        display: none;
+      }
+
+      .panel {
+        padding: 17px;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  <div class="page">
+
+```
+<header class="topbar">
+  <a
+    class="back-button"
+    href="/admin-control.html"
+    aria-label="Kembali ke Admin Control"
+    title="Admin Control"
+  >←</a>
+
+  <div class="brand">
+    <div class="brand-title">Admin Top-up</div>
+    <div class="brand-subtitle">Manajemen permintaan top-up pengguna</div>
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="admin-badge" id="adminEmail">
+    Admin
+  </div>
+</header>
+
+<main class="container">
+
+  <nav class="navigation" aria-label="Navigasi admin">
+    <a class="nav-link" href="/">|||</a>
+    <a class="nav-link" href="/admin.html">Dashboard</a>
+    <a class="nav-link" href="/admin-control.html">Admin Control</a>
+    <a class="nav-link" href="/admin-users.html">Users</a>
+    <a class="nav-link" href="/admin-membership.html">Membership</a>
+    <a class="nav-link" href="/admin-affiliate.html">Affiliate</a>
+    <a class="nav-link" href="/admin-providers.html">Providers</a>
+    <a class="nav-link active" href="/admin-topup.html">Top-up</a>
+    <a class="nav-link" href="/admin-credit.html">Credit</a>
+    <a class="nav-link" href="/admin-jobs.html">Jobs</a>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <h1>Top-up</h1>
+      <p>
+        Kelola permintaan top-up credit dari pengguna.
+        Halaman ini sudah disiapkan sebagai halaman admin terpisah.
+      </p>
+    </div>
+
+    <div class="status">
+      <span class="status-dot"></span>
+      Admin mode
+    </div>
+  </section>
+
+  <section class="notice">
+    <div class="notice-icon">!</div>
+    <div>
+      <strong>Backend top-up belum ditemukan di repository.</strong>
+      <span>
+        Repository saat ini belum memiliki endpoint khusus top-up yang dapat
+        digunakan halaman ini. Karena itu halaman tidak mengarang endpoint,
+        transaksi, atau data palsu. Setelah backend top-up tersedia, bagian
+        daftar dan aksi approval dapat langsung dihubungkan.
+      </span>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Request</div>
+      <div class="stat-value">—</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value">—</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Approved</div>
+      <div class="stat-value">—</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Rejected</div>
+      <div class="stat-value">—</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Permintaan Top-up</h2>
+        <p class="panel-description">
+          Daftar permintaan top-up akan ditampilkan di area ini ketika backend tersedia.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button
+          class="button"
+          type="button"
+          id="refreshButton"
+          disabled
+        >
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="filters disabled-area">
+      <div class="field">
+        <label for="searchInput">Cari pengguna</label>
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="Email atau user ID"
+          disabled
+        >
+      </div>
+
+      <div class="field">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter" disabled>
+          <option value="">Semua status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="dateFilter">Tanggal</label>
+        <input
+          id="dateFilter"
+          type="date"
+          disabled
+        >
+      </div>
+
+      <div class="form-actions">
+        <button
+          class="button primary"
+          type="button"
+          disabled
+        >
+          Cari
+        </button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Nominal</th>
+            <th>Metode</th>
+            <th>Status</th>
+            <th>Dibuat</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <strong>Belum ada data top-up</strong>
+                <span>
+                  Endpoint/backend top-up belum tersedia di repository.
+                  Tidak ada data dummy yang ditampilkan.
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Konfigurasi Top-up</h2>
+        <p class="panel-description">
+          Area konfigurasi untuk aturan top-up administrator.
+        </p>
+      </div>
+    </div>
+
+    <div class="form-grid disabled-area">
+      <div class="field">
+        <label for="minimumTopup">Minimum Top-up</label>
+        <input
+          id="minimumTopup"
+          type="number"
+          min="0"
+          placeholder="Contoh: 10000"
+          disabled
+        >
+      </div>
+
+      <div class="field">
+        <label for="maximumTopup">Maximum Top-up</label>
+        <input
+          id="maximumTopup"
+          type="number"
+          min="0"
+          placeholder="Contoh: 1000000"
+          disabled
+        >
+      </div>
+
+      <div class="field">
+        <label for="topupStatus">Status Top-up</label>
+        <select id="topupStatus" disabled>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <button
+        class="button primary"
+        type="button"
+        disabled
+      >
+        Simpan Konfigurasi
+      </button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Integrasi Backend</h2>
+        <p class="panel-description">
+          Informasi status implementasi fitur top-up.
+        </p>
+      </div>
+    </div>
+
+    <div class="integration-box">
+      <h3>Endpoint belum tersedia</h3>
+      <p>
+        Pencarian repository tidak menemukan implementasi endpoint top-up.
+        Halaman ini sengaja hanya menyediakan struktur UI terlebih dahulu.
+        Ketika endpoint top-up sudah dibuat di backend, bagian daftar,
+        filter, approval, rejection, dan konfigurasi dapat diaktifkan
+        tanpa mengubah struktur navigasi halaman admin.
+      </p>
+    </div>
+  </section>
+
+  <div class="footer">
+    GEN-Z.AI Admin · Top-up Management
+  </div>
+
+</main>
+```
+
+  </div>
+
+  <script>
+    (function () {
+      const adminEmail = document.getElementById('adminEmail');
+
+      async function validateAdmin() {
+        try {
+          if (
+            window.GENZ &&
+            window.GENZ.auth &&
+            typeof window.GENZ.auth.getSession === 'function'
+          ) {
+            const session = await window.GENZ.auth.getSession();
+
+            if (!session) {
+              window.location.href = '/';
+              return;
+            }
+          }
+
+          if (
+            window.GENZ &&
+            window.GENZ.account &&
+            typeof window.GENZ.account.refresh === 'function'
+          ) {
+            await window.GENZ.account.refresh();
+          }
+
+          const account =
+            window.GENZ &&
+            window.GENZ.state &&
+            window.GENZ.state.account
+              ? window.GENZ.state.account
+              : null;
+
+          if (account) {
+            if (account.email) {
+              adminEmail.textContent = account.email;
+            }
+
+            if (
+              account.isAdmin !== true ||
+              account.roleValidated !== true
+            ) {
+              window.location.href = '/';
+              return;
+            }
+          }
+        } catch (error) {
+          console.error(
+            'GEN-Z.AI: gagal memvalidasi admin.',
+            error
+          );
+        }
+      }
+
+      validateAdmin();
+    })();
+  </script>
+
+  <script src="/js/auth.js"></script>
+
+  <script src="/js/account.js"></script>
+
+</body>
+</html>
