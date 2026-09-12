@@ -1,0 +1,662 @@
+<!doctype html>
+
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>GEN-Z.AI Admin - Membership</title>
+
+  <link rel="stylesheet" href="/style.css">
+
+  <style>
+    .membership-page {
+      min-height:100vh;
+    }
+
+    .membership-header {
+      display:flex;
+      align-items:center;
+      gap:14px;
+      margin-bottom:24px;
+    }
+
+    .membership-back {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:44px;
+      height:44px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      background:rgba(255,255,255,.05);
+      color:inherit;
+      text-decoration:none;
+      font-size:20px;
+    }
+
+    .membership-back:hover {
+      background:rgba(255,255,255,.09);
+    }
+
+    .membership-title h1 {
+      margin:0;
+      font-size:24px;
+    }
+
+    .membership-title p {
+      margin:4px 0 0;
+      opacity:.65;
+    }
+
+    .membership-account {
+      margin-left:auto;
+      text-align:right;
+    }
+
+    .membership-account span {
+      display:block;
+      font-size:13px;
+      opacity:.7;
+    }
+
+    .membership-account strong {
+      display:block;
+      margin-top:3px;
+      font-size:10px;
+      letter-spacing:.12em;
+      opacity:.6;
+    }
+
+    .membership-navigation {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:20px;
+    }
+
+    .membership-navigation a {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:40px;
+      padding:0 14px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:10px;
+      background:rgba(255,255,255,.025);
+      color:inherit;
+      text-decoration:none;
+    }
+
+    .membership-navigation a:hover,
+    .membership-navigation a.active {
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.18);
+    }
+
+    .membership-status {
+      min-height:20px;
+      margin-bottom:14px;
+      font-size:13px;
+      opacity:.7;
+    }
+
+    .membership-grid {
+      display:grid;
+      grid-template-columns:
+        repeat(auto-fit,minmax(250px,1fr));
+      gap:14px;
+    }
+
+    .membership-card {
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      min-height:220px;
+      padding:22px;
+      box-sizing:border-box;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .membership-card:hover {
+      border-color:rgba(255,255,255,.16);
+      background:rgba(255,255,255,.045);
+    }
+
+    .membership-card-top {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:18px;
+    }
+
+    .membership-icon {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:44px;
+      height:44px;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:11px;
+      background:rgba(255,255,255,.04);
+      font-size:18px;
+    }
+
+    .membership-badge {
+      display:inline-flex;
+      align-items:center;
+      min-height:26px;
+      padding:0 9px;
+      border-radius:999px;
+      background:rgba(255,255,255,.07);
+      font-size:10px;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+
+    .membership-card h3 {
+      margin:0 0 7px;
+      font-size:18px;
+    }
+
+    .membership-description {
+      margin:0;
+      font-size:13px;
+      line-height:1.55;
+      opacity:.62;
+    }
+
+    .membership-price {
+      margin-top:20px;
+      font-size:24px;
+      font-weight:700;
+    }
+
+    .membership-price small {
+      font-size:11px;
+      font-weight:400;
+      opacity:.55;
+    }
+
+    .membership-features {
+      display:grid;
+      gap:8px;
+      margin:18px 0 0;
+      padding:0;
+      list-style:none;
+    }
+
+    .membership-features li {
+      position:relative;
+      padding-left:20px;
+      font-size:12px;
+      line-height:1.45;
+      opacity:.7;
+    }
+
+    .membership-features li::before {
+      content:"✓";
+      position:absolute;
+      left:0;
+      top:0;
+      opacity:.8;
+    }
+
+    .membership-card-actions {
+      display:flex;
+      gap:8px;
+      margin-top:auto;
+      padding-top:20px;
+    }
+
+    .membership-card-actions button {
+      flex:1;
+      min-height:38px;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:9px;
+      background:rgba(255,255,255,.04);
+      color:inherit;
+      cursor:pointer;
+    }
+
+    .membership-card-actions button:hover {
+      background:rgba(255,255,255,.08);
+    }
+
+    .membership-info {
+      margin-top:16px;
+      padding:18px;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .membership-info h3 {
+      margin:0 0 6px;
+      font-size:15px;
+    }
+
+    .membership-info p {
+      margin:0;
+      font-size:13px;
+      line-height:1.6;
+      opacity:.62;
+    }
+
+    @media (max-width:760px) {
+      .membership-account {
+        display:none;
+      }
+
+      .membership-navigation {
+        display:grid;
+        grid-template-columns:
+          repeat(2,minmax(0,1fr));
+      }
+
+      .membership-navigation a {
+        width:100%;
+      }
+
+      .membership-grid {
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+
+<main class="shell membership-page">
+
+  <header class="membership-header">
+
+```
+<a
+  class="membership-back"
+  href="/admin-control.html"
+  aria-label="Kembali ke Admin Control"
+  title="Admin Control"
+>←</a>
+
+<div class="membership-title">
+  <h1>Membership</h1>
+  <p>Kelola paket membership GEN-Z.AI</p>
+</div>
+
+<div class="membership-account">
+  <span id="adminEmail">—</span>
+  <strong>ADMIN</strong>
+</div>
+```
+
+  </header>
+
+  <nav
+    class="membership-navigation"
+    aria-label="Navigasi Admin"
+  >
+    <a href="/">|||</a>
+    <a href="/admin.html">Dashboard</a>
+    <a href="/admin-control.html">Admin Control</a>
+    <a
+      href="/admin-membership.html"
+      class="active"
+    >Membership</a>
+  </nav>
+
+  <div
+    id="membershipStatus"
+    class="membership-status"
+  >
+    Memeriksa akses admin...
+  </div>
+
+  <section class="card">
+
+```
+<div class="membership-grid">
+
+  <article class="membership-card">
+
+    <div class="membership-card-top">
+
+      <div class="membership-icon">
+        ◇
+      </div>
+
+      <span class="membership-badge">
+        Free
+      </span>
+
+    </div>
+
+    <h3>Free</h3>
+
+    <p class="membership-description">
+      Paket dasar untuk pengguna baru
+      yang ingin mencoba GEN-Z.AI.
+    </p>
+
+    <div class="membership-price">
+      Rp0
+      <small>/bulan</small>
+    </div>
+
+    <ul class="membership-features">
+      <li>Akses fitur dasar</li>
+      <li>Kredit sesuai konfigurasi sistem</li>
+      <li>Tidak ada biaya membership</li>
+    </ul>
+
+    <div class="membership-card-actions">
+
+      <button
+        type="button"
+        data-plan="free"
+        data-action="edit"
+      >
+        Edit
+      </button>
+
+      <button
+        type="button"
+        data-plan="free"
+        data-action="status"
+      >
+        Status
+      </button>
+
+    </div>
+
+  </article>
+
+  <article class="membership-card">
+
+    <div class="membership-card-top">
+
+      <div class="membership-icon">
+        ◈
+      </div>
+
+      <span class="membership-badge">
+        Basic
+      </span>
+
+    </div>
+
+    <h3>Basic</h3>
+
+    <p class="membership-description">
+      Paket untuk pengguna yang mulai
+      menggunakan GEN-Z.AI secara rutin.
+    </p>
+
+    <div class="membership-price">
+      Rp—
+      <small>/bulan</small>
+    </div>
+
+    <ul class="membership-features">
+      <li>Kredit membership</li>
+      <li>Akses fitur generator</li>
+      <li>Dukungan pengguna</li>
+    </ul>
+
+    <div class="membership-card-actions">
+
+      <button
+        type="button"
+        data-plan="basic"
+        data-action="edit"
+      >
+        Edit
+      </button>
+
+      <button
+        type="button"
+        data-plan="basic"
+        data-action="status"
+      >
+        Status
+      </button>
+
+    </div>
+
+  </article>
+
+  <article class="membership-card">
+
+    <div class="membership-card-top">
+
+      <div class="membership-icon">
+        ◆
+      </div>
+
+      <span class="membership-badge">
+        Pro
+      </span>
+
+    </div>
+
+    <h3>Pro</h3>
+
+    <p class="membership-description">
+      Paket lanjutan untuk pengguna dengan
+      kebutuhan produksi video lebih tinggi.
+    </p>
+
+    <div class="membership-price">
+      Rp—
+      <small>/bulan</small>
+    </div>
+
+    <ul class="membership-features">
+      <li>Kredit lebih besar</li>
+      <li>Prioritas penggunaan provider</li>
+      <li>Fitur produksi lebih lengkap</li>
+    </ul>
+
+    <div class="membership-card-actions">
+
+      <button
+        type="button"
+        data-plan="pro"
+        data-action="edit"
+      >
+        Edit
+      </button>
+
+      <button
+        type="button"
+        data-plan="pro"
+        data-action="status"
+      >
+        Status
+      </button>
+
+    </div>
+
+  </article>
+
+</div>
+
+<div class="membership-info">
+
+  <h3>Membership Configuration</h3>
+
+  <p>
+    Struktur halaman membership sudah dipisahkan dari
+    Admin Control. Endpoint membership belum ditemukan
+    di repository, sehingga halaman ini belum melakukan
+    perubahan data ke backend. Setelah struktur backend
+    membership tersedia, fungsi Edit dan Status dapat
+    dihubungkan tanpa mengubah halaman Admin Control.
+  </p>
+
+</div>
+```
+
+  </section>
+
+</main>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/account.js"></script>
+
+<script>
+(function () {
+
+  "use strict";
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  async function ensureAdmin() {
+
+    if (
+      !window.GENZ ||
+      !GENZ.auth ||
+      typeof GENZ.auth.getSession !== "function"
+    ) {
+      throw new Error(
+        "Modul autentikasi tidak tersedia."
+      );
+    }
+
+    if (
+      !GENZ.account ||
+      typeof GENZ.account.refresh !== "function"
+    ) {
+      throw new Error(
+        "Modul account tidak tersedia."
+      );
+    }
+
+    const session =
+      await GENZ.auth.getSession();
+
+    if (
+      !session ||
+      !session.user
+    ) {
+      throw new Error(
+        "Silakan login terlebih dahulu."
+      );
+    }
+
+    GENZ.state =
+      GENZ.state || {
+        loggedIn:false,
+        user:null,
+        account:null
+      };
+
+    GENZ.state.loggedIn = true;
+    GENZ.state.user =
+      session.user;
+
+    await GENZ.account.refresh();
+
+    if (
+      GENZ.state.account?.isAdmin !== true ||
+      GENZ.state.account?.roleValidated !== true
+    ) {
+      throw new Error(
+        "Akses ditolak. Halaman ini hanya untuk administrator."
+      );
+    }
+
+    const email =
+      GENZ.state.user?.email ||
+      "Admin";
+
+    $("adminEmail").textContent =
+      email;
+
+    $("membershipStatus").textContent =
+      "Admin terverifikasi.";
+  }
+
+  function bindActions() {
+
+    document
+      .querySelectorAll(
+        "[data-action]"
+      )
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const plan =
+              button.dataset.plan;
+
+            const action =
+              button.dataset.action;
+
+            if (action === "edit") {
+
+              $("membershipStatus").textContent =
+                `Editor paket "${plan}" belum terhubung ke backend.`;
+
+              return;
+            }
+
+            if (action === "status") {
+
+              $("membershipStatus").textContent =
+                `Status paket "${plan}" belum terhubung ke backend.`;
+
+            }
+
+          }
+        );
+
+      });
+  }
+
+  async function init() {
+
+    try {
+
+      await ensureAdmin();
+
+      bindActions();
+
+    } catch (error) {
+
+      console.error(
+        "[GEN-Z.AI] Membership admin error:",
+        error
+      );
+
+      $("membershipStatus").textContent =
+        error?.message ||
+        "Akses ditolak.";
+    }
+  }
+
+  init();
+
+})();
+</script>
+
+</body>
+</html>
