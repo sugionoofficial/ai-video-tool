@@ -1,266 +1,233 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id"><head>  <meta charset="UTF-8"><meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
 
-<head>
+«»
 
-  <meta charset="UTF-8">
+<meta
+name="robots"
+content="noindex,nofollow"
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <meta
-    name="robots"
-    content="noindex,nofollow"
-  >
+«»
 
   <title>
     GEN-Z.AI - Provider Management
-  </title>
-
-  <link
+  </title>  <link
     rel="stylesheet"
     href="/css/style.css"
-  >
-
-  <link
+  >  <link
     rel="stylesheet"
     href="/css/admin.css"
-  >
-
-</head>
-
-
-<body>
-
-  <!-- =====================================================
+  ></head><body>  <!-- =====================================================
        HEADER
-       ===================================================== -->
+       ===================================================== -->  <header class="admin-header"><div>
 
-  <header class="admin-header">
+  <h1>
+    GEN-Z.AI
+  </h1>
 
-    <div>
+  <p>
+    Provider Management
+  </p>
 
-      <h1>
-        GEN-Z.AI
-      </h1>
+</div>
 
-      <p>
-        Provider Management
-      </p>
+
+<div>
+
+  <span id="providerAdminEmail">
+    Memeriksa...
+  </span>
+
+</div>
+
+  </header>  <!-- =====================================================
+       MAIN
+       ===================================================== -->  <main
+    class="shell"
+    id="providerPage"
+  ><!-- ===================================================
+     LOADING
+     =================================================== -->
+
+<section
+  class="card"
+  id="providerLoading"
+>
+
+  <h2>
+    Memuat Provider
+  </h2>
+
+  <p>
+    Memeriksa akses administrator...
+  </p>
+
+</section>
+
+
+<!-- ===================================================
+     ACCESS DENIED
+     =================================================== -->
+
+<section
+  class="card"
+  id="providerDenied"
+  hidden
+>
+
+  <h2>
+    Akses Ditolak
+  </h2>
+
+  <p>
+    Halaman ini hanya dapat diakses oleh
+    Admin / Owner yang telah divalidasi server.
+  </p>
+
+  <p>
+
+    <a
+      href="/admin.html"
+      class="admin-primary-btn"
+    >
+      ← Kembali ke Admin
+    </a>
+
+  </p>
+
+</section>
+
+
+<!-- ===================================================
+     PROVIDER APP
+     =================================================== -->
+
+<section
+  id="providerApp"
+  hidden
+>
+
+
+  <!-- ===============================================
+       PROVIDER HEADER
+       =============================================== -->
+
+  <div class="admin-card">
+
+    <div class="admin-card-header">
+
+
+      <div>
+
+        <h2>
+          Provider
+        </h2>
+
+        <p>
+          Kelola engine AI yang digunakan
+          oleh GEN-Z.AI.
+        </p>
+
+      </div>
+
+
+      <div class="admin-actions">
+
+        <button
+          type="button"
+          id="providerBackBtn"
+        >
+          ← Kembali
+        </button>
+
+
+        <button
+          type="button"
+          id="refreshProvidersBtn"
+        >
+          Refresh
+        </button>
+
+
+        <button
+          type="button"
+          id="addProviderBtn"
+          class="admin-primary-btn"
+        >
+          + Tambah Provider
+        </button>
+
+      </div>
 
     </div>
 
 
-    <div>
+    <!-- STATUS -->
 
-      <span id="providerAdminEmail">
-        Memeriksa...
+    <div
+      id="providerStatus"
+      class="admin-status-message"
+    ></div>
+
+  </div>
+
+
+  <!-- ===============================================
+       PROVIDER LIST
+       =============================================== -->
+
+  <div
+    class="admin-card"
+    id="providerListCard"
+  >
+
+    <div class="admin-card-header">
+
+      <h3>
+        Daftar Provider
+      </h3>
+
+      <span id="providerCount">
+        0 provider
       </span>
 
     </div>
 
-  </header>
 
-
-  <!-- =====================================================
-       MAIN
-       ===================================================== -->
-
-  <main
-    class="shell"
-    id="providerPage"
-  >
-
-
-    <!-- ===================================================
-         LOADING
-         =================================================== -->
-
-    <section
-      class="card"
-      id="providerLoading"
+    <div
+      id="providerList"
+      class="admin-list"
     >
 
-      <h2>
-        Memuat Provider
-      </h2>
-
-      <p>
-        Memeriksa akses administrator...
-      </p>
-
-    </section>
-
-
-    <!-- ===================================================
-         ACCESS DENIED
-         =================================================== -->
-
-    <section
-      class="card"
-      id="providerDenied"
-      hidden
-    >
-
-      <h2>
-        Akses Ditolak
-      </h2>
-
-      <p>
-        Halaman ini hanya dapat diakses oleh
-        Admin / Owner yang telah divalidasi server.
-      </p>
-
-      <p>
-
-        <a
-          href="/admin.html"
-          class="admin-primary-btn"
-        >
-          ← Kembali ke Admin
-        </a>
-
-      </p>
-
-    </section>
-
-
-    <!-- ===================================================
-         PROVIDER APP
-         =================================================== -->
-
-    <section
-      id="providerApp"
-      hidden
-    >
-
-
-      <!-- ===============================================
-           PROVIDER HEADER
-           =============================================== -->
-
-      <div class="admin-card">
-
-        <div class="admin-card-header">
-
-
-          <div>
-
-            <h2>
-              Provider
-            </h2>
-
-            <p>
-              Kelola engine AI yang digunakan
-              oleh GEN-Z.AI.
-            </p>
-
-          </div>
-
-
-          <div class="admin-actions">
-
-            <button
-              type="button"
-              id="providerBackBtn"
-            >
-              ← Kembali
-            </button>
-
-
-            <button
-              type="button"
-              id="refreshProvidersBtn"
-            >
-              Refresh
-            </button>
-
-
-            <button
-              type="button"
-              id="addProviderBtn"
-              class="admin-primary-btn"
-            >
-              + Tambah Provider
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <!-- STATUS -->
-
-        <div
-          id="providerStatus"
-          class="admin-status-message"
-        ></div>
-
+      <div class="admin-loading">
+        Memuat provider...
       </div>
 
+    </div>
 
-      <!-- ===============================================
-           PROVIDER LIST
-           =============================================== -->
-
-      <div
-        class="admin-card"
-        id="providerListCard"
-      >
-
-        <div class="admin-card-header">
-
-          <h3>
-            Daftar Provider
-          </h3>
-
-          <span id="providerCount">
-            0 provider
-          </span>
-
-        </div>
+  </div>
 
 
-        <div
-          id="providerList"
-          class="admin-list"
-        >
+  <!-- ===============================================
+       PROVIDER EDITOR
+       =============================================== -->
 
-          <div class="admin-loading">
-            Memuat provider...
-          </div>
-
-        </div>
-
-      </div>
+  <div
+    id="providerEditor"
+  ></div>
 
 
-      <!-- ===============================================
-           PROVIDER EDITOR
-           =============================================== -->
+</section>
 
-      <div
-        id="providerEditor"
-      ></div>
-
-
-    </section>
-
-  </main>
-
-
-  <!-- =====================================================
+  </main>  <!-- =====================================================
        JAVASCRIPT
-       ===================================================== -->
-
-  <!-- AUTH WAJIB DIMUAT TERLEBIH DAHULU -->
-
-  <script src="/js/auth.js"></script>
-
-
-  <!--
+       ===================================================== -->  <!--
+    SUPABASE CLIENT WAJIB DIMUAT
+    SEBELUM auth.js.
+  -->  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <!-- =====================================================
+       AUTH
+       ===================================================== -->  <script src="/js/auth.js"></script>  <!--
     PENTING:
 
     Jangan menggunakan /js/providers.js di halaman ini.
@@ -268,11 +235,4 @@
     providers.js adalah engine provider utama aplikasi.
 
     admin-providers.js adalah CRUD Provider untuk Admin.
-  -->
-
-  <script src="/js/admin-providers.js"></script>
-
-
-</body>
-
-</html>
+  -->  <script src="/js/admin-providers.js"></script></body></html>
