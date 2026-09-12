@@ -50,6 +50,11 @@ import {
   inferAdapter
 } from "./providers/provider-utils.js";
 
+import {
+  parseDataUrl,
+  normalizeDuration
+} from "./utils/validation.js";
+
 
 /*
  * ============================================================
