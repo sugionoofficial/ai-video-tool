@@ -42,6 +42,15 @@ import {
   reserveJob,
   refundJob
 } from "./jobs/jobs.js";
+
+import {
+  canonicalProvider,
+  providerId,
+  adapterInfo,
+  inferAdapter
+} from "./providers/provider-utils.js";
+
+
 /*
  * ============================================================
  * GEN-Z.AI WORKER
@@ -105,152 +114,6 @@ import {
  */
 
 
-/*
- * ============================================================
- * PROVIDER DATABASE
- * ============================================================
- */
-
-async function getProvider(
-  provider,
-  env,
-  requireEnabled = true
-) {
-  const id =
-    canonicalProvider(
-      provider
-    );
-
-  if (!id) {
-    throw new HttpError(
-      "Provider wajib diberikan.",
-      400
-    );
-  }
-
-  const res =
-    await sb(
-      `/rest/v1/providers?id=eq.${encodeURIComponent(
-        id
-      )}&select=id,name,adapter,api_key,enabled,config`,
-      {},
-      env
-    );
-
-  if (
-    !res.ok
-  ) {
-    throw new HttpError(
-      "Gagal mengambil konfigurasi provider.",
-      500
-    );
-  }
-
-  const row =
-    (
-      await res.json()
-    )?.[0];
-
-  if (!row) {
-    throw new HttpError(
-      "Provider tidak ditemukan.",
-      404
-    );
-  }
-
-  if (
-    requireEnabled &&
-    !row.enabled
-  ) {
-    throw new HttpError(
-      "Provider sedang nonaktif.",
-      409
-    );
-  }
-
-  const adapter =
-    resolveAdapter(
-      row
-    );
-
-  if (!adapter) {
-    throw new HttpError(
-      `Adapter provider ${id} belum didukung Worker.`,
-      400
-    );
-  }
-
-  if (
-    !row.api_key
-  ) {
-    throw new HttpError(
-      `API key ${id} belum dikonfigurasi admin.`,
-      400
-    );
-  }
-
-  return row;
-}
-
-async function providerConfigured(
-  provider,
-  env
-) {
-  try {
-    const p =
-      await getProvider(
-        provider,
-        env,
-        false
-      );
-
-    return Boolean(
-      p.api_key &&
-      p.enabled &&
-      adapterSupported(
-        p
-      )
-    );
-  } catch {
-    return false;
-  }
-}
-
-function publicProvider(
-  p
-) {
-  const info =
-    adapterInfo(
-      p.adapter
-    );
-
-  return {
-    id:
-      p.id,
-
-    name:
-      p.name ||
-      info?.name ||
-      p.id,
-
-    adapter:
-      p.adapter,
-
-    enabled:
-      Boolean(
-        p.enabled
-      ),
-
-    configured:
-      Boolean(
-        p.api_key
-      ),
-
-    capabilities:
-      info?.capabilities ||
-      {}
-  };
-}
 
 /*
  * ============================================================
