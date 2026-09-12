@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Affiliate - GEN-Z.AI</title>
+  <style>
+    :root {
+      --bg: #07090d;
+      --panel: #0d1118;
+      --panel-2: #111722;
+      --border: rgba(255,255,255,.09);
+      --text: #f4f7fb;
+      --muted: #8e9aaa;
+      --accent: #8b5cf6;
+      --accent-2: #a78bfa;
+      --success: #22c55e;
+      --warning: #f59e0b;
+    }
+
+```
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top right, rgba(139,92,246,.12), transparent 32%), var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 68px;
+  padding: 12px 22px;
+  background: rgba(7,9,13,.86);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+}
+
+.back {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 20px;
+}
+
+.brand {
+  min-width: 0;
+}
+
+.brand strong {
+  display: block;
+  font-size: 15px;
+}
+
+.brand span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  overflow-x: auto;
+}
+
+.nav a {
+  white-space: nowrap;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.nav a:hover,
+.nav a.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.page {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 42px 0 64px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.hero p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+.status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(34,197,94,.2);
+  border-radius: 999px;
+  background: rgba(34,197,94,.07);
+  color: #86efac;
+  font-size: 12px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.notice {
+  padding: 16px 18px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(245,158,11,.2);
+  border-radius: 16px;
+  background: rgba(245,158,11,.06);
+  color: #fcd34d;
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(17,23,34,.95), rgba(13,17,24,.95));
+  box-shadow: 0 16px 45px rgba(0,0,0,.16);
+}
+
+.metric {
+  padding: 20px;
+}
+
+.metric span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 9px;
+  font-size: 28px;
+}
+
+.section {
+  padding: 22px;
+  margin-top: 18px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.section h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.section-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 11px 12px;
+  background: #090d13;
+  color: var(--text);
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: rgba(139,92,246,.65);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+button {
+  border: 0;
+  border-radius: 11px;
+  padding: 10px 15px;
+  cursor: pointer;
+  color: white;
+  background: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+button.secondary {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+th,
+td {
+  padding: 13px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+td {
+  color: #dce2ea;
+}
+
+.empty {
+  padding: 30px 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 620px) {
+  .topbar {
+    padding: 10px 14px;
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .nav {
+    margin-left: 0;
+  }
+
+  .page {
+    width: min(100% - 20px, 1180px);
+    padding-top: 28px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+```
+
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="back" href="/admin-control.html" aria-label="Kembali ke Admin Control">←</a>
+
+```
+<div class="brand">
+  <strong>GEN-Z.AI</strong>
+  <span>Admin Affiliate</span>
+</div>
+
+<nav class="nav" aria-label="Navigasi admin">
+  <a href="/">|||</a>
+  <a href="/admin.html">Dashboard</a>
+  <a href="/admin-control.html">Admin Control</a>
+  <a href="/admin-affiliate.html" class="active">Affiliate</a>
+</nav>
+```
+
+  </header>
+
+  <main class="page">
+
+```
+<section class="hero">
+  <div>
+    <div class="eyebrow">Admin Control</div>
+
+    <h1>Affiliate</h1>
+
+    <p>
+      Kelola konfigurasi program affiliate dari halaman khusus ini.
+      Halaman ini dipisahkan dari kontrol admin lainnya agar setiap fitur
+      mempunyai halaman dan file sendiri.
+    </p>
+  </div>
+
+  <div class="status">
+    <span class="dot"></span>
+    Admin mode
+  </div>
+</section>
+
+<div class="notice">
+  Backend affiliate belum ditemukan di repository. Karena itu halaman ini
+  hanya menyediakan struktur UI dan konfigurasi dasar tanpa mengarang
+  endpoint API atau menyimpan data palsu.
+</div>
+
+<section class="grid">
+
+  <div class="card metric">
+    <span>Total Affiliate</span>
+    <strong>—</strong>
+  </div>
+
+  <div class="card metric">
+    <span>Affiliate Aktif</span>
+    <strong>—</strong>
+  </div>
+
+  <div class="card metric">
+    <span>Total Referral</span>
+    <strong>—</strong>
+  </div>
+
+  <div class="card metric">
+    <span>Total Komisi</span>
+    <strong>—</strong>
+  </div>
+
+</section>
+
+<section class="card section">
+
+  <div class="section-head">
+    <div>
+      <h2>Program Affiliate</h2>
+      <p>Konfigurasi UI untuk program referral/komisi.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+
+    <div>
+      <label for="programStatus">Status Program</label>
+
+      <select id="programStatus">
+        <option>Aktif</option>
+        <option>Nonaktif</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="commissionType">Tipe Komisi</label>
+
+      <select id="commissionType">
+        <option>Persentase</option>
+        <option>Nominal Tetap</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="commissionValue">Nilai Komisi</label>
+
+      <input
+        id="commissionValue"
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Contoh: 10"
+      >
+    </div>
+
+  </div>
+
+  <div class="actions">
+    <button class="secondary" type="button" disabled>
+      Reset
+    </button>
+
+    <button type="button" disabled>
+      Simpan Pengaturan
+    </button>
+  </div>
+
+</section>
+
+<section class="card section">
+
+  <div class="section-head">
+    <div>
+      <h2>Daftar Affiliate</h2>
+
+      <p>
+        Data akan ditampilkan setelah backend affiliate tersedia.
+      </p>
+    </div>
+
+    <button class="secondary" type="button" disabled>
+      Refresh
+    </button>
+  </div>
+
+  <div class="table-wrap">
+
+    <table>
+      <thead>
+        <tr>
+          <th>Affiliate</th>
+          <th>Referral</th>
+          <th>Komisi</th>
+          <th>Status</th>
+          <th>Dibuat</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td colspan="5" class="empty">
+            Belum ada data affiliate yang terhubung.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+</section>
+```
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="/js/config.js"></script>
+
+  <script src="/js/auth.js"></script>
+
+  <script src="/js/account.js"></script>
+
+  <script>
+    (async function () {
+      try {
+        if (!window.GENZ || !GENZ.auth || !GENZ.account) {
+          return;
+        }
+
+        const session = await GENZ.auth.getSession();
+
+        if (!session) {
+          window.location.href = '/';
+          return;
+        }
+
+        await GENZ.account.refresh();
+
+        const account = GENZ.state && GENZ.state.account;
+
+        if (
+          !account ||
+          account.isAdmin !== true ||
+          account.roleValidated !== true
+        ) {
+          window.location.href = '/';
+        }
+
+      } catch (error) {
+        console.error('Admin Affiliate auth check failed:', error);
+        window.location.href = '/';
+      }
+    })();
+  </script>
+
+</body>
+</html>
