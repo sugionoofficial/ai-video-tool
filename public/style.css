@@ -1004,6 +1004,97 @@ FOOTER
 }
 
 /* =========================================================
+DESKTOP AUTH LAYOUT
+========================================================= */
+
+@media (min-width: 901px) {
+  .auth-page {
+    padding: 48px 40px;
+  }
+
+  .auth-shell {
+    width: min(100%, 560px);
+  }
+
+  .auth-brand {
+    margin-bottom: 18px;
+  }
+
+  .auth-brand-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .auth-brand-mark span {
+    font-size: 22px;
+  }
+
+  .auth-brand-text strong {
+    font-size: 21px;
+  }
+
+  .auth-brand-text small {
+    font-size: 9px;
+  }
+
+  .auth-status {
+    margin-bottom: 26px;
+  }
+
+  .auth-card {
+    padding: 42px;
+    border-radius: 28px;
+  }
+
+  .auth-header {
+    margin-bottom: 32px;
+  }
+
+  .auth-header h1 {
+    font-size: 40px;
+  }
+
+  .auth-header p {
+    max-width: 420px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .form-group {
+    margin-bottom: 21px;
+  }
+
+  .auth-input-wrap input {
+    min-height: 56px;
+    font-size: 14px;
+  }
+
+  .auth-primary-btn {
+    min-height: 56px;
+    font-size: 12px;
+  }
+
+  .auth-secondary-btn {
+    min-height: 54px;
+    font-size: 11px;
+  }
+
+  .auth-divider {
+    margin: 24px 0;
+  }
+
+  .auth-security {
+    margin-top: 23px;
+  }
+
+  .auth-footer {
+    margin-top: 20px;
+    font-size: 9px;
+  }
+}
+
+/* =========================================================
 RESPONSIVE
 ========================================================= */
 
