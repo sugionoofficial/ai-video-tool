@@ -6,6 +6,16 @@ import {
   normalizeProviderId
 } from "./providers/index.js";
 
+import {
+  HttpError,
+  corsHeaders,
+  json,
+  safeJson,
+  requireJsonContentType,
+  readJson,
+  apiError
+} from "./lib/http.js";
+
 /*
  * ============================================================
  * GEN-Z.AI WORKER
