@@ -90,11 +90,18 @@ export async function handleGenerate(
     );
   }
 
+  /*
+   * Generate hanya boleh menggunakan provider aktif.
+   *
+   * Provider yang disabled tetap boleh digunakan
+   * oleh status/video untuk menyelesaikan atau
+   * mengambil job lama.
+   */
   const provider =
     await getProvider(
       id,
       env,
-      true
+      false
     );
 
   const adapter =
