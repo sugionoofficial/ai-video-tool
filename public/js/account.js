@@ -704,7 +704,7 @@
     if (element) {
 
       element.textContent =
-        `${value.toLocaleString("id-ID")} credit`;
+        `${value.toLocaleString("id-ID")}`;
 
     }
 
