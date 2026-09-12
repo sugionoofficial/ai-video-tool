@@ -160,4 +160,1148 @@
     .users-table td {
       padding:14px 12px;
       border-bottom:1px solid rgba(255,255,255,.07);
-      text-a
+      text-align:left;
+      vertical-align:middle;
+    }
+
+    .users-table th {
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      opacity:.55;
+      white-space:nowrap;
+    }
+
+    .users-table td {
+      font-size:13px;
+    }
+
+    .user-email {
+      font-weight:600;
+    }
+
+    .user-id {
+      display:block;
+      margin-top:4px;
+      font-size:10px;
+      opacity:.4;
+      max-width:220px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .user-role {
+      display:inline-flex;
+      align-items:center;
+      min-height:25px;
+      padding:0 9px;
+      border-radius:999px;
+      background:rgba(255,255,255,.07);
+      font-size:11px;
+    }
+
+    .user-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+
+    .user-action {
+      min-height:32px;
+      padding:0 10px;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:8px;
+      background:rgba(255,255,255,.035);
+      color:inherit;
+      cursor:pointer;
+      font-size:11px;
+    }
+
+    .user-action:hover {
+      background:rgba(255,255,255,.08);
+    }
+
+    .user-action.primary {
+      background:rgba(255,255,255,.08);
+    }
+
+    .users-empty {
+      padding:35px 20px;
+      text-align:center;
+      opacity:.55;
+    }
+
+    .user-panel {
+      margin-top:16px;
+    }
+
+    .user-panel-card {
+      padding:20px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .user-panel-header {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:15px;
+      margin-bottom:18px;
+    }
+
+    .user-panel-header h3 {
+      margin:0;
+    }
+
+    .user-panel-header p {
+      margin:5px 0 0;
+      font-size:13px;
+      opacity:.6;
+    }
+
+    .user-panel-close {
+      width:34px;
+      height:34px;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:8px;
+      background:rgba(255,255,255,.04);
+      color:inherit;
+      cursor:pointer;
+    }
+
+    .user-form {
+      display:grid;
+      gap:12px;
+    }
+
+    .user-form label {
+      display:grid;
+      gap:6px;
+      font-size:12px;
+      opacity:.75;
+    }
+
+    .user-form input,
+    .user-form textarea {
+      width:100%;
+      box-sizing:border-box;
+      padding:11px 12px;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:9px;
+      background:rgba(255,255,255,.035);
+      color:inherit;
+      outline:none;
+    }
+
+    .user-form input:focus,
+    .user-form textarea:focus {
+      border-color:rgba(255,255,255,.25);
+    }
+
+    .user-form button {
+      justify-self:start;
+      min-height:40px;
+      padding:0 16px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:9px;
+      background:rgba(255,255,255,.08);
+      color:inherit;
+      cursor:pointer;
+    }
+
+    .panel-status {
+      min-height:20px;
+      margin-top:12px;
+      font-size:13px;
+    }
+
+    .transactions-list {
+      display:grid;
+      gap:8px;
+    }
+
+    .transaction-row {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:15px;
+      padding:13px;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:10px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .transaction-main strong {
+      display:block;
+    }
+
+    .transaction-main small {
+      display:block;
+      margin-top:4px;
+      opacity:.55;
+      font-size:11px;
+    }
+
+    .transaction-balance {
+      text-align:right;
+      font-size:12px;
+      white-space:nowrap;
+      opacity:.7;
+    }
+
+    @media (max-width:760px) {
+      .users-account {
+        display:none;
+      }
+
+      .users-navigation {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .users-navigation a {
+        width:100%;
+      }
+
+      .users-toolbar {
+        align-items:stretch;
+      }
+
+      .users-toolbar {
+        flex-direction:column;
+      }
+
+      .users-refresh {
+        width:100%;
+      }
+
+      .transaction-row {
+        align-items:flex-start;
+        flex-direction:column;
+      }
+
+      .transaction-balance {
+        text-align:left;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+
+<main class="shell users-page">
+
+  <header class="users-header">
+
+```
+<a
+  class="users-back"
+  href="/admin-control.html"
+  aria-label="Kembali ke Admin Control"
+  title="Admin Control"
+>←</a>
+
+<div class="users-title">
+  <h1>Users</h1>
+  <p>Kelola pengguna GEN-Z.AI</p>
+</div>
+
+<div class="users-account">
+  <span id="adminEmail">—</span>
+  <strong>ADMIN</strong>
+</div>
+```
+
+  </header>
+
+  <nav
+    class="users-navigation"
+    aria-label="Navigasi Admin"
+  >
+    <a href="/">|||</a>
+    <a href="/admin.html">Dashboard</a>
+    <a href="/admin-control.html">Admin Control</a>
+    <a
+      href="/admin-users.html"
+      class="active"
+    >Users</a>
+  </nav>
+
+  <div
+    id="usersStatus"
+    class="users-status"
+  >Memuat data...</div>
+
+  <section class="card">
+
+```
+<div class="users-toolbar">
+
+  <div class="users-search">
+    <input
+      id="userSearch"
+      type="search"
+      placeholder="Cari email atau user ID..."
+      autocomplete="off"
+    >
+  </div>
+
+  <button
+    type="button"
+    class="users-refresh"
+    id="refreshUsers"
+  >
+    Refresh
+  </button>
+
+</div>
+
+<div class="users-table-wrap">
+
+  <table class="users-table">
+
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Role</th>
+        <th>Kredit</th>
+        <th>Dibuat</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+
+    <tbody id="usersTableBody"></tbody>
+
+  </table>
+
+</div>
+```
+
+  </section>
+
+  <div
+    id="userPanel"
+    class="user-panel"
+  ></div>
+
+</main>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/account.js"></script>
+
+<script>
+(function () {
+
+  "use strict";
+
+  const state = {
+    users: [],
+    filteredUsers: []
+  };
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function formatNumber(value) {
+    return Number(value || 0).toLocaleString("id-ID");
+  }
+
+  function formatDate(value) {
+
+    if (!value) {
+      return "-";
+    }
+
+    try {
+      return new Date(value).toLocaleString(
+        "id-ID",
+        {
+          dateStyle: "medium",
+          timeStyle: "short"
+        }
+      );
+    } catch (_) {
+      return String(value);
+    }
+  }
+
+  function setStatus(message) {
+
+    const element = $("usersStatus");
+
+    if (element) {
+      element.textContent = message || "";
+    }
+  }
+
+  async function getToken() {
+
+    if (
+      window.GENZ &&
+      GENZ.auth &&
+      typeof GENZ.auth.token === "function"
+    ) {
+      return await GENZ.auth.token();
+    }
+
+    return null;
+  }
+
+  async function api(
+    path,
+    options = {}
+  ) {
+
+    const accessToken =
+      await getToken();
+
+    const headers = {
+      ...(options.headers || {})
+    };
+
+    if (
+      options.body &&
+      !headers["Content-Type"]
+    ) {
+      headers["Content-Type"] =
+        "application/json";
+    }
+
+    if (accessToken) {
+      headers.Authorization =
+        `Bearer ${accessToken}`;
+    }
+
+    const response =
+      await fetch(
+        path,
+        {
+          ...options,
+          headers,
+          credentials:"include"
+        }
+      );
+
+    let data = {};
+
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ||
+        data?.message ||
+        `Request gagal (${response.status})`
+      );
+    }
+
+    return data;
+  }
+
+  async function ensureAdmin() {
+
+    if (
+      !window.GENZ ||
+      !GENZ.auth ||
+      typeof GENZ.auth.getSession !== "function"
+    ) {
+      throw new Error(
+        "Modul autentikasi tidak tersedia."
+      );
+    }
+
+    if (
+      !GENZ.account ||
+      typeof GENZ.account.refresh !== "function"
+    ) {
+      throw new Error(
+        "Modul account tidak tersedia."
+      );
+    }
+
+    GENZ.state =
+      GENZ.state || {
+        loggedIn:false,
+        user:null,
+        account:null
+      };
+
+    const session =
+      await GENZ.auth.getSession();
+
+    if (
+      !session ||
+      !session.user
+    ) {
+      throw new Error(
+        "Silakan login terlebih dahulu."
+      );
+    }
+
+    GENZ.state.loggedIn = true;
+    GENZ.state.user =
+      session.user;
+
+    GENZ.state.account = {
+      ...(GENZ.state.account || {}),
+      isAdmin:false,
+      roleValidated:false
+    };
+
+    await GENZ.account.refresh();
+
+    if (
+      GENZ.state.account?.isAdmin !== true ||
+      GENZ.state.account?.roleValidated !== true
+    ) {
+      throw new Error(
+        "Akses ditolak. Halaman ini hanya untuk administrator."
+      );
+    }
+
+    const email =
+      GENZ.state.user?.email || "Admin";
+
+    $("adminEmail").textContent =
+      email;
+  }
+
+  function renderUsers() {
+
+    const tbody =
+      $("usersTableBody");
+
+    if (!tbody) {
+      return;
+    }
+
+    if (!state.filteredUsers.length) {
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5">
+            <div class="users-empty">
+              Tidak ada user.
+            </div>
+          </td>
+        </tr>
+      `;
+
+      return;
+    }
+
+    tbody.innerHTML =
+      state.filteredUsers.map(
+        user => `
+
+          <tr>
+
+            <td>
+
+              <div class="user-email">
+                ${escapeHtml(user.email || "-")}
+              </div>
+
+              <span class="user-id">
+                ${escapeHtml(user.id || "-")}
+              </span>
+
+            </td>
+
+            <td>
+
+              <span class="user-role">
+                ${escapeHtml(user.role || "user")}
+              </span>
+
+            </td>
+
+            <td>
+              ${formatNumber(user.credits)}
+            </td>
+
+            <td>
+              ${formatDate(user.created_at)}
+            </td>
+
+            <td>
+
+              <div class="user-actions">
+
+                <button
+                  type="button"
+                  class="user-action primary"
+                  data-user-action="credit"
+                  data-user-id="${escapeHtml(user.id)}"
+                >
+                  Kredit
+                </button>
+
+                <button
+                  type="button"
+                  class="user-action"
+                  data-user-action="transactions"
+                  data-user-id="${escapeHtml(user.id)}"
+                >
+                  Riwayat
+                </button>
+
+              </div>
+
+            </td>
+
+          </tr>
+
+        `
+      ).join("");
+
+    tbody
+      .querySelectorAll("[data-user-action]")
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const userId =
+              button.dataset.userId;
+
+            const action =
+              button.dataset.userAction;
+
+            if (action === "credit") {
+              showCreditPanel(userId);
+            }
+
+            if (action === "transactions") {
+              showTransactions(userId);
+            }
+
+          }
+        );
+
+      });
+  }
+
+  function applySearch() {
+
+    const query =
+      String(
+        $("userSearch")?.value || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    if (!query) {
+
+      state.filteredUsers =
+        [...state.users];
+
+    } else {
+
+      state.filteredUsers =
+        state.users.filter(
+          user => {
+
+            const email =
+              String(
+                user.email || ""
+              ).toLowerCase();
+
+            const id =
+              String(
+                user.id || ""
+              ).toLowerCase();
+
+            return (
+              email.includes(query) ||
+              id.includes(query)
+            );
+          }
+        );
+    }
+
+    renderUsers();
+  }
+
+  async function loadUsers() {
+
+    try {
+
+      setStatus(
+        "Memuat data users..."
+      );
+
+      const response =
+        await api(
+          "/api/admin/users"
+        );
+
+      state.users =
+        Array.isArray(response.users)
+          ? response.users
+          : [];
+
+      state.filteredUsers =
+        [...state.users];
+
+      renderUsers();
+
+      setStatus(
+        `${formatNumber(state.users.length)} user`
+      );
+
+    } catch (error) {
+
+      console.error(
+        "[GEN-Z.AI] Admin users error:",
+        error
+      );
+
+      setStatus(
+        error?.message ||
+        "Gagal memuat users."
+      );
+
+      $("usersTableBody").innerHTML = `
+        <tr>
+          <td colspan="5">
+            <div class="users-empty">
+              ${escapeHtml(
+                error?.message ||
+                "Gagal memuat users."
+              )}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  function findUser(userId) {
+
+    return state.users.find(
+      user =>
+        String(user.id) ===
+        String(userId)
+    );
+  }
+
+  function clearPanel() {
+
+    $("userPanel").innerHTML = "";
+  }
+
+  function showCreditPanel(userId) {
+
+    const user =
+      findUser(userId);
+
+    const panel =
+      $("userPanel");
+
+    if (!panel) {
+      return;
+    }
+
+    panel.innerHTML = `
+
+      <section class="user-panel-card">
+
+        <div class="user-panel-header">
+
+          <div>
+
+            <h3>Penyesuaian Kredit</h3>
+
+            <p>
+              ${escapeHtml(
+                user?.email ||
+                userId
+              )}
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            class="user-panel-close"
+            id="closeUserPanel"
+          >×</button>
+
+        </div>
+
+        <form
+          class="user-form"
+          id="creditAdjustForm"
+        >
+
+          <input
+            type="hidden"
+            id="creditUserId"
+            value="${escapeHtml(userId)}"
+          >
+
+          <label>
+
+            Jumlah Kredit
+
+            <input
+              id="creditAmount"
+              type="number"
+              step="1"
+              placeholder="Contoh: 100 atau -100"
+              required
+            >
+
+          </label>
+
+          <label>
+
+            Catatan
+
+            <textarea
+              id="creditNote"
+              rows="3"
+              placeholder="Alasan penyesuaian kredit"
+            ></textarea>
+
+```
+      </label>
+
+      <button type="submit">
+        Simpan Kredit
+      </button>
+
+    </form>
+
+    <div
+      id="panelStatus"
+      class="panel-status"
+    ></div>
+
+  </section>
+
+`;
+
+$("closeUserPanel")
+  ?.addEventListener(
+    "click",
+    clearPanel
+  );
+
+$("creditAdjustForm")
+  ?.addEventListener(
+    "submit",
+    async event => {
+
+      event.preventDefault();
+
+      const amount =
+        Number(
+          $("creditAmount")?.value
+        );
+
+      const note =
+        $("creditNote")?.value.trim() ||
+        "Admin adjustment";
+
+      const status =
+        $("panelStatus");
+
+      if (
+        !Number.isInteger(amount) ||
+        amount === 0
+      ) {
+
+        if (status) {
+          status.textContent =
+            "Jumlah kredit harus integer dan bukan 0.";
+        }
+
+        return;
+      }
+
+      try {
+
+        if (status) {
+          status.textContent =
+            "Menyimpan...";
+        }
+
+        await api(
+          "/api/admin/credits/adjust",
+          {
+            method:"POST",
+            body:JSON.stringify({
+              user_id:userId,
+              amount,
+              note
+            })
+          }
+        );
+
+        if (status) {
+          status.textContent =
+            "Kredit berhasil diperbarui.";
+        }
+
+        await loadUsers();
+
+        setTimeout(
+          clearPanel,
+          700
+        );
+
+      } catch (error) {
+
+        if (status) {
+          status.textContent =
+            error?.message ||
+            "Gagal memperbarui kredit.";
+        }
+      }
+    }
+  );
+
+panel.scrollIntoView({
+  behavior:"smooth",
+  block:"start"
+});
+```
+
+}
+
+async function showTransactions(userId) {
+
+```
+const user =
+  findUser(userId);
+
+const panel =
+  $("userPanel");
+
+if (!panel) {
+  return;
+}
+
+panel.innerHTML = `
+
+  <section class="user-panel-card">
+
+    <div class="user-panel-header">
+
+      <div>
+
+        <h3>Riwayat Kredit</h3>
+
+        <p>
+          ${escapeHtml(
+            user?.email ||
+            userId
+          )}
+        </p>
+
+      </div>
+
+      <button
+        type="button"
+        class="user-panel-close"
+        id="closeUserPanel"
+      >×</button>
+
+    </div>
+
+    <div class="transactions-list">
+      Memuat riwayat...
+    </div>
+
+  </section>
+
+`;
+
+$("closeUserPanel")
+  ?.addEventListener(
+    "click",
+    clearPanel
+  );
+
+try {
+
+  const response =
+    await api(
+      `/api/admin/transactions?user_id=${encodeURIComponent(userId)}`
+    );
+
+  const transactions =
+    Array.isArray(
+      response.transactions
+    )
+      ? response.transactions
+      : [];
+
+  const list =
+    panel.querySelector(
+      ".transactions-list"
+    );
+
+  if (!list) {
+    return;
+  }
+
+  if (!transactions.length) {
+
+    list.innerHTML = `
+      <div class="users-empty">
+        Belum ada transaksi.
+      </div>
+    `;
+
+  } else {
+
+    list.innerHTML =
+      transactions.map(
+        transaction => `
+
+          <div class="transaction-row">
+
+            <div class="transaction-main">
+
+              <strong>
+                ${formatNumber(
+                  transaction.amount
+                )}
+              </strong>
+
+              <small>
+                ${escapeHtml(
+                  transaction.type || "-"
+                )}
+                ·
+                ${formatDate(
+                  transaction.created_at
+                )}
+              </small>
+
+            </div>
+
+            <div class="transaction-balance">
+              Saldo:
+              ${formatNumber(
+                transaction.balance_after
+              )}
+            </div>
+
+          </div>
+
+        `
+      ).join("");
+  }
+
+} catch (error) {
+
+  const list =
+    panel.querySelector(
+      ".transactions-list"
+    );
+
+  if (list) {
+
+    list.innerHTML = `
+      <div class="users-empty">
+        ${escapeHtml(
+          error?.message ||
+          "Gagal memuat transaksi."
+        )}
+      </div>
+    `;
+  }
+}
+
+panel.scrollIntoView({
+  behavior:"smooth",
+  block:"start"
+});
+```
+
+}
+
+async function init() {
+
+```
+try {
+
+  await ensureAdmin();
+
+  await loadUsers();
+
+} catch (error) {
+
+  console.error(
+    "[GEN-Z.AI] Admin users bootstrap error:",
+    error
+  );
+
+  setStatus(
+    error?.message ||
+    "Akses ditolak."
+  );
+
+  $("usersTableBody").innerHTML = `
+    <tr>
+      <td colspan="5">
+        <div class="users-empty">
+          ${escapeHtml(
+            error?.message ||
+            "Akses ditolak."
+          )}
+        </div>
+      </td>
+    </tr>
+  `;
+}
+```
+
+}
+
+$("refreshUsers")
+?.addEventListener(
+"click",
+loadUsers
+);
+
+$("userSearch")
+?.addEventListener(
+"input",
+applySearch
+);
+
+init();
+
+})(); </script>
+
+</body>
+</html>
