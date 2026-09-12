@@ -203,3 +203,26 @@ export async function topupApi(
     405
   );
 }
+
+async function rows(
+  path,
+  env
+) {
+  const res =
+    await sb(
+      path,
+      {},
+      env
+    );
+
+  if (
+    !res.ok
+  ) {
+    throw new HttpError(
+      "Gagal mengambil data.",
+      500
+    );
+  }
+
+  return await res.json();
+}
