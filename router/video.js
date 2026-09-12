@@ -128,7 +128,7 @@ export async function handleVideo(
     await getProvider(
       id,
       env,
-      false
+      true
     );
 
   const adapter =
