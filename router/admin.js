@@ -703,7 +703,7 @@ export async function adminApi(
       await getProvider(
         id,
         env,
-        false
+        true
       );
 
     const enableHeader =
