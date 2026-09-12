@@ -99,7 +99,7 @@ export async function handleStatus(
     await getProvider(
       id,
       env,
-      false
+      true
     );
 
   const adapter =
