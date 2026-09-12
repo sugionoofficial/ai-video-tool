@@ -20,6 +20,11 @@ import {
   sbHeaders,
   sb
 } from "./lib/supabase.js";
+
+import {
+  currentUser,
+  requireUser
+} from "./auth/auth.js";
 /*
  * ============================================================
  * GEN-Z.AI WORKER
