@@ -4582,6 +4582,25 @@ export default {
       }
 
       /*
+ * ------------------------------------------------------
+ * DASHBOARD REFERENCES
+ * ------------------------------------------------------
+ */
+
+if (
+  url.pathname ===
+    "/api/dashboard/references" &&
+  request.method ===
+    "GET"
+) {
+  return await dashboardReferencesApi(
+    request,
+    env
+  );
+}
+      
+
+      /*
        * ------------------------------------------------------
        * ACCOUNT
        * ------------------------------------------------------
