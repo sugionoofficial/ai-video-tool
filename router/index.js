@@ -48,11 +48,13 @@ import {
   publicProvider
 } from "../providers/provider-service.js";
 
+
 export async function router(
   request,
   env,
   ctx
 ) {
+
   if (
     request.method ===
     "OPTIONS"
@@ -71,17 +73,18 @@ export async function router(
     );
   }
 
+
   const url =
     new URL(
       request.url
     );
 
+
   try {
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * CONFIG
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -89,6 +92,7 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       return json(
         {
           success:
@@ -107,11 +111,13 @@ export async function router(
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * DIAGNOSTIC
-     * --------------------------------------------------------
-     */
+     *
+     * PENTING:
+     * Jangan pernah mengirim api_key mentah ke client.
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -119,6 +125,7 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       const res =
         await sb(
           "/rest/v1/providers?select=id,name,adapter,enabled,api_key",
@@ -126,10 +133,12 @@ export async function router(
           env
         );
 
+
       const providers =
         res.ok
           ? await res.json()
           : [];
+
 
       return json(
         {
@@ -147,33 +156,48 @@ export async function router(
 
           providers:
             providers.map(
-              provider => ({
-                id:
-                  provider.id,
+              provider => {
 
-                name:
-                  provider.name,
-
-                adapter:
-                  provider.adapter,
-
-                enabled:
-                  Boolean(
-                    provider.enabled
-                  ),
-
-                configured:
-                  Boolean(
-                    provider.api_key
-                  ),
-
-                adapterSupported:
+                const supported =
                   Boolean(
                     adapterInfo(
                       provider.adapter
                     )
-                  )
-              })
+                  );
+
+
+                return {
+                  id:
+                    provider.id,
+
+                  name:
+                    provider.name,
+
+                  adapter:
+                    provider.adapter,
+
+                  enabled:
+                    Boolean(
+                      provider.enabled
+                    ),
+
+                  /*
+                   * Hanya status boolean.
+                   * API key TIDAK pernah dikirim.
+                   */
+
+                  configured:
+                    Boolean(
+                      String(
+                        provider.api_key ||
+                        ""
+                      ).trim()
+                    ),
+
+                  adapterSupported:
+                    supported
+                };
+              }
             ),
 
           timestamp:
@@ -185,11 +209,10 @@ export async function router(
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * PUBLIC PROVIDERS
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -197,12 +220,14 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       const res =
         await sb(
           "/rest/v1/providers?enabled=eq.true&select=id,name,adapter,enabled,api_key&order=name.asc",
           {},
           env
         );
+
 
       if (
         !res.ok
@@ -213,8 +238,57 @@ export async function router(
         );
       }
 
+
       const providers =
         await res.json();
+
+
+      /*
+       * Provider hanya ditampilkan ke generator
+       * jika:
+       *
+       * 1. aktif
+       * 2. API key tersedia
+       * 3. adapter sudah terdaftar
+       *
+       * Provider dengan adapter baru yang belum
+       * di-deploy tetap aman tersimpan di database,
+       * tetapi tidak akan muncul sebagai pilihan
+       * generator sampai adapter tersebut tersedia.
+       */
+
+      const availableProviders =
+        providers
+          .filter(
+            provider => {
+
+              const hasApiKey =
+                Boolean(
+                  String(
+                    provider.api_key ||
+                    ""
+                  ).trim()
+                );
+
+
+              const hasAdapter =
+                Boolean(
+                  adapterInfo(
+                    provider.adapter
+                  )
+                );
+
+
+              return (
+                hasApiKey &&
+                hasAdapter
+              );
+            }
+          )
+          .map(
+            publicProvider
+          );
+
 
       return json(
         {
@@ -222,45 +296,34 @@ export async function router(
             true,
 
           providers:
-            providers
-              .filter(
-                provider =>
-                  provider.api_key &&
-                  adapterInfo(
-                    provider.adapter
-                  )
-              )
-              .map(
-                publicProvider
-              )
+            availableProviders
         },
         200,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * ADMIN
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname.startsWith(
         "/api/admin/"
       )
     ) {
+
       return await adminApi(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * DASHBOARD REFERENCES
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -268,17 +331,17 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       return await dashboardReferencesApi(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * ACCOUNT
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -286,17 +349,17 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       return await accountApi(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * TRANSACTIONS
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -304,33 +367,33 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       return await transactionApi(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * TOPUP
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
       "/api/account/topup-requests"
     ) {
+
       return await topupApi(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * GENERATE
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -338,6 +401,7 @@ export async function router(
       request.method ===
         "POST"
     ) {
+
       const contentLength =
         Number(
           request.headers.get(
@@ -345,15 +409,18 @@ export async function router(
           ) || 0
         );
 
+
       if (
         contentLength >
         65536
       ) {
+
         throw new HttpError(
           "Request generation terlalu besar.",
           413
         );
       }
+
 
       return await handleGenerate(
         request,
@@ -361,11 +428,10 @@ export async function router(
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * GENERATE STATUS
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -373,17 +439,17 @@ export async function router(
       request.method ===
         "POST"
     ) {
+
       return await handleStatus(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * VIDEO
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       url.pathname ===
@@ -391,53 +457,59 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
       return await handleVideo(
         request,
         env
       );
     }
 
-    /*
-     * --------------------------------------------------------
+
+    /* ========================================================
      * STATIC ASSETS
-     * --------------------------------------------------------
-     */
+     * ======================================================== */
 
     if (
       env.ASSETS
     ) {
+
       return await env.ASSETS.fetch(
         request
       );
     }
 
+
     throw new HttpError(
       "Route tidak ditemukan.",
       404
     );
+
   } catch (
     err
   ) {
+
     console.error(
       "request failed",
       Number(
         err?.status ||
-          500
+        500
       ),
       String(
         err?.message ||
-          "unknown"
+        "unknown"
       ).slice(
         0,
         300
       )
     );
 
+
     const status =
       Number(
         err?.status ||
-          500
+        500
       );
+
 
     const message =
       status >= 500
@@ -446,6 +518,7 @@ export async function router(
             err?.message ||
             "Request error."
           );
+
 
     return json(
       {
