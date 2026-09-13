@@ -6,9 +6,29 @@ import {
   HttpError
 } from "../lib/http.js";
 
+import {
+  getAdapterInfo
+} from "../public/js/providers/index.js";
+
+
 /*
  * ============================================================
  * PROVIDER SERVICE
+ * ============================================================
+ *
+ * Service untuk membaca konfigurasi provider dari database.
+ *
+ * API key dan config internal TIDAK pernah dikirim ke frontend.
+ *
+ * Capability provider berasal dari adapter masing-masing,
+ * bukan hard-coded di frontend.
+ * ============================================================
+ */
+
+
+/*
+ * ============================================================
+ * GET PROVIDER
  * ============================================================
  */
 
@@ -82,14 +102,25 @@ export async function getProvider(
   return provider;
 }
 
+
 /*
  * ============================================================
  * PUBLIC PROVIDER
  * ============================================================
  *
- * Jangan expose provider.config mentah.
- * Config internal dapat berisi credential atau secret
- * tambahan di masa depan.
+ * Data yang aman dikirim ke frontend.
+ *
+ * JANGAN expose:
+ * - api_key
+ * - config mentah
+ * - credential
+ * - secret
+ * - token
+ *
+ * Capability diambil dari adapter registry.
+ * Dengan demikian frontend tidak perlu mengetahui
+ * aturan khusus masing-masing provider.
+ * ============================================================
  */
 
 export function publicProvider(
@@ -98,6 +129,78 @@ export function publicProvider(
   if (!provider) {
     return null;
   }
+
+  const adapterId =
+    String(
+      provider.adapter || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  /*
+   * Ambil metadata adapter.
+   *
+   * Jika adapter belum tersedia, registry akan
+   * mengembalikan supported:false dan capabilities:{}.
+   */
+  const adapterInfo =
+    getAdapterInfo(
+      adapterId
+    );
+
+  const capabilities =
+    adapterInfo?.capabilities &&
+    typeof adapterInfo.capabilities === "object"
+      ? adapterInfo.capabilities
+      : {};
+
+  /*
+   * Pastikan struktur capability selalu aman
+   * untuk dipakai frontend.
+   */
+  const models =
+    Array.isArray(
+      adapterInfo?.models
+    )
+      ? adapterInfo.models
+      : Array.isArray(
+          capabilities.models
+        )
+        ? capabilities.models
+        : [];
+
+  const durations =
+    Array.isArray(
+      adapterInfo?.durations
+    )
+      ? adapterInfo.durations
+      : Array.isArray(
+          capabilities.durations
+        )
+        ? capabilities.durations
+        : [];
+
+  const aspects =
+    Array.isArray(
+      adapterInfo?.aspects
+    )
+      ? adapterInfo.aspects
+      : Array.isArray(
+          capabilities.aspects
+        )
+        ? capabilities.aspects
+        : [];
+
+  const resolutions =
+    Array.isArray(
+      adapterInfo?.resolutions
+    )
+      ? adapterInfo.resolutions
+      : Array.isArray(
+          capabilities.resolutions
+        )
+        ? capabilities.resolutions
+        : [];
 
   return {
     id:
@@ -125,6 +228,36 @@ export function publicProvider(
     api_key_masked:
       provider.api_key
         ? "••••••••"
-        : ""
+        : "",
+
+    /*
+     * Metadata adapter.
+     */
+    adapterName:
+      adapterInfo?.name ||
+      adapterId,
+
+    adapterSupported:
+      Boolean(
+        adapterInfo?.supported
+      ),
+
+    /*
+     * Capability utama.
+     *
+     * Frontend membaca data ini secara dinamis.
+     * Tidak ada daftar provider yang di-hard-code.
+     */
+    capabilities: {
+      ...capabilities,
+
+      models,
+
+      durations,
+
+      aspects,
+
+      resolutions
+    }
   };
 }
