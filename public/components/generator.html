@@ -7,12 +7,14 @@
     </div>
 
     <div class="generator-form">
+
       <div class="form-group">
         <label for="provider">PROVIDER</label>
         <select id="provider">
           <option value="">Pilih provider</option>
         </select>
       </div>
+
 
       <div class="form-group">
         <label for="model">MODEL</label>
@@ -21,58 +23,274 @@
         </select>
       </div>
 
-      <div class="reference-group">
-        <label>Reference Image</label>
-        <div class="reference-row">
-          <div id="imagePreview" class="image-preview hidden"></div>
 
-          <label class="image-add-tile" for="image" aria-label="Tambah reference image">
+      <!-- =====================================================
+           REFERENCE IMAGE
+      ====================================================== -->
+
+      <div
+        id="imageReferenceGroup"
+        class="reference-group"
+      >
+
+        <label>
+          Reference Image
+        </label>
+
+        <div
+          id="imageReferenceHint"
+          class="reference-limit-hint"
+          aria-live="polite"
+        >
+          Pilih model terlebih dahulu.
+        </div>
+
+
+        <div
+          id="imageReferenceRow"
+          class="reference-row"
+        >
+
+          <div
+            id="imagePreview"
+            class="image-preview hidden"
+          ></div>
+
+
+          <label
+            id="imageAddTile"
+            class="image-add-tile"
+            for="image"
+            aria-label="Tambah reference image"
+          >
             <span>+</span>
           </label>
+
         </div>
 
-        <input id="image" class="image-file-input" type="file"
-               accept="image/png,image/jpeg,image/webp">
 
-        <div id="imageFileStatus" class="image-file-status" aria-live="polite">
+        <input
+          id="image"
+          class="image-file-input"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+        >
+
+
+        <div
+          id="imageFileStatus"
+          class="image-file-status"
+          aria-live="polite"
+        >
           Tidak ada file dipilih
         </div>
+
       </div>
+
+
+      <!-- =====================================================
+           REFERENCE VIDEO
+      ====================================================== -->
+
+      <div
+        id="videoReferenceGroup"
+        class="reference-group hidden"
+        style="display:none;"
+      >
+
+        <label>
+          Reference Video
+        </label>
+
+
+        <div
+          id="videoReferenceHint"
+          class="reference-limit-hint"
+          aria-live="polite"
+        >
+          Model ini tidak menggunakan video reference.
+        </div>
+
+
+        <div
+          id="videoReferenceRow"
+          class="reference-row"
+        >
+
+          <div
+            id="videoPreview"
+            class="image-preview video-reference-preview hidden"
+          >
+
+            <video
+              id="referenceVideoPreview"
+              controls
+              muted
+              playsinline
+              preload="metadata"
+              style="
+                width:100%;
+                height:100%;
+                object-fit:cover;
+                display:block;
+                border-radius:inherit;
+              "
+            ></video>
+
+          </div>
+
+
+          <label
+            id="videoAddTile"
+            class="image-add-tile"
+            for="referenceVideo"
+            aria-label="Tambah reference video"
+          >
+            <span>+</span>
+          </label>
+
+        </div>
+
+
+        <input
+          id="referenceVideo"
+          class="image-file-input"
+          type="file"
+          accept="video/mp4,video/quicktime,video/webm"
+        >
+
+
+        <div
+          id="videoFileStatus"
+          class="image-file-status"
+          aria-live="polite"
+        >
+          Tidak ada video dipilih
+        </div>
+
+      </div>
+
+
+      <!-- =====================================================
+           PROMPT
+      ====================================================== -->
 
       <div class="form-group prompt-group">
-        <label for="prompt">Video Prompt</label>
-        <textarea id="prompt" rows="4" placeholder="Enter you want"></textarea>
+
+        <label for="prompt">
+          Video Prompt
+        </label>
+
+        <textarea
+          id="prompt"
+          rows="4"
+          placeholder="Enter you want"
+        ></textarea>
+
       </div>
+
+
+      <!-- =====================================================
+           SETTINGS
+      ====================================================== -->
 
       <div class="settings-grid">
-        <div class="setting-field">
-          <label for="ratio">Ratio</label>
-          <select id="ratio"><option value="">Pilih</option></select>
-        </div>
 
         <div class="setting-field">
-          <label for="duration">Duration</label>
-          <select id="duration"><option value="">Pilih</option></select>
+
+          <label for="ratio">
+            Ratio
+          </label>
+
+          <select id="ratio">
+            <option value="">
+              Pilih
+            </option>
+          </select>
+
         </div>
+
+
+        <div class="setting-field">
+
+          <label for="duration">
+            Duration
+          </label>
+
+          <select id="duration">
+            <option value="">
+              Pilih
+            </option>
+          </select>
+
+        </div>
+
       </div>
+
 
       <div class="setting-field resolution-field">
-        <label for="resolution">Resolution</label>
-        <select id="resolution"><option value="">Pilih</option></select>
+
+        <label for="resolution">
+          Resolution
+        </label>
+
+        <select id="resolution">
+          <option value="">
+            Pilih
+          </option>
+        </select>
+
       </div>
 
-      <button id="generateVideo" type="button" class="generate-btn">
+
+      <!-- =====================================================
+           GENERATE
+      ====================================================== -->
+
+      <button
+        id="generateVideo"
+        type="button"
+        class="generate-btn"
+      >
         Generate Video
       </button>
 
-      <div id="status" class="generator-status" aria-live="polite"></div>
+
+      <div
+        id="status"
+        class="generator-status"
+        aria-live="polite"
+      ></div>
+
     </div>
 
-    <section id="videoResult" class="video-result hidden">
-      <video id="video" controls playsinline></video>
-      <a id="downloadVideo" class="download-btn" href="#" download="gen-z-ai-video.mp4">
+
+    <!-- =======================================================
+         RESULT
+    ======================================================== -->
+
+    <section
+      id="videoResult"
+      class="video-result hidden"
+    >
+
+      <video
+        id="video"
+        controls
+        playsinline
+      ></video>
+
+
+      <a
+        id="downloadVideo"
+        class="download-btn"
+        href="#"
+        download="gen-z-ai-video.mp4"
+      >
         Download Video
       </a>
+
     </section>
+
   </div>
 </section>
