@@ -19,7 +19,8 @@
    Semua aturan kombinasi berasal dari:
    provider.capabilities.constraints
 
-   Tidak ada aturan provider-specific di UI.
+   Sinkronisasi UI bersifat realtime.
+   Tidak membutuhkan refresh halaman.
    ========================================================= */
 
 (function () {
@@ -77,8 +78,7 @@
       )
       .replace(
         /^[-_]+|[-_]+$/g,
-        ''
-      );
+        '');
 
   }
 
@@ -97,9 +97,50 @@
     return [
       ...new Set(
         cloneArray(value)
-          .map(item => String(item))
+          .map(
+            item => String(item)
+          )
       )
     ];
+
+  }
+
+
+  function scheduleRefresh(
+    changedField = ''
+  ) {
+
+    refreshCurrentOptions(
+      changedField
+    );
+
+    if (
+      typeof queueMicrotask ===
+      'function'
+    ) {
+
+      queueMicrotask(
+        () => {
+
+          refreshCurrentOptions(
+            changedField
+          );
+
+        }
+      );
+
+    }
+
+    setTimeout(
+      () => {
+
+        refreshCurrentOptions(
+          changedField
+        );
+
+      },
+      0
+    );
 
   }
 
@@ -108,16 +149,24 @@
      CAPABILITY SOURCE
   ======================================================= */
 
-  function normalizeCapabilities(provider) {
+  function normalizeCapabilities(
+    provider
+  ) {
 
     if (!provider) {
 
       return {
+
         models: [],
+
         durations: [],
+
         aspects: [],
+
         resolutions: [],
+
         constraints: {}
+
       };
 
     }
@@ -125,13 +174,15 @@
 
     const source =
       provider.capabilities &&
-      typeof provider.capabilities === 'object'
+      typeof provider.capabilities ===
+      'object'
 
         ? provider.capabilities
 
         : (
             provider.config?.capabilities &&
-            typeof provider.config.capabilities === 'object'
+            typeof provider.config.capabilities ===
+            'object'
 
               ? provider.config.capabilities
 
@@ -140,56 +191,81 @@
 
 
     const models =
-      Array.isArray(source.models)
+      Array.isArray(
+        source.models
+      )
+
         ? source.models
+
         : (
-            Array.isArray(provider.models)
+            Array.isArray(
+              provider.models
+            )
+
               ? provider.models
+
               : []
           );
 
 
     const durations =
-      Array.isArray(source.durations)
+      Array.isArray(
+        source.durations
+      )
+
         ? source.durations
+
         : (
-            Array.isArray(provider.durations)
+            Array.isArray(
+              provider.durations
+            )
+
               ? provider.durations
+
               : []
           );
 
 
     const aspects =
-      Array.isArray(source.aspects)
+      Array.isArray(
+        source.aspects
+      )
+
         ? source.aspects
+
         : (
-            Array.isArray(provider.aspects)
+            Array.isArray(
+              provider.aspects
+            )
+
               ? provider.aspects
+
               : []
           );
 
 
     const resolutions =
-      Array.isArray(source.resolutions)
+      Array.isArray(
+        source.resolutions
+      )
+
         ? source.resolutions
+
         : (
-            Array.isArray(provider.resolutions)
+            Array.isArray(
+              provider.resolutions
+            )
+
               ? provider.resolutions
+
               : []
           );
 
 
-    /*
-     * PENTING:
-     *
-     * constraints sebelumnya hilang di sini.
-     *
-     * Sekarang constraints diteruskan utuh.
-     */
-
     const constraints =
       source.constraints &&
-      typeof source.constraints === 'object'
+      typeof source.constraints ===
+      'object'
 
         ? source.constraints
 
@@ -199,20 +275,39 @@
     return {
 
       models:
-        cloneArray(models),
+        cloneArray(
+          models
+        ),
 
       durations:
-        cloneArray(durations),
+        cloneArray(
+          durations
+        ),
 
       aspects:
-        cloneArray(aspects),
+        cloneArray(
+          aspects
+        ),
 
       resolutions:
-        cloneArray(resolutions),
+        cloneArray(
+          resolutions
+        ),
 
       constraints
 
     };
+
+  }
+
+
+  function getEffectiveCapabilities(
+    provider
+  ) {
+
+    return normalizeCapabilities(
+      provider
+    );
 
   }
 
@@ -264,19 +359,6 @@
 
 
   /* =======================================================
-     EFFECTIVE CAPABILITIES
-  ======================================================= */
-
-  function getEffectiveCapabilities(provider) {
-
-    return normalizeCapabilities(
-      provider
-    );
-
-  }
-
-
-  /* =======================================================
      MODEL RULES
   ======================================================= */
 
@@ -302,10 +384,6 @@
 
   }
 
-
-  /* =======================================================
-     MODEL IMAGE SUPPORT
-  ======================================================= */
 
   function modelSupportsImage(
     provider,
@@ -420,7 +498,10 @@
       Object.keys(
         modeRules
       )
-        .map(value => Number(value))
+        .map(
+          value =>
+            Number(value)
+        )
         .filter(
           value =>
             Number.isFinite(value)
@@ -478,7 +559,11 @@
       modeRules[key];
 
 
-    if (!Array.isArray(allowed)) {
+    if (
+      !Array.isArray(
+        allowed
+      )
+    ) {
 
       return [];
 
@@ -487,150 +572,6 @@
 
     return uniqueArray(
       allowed
-    );
-
-  }
-
-
-  /* =======================================================
-     VALID MODEL
-  ======================================================= */
-
-  function ensureValidModel(
-    provider
-  ) {
-
-    const model =
-      $('model');
-
-
-    if (!model) {
-
-      return '';
-
-    }
-
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const allowed =
-      capabilities.models.map(
-        value =>
-          String(value)
-      );
-
-
-    if (!allowed.length) {
-
-      model.value =
-        '';
-
-      return '';
-
-    }
-
-
-    const current =
-      text(
-        model.value
-      );
-
-
-    if (
-      allowed.includes(
-        current
-      )
-    ) {
-
-      return current;
-
-    }
-
-
-    model.value =
-      allowed[0];
-
-
-    return allowed[0];
-
-  }
-
-
-  /* =======================================================
-     VALID ASPECT
-  ======================================================= */
-
-  function ensureValidAspect(
-    provider
-  ) {
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const allowed =
-      capabilities.aspects.map(
-        value =>
-          String(value)
-      );
-
-
-    const fields = [
-
-      $('ratio'),
-
-      $('aspect')
-
-    ];
-
-
-    fields.forEach(
-      element => {
-
-        if (!element) {
-
-          return;
-
-        }
-
-
-        if (!allowed.length) {
-
-          element.value =
-            '';
-
-          return;
-
-        }
-
-
-        const current =
-          text(
-            element.value
-          );
-
-
-        if (
-          allowed.includes(
-            current
-          )
-        ) {
-
-          return;
-
-        }
-
-
-        element.value =
-          allowed[0];
-
-      }
     );
 
   }
@@ -776,6 +717,140 @@
 
 
   /* =======================================================
+     VALID MODEL
+  ======================================================= */
+
+  function ensureValidModel(
+    provider
+  ) {
+
+    const model =
+      $('model');
+
+
+    if (!model) {
+
+      return '';
+
+    }
+
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      capabilities.models.map(
+        value =>
+          String(value)
+      );
+
+
+    if (!allowed.length) {
+
+      model.value =
+        '';
+
+      return '';
+
+    }
+
+
+    const current =
+      text(
+        model.value
+      );
+
+
+    if (
+      allowed.includes(
+        current
+      )
+    ) {
+
+      return current;
+
+    }
+
+
+    model.value =
+      allowed[0];
+
+
+    return allowed[0];
+
+  }
+
+
+  /* =======================================================
+     VALID ASPECT
+  ======================================================= */
+
+  function ensureValidAspect(
+    provider
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      capabilities.aspects.map(
+        value =>
+          String(value)
+      );
+
+
+    [
+      $('ratio'),
+      $('aspect')
+    ].forEach(
+      element => {
+
+        if (!element) {
+
+          return;
+
+        }
+
+
+        if (!allowed.length) {
+
+          element.value =
+            '';
+
+          return;
+
+        }
+
+
+        if (
+          allowed.includes(
+            text(
+              element.value
+            )
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        element.value =
+          allowed[0];
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
      UPDATE IMAGE AVAILABILITY
   ======================================================= */
 
@@ -823,12 +898,6 @@
 
     if (!supported) {
 
-      /*
-       * Model yang tidak mendukung
-       * reference image tidak boleh
-       * membawa image lama.
-       */
-
       if (
         GENZ.state
       ) {
@@ -855,144 +924,12 @@
           '';
 
       } catch {
+
         /* ignore */
-      }
-
-    }
-
-  }
-
-
-  /* =======================================================
-     UPDATE GENERATE BUTTON
-  ======================================================= */
-
-  function updateGenerateButton(
-    provider
-  ) {
-
-    const button =
-      $('generateVideo') ||
-      $('generateBtn');
-
-
-    if (!button) {
-
-      return;
-
-    }
-
-
-    if (!provider) {
-
-      button.textContent =
-        'Generate Video';
-
-      button.disabled =
-        true;
-
-      return;
-
-    }
-
-
-    button.textContent =
-      `Generate Video • ${
-        provider.name ||
-        provider.id ||
-        'Provider'
-      }`;
-
-
-    button.disabled =
-      false;
-
-  }
-
-
-  /* =======================================================
-     ACTIVE BUTTON
-  ======================================================= */
-
-  function updateActiveButton(
-    providerId
-  ) {
-
-    document
-      .querySelectorAll(
-        '[data-providers] [data-provider]'
-      )
-      .forEach(
-        button => {
-
-          button.classList.toggle(
-            'active',
-
-            String(
-              button.dataset.provider
-            ) ===
-            String(
-              providerId
-            )
-
-          );
-
-        }
-      );
-
-  }
-
-
-  /* =======================================================
-     MODEL COMPATIBILITY
-  ======================================================= */
-
-  function updateModelCompatibility(
-    provider
-  ) {
-
-    const model =
-      $('model');
-
-
-    if (!model) {
-
-      return;
-
-    }
-
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const allowed =
-      capabilities.models.map(
-        value =>
-          String(value)
-      );
-
-
-    Array.from(
-      model.options
-    ).forEach(
-      option => {
-
-        const available =
-          allowed.includes(
-            String(
-              option.value
-            )
-          );
-
-
-        option.disabled =
-          !available;
 
       }
-    );
+
+    }
 
   }
 
@@ -1024,12 +961,6 @@
         model
       );
 
-
-    /*
-     * Jika model tidak mendukung
-     * reference image, bersihkan
-     * image reference aktif.
-     */
 
     if (
       !imageSupported &&
@@ -1068,7 +999,9 @@
             '';
 
         } catch {
+
           /* ignore */
+
         }
 
       }
@@ -1108,15 +1041,11 @@
     }
 
 
-    const image =
-      hasImageReference();
-
-
     const allowed =
       getAllowedDurations(
         provider,
         model,
-        image
+        hasImageReference()
       );
 
 
@@ -1132,39 +1061,10 @@
     }
 
 
-    const preferred =
-      text(
-        preferredDuration
-      );
-
-
-    /*
-     * Jika reference image aktif
-     * dan model hanya mengizinkan 8s,
-     * otomatis memilih 8s.
-     */
-
-    if (
-      preferred &&
-      allowed.some(
-        value =>
-          String(value) ===
-          preferred
-      )
-    ) {
-
-      return setOptions(
-        'duration',
-        allowed,
-        preferred
-      );
-
-    }
-
-
     return setOptions(
       'duration',
-      allowed
+      allowed,
+      preferredDuration
     );
 
   }
@@ -1204,13 +1104,14 @@
       )
     ) {
 
+      setOptions(
+        'resolution',
+        []
+      );
+
       return '';
 
     }
-
-
-    const image =
-      hasImageReference();
 
 
     const allowed =
@@ -1218,7 +1119,7 @@
         provider,
         model,
         duration,
-        image
+        hasImageReference()
       );
 
 
@@ -1234,38 +1135,17 @@
     }
 
 
-    const preferred =
-      text(
-        preferredResolution
-      );
-
-
-    if (
-      preferred &&
-      allowed.includes(
-        preferred
-      )
-    ) {
-
-      return setOptions(
-        'resolution',
-        allowed,
-        preferred
-      );
-
-    }
-
-
     return setOptions(
       'resolution',
-      allowed
+      allowed,
+      preferredResolution
     );
 
   }
 
 
   /* =======================================================
-     REFRESH RULES
+     FULL REALTIME SYNCHRONIZATION
   ======================================================= */
 
   function refreshCurrentOptions(
@@ -1283,41 +1163,48 @@
     }
 
 
-    const currentModel =
+    /*
+     * Simpan nilai yang sedang dipilih.
+     */
+    const previousModel =
       text(
         $('model')?.value
       );
 
 
-    const currentDuration =
+    const previousDuration =
       text(
         $('duration')?.value
       );
 
 
-    const currentResolution =
+    const previousResolution =
       text(
         $('resolution')?.value
       );
 
 
-    const currentAspect =
+    const previousRatio =
       text(
-        $('aspect')?.value ||
         $('ratio')?.value
+      );
+
+
+    const previousAspect =
+      text(
+        $('aspect')?.value
       );
 
 
     /*
      * MODEL
      */
-
     setOptions(
       'model',
       getEffectiveCapabilities(
         provider
       ).models,
-      currentModel
+      previousModel
     );
 
 
@@ -1327,25 +1214,33 @@
       );
 
 
+    if (!model) {
+
+      return;
+
+    }
+
+
     /*
-     * ASPECT
+     * ASPECT / RATIO
      */
+    const aspects =
+      getEffectiveCapabilities(
+        provider
+      ).aspects;
+
 
     setOptions(
       'ratio',
-      getEffectiveCapabilities(
-        provider
-      ).aspects,
-      currentAspect
+      aspects,
+      previousRatio
     );
 
 
     setOptions(
       'aspect',
-      getEffectiveCapabilities(
-        provider
-      ).aspects,
-      currentAspect
+      aspects,
+      previousAspect
     );
 
 
@@ -1355,48 +1250,94 @@
 
 
     /*
-     * DURASI
+     * IMAGE STATE
      *
-     * Reference image diproses
-     * sebelum menentukan resolution.
+     * Penting:
+     * cek ulang setelah upload.js
+     * selesai memperbarui state.
      */
+    const hasImage =
+      hasImageReference();
 
-    const duration =
+
+    /*
+     * DURASI
+     */
+    let duration =
       applyDurationRules(
         provider,
-        currentDuration
+        previousDuration
       );
 
 
     /*
-     * RESOLUTION
-     *
-     * Resolution sekarang dihitung
-     * berdasarkan:
-     *
-     * model
-     * + image
-     * + duration
+     * Jika image baru saja dipilih,
+     * model Veo yang memakai image
+     * harus mengikuti aturan imageToVideo.
      */
+    if (
+      changedField === 'image' &&
+      hasImage
+    ) {
 
-    applyResolutionRules(
-      provider,
-      currentResolution
-    );
+      duration =
+        applyDurationRules(
+          provider,
+          '8'
+        );
+
+    }
 
 
     /*
-     * Jika perubahan resolution
-     * memaksa duration menjadi 8s,
-     * ulangi sinkronisasi duration.
+     * Jika duration tidak valid,
+     * gunakan nilai pertama yang valid.
      */
+    if (!duration) {
 
+      duration =
+        text(
+          $('duration')?.value
+        );
+
+    }
+
+
+    /*
+     * RESOLUTION
+     */
+    let resolution =
+      applyResolutionRules(
+        provider,
+        previousResolution
+      );
+
+
+    /*
+     * Jika resolution sebelumnya
+     * tidak kompatibel dengan duration
+     * baru, pilih resolution pertama.
+     */
+    if (!resolution) {
+
+      resolution =
+        applyResolutionRules(
+          provider
+        );
+
+    }
+
+
+    /*
+     * Jika user memilih resolution
+     * tertentu, cari duration yang kompatibel.
+     */
     if (
       changedField ===
       'resolution'
     ) {
 
-      const resolution =
+      const selectedResolution =
         text(
           $('resolution')?.value
         );
@@ -1410,50 +1351,38 @@
         );
 
 
-      /*
-       * Jika resolution hanya tersedia
-       * pada durasi tertentu, cari durasi
-       * yang kompatibel.
-       */
+      const compatibleDuration =
+        allowedDurations.find(
+          value => {
 
-      if (
-        resolution &&
-        allowedDurations.length
-      ) {
-
-        const compatibleDuration =
-          allowedDurations.find(
-            value => {
-
-              const resolutions =
-                getAllowedResolutions(
-                  provider,
-                  model,
-                  value,
-                  hasImageReference()
-                );
-
-
-              return resolutions.includes(
-                resolution
+            const resolutions =
+              getAllowedResolutions(
+                provider,
+                model,
+                value,
+                hasImageReference()
               );
 
-            }
-          );
+
+            return resolutions.includes(
+              selectedResolution
+            );
+
+          }
+        );
 
 
-        if (
-          compatibleDuration !==
-          undefined
-        ) {
+      if (
+        compatibleDuration !==
+        undefined
+      ) {
 
+        duration =
           setOptions(
             'duration',
             allowedDurations,
             compatibleDuration
           );
-
-        }
 
       }
 
@@ -1464,23 +1393,95 @@
      * Setelah duration final,
      * hitung ulang resolution.
      */
+    resolution =
+      applyResolutionRules(
+        provider,
+        text(
+          $('resolution')?.value
+        )
+      );
 
-    applyResolutionRules(
-      provider,
-      text(
-        $('resolution')?.value
-      )
-    );
 
-
+    /*
+     * IMAGE
+     */
     updateImageAvailability(
       provider
     );
 
 
-    updateModelCompatibility(
-      provider
-    );
+    /*
+     * MODEL
+     */
+    const modelElement =
+      $('model');
+
+
+    if (modelElement) {
+
+      const rules =
+        getModelRules(
+          provider,
+          text(
+            modelElement.value
+          )
+        );
+
+
+      Array.from(
+        modelElement.options
+      ).forEach(
+        option => {
+
+          option.disabled =
+            false;
+
+          if (
+            rules &&
+            option.value
+          ) {
+
+            option.disabled =
+              !getEffectiveCapabilities(
+                provider
+              ).models.includes(
+                option.value
+              );
+
+          }
+
+        }
+      );
+
+    }
+
+
+    /*
+     * STATE
+     */
+    GENZ.state.provider =
+      provider.id;
+
+    GENZ.state.model =
+      text(
+        $('model')?.value
+      );
+
+    GENZ.state.duration =
+      Number(
+        $('duration')?.value
+      );
+
+    GENZ.state.resolution =
+      text(
+        $('resolution')?.value
+      );
+
+    GENZ.state.aspect =
+      text(
+        $('aspect')?.value ||
+        $('ratio')?.value
+      );
 
   }
 
@@ -1500,10 +1501,14 @@
     }
 
 
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
+    GENZ.state.provider =
+      provider.id;
+
+    GENZ.providers.current =
+      provider.id;
+
+    GENZ.providers.currentProvider =
+      provider;
 
 
     setValue(
@@ -1512,70 +1517,11 @@
     );
 
 
-    setOptions(
-      'model',
-      capabilities.models
-    );
-
-
-    setOptions(
-      'ratio',
-      capabilities.aspects
-    );
-
-
-    setOptions(
-      'aspect',
-      capabilities.aspects
-    );
-
-
-    GENZ.state.provider =
-      provider.id;
-
-
-    GENZ.providers.current =
-      provider.id;
-
-
-    GENZ.providers.currentProvider =
-      provider;
-
-
     /*
-     * Terapkan model terlebih dahulu.
+     * Jalankan sinkronisasi penuh.
      */
-
-    applyModelRules(
-      provider
-    );
-
-
-    /*
-     * Baru duration.
-     */
-
-    applyDurationRules(
-      provider
-    );
-
-
-    /*
-     * Baru resolution.
-     */
-
-    applyResolutionRules(
-      provider
-    );
-
-
-    ensureValidAspect(
-      provider
-    );
-
-
-    updateImageAvailability(
-      provider
+    refreshCurrentOptions(
+      'provider'
     );
 
 
@@ -1587,19 +1533,6 @@
     updateActiveButton(
       provider.id
     );
-
-
-    updateModelCompatibility(
-      provider
-    );
-
-
-    /*
-     * Jalankan satu kali lagi untuk
-     * memastikan semua field sinkron.
-     */
-
-    refreshCurrentOptions();
 
   }
 
@@ -1685,14 +1618,11 @@
         button.type =
           'button';
 
-
         button.className =
           'provider-button';
 
-
         button.dataset.provider =
           provider.id;
-
 
         button.textContent =
           provider.name ||
@@ -1811,7 +1741,6 @@
 
         option.value =
           provider.id;
-
 
         option.textContent =
           provider.name ||
@@ -1997,6 +1926,16 @@
     );
 
 
+    /*
+     * Pastikan listener lain yang
+     * mungkin mengubah state provider
+     * tidak meninggalkan UI stale.
+     */
+    scheduleRefresh(
+      'provider'
+    );
+
+
     return provider;
 
   }
@@ -2094,7 +2033,6 @@
     GENZ.providers.list =
       providers;
 
-
     GENZ.videoProviders.list =
       providers;
 
@@ -2102,7 +2040,6 @@
     renderProviderSelect(
       providers
     );
-
 
     renderButtons(
       providers
@@ -2145,15 +2082,18 @@
         selected
       );
 
+
+      scheduleRefresh(
+        'provider'
+      );
+
     } else {
 
       GENZ.state.provider =
         null;
 
-
       GENZ.providers.current =
         null;
-
 
       GENZ.providers.currentProvider =
         null;
@@ -2279,10 +2219,8 @@
           GENZ.state.provider =
             null;
 
-
           GENZ.providers.current =
             null;
-
 
           GENZ.providers.currentProvider =
             null;
@@ -2309,7 +2247,7 @@
 
 
   /* =======================================================
-     CAPABILITY LISTENERS
+     REALTIME CAPABILITY LISTENERS
   ======================================================= */
 
   function bindCapabilityListeners() {
@@ -2332,6 +2270,11 @@
       'true';
 
 
+    /*
+     * Capture phase dipakai agar
+     * perubahan tetap tertangkap walaupun
+     * elemen dibuat ulang secara dinamis.
+     */
     document.addEventListener(
       'change',
       event => {
@@ -2370,11 +2313,70 @@
           )
         ) {
 
-          refreshCurrentOptions(
+          scheduleRefresh(
             target.id
           );
 
         }
+
+      },
+      true
+    );
+
+
+    /*
+     * Upload component kadang memperbarui
+     * state setelah event change selesai.
+     * Event input juga kita pantau.
+     */
+    document.addEventListener(
+      'input',
+      event => {
+
+        const target =
+          event.target;
+
+
+        if (
+          target &&
+          target.id ===
+          'image'
+        ) {
+
+          scheduleRefresh(
+            'image'
+          );
+
+        }
+
+      },
+      true
+    );
+
+
+    /*
+     * Dukungan untuk komponen upload
+     * yang mengirim custom event.
+     */
+    [
+      'genz-image-change',
+      'genz-upload-change',
+      'genz-image-upload',
+      'genz-upload-complete',
+      'genz-image-removed'
+    ].forEach(
+      eventName => {
+
+        document.addEventListener(
+          eventName,
+          () => {
+
+            scheduleRefresh(
+              'image'
+            );
+
+          }
+        );
 
       }
     );
@@ -2403,7 +2405,9 @@
 
 
   GENZ.providers.getCapabilities =
-    function (providerId) {
+    function (
+      providerId
+    ) {
 
       const provider =
         providerId
@@ -2489,8 +2493,14 @@
               current
             );
 
+
             dispatchProviderChange(
               current
+            );
+
+
+            scheduleRefresh(
+              'provider'
             );
 
           }
