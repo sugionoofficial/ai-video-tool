@@ -66,8 +66,18 @@ import {
 // CONSTANTS
 // ============================================================
 
+/*
+ * Request generation dapat membawa imageData
+ * dalam bentuk Base64/Data URL.
+ *
+ * 64 KB terlalu kecil dan membuat request dengan
+ * reference image dihentikan sebelum mencapai
+ * handleGenerate() dan provider.
+ *
+ * Batas dinaikkan menjadi 10 MB.
+ */
 const MAX_GENERATE_REQUEST_BYTES =
-  65536;
+  10 * 1024 * 1024;
 
 
 // ============================================================
@@ -232,9 +242,6 @@ function getFriendlyErrorMessage(
   // ----------------------------------------------------------
   // CHINAAPI
   // ----------------------------------------------------------
-  // Jangan menyamarkan error ChinaAPI.
-  // Adapter ChinaAPI sudah memberikan kode dan pesan provider.
-  // ----------------------------------------------------------
 
   if (
     /^chinaapi\s*\[/i.test(
@@ -249,9 +256,6 @@ function getFriendlyErrorMessage(
 
   // ----------------------------------------------------------
   // CHINAAPI ERROR CODE
-  // ----------------------------------------------------------
-  // Jika adapter mengirim code terpisah tetapi message belum
-  // memiliki prefix ChinaAPI, tampilkan informasi tersebut.
   // ----------------------------------------------------------
 
   if (
@@ -942,7 +946,7 @@ export async function router(
       ) {
 
         throw new HttpError(
-          "Request generation terlalu besar.",
+          "Request generation terlalu besar. Maksimum 10 MB.",
           413
         );
 
@@ -1097,7 +1101,6 @@ export async function router(
       safeStatus < 500
     ) {
 
-      // HttpError admin 4xx aman ditampilkan.
       userMessage =
         rawMessage;
 
@@ -1131,10 +1134,7 @@ export async function router(
 
 
     // --------------------------------------------------------
-    // TAMBAHKAN ERROR CODE
-    // --------------------------------------------------------
-    // Tidak membocorkan API key atau request body.
-    // Kode error provider aman untuk debugging.
+    // ERROR CODE
     // --------------------------------------------------------
 
     if (
