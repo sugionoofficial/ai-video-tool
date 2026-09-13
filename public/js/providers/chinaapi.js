@@ -5,207 +5,819 @@ const BASE_URL = "https://api.chinaapi.ai/v1";
 
 /*
  * ============================================================
- * CHINAAPI MODEL RULES
+ * CHINAAPI MODEL CAPABILITY REGISTRY
  * ============================================================
+ *
+ * Semua capability model didefinisikan DI SINI.
+ *
+ * Jangan pindahkan aturan model ke providers.js.
+ *
+ * imageReferenceSupported
+ * videoReferenceSupported
+ * maxReferenceImages
+ * maxReferenceVideos
+ * maxTotalReferences
+ *
+ * null berarti dokumentasi publik ChinaAPI belum memberikan
+ * batas angka yang bisa diverifikasi.
  */
 
 const MODEL_RULES = {
-  "wan2.7-t2v": {
-    family: "wan",
-    type: "t2v",
-    imageReferenceSupported: false,
-    sizes: ["1280*720", "1920*1080"],
-    durations: [2, 3, 4, 5, 6, 8, 10, 12, 15]
+
+  /*
+   * ==========================================================
+   * AGNES
+   * ==========================================================
+   */
+
+  "agnes-video-2.5-flash": {
+    family: "agnes",
+    type: "i2v",
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    resolutions: ["720p"],
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+
+    async: true,
+    verified: true
   },
+
+  "agnes-video-v2.0": {
+    family: "agnes",
+    type: "i2v",
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: null,
+    maxReferenceVideos: 0,
+
+    resolutions: [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+
+    durations: null,
+
+    async: true,
+    verified: true
+  },
+
+  "agnes-video-2.5": {
+    family: "agnes",
+    type: "i2v",
+    imageReferenceSupported: true,
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: null,
+    maxReferenceVideos: 1,
+
+    resolutions: [
+      "720p",
+      "960p",
+      "2K"
+    ],
+
+    durations: [
+      4, 5, 6, 7, 8,
+      9, 10, 11, 12
+    ],
+
+    async: true,
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * WAN 2.7
+   * ==========================================================
+   */
 
   "wan2.7-i2v": {
     family: "wan",
     type: "i2v",
+
     imageReferenceSupported: true,
-    sizes: ["1280*720", "1920*1080"],
-    durations: [2, 3, 4, 5, 6, 8, 10, 12, 15],
-    requiresImage: true
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+    maxTotalReferences: 1,
+
+    resolutions: [
+      "720p",
+      "1080p"
+    ],
+
+    durations: [
+      2, 3, 4, 5, 6,
+      8, 10, 12, 15
+    ],
+
+    requiresImage: true,
+    verified: true
   },
 
   "wan2.7-r2v": {
     family: "wan",
     type: "r2v",
+
     imageReferenceSupported: true,
-    sizes: ["1280*720", "1920*1080"],
-    durations: [2, 3, 4, 5, 6, 8, 10, 12, 15]
+    videoReferenceSupported: true,
+
+    maxReferenceImages: 5,
+    maxReferenceVideos: 5,
+    maxTotalReferences: 5,
+
+    resolutions: [
+      "720p",
+      "1080p"
+    ],
+
+    durations: [
+      2, 3, 4, 5, 6,
+      8, 10, 12, 15
+    ],
+
+    verified: true
   },
 
   "wan2.7-videoedit": {
     family: "wan",
     type: "videoedit",
+
     imageReferenceSupported: false,
-    sizes: ["1280*720", "1920*1080"],
-    durations: [2, 3, 4, 5, 6, 8, 10]
+    videoReferenceSupported: true,
+
+    maxReferenceImages: 0,
+    maxReferenceVideos: 1,
+
+    resolutions: [
+      "720p",
+      "1080p"
+    ],
+
+    durations: [
+      2, 3, 4, 5,
+      6, 8, 10
+    ],
+
+    videoMinDuration: 2,
+    videoMaxDuration: 10,
+
+    verified: true
   },
+
+  "wan2.7-t2v": {
+    family: "wan",
+    type: "t2v",
+
+    imageReferenceSupported: false,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 0,
+    maxReferenceVideos: 0,
+
+    sizes: [
+      "1280*720",
+      "1920*1080"
+    ],
+
+    durations: [
+      2, 3, 4, 5, 6,
+      8, 10, 12, 15
+    ],
+
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * WAN 3.0
+   * ==========================================================
+   */
+
+  "wan3.0-video": {
+    family: "wan3",
+    type: "i2v",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    resolutions: [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+
+    durations: [
+      2, 3, 4, 5, 6,
+      7, 8, 9, 10,
+      11, 12, 13, 14,
+      15, 20, 25, 30
+    ],
+
+    verified: true
+  },
+
+  "wan3.0-video-prime": {
+    family: "wan3",
+    type: "r2v",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 10,
+    maxReferenceVideos: 0,
+    maxTotalReferences: 10,
+
+    resolutions: [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+
+    durations: [
+      2, 3, 4, 5, 6,
+      7, 8, 9, 10,
+      11, 12, 13, 14,
+      15, 20, 25, 30
+    ],
+
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * SEEDANCE 2.5
+   * ==========================================================
+   */
 
   "doubao-seedance-2-5-260628": {
     family: "seedance",
-    type: "seedance25",
+    type: "multimodal",
+
     imageReferenceSupported: true,
-    resolutions: ["480p", "720p"],
-    durations: [5, 10, 15, 20, 25, 30]
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: 30,
+    maxReferenceVideos: 10,
+    maxReferenceAudio: 10,
+
+    maxImageReferenceDuration: 30,
+    maxVideoReferenceDuration: 30,
+    maxAudioReferenceDuration: 30,
+
+    maxTotalReferences: 30,
+
+    resolutions: [
+      "480p",
+      "720p"
+    ],
+
+    durations: [
+      4, 5, 6, 7, 8,
+      9, 10, 11, 12,
+      13, 14, 15,
+      16, 17, 18, 19,
+      20, 21, 22, 23,
+      24, 25, 26, 27,
+      28, 29, 30
+    ],
+
+    aspects: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+
+    verified: true
   },
+
+
+  /*
+   * ==========================================================
+   * SEEDANCE 2.0
+   * ==========================================================
+   */
 
   "doubao-seedance-2-0-260128": {
     family: "seedance",
-    type: "seedance20",
-    imageReferenceSupported: true,
-    resolutions: ["480p", "720p"],
-    durations: [5, 10, 15]
-  },
+    type: "multimodal",
 
-  "doubao-seedance-2-0-fast-260128": {
-    family: "seedance",
-    type: "seedance20",
     imageReferenceSupported: true,
-    resolutions: ["480p", "720p"],
-    durations: [5, 10, 15]
-  },
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
 
-  "doubao-seedance-2-0-mini-260615": {
-    family: "seedance",
-    type: "seedance20",
-    imageReferenceSupported: true,
-    resolutions: ["480p", "720p"],
-    durations: [5, 10, 15]
-  },
+    maxReferenceImages: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudio: null,
 
-  "kling-v3": {
-    family: "kling",
-    type: "kling3",
-    imageReferenceSupported: true,
-    durations: [5, 10, 15],
-    aspects: ["16:9", "9:16", "1:1"],
-    resolutions: ["720p", "1080p"]
-  },
+    maxVideoReferenceDuration: 15,
 
-  "kling-3.0-turbo": {
-    family: "kling",
-    type: "klingTurbo",
-    imageReferenceSupported: true,
-    durations: [3, 5, 8, 10, 15],
-    aspects: ["16:9", "9:16", "1:1"],
-    resolutions: ["720p", "1080p"]
-  },
+    resolutions: [
+      "480p",
+      "720p",
+      "1080p",
+      "4K"
+    ],
 
-  "kling-v3-omni": {
-    family: "kling",
-    type: "klingOmni",
-    imageReferenceSupported: true,
-    durations: [5, 10, 15],
-    aspects: ["16:9", "9:16", "1:1"],
-    modes: ["std", "pro", "4k"]
-  },
-
-  "MiniMax-H3": {
-    family: "minimax",
-    type: "h3",
-    imageReferenceSupported: true,
     durations: [
       4, 5, 6, 7, 8,
       9, 10, 11, 12,
       13, 14, 15
     ],
-    resolutions: ["768P", "2K"],
-    aspects: ["16:9", "9:16", "1:1", "adaptive"]
+
+    aspects: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+
+    verified: true
   },
+
+  "doubao-seedance-2-0-fast-260128": {
+    family: "seedance",
+    type: "multimodal",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudio: null,
+
+    maxVideoReferenceDuration: 15,
+
+    resolutions: [
+      "480p",
+      "720p"
+    ],
+
+    durations: [
+      4, 5, 6, 7, 8,
+      9, 10, 11, 12,
+      13, 14, 15
+    ],
+
+    aspects: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+
+    verified: true
+  },
+
+  "doubao-seedance-2-0-mini-260615": {
+    family: "seedance",
+    type: "multimodal",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: 9,
+    maxReferenceVideos: 3,
+    maxReferenceAudio: null,
+
+    maxVideoReferenceDuration: 15,
+
+    resolutions: [
+      "480p",
+      "720p"
+    ],
+
+    durations: [
+      4, 5, 6, 7, 8,
+      9, 10, 11, 12,
+      13, 14, 15
+    ],
+
+    aspects: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * KLING V3
+   * ==========================================================
+   */
+
+  "kling-v3": {
+    family: "kling",
+    type: "i2v",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    maxLastFrameImages: 1,
+
+    durations: [
+      5, 10, 15
+    ],
+
+    resolutions: [
+      "720p",
+      "1080p"
+    ],
+
+    aspects: [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+
+    modes: [
+      "std",
+      "pro",
+      "4k"
+    ],
+
+    audioSupported: true,
+
+    verified: true
+  },
+
+  "kling-3.0-turbo": {
+    family: "kling",
+    type: "i2v",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    durations: [
+      3, 5, 8, 10, 15
+    ],
+
+    resolutions: [
+      "720p",
+      "1080p"
+    ],
+
+    aspects: [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+
+    audioSupported: true,
+
+    verified: true
+  },
+
+  "kling-v3-omni": {
+    family: "kling",
+    type: "r2v",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: true,
+
+    maxReferenceImages: null,
+    maxReferenceVideos: 1,
+
+    modes: [
+      "std",
+      "pro",
+      "4k"
+    ],
+
+    durations: [
+      3, 5, 8, 10, 15
+    ],
+
+    aspects: [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+
+    audioSupported: true,
+
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * MINIMAX H3
+   * ==========================================================
+   */
+
+  "MiniMax-H3": {
+    family: "minimax",
+    type: "multimodal",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: null,
+    maxReferenceVideos: null,
+
+    resolutions: [
+      "768P",
+      "2K"
+    ],
+
+    durations: [
+      4, 5, 6, 7, 8,
+      9, 10, 11, 12,
+      13, 14, 15
+    ],
+
+    aspects: [
+      "16:9",
+      "9:16",
+      "1:1",
+      "adaptive"
+    ],
+
+    maxPromptCharacters: 7000,
+
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * HAILUO
+   * ==========================================================
+   */
 
   "MiniMax-Hailuo-2.3": {
     family: "hailuo",
-    type: "hailuo",
+    type: "i2v",
+
     imageReferenceSupported: true,
-    durations: [6, 10],
-    resolutions: ["768P", "1080P"]
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    durations: [
+      6, 10
+    ],
+
+    resolutions: [
+      "512P",
+      "768P",
+      "1080P"
+    ],
+
+    verified: true
   },
 
   "MiniMax-Hailuo-2.3-Fast": {
     family: "hailuo",
-    type: "hailuo",
+    type: "i2v",
+
     imageReferenceSupported: true,
-    durations: [6, 10],
-    resolutions: ["768P", "1080P"]
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    durations: [
+      6, 10
+    ],
+
+    resolutions: [
+      "768P",
+      "1080P"
+    ],
+
+    verified: true
   },
 
   "MiniMax-Hailuo-02": {
     family: "hailuo",
-    type: "hailuo",
+    type: "i2v",
+
     imageReferenceSupported: true,
-    durations: [6, 10],
-    resolutions: ["768P", "1080P"]
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    durations: [
+      6, 10
+    ],
+
+    resolutions: [
+      "512P",
+      "768P",
+      "1080P"
+    ],
+
+    verified: true
   },
 
-  "happyhorse-1.1-t2v": {
-    family: "happyhorse",
-    type: "t2v",
-    imageReferenceSupported: false,
-    sizes: [
-      "832*480",
-      "1280*720",
-      "1920*1080"
-    ],
-    durations: [5, 10]
-  },
+
+  /*
+   * ==========================================================
+   * HAPPYHORSE
+   * ==========================================================
+   */
 
   "happyhorse-1.1-i2v": {
     family: "happyhorse",
     type: "i2v",
+
     imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
     sizes: [
       "832*480",
       "1280*720",
       "1920*1080"
     ],
-    durations: [5, 10],
-    requiresImage: true
+
+    durations: [
+      5, 10
+    ],
+
+    verified: true
   },
 
   "happyhorse-1.1-r2v": {
     family: "happyhorse",
     type: "r2v",
+
     imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 9,
+    maxReferenceVideos: 0,
+
     sizes: [
       "832*480",
       "1280*720",
       "1920*1080"
     ],
-    durations: [5, 10]
+
+    durations: [
+      5, 10
+    ],
+
+    verified: true
+  },
+
+
+  /*
+   * ==========================================================
+   * COGVIDEOX-3
+   * ==========================================================
+   *
+   * Catalog confirms I2V + first/last frame.
+   * Exact ChinaAPI payload field mapping is not exposed
+   * in the public video reference documentation.
+   */
+
+  "cogvideox-3": {
+    family: "cogvideo",
+    type: "i2v",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: false,
+
+    maxReferenceImages: 1,
+    maxReferenceVideos: 0,
+
+    maxLastFrameImages: 1,
+
+    durations: [
+      5, 10
+    ],
+
+    resolutions: [
+      "1280x720",
+      "1920x1080",
+      "2560x1440",
+      "3840x2160"
+    ],
+
+    fps: [
+      30,
+      60
+    ],
+
+    verified: false
+  },
+
+
+  /*
+   * ==========================================================
+   * HY4 PREVIEW
+   * ==========================================================
+   */
+
+  "hy4-preview": {
+    family: "hy4",
+    type: "multimodal",
+
+    imageReferenceSupported: true,
+    videoReferenceSupported: true,
+    audioReferenceSupported: true,
+
+    maxReferenceImages: 9,
+    maxReferenceVideos: 3,
+
+    maxVideoReferenceDuration: 15,
+
+    aspects: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+
+    verified: false
   }
 };
 
 
 /*
  * ============================================================
- * CAPABILITIES
+ * PROVIDER CAPABILITIES
  * ============================================================
  */
 
 const CAPABILITIES = {
-  models: Object.keys(MODEL_RULES),
+  models: Object.keys(
+    MODEL_RULES
+  ),
 
   durations: [
-    2, 3, 4, 5, 6, 7, 8, 9,
-    10, 11, 12, 13, 14, 15,
-    20, 25, 30
+    2, 3, 4, 5, 6, 7,
+    8, 9, 10, 11, 12,
+    13, 14, 15, 20,
+    25, 30
   ],
 
   aspects: [
     "16:9",
     "9:16",
-    "1:1"
+    "1:1",
+    "4:3",
+    "3:4",
+    "21:9"
   ],
 
   resolutions: [
     "480p",
+    "512P",
     "720p",
     "768P",
+    "960p",
     "1080p",
     "1080P",
-    "2K"
+    "2K",
+    "4K"
   ],
 
   constraints: MODEL_RULES
@@ -218,9 +830,16 @@ const CAPABILITIES = {
  * ============================================================
  */
 
-function providerError(message, status = 400) {
-  const error = new Error(message);
-  error.status = status;
+function providerError(
+  message,
+  status = 400
+) {
+  const error =
+    new Error(message);
+
+  error.status =
+    status;
+
   return error;
 }
 
@@ -231,8 +850,11 @@ function providerError(message, status = 400) {
  * ============================================================
  */
 
-async function safeJson(response) {
-  const text = await response.text();
+async function safeJson(
+  response
+) {
+  const text =
+    await response.text();
 
   if (!text) {
     return {};
@@ -250,11 +872,14 @@ async function safeJson(response) {
 
 /*
  * ============================================================
- * EXTRACT ERROR
+ * API ERROR
  * ============================================================
  */
 
-function apiError(data, fallback) {
+function apiError(
+  data,
+  fallback
+) {
   const candidates = [
     data?.error?.message,
     data?.data?.error?.message,
@@ -268,9 +893,12 @@ function apiError(data, fallback) {
     data?.raw
   ];
 
-  for (const value of candidates) {
+  for (
+    const value of candidates
+  ) {
     if (
-      typeof value === "string" &&
+      typeof value ===
+        "string" &&
       value.trim()
     ) {
       return value.trim();
@@ -281,7 +909,9 @@ function apiError(data, fallback) {
 }
 
 
-function apiErrorCode(data) {
+function apiErrorCode(
+  data
+) {
   const candidates = [
     data?.error?.code,
     data?.data?.error?.code,
@@ -291,13 +921,17 @@ function apiErrorCode(data) {
     data?.data?.error_code
   ];
 
-  for (const value of candidates) {
+  for (
+    const value of candidates
+  ) {
     if (
       value !== undefined &&
       value !== null &&
       String(value).trim()
     ) {
-      return String(value).trim();
+      return String(
+        value
+      ).trim();
     }
   }
 
@@ -307,38 +941,60 @@ function apiErrorCode(data) {
 
 /*
  * ============================================================
- * NORMALIZE
+ * NORMALIZATION
  * ============================================================
  */
 
-function normalizeStatus(value) {
-  return String(value || "")
+function normalizeStatus(
+  value
+) {
+  return String(
+    value || ""
+  )
     .trim()
     .toLowerCase();
 }
 
 
-function normalizeAspect(value) {
+function normalizeAspect(
+  value
+) {
   const aspect =
-    String(value || "16:9").trim();
+    String(
+      value || "16:9"
+    ).trim();
 
-  if (
-    ["16:9", "9:16", "1:1"].includes(
-      aspect
-    )
-  ) {
-    return aspect;
-  }
+  const allowed = [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4",
+    "21:9"
+  ];
 
-  return "16:9";
+  return allowed.includes(
+    aspect
+  )
+    ? aspect
+    : "16:9";
 }
 
 
-function normalizeDuration(value, allowed) {
+function normalizeDuration(
+  value,
+  allowed
+) {
   const duration =
-    Number(value ?? 5);
+    Number(
+      value ?? 5
+    );
 
-  if (!Number.isInteger(duration)) {
+  if (
+    !Number.isInteger(
+      duration
+    )
+  ) {
     throw providerError(
       "Duration ChinaAPI harus berupa bilangan bulat.",
       400
@@ -348,7 +1004,9 @@ function normalizeDuration(value, allowed) {
   if (
     Array.isArray(allowed) &&
     allowed.length &&
-    !allowed.includes(duration)
+    !allowed.includes(
+      duration
+    )
   ) {
     throw providerError(
       `Duration ${duration}s tidak didukung model ChinaAPI ini.`,
@@ -370,23 +1028,45 @@ function aspectToWanSize(
   aspect,
   resolution
 ) {
-  const is1080 =
-    String(resolution || "")
-      .toLowerCase() === "1080p";
+  const high =
+    String(
+      resolution || ""
+    ).toLowerCase() ===
+    "1080p";
 
-  if (aspect === "9:16") {
-    return is1080
+  if (
+    aspect === "9:16"
+  ) {
+    return high
       ? "1080*1920"
       : "720*1280";
   }
 
-  if (aspect === "1:1") {
-    return is1080
+  if (
+    aspect === "1:1"
+  ) {
+    return high
       ? "1440*1440"
       : "720*720";
   }
 
-  return is1080
+  if (
+    aspect === "4:3"
+  ) {
+    return high
+      ? "1440*1080"
+      : "960*720";
+  }
+
+  if (
+    aspect === "3:4"
+  ) {
+    return high
+      ? "1080*1440"
+      : "720*960";
+  }
+
+  return high
     ? "1920*1080"
     : "1280*720";
 }
@@ -397,16 +1077,22 @@ function aspectToKlingSize(
   resolution
 ) {
   const high =
-    String(resolution || "")
-      .toLowerCase() === "1080p";
+    String(
+      resolution || ""
+    ).toLowerCase() ===
+    "1080p";
 
-  if (aspect === "9:16") {
+  if (
+    aspect === "9:16"
+  ) {
     return high
       ? "1080x1920"
       : "720x1280";
   }
 
-  if (aspect === "1:1") {
+  if (
+    aspect === "1:1"
+  ) {
     return high
       ? "1024x1024"
       : "512x512";
@@ -420,29 +1106,30 @@ function aspectToKlingSize(
 
 /*
  * ============================================================
- * REFERENCES
+ * PUBLIC URL HELPERS
  * ============================================================
  */
 
-function getImageUrl(body) {
-  const value =
-    body?.imageData ||
-    body?.image ||
-    body?.input_reference ||
-    null;
-
+function publicUrl(
+  value,
+  label
+) {
   if (!value) {
     return null;
   }
 
   const url =
-    String(value).trim();
+    String(
+      value
+    ).trim();
 
   if (
-    !/^https?:\/\//i.test(url)
+    !/^https?:\/\//i.test(
+      url
+    )
   ) {
     throw providerError(
-      "ChinaAPI membutuhkan URL gambar publik. Upload gambar dari frontend saat ini masih berupa Data URL/Base64.",
+      `${label} harus berupa URL publik HTTPS/HTTP.`,
       400
     );
   }
@@ -451,28 +1138,254 @@ function getImageUrl(body) {
 }
 
 
-function getImages(body) {
-  if (!Array.isArray(body?.images)) {
+function getImageUrl(
+  body
+) {
+  return publicUrl(
+    body?.imageData ||
+    body?.image ||
+    body?.input_reference ||
+    null,
+    "Gambar referensi ChinaAPI"
+  );
+}
+
+
+function getImages(
+  body
+) {
+  if (
+    !Array.isArray(
+      body?.images
+    )
+  ) {
     return [];
   }
 
   return body.images
-    .map(item => {
-      if (typeof item === "string") {
-        return item;
-      }
+    .map(
+      item => {
+        if (
+          typeof item ===
+          "string"
+        ) {
+          return item;
+        }
 
-      return (
-        item?.url ||
-        item?.image_url ||
-        null
-      );
-    })
+        return (
+          item?.url ||
+          item?.image_url ||
+          null
+        );
+      }
+    )
     .filter(
-      item =>
-        typeof item === "string" &&
-        /^https?:\/\//i.test(item)
+      Boolean
+    )
+    .map(
+      url =>
+        publicUrl(
+          url,
+          "Gambar referensi ChinaAPI"
+        )
     );
+}
+
+
+function getVideoUrl(
+  body
+) {
+  return publicUrl(
+    body?.videoUrl ||
+    body?.video_url ||
+    null,
+    "Video referensi ChinaAPI"
+  );
+}
+
+
+/*
+ * ============================================================
+ * REFERENCE LIMITS
+ * ============================================================
+ */
+
+function validateReferences(
+  rule,
+  images,
+  videoUrl
+) {
+  const imageCount =
+    images.length;
+
+  const videoCount =
+    videoUrl
+      ? 1
+      : 0;
+
+  if (
+    rule.maxReferenceImages !==
+      null &&
+    rule.maxReferenceImages !==
+      undefined &&
+    imageCount >
+      rule.maxReferenceImages
+  ) {
+    throw providerError(
+      `${rule.model || "Model"} maksimal ${rule.maxReferenceImages} gambar referensi.`,
+      400
+    );
+  }
+
+  if (
+    rule.maxReferenceVideos !==
+      null &&
+    rule.maxReferenceVideos !==
+      undefined &&
+    videoCount >
+      rule.maxReferenceVideos
+  ) {
+    throw providerError(
+      `${rule.model || "Model"} maksimal ${rule.maxReferenceVideos} video referensi.`,
+      400
+    );
+  }
+
+  if (
+    rule.maxTotalReferences !==
+      null &&
+    rule.maxTotalReferences !==
+      undefined &&
+    imageCount +
+      videoCount >
+      rule.maxTotalReferences
+  ) {
+    throw providerError(
+      `${rule.model || "Model"} maksimal ${rule.maxTotalReferences} reference.`,
+      400
+    );
+  }
+}
+
+
+/*
+ * ============================================================
+ * SEEDANCE PAYLOAD
+ * ============================================================
+ */
+
+function buildSeedancePayload(
+  body,
+  rule,
+  imageUrl,
+  images,
+  videoUrl,
+  duration,
+  resolution,
+  aspect
+) {
+  const payload = {
+    model:
+      body.model,
+
+    prompt:
+      body.prompt,
+
+    seconds:
+      String(duration),
+
+    metadata: {
+      ...(body.metadata || {}),
+
+      resolution:
+        String(
+          resolution || "720p"
+        ).toLowerCase()
+    }
+  };
+
+  /*
+   * Reference mode.
+   *
+   * Seedance 2.0 / 2.5 supports
+   * multimodal reference content.
+   */
+
+  const useReferenceMode =
+    images.length > 1 ||
+    Boolean(videoUrl) ||
+    body?.referenceMode ===
+      true;
+
+  if (
+    useReferenceMode
+  ) {
+    const content = [];
+
+    for (
+      const url of images
+    ) {
+      content.push({
+        type:
+          "image_url",
+
+        image_url: {
+          url
+        },
+
+        role:
+          "reference_image"
+      });
+    }
+
+    if (
+      videoUrl
+    ) {
+      content.push({
+        type:
+          "video_url",
+
+        video_url: {
+          url:
+            videoUrl
+        },
+
+        role:
+          "reference_video"
+      });
+    }
+
+    if (
+      content.length
+    ) {
+      payload.metadata.content =
+        content;
+
+      payload.metadata.ratio =
+        aspect;
+    }
+
+    return payload;
+  }
+
+  /*
+   * First-frame mode.
+   */
+
+  const firstImage =
+    imageUrl ||
+    images[0] ||
+    null;
+
+  if (
+    firstImage
+  ) {
+    payload.images = [
+      firstImage
+    ];
+  }
+
+  return payload;
 }
 
 
@@ -482,7 +1395,9 @@ function getImages(body) {
  * ============================================================
  */
 
-function buildPayload(body) {
+function buildPayload(
+  body
+) {
   const model =
     String(
       body?.model ||
@@ -490,7 +1405,9 @@ function buildPayload(body) {
     ).trim();
 
   const rule =
-    MODEL_RULES[model];
+    MODEL_RULES[
+      model
+    ];
 
   if (!rule) {
     throw providerError(
@@ -501,7 +1418,8 @@ function buildPayload(body) {
 
   const prompt =
     String(
-      body?.prompt || ""
+      body?.prompt ||
+      ""
     ).trim();
 
   if (!prompt) {
@@ -516,33 +1434,58 @@ function buildPayload(body) {
       body?.aspectRatio
     );
 
-  /*
-   * Jangan membaca imageData untuk model
-   * yang memang tidak mendukung reference image.
-   *
-   * Ini penting karena frontend menyimpan
-   * upload sebagai Data URL/Base64.
-   */
   const imageUrl =
-    rule.imageReferenceSupported === true
-      ? getImageUrl(body)
+    rule.imageReferenceSupported
+      ? getImageUrl(
+          body
+        )
       : null;
 
   const images =
-    rule.imageReferenceSupported === true
-      ? getImages(body)
+    rule.imageReferenceSupported
+      ? getImages(
+          body
+        )
       : [];
 
-  /*
-   * Model yang secara eksplisit membutuhkan
-   * gambar wajib mendapat reference image.
-   */
+  const videoUrl =
+    rule.videoReferenceSupported
+      ? getVideoUrl(
+          body
+        )
+      : null;
+
+  validateReferences(
+    {
+      ...rule,
+      model
+    },
+    images.length
+      ? images
+      : imageUrl
+        ? [imageUrl]
+        : [],
+    videoUrl
+  );
+
   if (
-    rule.requiresImage === true &&
-    !imageUrl
+    rule.videoReferenceSupported !==
+      true &&
+    videoUrl
   ) {
     throw providerError(
-      `${model} membutuhkan gambar referensi berupa URL publik.`,
+      `${model} tidak mendukung video reference melalui gateway ChinaAPI.`,
+      400
+    );
+  }
+
+  if (
+    rule.requiresImage &&
+    !imageUrl &&
+    !images.length
+  ) {
+    throw providerError(
+      `${model} membutuhkan gambar referensi.`,
       400
     );
   }
@@ -567,13 +1510,19 @@ function buildPayload(body) {
 
   /*
    * ==========================================================
-   * WAN
+   * WAN 2.7
    * ==========================================================
    */
 
-  if (rule.family === "wan") {
+  if (
+    rule.family ===
+    "wan"
+  ) {
 
-    if (rule.type === "t2v") {
+    if (
+      rule.type ===
+      "t2v"
+    ) {
       payload.size =
         body?.size ||
         aspectToWanSize(
@@ -587,17 +1536,13 @@ function buildPayload(body) {
       return payload;
     }
 
-
-    if (rule.type === "i2v") {
-      if (!imageUrl) {
-        throw providerError(
-          "Wan I2V membutuhkan gambar referensi berupa URL publik.",
-          400
-        );
-      }
-
+    if (
+      rule.type ===
+      "i2v"
+    ) {
       payload.input_reference =
-        imageUrl;
+        imageUrl ||
+        images[0];
 
       payload.size =
         aspectToWanSize(
@@ -611,40 +1556,36 @@ function buildPayload(body) {
       return payload;
     }
 
-
-    if (rule.type === "r2v") {
-      if (
-        imageUrl &&
+    if (
+      rule.type ===
+      "r2v"
+    ) {
+      const refs =
         images.length
+          ? images
+          : imageUrl
+            ? [imageUrl]
+            : [];
+
+      if (
+        refs.length ===
+        1 &&
+        !videoUrl
       ) {
-        throw providerError(
-          "Wan R2V tidak boleh mengirim input_reference dan images bersamaan.",
-          400
-        );
-      }
-
-      if (images.length > 5) {
-        throw providerError(
-          "Wan R2V maksimal 5 referensi.",
-          400
-        );
-      }
-
-      if (imageUrl) {
         payload.input_reference =
-          imageUrl;
-      }
-
-      if (images.length) {
+          refs[0];
+      } else if (
+        refs.length
+      ) {
         payload.images =
-          images.slice(0, 5);
+          refs;
       }
 
-      if (body?.videoUrl) {
+      if (
+        videoUrl
+      ) {
         payload.video_url =
-          String(
-            body.videoUrl
-          ).trim();
+          videoUrl;
       }
 
       payload.size =
@@ -659,19 +1600,19 @@ function buildPayload(body) {
       return payload;
     }
 
-
-    if (rule.type === "videoedit") {
-      if (!body?.videoUrl) {
+    if (
+      rule.type ===
+      "videoedit"
+    ) {
+      if (!videoUrl) {
         throw providerError(
-          "Wan VideoEdit membutuhkan videoUrl.",
+          "Wan VideoEdit membutuhkan video referensi.",
           400
         );
       }
 
       payload.video_url =
-        String(
-          body.videoUrl
-        ).trim();
+        videoUrl;
 
       payload.size =
         aspectToWanSize(
@@ -681,6 +1622,61 @@ function buildPayload(body) {
 
       return payload;
     }
+  }
+
+
+  /*
+   * ==========================================================
+   * WAN 3
+   * ==========================================================
+   */
+
+  if (
+    rule.family ===
+    "wan3"
+  ) {
+    const refs =
+      images.length
+        ? images
+        : imageUrl
+          ? [imageUrl]
+          : [];
+
+    /*
+     * Wan 3 standard endpoint documents
+     * first-frame image URL.
+     *
+     * Prime additionally supports reference
+     * images, up to 10.
+     */
+
+    if (
+      refs.length === 1
+    ) {
+      payload.image =
+        refs[0];
+    } else if (
+      refs.length > 1
+    ) {
+      payload.images =
+        refs.slice(
+          0,
+          rule.maxReferenceImages
+        );
+    }
+
+    payload.duration =
+      duration;
+
+    payload.resolution =
+      String(
+        resolution
+      ).toLowerCase();
+
+    payload.aspect_ratio =
+      aspect;
+
+    return payload;
   }
 
 
@@ -690,41 +1686,20 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.family === "seedance") {
-    if (images.length) {
-      payload.images =
-        images;
-    }
-
-    if (imageUrl) {
-      payload.input_reference =
-        imageUrl;
-    }
-
-    if (body?.videoUrl) {
-      payload.video_url =
-        String(
-          body.videoUrl
-        ).trim();
-    }
-
-    payload.seconds =
-      duration;
-
-    payload.metadata = {
-      ...(body?.metadata || {}),
-
-      resolution:
-        rule.resolutions.includes(
-          String(resolution).toLowerCase()
-        )
-          ? String(
-              resolution
-            ).toLowerCase()
-          : "720p"
-    };
-
-    return payload;
+  if (
+    rule.family ===
+    "seedance"
+  ) {
+    return buildSeedancePayload(
+      body,
+      rule,
+      imageUrl,
+      images,
+      videoUrl,
+      duration,
+      resolution,
+      aspect
+    );
   }
 
 
@@ -734,8 +1709,13 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.type === "kling3") {
-    if (imageUrl) {
+  if (
+    rule.type ===
+    "kling3"
+  ) {
+    if (
+      imageUrl
+    ) {
       payload.image =
         imageUrl;
     }
@@ -764,6 +1744,15 @@ function buildPayload(body) {
         "off"
     };
 
+    if (
+      body?.lastFrameImage
+    ) {
+      payload.metadata.image_tail =
+        String(
+          body.lastFrameImage
+        ).trim();
+    }
+
     return payload;
   }
 
@@ -774,8 +1763,13 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.type === "klingTurbo") {
-    if (imageUrl) {
+  if (
+    rule.type ===
+    "klingTurbo"
+  ) {
+    if (
+      imageUrl
+    ) {
       payload.image =
         imageUrl;
     }
@@ -787,7 +1781,10 @@ function buildPayload(body) {
         ...(body?.metadata?.settings || {}),
 
         resolution:
-          resolution === "1080p"
+          String(
+            resolution
+          ).toLowerCase() ===
+          "1080p"
             ? "1080p"
             : "720p",
 
@@ -808,7 +1805,10 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.type === "klingOmni") {
+  if (
+    rule.type ===
+    "klingOmni"
+  ) {
     const refs =
       images.length
         ? images
@@ -816,16 +1816,12 @@ function buildPayload(body) {
           ? [imageUrl]
           : [];
 
-    if (refs.length > 5) {
+    if (
+      !refs.length &&
+      !videoUrl
+    ) {
       throw providerError(
-        "Kling Omni maksimal 5 gambar referensi.",
-        400
-      );
-    }
-
-    if (!refs.length) {
-      throw providerError(
-        "Kling Omni membutuhkan minimal satu gambar referensi.",
+        "Kling Omni membutuhkan minimal satu reference.",
         400
       );
     }
@@ -834,10 +1830,12 @@ function buildPayload(body) {
       ...(body?.metadata || {}),
 
       image_list:
-        refs.map(url => ({
-          image_url:
-            url
-        })),
+        refs.map(
+          url => ({
+            image_url:
+              url
+          })
+        ),
 
       mode:
         rule.modes.includes(
@@ -847,7 +1845,9 @@ function buildPayload(body) {
           : "std",
 
       duration:
-        String(duration),
+        String(
+          duration
+        ),
 
       aspect_ratio:
         aspect,
@@ -856,6 +1856,21 @@ function buildPayload(body) {
         body?.sound ||
         "off"
     };
+
+    if (
+      videoUrl
+    ) {
+      payload.metadata.video_list =
+        [
+          {
+            video_url:
+              videoUrl,
+
+            refer_type:
+              "feature"
+          }
+        ];
+    }
 
     return payload;
   }
@@ -867,22 +1882,29 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.type === "h3") {
-    if (imageUrl) {
+  if (
+    rule.type ===
+    "h3"
+  ) {
+    if (
+      imageUrl
+    ) {
       payload.image =
         imageUrl;
     }
 
-    if (images.length) {
+    if (
+      images.length
+    ) {
       payload.images =
         images;
     }
 
-    if (body?.videoUrl) {
+    if (
+      videoUrl
+    ) {
       payload.video_url =
-        String(
-          body.videoUrl
-        ).trim();
+        videoUrl;
     }
 
     payload.size =
@@ -902,7 +1924,7 @@ function buildPayload(body) {
     if (
       !imageUrl &&
       !images.length &&
-      !body?.videoUrl
+      !videoUrl
     ) {
       payload.metadata.ratio =
         rule.aspects.includes(
@@ -922,7 +1944,10 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.family === "hailuo") {
+  if (
+    rule.family ===
+    "hailuo"
+  ) {
     payload.duration =
       duration;
 
@@ -937,13 +1962,17 @@ function buildPayload(body) {
       ...(body?.metadata || {})
     };
 
-    if (imageUrl) {
+    if (
+      imageUrl
+    ) {
       payload.metadata
         .first_frame_image =
         imageUrl;
     }
 
-    if (body?.lastFrameImage) {
+    if (
+      body?.lastFrameImage
+    ) {
       payload.metadata
         .last_frame_image =
         String(
@@ -951,7 +1980,9 @@ function buildPayload(body) {
         ).trim();
     }
 
-    if (body?.subjectReference) {
+    if (
+      body?.subjectReference
+    ) {
       payload.metadata
         .subject_reference =
         String(
@@ -969,7 +2000,10 @@ function buildPayload(body) {
    * ==========================================================
    */
 
-  if (rule.family === "happyhorse") {
+  if (
+    rule.family ===
+    "happyhorse"
+  ) {
     payload.size =
       body?.size ||
       aspectToWanSize(
@@ -980,19 +2014,19 @@ function buildPayload(body) {
     payload.duration =
       duration;
 
-    if (rule.type === "i2v") {
-      if (!imageUrl) {
-        throw providerError(
-          "HappyHorse I2V membutuhkan gambar referensi berupa URL publik.",
-          400
-        );
-      }
-
+    if (
+      rule.type ===
+      "i2v"
+    ) {
       payload.input_reference =
-        imageUrl;
+        imageUrl ||
+        images[0];
     }
 
-    if (rule.type === "r2v") {
+    if (
+      rule.type ===
+      "r2v"
+    ) {
       payload.metadata = {
         ...(body?.metadata || {}),
 
@@ -1006,6 +2040,22 @@ function buildPayload(body) {
     return payload;
   }
 
+
+  /*
+   * ==========================================================
+   * UNVERIFIED MODELS
+   * ==========================================================
+   */
+
+  if (
+    rule.verified ===
+    false
+  ) {
+    throw providerError(
+      `Payload ${model} belum terverifikasi terhadap endpoint ChinaAPI. Model sudah terdaftar agar tidak hilang dari katalog, tetapi request tidak akan ditebak.`,
+      501
+    );
+  }
 
   throw providerError(
     `Payload untuk model ${model} belum tersedia.`,
@@ -1042,7 +2092,8 @@ export async function generate(
 ) {
   const key =
     String(
-      provider?.api_key || ""
+      provider?.api_key ||
+      ""
     ).trim();
 
   if (!key) {
@@ -1053,7 +2104,9 @@ export async function generate(
   }
 
   const payload =
-    buildPayload(body);
+    buildPayload(
+      body
+    );
 
   const response =
     await fetch(
@@ -1084,7 +2137,9 @@ export async function generate(
       response
     );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     const message =
       apiError(
         data,
@@ -1092,7 +2147,9 @@ export async function generate(
       );
 
     const code =
-      apiErrorCode(data);
+      apiErrorCode(
+        data
+      );
 
     throw providerError(
       `ChinaAPI [${code}]: ${message}`,
@@ -1118,7 +2175,9 @@ export async function generate(
 
   return {
     externalId:
-      String(taskId),
+      String(
+        taskId
+      ),
 
     provider:
       ID,
@@ -1149,7 +2208,8 @@ export async function status(
 ) {
   const key =
     String(
-      provider?.api_key || ""
+      provider?.api_key ||
+      ""
     ).trim();
 
   if (!key) {
@@ -1161,7 +2221,8 @@ export async function status(
 
   const taskId =
     String(
-      externalId || ""
+      externalId ||
+      ""
     ).trim();
 
   if (!taskId) {
@@ -1177,7 +2238,8 @@ export async function status(
         taskId
       )}`,
       {
-        method: "GET",
+        method:
+          "GET",
 
         headers: {
           Authorization:
@@ -1194,7 +2256,9 @@ export async function status(
       response
     );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     const message =
       apiError(
         data,
@@ -1202,7 +2266,9 @@ export async function status(
       );
 
     const code =
-      apiErrorCode(data);
+      apiErrorCode(
+        data
+      );
 
     throw providerError(
       `ChinaAPI [${code}]: ${message}`,
@@ -1225,10 +2291,14 @@ export async function status(
       "error",
       "cancelled",
       "canceled"
-    ].includes(state)
+    ].includes(
+      state
+    )
   ) {
     const code =
-      apiErrorCode(data);
+      apiErrorCode(
+        data
+      );
 
     const message =
       apiError(
@@ -1237,10 +2307,18 @@ export async function status(
       );
 
     return {
-      success: true,
-      status: "failed",
-      provider: ID,
-      errorCode: code,
+      success:
+        true,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
+      errorCode:
+        code,
+
       error:
         `ChinaAPI [${code}]: ${message}`
     };
@@ -1252,7 +2330,9 @@ export async function status(
       "succeeded",
       "completed",
       "finished"
-    ].includes(state)
+    ].includes(
+      state
+    )
   ) {
     const videoUrl =
       data?.metadata?.url ||
@@ -1264,31 +2344,53 @@ export async function status(
       data?.url ||
       data?.data?.url;
 
-    if (videoUrl) {
+    if (
+      videoUrl
+    ) {
       return {
-        success: true,
-        status: "completed",
-        provider: ID,
+        success:
+          true,
+
+        status:
+          "completed",
+
+        provider:
+          ID,
+
         videoUrl:
-          String(videoUrl)
+          String(
+            videoUrl
+          )
       };
     }
 
     return {
-      success: true,
-      status: "failed",
-      provider: ID,
+      success:
+        true,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
       errorCode:
         "missing_video_url",
+
       error:
         "ChinaAPI menyatakan video selesai tetapi URL video tidak ditemukan."
     };
   }
 
   return {
-    success: true,
-    status: "processing",
-    provider: ID
+    success:
+      true,
+
+    status:
+      "processing",
+
+    provider:
+      ID
   };
 }
 
@@ -1304,7 +2406,8 @@ export async function fetchVideo(
 ) {
   const url =
     String(
-      videoUrl || ""
+      videoUrl ||
+      ""
     ).trim();
 
   if (!url) {
@@ -1318,7 +2421,9 @@ export async function fetchVideo(
 
   try {
     parsed =
-      new URL(url);
+      new URL(
+        url
+      );
   } catch {
     throw providerError(
       "URL video ChinaAPI tidak valid.",
@@ -1341,7 +2446,9 @@ export async function fetchVideo(
       parsed.toString()
     );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw providerError(
       `Gagal mengambil video ChinaAPI (${response.status}).`,
       response.status
