@@ -1,349 +1,305 @@
-import {
-  HttpError,
-  json,
-  requireJsonContentType,
-  readJson
-} from "../lib/http.js";
+import { HttpError, json, requireJsonContentType, readJson } from "../lib/http.js";
 
-import {
-  requireUser
-} from "../auth/auth.js";
+import { requireUser } from "../auth/auth.js";
 
-import {
-  canonicalProvider
-} from "../providers/provider-utils.js";
+import { canonicalProvider } from "../providers/provider-utils.js";
 
-import {
-  getProvider
-} from "../providers/provider-service.js";
+import { getProvider } from "../providers/provider-service.js";
 
-import {
-  resolveAdapter
-} from "../providers/index.js";
+import { resolveAdapter } from "../providers/index.js";
 
-import {
-  getJob,
-  updateJob,
-  recordJobEvent,
-  refundJob
-} from "../jobs/job-service.js";
+import { getJob, updateJob, recordJobEvent, refundJob } from "../jobs/job-service.js";
 
 /*
- * ============================================================
- * STATUS ROUTER
- * ============================================================
- */
 
-export async function handleStatus(
-  request,
-  env
+============================================================
+
+STATUS ROUTER
+
+============================================================
+
+Alur:
+
+provider ID
+
+↓
+
+database provider
+
+↓
+
+provider.adapter
+
+↓
+
+resolveAdapter(adapterId)
+
+↓
+
+adapter.status()
+
+Router tidak mengetahui detail masing-masing provider.
+
+Semua implementasi provider berada di adapter masing-masing.
+
+============================================================ */
+
+
+export async function handleStatus( request, env ) { const user = await requireUser( request, env );
+
+requireJsonContentType( request );
+
+const body = await readJson( request );
+
+const id = canonicalProvider( body?.provider );
+
+if (!id) { throw new HttpError( "Provider wajib diberikan.", 400 ); }
+
+const externalId = String( body?.operationName || body?.taskId || body?.id || "" ).trim();
+
+if (!externalId) { throw new HttpError( "ID proses video wajib diberikan.", 400 ); }
+
+const job = await getJob( user.id, id, externalId, env );
+
+if (!job) { throw new HttpError( "Job tidak ditemukan.", 404 ); }
+
+const provider = await getProvider( id, env, true );
+
+if (!provider) { throw new HttpError( Provider "${id}" tidak ditemukan., 404 ); }
+
+const adapterId = String( provider?.adapter || "" ).trim().toLowerCase();
+
+if (!adapterId) { throw new HttpError( Provider "${id}" belum memiliki adapter., 400 ); }
+
+let adapter;
+
+try { adapter = resolveAdapter( adapterId ); } catch (error) { throw new HttpError( Adapter "${adapterId}" belum tersedia di Worker., 400 ); }
+
+if ( !adapter || typeof adapter.status !== "function" ) { throw new HttpError( Adapter "${adapterId}" tidak menyediakan fungsi status., 400 ); }
+
+const result = await adapter.status( externalId, provider, env );
+
+if (!result) { throw new HttpError( "Provider tidak mengembalikan status.", 502 ); }
+
+result.provider = id;
+
+result.adapter = adapterId;
+
+if ( result.status === "completed" ) { const proxyUrl = /api/video?provider=${encodeURIComponent( id )}&jobId=${encodeURIComponent( job.id )};
+
+const previousMetadata =
+  {
+    ...(job.metadata ||
+      {})
+  };
+
+const nextMetadata =
+  {
+    ...previousMetadata,
+
+    ...result,
+
+    provider:
+      id,
+
+    adapter:
+      adapterId,
+
+    prompt:
+      previousMetadata.prompt ||
+      result.prompt ||
+      null,
+
+    model:
+      previousMetadata.model ||
+      result.model ||
+      job.model ||
+      null,
+
+    duration:
+      previousMetadata.duration ??
+      result.duration ??
+      null,
+
+    aspectRatio:
+      previousMetadata.aspectRatio ||
+      result.aspectRatio ||
+      null,
+
+    resolution:
+      previousMetadata.resolution ||
+      result.resolution ||
+      null
+  };
+
+if (
+  result.fileId
 ) {
-  const user =
-    await requireUser(
-      request,
-      env
-    );
+  nextMetadata.provider_file_id =
+    result.fileId;
+}
 
-  requireJsonContentType(
-    request
-  );
+await updateJob(
+  job.id,
+  {
+    status:
+      "completed",
 
-  const body =
-    await readJson(
-      request
-    );
+    provider_status:
+      "completed",
 
-  const id =
-    canonicalProvider(
-      body?.provider
-    );
+    last_error:
+      null,
 
-  if (!id) {
-    throw new HttpError(
-      "Provider wajib diberikan.",
-      400
-    );
-  }
+    last_error_code:
+      null,
 
-  const externalId =
-    String(
-      body?.operationName ||
-        body?.taskId ||
-        body?.id ||
-        ""
-    ).trim();
+    video_url:
+      result.videoUrl ||
+      proxyUrl,
 
-  if (!externalId) {
-    throw new HttpError(
-      "ID proses video wajib diberikan.",
-      400
-    );
-  }
+    model:
+      nextMetadata.model,
 
-  const job =
-    await getJob(
-      user.id,
-      id,
-      externalId,
-      env
-    );
+    metadata:
+      nextMetadata
+  },
+  env
+);
 
-  if (!job) {
-    throw new HttpError(
-      "Job tidak ditemukan.",
-      404
-    );
-  }
+await recordJobEvent(
+  job.id,
+  user.id,
+  "completed",
+  {
+    providerStatus:
+      "completed",
 
-  const provider =
-    await getProvider(
-      id,
-      env,
-      true
-    );
+    message:
+      "Provider generation completed",
 
-  const adapter =
-    resolveAdapter(
-      provider
-    );
+    metadata:
+      nextMetadata
+  },
+  env
+);
 
-  if (!adapter) {
-    throw new HttpError(
-      `Adapter provider ${id} belum didukung Worker.`,
-      400
-    );
-  }
+result.videoUrl =
+  proxyUrl;
 
-  const result =
-    await adapter.status(
-      externalId,
-      provider,
-      env
-    );
+delete result.fileId;
 
-  if (!result) {
-    throw new HttpError(
-      "Provider tidak mengembalikan status.",
-      502
-    );
-  }
+} else if ( result.status === "failed" ) { await updateJob( job.id, { status: "failed",
 
-  result.provider =
-    id;
+provider_status:
+      "failed",
 
-  if (
-    result.status ===
-    "completed"
-  ) {
-    const proxyUrl =
-      `/api/video?provider=${encodeURIComponent(
-        id
-      )}&jobId=${encodeURIComponent(
-        job.id
-      )}`;
+    last_error:
+      result.error ||
+      "Provider reported failure",
 
-    const previousMetadata =
+    last_error_code:
+      "provider_failed"
+  },
+  env
+);
+
+await recordJobEvent(
+  job.id,
+  user.id,
+  "failed",
+  {
+    providerStatus:
+      "failed",
+
+    errorCode:
+      "provider_failed",
+
+    message:
+      result.error ||
+      "Provider reported failure",
+
+    metadata:
       {
-        ...(job.metadata ||
-          {})
-      };
-
-    const nextMetadata =
-      {
-        ...previousMetadata,
-
-        ...result,
-
         provider:
           id,
 
         adapter:
-          provider.adapter,
+          adapterId
+      }
+  },
+  env
+);
 
-        prompt:
-          previousMetadata.prompt ||
-          result.prompt ||
-          null,
+await refundJob(
+  job.id,
+  env
+);
 
-        model:
-          previousMetadata.model ||
-          result.model ||
-          job.model ||
-          null,
+await recordJobEvent(
+  job.id,
+  user.id,
+  "refunded",
+  {
+    message:
+      "Credit refunded after provider failure",
 
-        duration:
-          previousMetadata.duration ??
-          result.duration ??
-          null,
-
-        aspectRatio:
-          previousMetadata.aspectRatio ||
-          result.aspectRatio ||
-          null,
-
-        resolution:
-          previousMetadata.resolution ||
-          result.resolution ||
-          null
-      };
-
-    if (
-      result.fileId
-    ) {
-      nextMetadata.provider_file_id =
-        result.fileId;
-    }
-
-    await updateJob(
-      job.id,
+    metadata:
       {
-        status:
-          "completed",
+        provider:
+          id,
 
-        provider_status:
-          "completed",
+        adapter:
+          adapterId
+      }
+  },
+  env
+);
 
-        last_error:
-          null,
+} else { await updateJob( job.id, { attempt_count: Number( job.attempt_count || 0 ) + 1,
 
-        last_error_code:
-          null,
+provider_status:
+      "processing"
+  },
+  env
+);
 
-        video_url:
-          result.videoUrl ||
-          proxyUrl,
+await recordJobEvent(
+  job.id,
+  user.id,
+  "poll_processing",
+  {
+    providerStatus:
+      "processing",
 
-        model:
-          nextMetadata.model,
+    message:
+      "Provider still processing",
 
-        metadata:
-          nextMetadata
-      },
-      env
-    );
-
-    await recordJobEvent(
-      job.id,
-      user.id,
-      "completed",
+    metadata:
       {
-        providerStatus:
-          "completed",
+        provider:
+          id,
 
-        message:
-          "Provider generation completed",
+        adapter:
+          adapterId
+      }
+  },
+  env
+);
 
-        metadata:
-          nextMetadata
-      },
-      env
-    );
-
-    result.videoUrl =
-      proxyUrl;
-
-    delete result.fileId;
-  } else if (
-    result.status ===
-    "failed"
-  ) {
-    await updateJob(
-      job.id,
-      {
-        status:
-          "failed",
-
-        provider_status:
-          "failed",
-
-        last_error:
-          result.error ||
-          "Provider reported failure",
-
-        last_error_code:
-          "provider_failed"
-      },
-      env
-    );
-
-    await recordJobEvent(
-      job.id,
-      user.id,
-      "failed",
-      {
-        providerStatus:
-          "failed",
-
-        errorCode:
-          "provider_failed",
-
-        message:
-          result.error ||
-          "Provider reported failure"
-      },
-      env
-    );
-
-    await refundJob(
-      job.id,
-      env
-    );
-
-    await recordJobEvent(
-      job.id,
-      user.id,
-      "refunded",
-      {
-        message:
-          "Credit refunded after provider failure"
-      },
-      env
-    );
-  } else {
-    await updateJob(
-      job.id,
-      {
-        attempt_count:
-          Number(
-            job.attempt_count ||
-              0
-          ) + 1,
-
-        provider_status:
-          "processing"
-      },
-      env
-    );
-
-    await recordJobEvent(
-      job.id,
-      user.id,
-      "poll_processing",
-      {
-        providerStatus:
-          "processing",
-
-        message:
-          "Provider still processing",
-
-        metadata:
-          {
-            adapter:
-              provider.adapter
-          }
-      },
-      env
-    );
-  }
-
-  return json(
-    {
-      jobId:
-        job.id,
-
-      ...result
-    },
-    200,
-    env
-  );
 }
+
+return json( { jobId: job.id,
+
+provider:
+    id,
+
+  adapter:
+    adapterId,
+
+  ...result
+},
+200,
+env
+
+); }
