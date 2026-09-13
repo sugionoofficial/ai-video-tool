@@ -2,26 +2,24 @@ import {
   HttpError
 } from "../lib/http.js";
 
-/*
- * ============================================================
- * GEN-Z.AI
- * GENERATE RATE LIMIT
- * ============================================================
- *
- * Limit:
- * - Maksimal 5 request generate
- * - Dalam window 60 detik
- * - Per user
- *
- * Catatan:
- * Rate limiter ini bersifat in-memory pada masing-masing
- * Cloudflare Worker isolate.
- *
- * Untuk rate limit global lintas seluruh isolate/region,
- * gunakan Cloudflare Rate Limiting / Durable Objects / KV
- * sebagai lapisan tambahan.
- * ============================================================
- */
+
+/* ============================================================
+GEN-Z.AI
+GENERATE RATE LIMIT
+============================================================
+
+Limit:
+- Maksimal 5 request generate
+- Dalam window 60 detik
+- Per user
+
+Catatan:
+Rate limiter ini bersifat in-memory pada masing-masing
+Cloudflare Worker isolate.
+
+Untuk rate limit global lintas isolate/region, gunakan
+Cloudflare Rate Limiting, Durable Objects, atau KV.
+============================================================ */
 
 const GENERATE_LIMIT_WINDOW_MS =
   60_000;
@@ -29,19 +27,19 @@ const GENERATE_LIMIT_WINDOW_MS =
 const GENERATE_LIMIT_MAX =
   5;
 
-/*
- * Batas maksimum entry yang disimpan
- * agar user ID dalam jumlah sangat besar
- * tidak memenuhi memory isolate.
- */
 const MAX_RATE_ENTRIES =
   10_000;
 
-/*
- * Cleanup tidak perlu dilakukan pada setiap request.
- */
 const CLEANUP_INTERVAL_MS =
   15_000;
+
+const MAX_USER_ID_LENGTH =
+  256;
+
+
+/* ============================================================
+STATE
+============================================================ */
 
 const generateRate =
   new Map();
@@ -51,9 +49,8 @@ let lastCleanupAt =
 
 
 /* ============================================================
- * NORMALIZE USER ID
- * ============================================================
- */
+NORMALIZE USER ID
+============================================================ */
 
 function normalizeUserId(
   userId
@@ -63,20 +60,10 @@ function normalizeUserId(
       userId ?? ""
     ).trim();
 
-  if (!value) {
-    throw new HttpError(
-      "User tidak valid.",
-      401
-    );
-  }
-
-  /*
-   * Jangan izinkan key absurd besar
-   * masuk ke memory Map.
-   */
   if (
+    !value ||
     value.length >
-    256
+      MAX_USER_ID_LENGTH
   ) {
     throw new HttpError(
       "User tidak valid.",
@@ -89,9 +76,8 @@ function normalizeUserId(
 
 
 /* ============================================================
- * CLEANUP
- * ============================================================
- */
+CLEANUP EXPIRED ENTRIES
+============================================================ */
 
 function cleanupExpiredRates(
   now
@@ -100,14 +86,17 @@ function cleanupExpiredRates(
     const [
       key,
       hit
-    ]
-    of generateRate
+    ] of generateRate
   ) {
     if (
       !hit ||
       !Number.isFinite(
         hit.startedAt
       ) ||
+      !Number.isInteger(
+        hit.count
+      ) ||
+      hit.count < 1 ||
       now -
         hit.startedAt >=
         GENERATE_LIMIT_WINDOW_MS
@@ -124,59 +113,8 @@ function cleanupExpiredRates(
 
 
 /* ============================================================
- * EMERGENCY SIZE CONTROL
- * ============================================================
- *
- * Jika isolate menyimpan terlalu banyak user,
- * hapus entry tertua yang sudah expired terlebih dahulu.
- * ============================================================
- */
-
-function enforceMapLimit(
-  now
-) {
-  if (
-    generateRate.size <
-    MAX_RATE_ENTRIES
-  ) {
-    return;
-  }
-
-  cleanupExpiredRates(
-    now
-  );
-
-  if (
-    generateRate.size <
-    MAX_RATE_ENTRIES
-  ) {
-    return;
-  }
-
-  /*
-   * Jika semua entry masih aktif,
-   * hapus entry paling lama.
-   *
-   * Ini bukan bypass keamanan karena entry
-   * yang dihapus hanya milik user lain.
-   */
-  const oldest =
-    generateRate.keys().next();
-
-  if (
-    !oldest.done
-  ) {
-    generateRate.delete(
-      oldest.value
-    );
-  }
-}
-
-
-/* ============================================================
- * PERIODIC CLEANUP
- * ============================================================
- */
+PERIODIC CLEANUP
+============================================================ */
 
 function maybeCleanup(
   now
@@ -196,9 +134,66 @@ function maybeCleanup(
 
 
 /* ============================================================
- * CHECK GENERATE RATE
- * ============================================================
- */
+MAP CAPACITY
+============================================================ */
+
+function ensureCapacity(
+  now,
+  currentKey
+) {
+  /*
+   * Jika key user ini sudah ada,
+   * tidak membutuhkan entry baru.
+   */
+  if (
+    generateRate.has(
+      currentKey
+    )
+  ) {
+    return;
+  }
+
+  if (
+    generateRate.size <
+    MAX_RATE_ENTRIES
+  ) {
+    return;
+  }
+
+  /*
+   * Coba bersihkan entry expired
+   * sebelum menolak request baru.
+   */
+  cleanupExpiredRates(
+    now
+  );
+
+  if (
+    generateRate.size <
+    MAX_RATE_ENTRIES
+  ) {
+    return;
+  }
+
+  /*
+   * Jangan menghapus entry user lain
+   * secara arbitrer.
+   *
+   * Jika isolate benar-benar penuh,
+   * lebih aman menolak request sementara
+   * daripada membuat rate limit user lain
+   * dapat di-reset secara tidak terduga.
+   */
+  throw new HttpError(
+    "Server sedang menerima terlalu banyak request. Coba lagi beberapa saat.",
+    503
+  );
+}
+
+
+/* ============================================================
+CHECK GENERATE RATE
+============================================================ */
 
 export function checkGenerateRate(
   userId
@@ -211,30 +206,41 @@ export function checkGenerateRate(
   const now =
     Date.now();
 
-  /*
-   * Bersihkan entry lama secara berkala.
-   */
+
+  /* ==========================================================
+  PERIODIC CLEANUP
+  ========================================================== */
+
   maybeCleanup(
     now
   );
+
+
+  /* ==========================================================
+  EXISTING USER
+  ========================================================== */
 
   let hit =
     generateRate.get(
       key
     );
 
+
   /*
-   * User baru atau window lama
-   * sudah berakhir.
+   * User baru atau window sudah selesai.
    */
   if (
     !hit ||
+    !Number.isFinite(
+      hit.startedAt
+    ) ||
     now -
       hit.startedAt >=
       GENERATE_LIMIT_WINDOW_MS
   ) {
-    enforceMapLimit(
-      now
+    ensureCapacity(
+      now,
+      key
     );
 
     generateRate.set(
@@ -251,17 +257,18 @@ export function checkGenerateRate(
     return;
   }
 
-  /*
-   * Pastikan state tidak korup.
-   */
+
+  /* ==========================================================
+  STATE VALIDATION
+  ========================================================== */
+
   if (
-    !Number.isFinite(
-      hit.startedAt
-    ) ||
     !Number.isInteger(
       hit.count
     ) ||
-    hit.count < 1
+    hit.count < 1 ||
+    hit.count >
+      GENERATE_LIMIT_MAX
   ) {
     hit = {
       startedAt:
@@ -279,24 +286,31 @@ export function checkGenerateRate(
     return;
   }
 
-  /*
-   * Limit tercapai.
-   */
+
+  /* ==========================================================
+  RATE LIMIT REACHED
+  ========================================================== */
+
   if (
     hit.count >=
     GENERATE_LIMIT_MAX
   ) {
+    const elapsed =
+      now -
+      hit.startedAt;
+
+    const remainingMs =
+      Math.max(
+        0,
+        GENERATE_LIMIT_WINDOW_MS -
+          elapsed
+      );
+
     const retryAfterSeconds =
       Math.max(
         1,
         Math.ceil(
-          (
-            GENERATE_LIMIT_WINDOW_MS -
-            (
-              now -
-              hit.startedAt
-            )
-          ) /
+          remainingMs /
             1000
         )
       );
@@ -307,17 +321,14 @@ export function checkGenerateRate(
     );
   }
 
-  /*
-   * Tambahkan hit.
-   */
+
+  /* ==========================================================
+  INCREMENT COUNTER
+  ========================================================== */
+
   hit.count +=
     1;
 
-  /*
-   * Pertahankan object yang sudah
-   * ada agar tidak membuat allocation
-   * baru setiap request.
-   */
   generateRate.set(
     key,
     hit
