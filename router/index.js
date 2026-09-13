@@ -57,6 +57,9 @@ import {
   publicProvider
 } from "../providers/provider-service.js";
 
+import {
+  historyApi
+} from "./history.js";
 
 // ============================================================
 // CONSTANTS
@@ -470,6 +473,22 @@ export async function router(
         env
       );
     }
+
+    // ========================================================
+// HISTORY
+// ========================================================
+
+if (
+  url.pathname ===
+    "/api/history" &&
+  request.method ===
+    "GET"
+) {
+  return await historyApi(
+    request,
+    env
+  );
+}
 
 
     // ========================================================
