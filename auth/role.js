@@ -17,18 +17,46 @@ const VALID_ROLES = [
   "owner"
 ];
 
+function normalizeRole(role) {
+  return String(
+    role || ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeUserId(userId) {
+  return String(
+    userId || ""
+  ).trim();
+}
+
+async function readRoleRows(response) {
+  const data =
+    await safeJson(
+      response
+    );
+
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data;
+}
+
 export function isValidRole(role) {
   return VALID_ROLES.includes(
-    String(
-      role || ""
-    ).toLowerCase()
+    normalizeRole(role)
   );
 }
 
 export function isAdminRole(role) {
+  const normalized =
+    normalizeRole(role);
+
   return (
-    role === "admin" ||
-    role === "owner"
+    normalized === "admin" ||
+    normalized === "owner"
   );
 }
 
@@ -36,16 +64,26 @@ export async function getUserRole(
   userId,
   env
 ) {
-  if (!userId) {
+  const normalizedUserId =
+    normalizeUserId(
+      userId
+    );
+
+  if (!normalizedUserId) {
     return null;
   }
 
   const res =
     await sb(
       `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
-        userId
+        normalizedUserId
       )}&select=user_id,role&limit=1`,
-      {},
+      {
+        headers: {
+          Accept:
+            "application/json"
+        }
+      },
       env
     );
 
@@ -61,11 +99,14 @@ export async function getUserRole(
   }
 
   const roleRows =
-    await res.json();
+    await readRoleRows(
+      res
+    );
 
   const role =
-    roleRows?.[0]?.role ||
-    null;
+    normalizeRole(
+      roleRows?.[0]?.role
+    );
 
   return isValidRole(
     role
@@ -78,7 +119,12 @@ export async function ensureUserRole(
   userId,
   env
 ) {
-  if (!userId) {
+  const normalizedUserId =
+    normalizeUserId(
+      userId
+    );
+
+  if (!normalizedUserId) {
     throw new HttpError(
       "User ID tidak valid.",
       400
@@ -87,7 +133,7 @@ export async function ensureUserRole(
 
   let role =
     await getUserRole(
-      userId,
+      normalizedUserId,
       env
     );
 
@@ -102,13 +148,16 @@ export async function ensureUserRole(
         method: "POST",
 
         headers: {
+          Accept:
+            "application/json",
+
           Prefer:
             "resolution=ignore-duplicates,return=representation"
         },
 
         body: JSON.stringify({
           user_id:
-            userId,
+            normalizedUserId,
 
           role:
             "user"
@@ -120,7 +169,7 @@ export async function ensureUserRole(
   if (!createRole.ok) {
     role =
       await getUserRole(
-        userId,
+        normalizedUserId,
         env
       );
 
@@ -143,7 +192,7 @@ export async function ensureUserRole(
 
   role =
     await getUserRole(
-      userId,
+      normalizedUserId,
       env
     );
 
@@ -163,12 +212,29 @@ export async function requireAdmin(
       env
     );
 
+  const userId =
+    normalizeUserId(
+      user?.id
+    );
+
+  if (!userId) {
+    throw new HttpError(
+      "User tidak valid.",
+      401
+    );
+  }
+
   const res =
     await sb(
       `/rest/v1/user_roles?user_id=eq.${encodeURIComponent(
-        user.id
+        userId
       )}&role=in.(admin,owner)&select=user_id,role&limit=1`,
-      {},
+      {
+        headers: {
+          Accept:
+            "application/json"
+        }
+      },
       env
     );
 
@@ -187,11 +253,14 @@ export async function requireAdmin(
   }
 
   const roleRows =
-    await res.json();
+    await readRoleRows(
+      res
+    );
 
   const role =
-    roleRows?.[0]?.role ||
-    null;
+    normalizeRole(
+      roleRows?.[0]?.role
+    );
 
   if (
     !isAdminRole(
