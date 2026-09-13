@@ -6,7 +6,41 @@ import {
   HttpError
 } from "../lib/http.js";
 
-function isPlainObject(value) {
+
+/* ============================================================
+   GEN-Z.AI
+   JOB SERVICE
+   ============================================================ */
+
+const MAX_JOB_ID_LENGTH =
+  128;
+
+const MAX_USER_ID_LENGTH =
+  256;
+
+const MAX_PROVIDER_ID_LENGTH =
+  64;
+
+const MAX_EXTERNAL_ID_LENGTH =
+  512;
+
+const MAX_EVENT_TYPE_LENGTH =
+  100;
+
+const MAX_ERROR_CODE_LENGTH =
+  100;
+
+const MAX_MESSAGE_LENGTH =
+  2000;
+
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
+function isPlainObject(
+  value
+) {
   return (
     value !== null &&
     typeof value === "object" &&
@@ -14,29 +48,200 @@ function isPlainObject(value) {
   );
 }
 
-export async function updateJob(
-  jobId,
-  patch,
-  env
-) {
-  const normalizedJobId =
-    String(jobId || "").trim();
 
-  if (!normalizedJobId) {
+function normalizeString(
+  value,
+  maxLength,
+  message
+) {
+  const normalized =
+    String(
+      value ?? ""
+    ).trim();
+
+  if (
+    !normalized
+  ) {
     throw new HttpError(
-      "Job ID tidak valid.",
+      message,
       400
     );
   }
 
-  if (!isPlainObject(patch)) {
+  if (
+    normalized.length >
+    maxLength
+  ) {
+    throw new HttpError(
+      message,
+      400
+    );
+  }
+
+  return normalized;
+}
+
+
+function normalizeJobId(
+  value
+) {
+  return normalizeString(
+    value,
+    MAX_JOB_ID_LENGTH,
+    "Job ID tidak valid."
+  );
+}
+
+
+function normalizeUserId(
+  value
+) {
+  return normalizeString(
+    value,
+    MAX_USER_ID_LENGTH,
+    "User ID tidak valid."
+  );
+}
+
+
+function normalizeProvider(
+  value
+) {
+  return normalizeString(
+    value,
+    MAX_PROVIDER_ID_LENGTH,
+    "Provider tidak valid."
+  )
+    .toLowerCase();
+}
+
+
+function normalizeExternalId(
+  value
+) {
+  return normalizeString(
+    value,
+    MAX_EXTERNAL_ID_LENGTH,
+    "External ID tidak valid."
+  );
+}
+
+
+/* ============================================================
+   ALLOWED JOB PATCH FIELDS
+   ============================================================
+
+   updateJob() hanya boleh mengubah field yang memang
+   digunakan oleh lifecycle video job.
+
+   Ini mencegah field database lain ikut berubah akibat
+   kesalahan caller internal.
+   ============================================================ */
+
+const ALLOWED_PATCH_FIELDS =
+  new Set([
+    "status",
+    "provider_status",
+    "last_error",
+    "last_error_code",
+    "video_url",
+    "model",
+    "metadata",
+    "attempt_count",
+    "external_id",
+    "credit_cost",
+    "updated_at"
+  ]);
+
+
+function sanitizeJobPatch(
+  patch
+) {
+  if (
+    !isPlainObject(
+      patch
+    )
+  ) {
     throw new HttpError(
       "Data pembaruan job tidak valid.",
       400
     );
   }
 
-  const r =
+
+  const sanitized = {};
+
+
+  for (
+    const [
+      key,
+      value
+    ]
+    of Object.entries(
+      patch
+    )
+  ) {
+
+    if (
+      !ALLOWED_PATCH_FIELDS.has(
+        key
+      )
+    ) {
+      continue;
+    }
+
+    sanitized[key] =
+      value;
+  }
+
+
+  if (
+    Object.keys(
+      sanitized
+    ).length === 0
+  ) {
+    throw new HttpError(
+      "Tidak ada field job yang valid untuk diperbarui.",
+      400
+    );
+  }
+
+
+  return sanitized;
+}
+
+
+/* ============================================================
+   UPDATE JOB
+   ============================================================ */
+
+export async function updateJob(
+  jobId,
+  patch,
+  env
+) {
+  const normalizedJobId =
+    normalizeJobId(
+      jobId
+    );
+
+
+  const sanitizedPatch =
+    sanitizeJobPatch(
+      patch
+    );
+
+
+  const payload = {
+    ...sanitizedPatch,
+
+    updated_at:
+      new Date()
+        .toISOString()
+  };
+
+
+  const response =
     await sb(
       `/rest/v1/video_jobs?id=eq.${encodeURIComponent(
         normalizedJobId
@@ -57,23 +262,20 @@ export async function updateJob(
         },
 
         body:
-          JSON.stringify({
-            ...patch,
-
-            updated_at:
-              new Date()
-                .toISOString()
-          })
+          JSON.stringify(
+            payload
+          )
       },
       env
     );
 
+
   if (
-    !r.ok
+    !response.ok
   ) {
     console.error(
       "job update failed",
-      r.status
+      response.status
     );
 
     throw new HttpError(
@@ -81,7 +283,15 @@ export async function updateJob(
       500
     );
   }
+
+
+  return true;
 }
+
+
+/* ============================================================
+   RECORD JOB EVENT
+   ============================================================ */
 
 export async function recordJobEvent(
   jobId,
@@ -91,26 +301,73 @@ export async function recordJobEvent(
   env
 ) {
   try {
+
     const normalizedJobId =
-      String(jobId || "").trim();
-
-    const normalizedUserId =
-      String(userId || "").trim();
-
-    const normalizedEventType =
-      String(eventType || "").trim();
-
-    if (
-      !normalizedJobId ||
-      !normalizedUserId ||
-      !normalizedEventType
-    ) {
-      console.error(
-        "job event logging skipped: invalid event data"
+      normalizeJobId(
+        jobId
       );
 
-      return false;
-    }
+
+    const normalizedUserId =
+      normalizeUserId(
+        userId
+      );
+
+
+    const normalizedEventType =
+      normalizeString(
+        eventType,
+        MAX_EVENT_TYPE_LENGTH,
+        "Event job tidak valid."
+      );
+
+
+    const providerStatus =
+      extra?.providerStatus
+        ? String(
+            extra.providerStatus
+          )
+            .trim()
+            .slice(
+              0,
+              100
+            )
+        : null;
+
+
+    const errorCode =
+      extra?.errorCode
+        ? String(
+            extra.errorCode
+          )
+            .trim()
+            .slice(
+              0,
+              MAX_ERROR_CODE_LENGTH
+            )
+        : null;
+
+
+    const message =
+      extra?.message
+        ? String(
+            extra.message
+          )
+            .trim()
+            .slice(
+              0,
+              MAX_MESSAGE_LENGTH
+            )
+        : "";
+
+
+    const metadata =
+      isPlainObject(
+        extra?.metadata
+      )
+        ? extra.metadata
+        : {};
+
 
     const response =
       await sb(
@@ -139,36 +396,21 @@ export async function recordJobEvent(
                 normalizedEventType,
 
               p_provider_status:
-                extra?.providerStatus
-                  ? String(
-                      extra.providerStatus
-                    ).slice(0, 100)
-                  : null,
+                providerStatus,
 
               p_error_code:
-                extra?.errorCode
-                  ? String(
-                      extra.errorCode
-                    ).slice(0, 100)
-                  : null,
+                errorCode,
 
               p_message:
-                extra?.message
-                  ? String(
-                      extra.message
-                    ).slice(0, 2000)
-                  : "",
+                message,
 
               p_metadata:
-                isPlainObject(
-                  extra?.metadata
-                )
-                  ? extra.metadata
-                  : {}
+                metadata
             })
         },
         env
       );
+
 
     if (
       !response.ok
@@ -181,32 +423,45 @@ export async function recordJobEvent(
       return false;
     }
 
+
     return true;
-  } catch (err) {
+
+  } catch (
+    err
+  ) {
+
     console.error(
       "job event logging failed",
-      err
+      String(
+        err?.message ||
+        err ||
+        "unknown"
+      ).slice(
+        0,
+        300
+      )
     );
 
     return false;
   }
 }
 
+
+/* ============================================================
+   REFUND JOB
+   ============================================================ */
+
 export async function refundJob(
   jobId,
   env
 ) {
   const normalizedJobId =
-    String(jobId || "").trim();
-
-  if (!normalizedJobId) {
-    throw new HttpError(
-      "Job ID tidak valid.",
-      400
+    normalizeJobId(
+      jobId
     );
-  }
 
-  const res =
+
+  const response =
     await sb(
       "/rest/v1/rpc/refund_video_job",
       {
@@ -230,12 +485,13 @@ export async function refundJob(
       env
     );
 
+
   if (
-    !res.ok
+    !response.ok
   ) {
     console.error(
       "job refund failed",
-      res.status
+      response.status
     );
 
     throw new HttpError(
@@ -244,8 +500,14 @@ export async function refundJob(
     );
   }
 
+
   return true;
 }
+
+
+/* ============================================================
+   GET JOB
+   ============================================================ */
 
 export async function getJob(
   userId,
@@ -254,37 +516,36 @@ export async function getJob(
   env
 ) {
   const normalizedUserId =
-    String(userId || "").trim();
+    normalizeUserId(
+      userId
+    );
+
 
   const normalizedProvider =
-    String(provider || "").trim();
+    normalizeProvider(
+      provider
+    );
+
 
   const normalizedExternalId =
-    String(externalId || "").trim();
-
-  if (
-    !normalizedUserId ||
-    !normalizedProvider ||
-    !normalizedExternalId
-  ) {
-    throw new HttpError(
-      "Parameter job tidak valid.",
-      400
+    normalizeExternalId(
+      externalId
     );
-  }
 
-  const q =
+
+  const query =
     `/rest/v1/video_jobs?user_id=eq.${encodeURIComponent(
       normalizedUserId
     )}&provider=eq.${encodeURIComponent(
       normalizedProvider
     )}&external_id=eq.${encodeURIComponent(
       normalizedExternalId
-    )}&select=*`;
+    )}&select=*&limit=1`;
 
-  const res =
+
+  const response =
     await sb(
-      q,
+      query,
       {
         headers: {
           Accept:
@@ -294,12 +555,13 @@ export async function getJob(
       env
     );
 
+
   if (
-    !res.ok
+    !response.ok
   ) {
     console.error(
       "job lookup failed",
-      res.status
+      response.status
     );
 
     throw new HttpError(
@@ -308,11 +570,14 @@ export async function getJob(
     );
   }
 
+
   let rows;
+
 
   try {
     rows =
-      await res.json();
+      await response.json();
+
   } catch {
     throw new HttpError(
       "Respons data job tidak valid.",
@@ -320,7 +585,18 @@ export async function getJob(
     );
   }
 
-  return Array.isArray(rows)
-    ? rows[0] || null
-    : null;
+
+  if (
+    !Array.isArray(
+      rows
+    )
+  ) {
+    return null;
+  }
+
+
+  return (
+    rows[0] ||
+    null
+  );
 }
