@@ -4,26 +4,18 @@
 
    RIWAYAT VIDEO GENERATION
 
-   Data diambil melalui:
+   Data:
    GET /api/history
 
-   Backend:
-   worker.js
-      ↓
-   router/index.js
-      ↓
-   router/history.js
-      ↓
-   requireUser()
-      ↓
-   Supabase video_jobs
-
-   Semua status ditampilkan:
+   Semua status:
    - completed
    - failed
    - processing
    - cancelled
    - error
+
+   Error provider tidak pernah ditampilkan mentah
+   kepada pengguna.
 ========================================================= */
 
 (function () {
@@ -245,24 +237,12 @@
 
 
     if (
-      combined.includes(
-        "failed"
-      ) ||
-      combined.includes(
-        "failure"
-      ) ||
-      combined.includes(
-        "error"
-      ) ||
-      combined.includes(
-        "reject"
-      ) ||
-      combined.includes(
-        "timeout"
-      ) ||
-      combined.includes(
-        "cancel"
-      )
+      combined.includes("failed") ||
+      combined.includes("failure") ||
+      combined.includes("error") ||
+      combined.includes("reject") ||
+      combined.includes("timeout") ||
+      combined.includes("cancel")
     ) {
 
       return "failed";
@@ -584,11 +564,242 @@
 
     } catch (_) {
 
-      return String(
-        value
+      return "-";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     FRIENDLY ERROR
+     
+     Error asli dari provider disimpan di database,
+     tetapi TIDAK pernah ditampilkan ke pengguna.
+  ======================================================= */
+
+  function getFriendlyError(job) {
+
+    const code =
+      String(
+        job?.last_error_code || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    const raw =
+      String(
+        job?.last_error || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    /*
+     * Quota / rate limit
+     */
+
+    if (
+      code === "429" ||
+      raw.includes("quota") ||
+      raw.includes("rate limit") ||
+      raw.includes("resource exhausted") ||
+      raw.includes("too many requests") ||
+      raw.includes("exceeded your current")
+    ) {
+
+      return (
+        "Provider sedang mengalami gangguan " +
+        "atau kuota sedang penuh. " +
+        "Silakan coba lagi beberapa saat."
       );
 
     }
+
+
+    /*
+     * Timeout
+     */
+
+    if (
+      code === "408" ||
+      code === "504" ||
+      raw.includes("timeout") ||
+      raw.includes("timed out") ||
+      raw.includes("deadline exceeded")
+    ) {
+
+      return (
+        "Provider terlalu lama merespons. " +
+        "Silakan coba lagi beberapa saat."
+      );
+
+    }
+
+
+    /*
+     * Service unavailable
+     */
+
+    if (
+      code === "503" ||
+      raw.includes("service unavailable") ||
+      raw.includes("temporarily unavailable")
+    ) {
+
+      return (
+        "Provider sedang mengalami gangguan. " +
+        "Silakan coba lagi beberapa saat."
+      );
+
+    }
+
+
+    /*
+     * Bad gateway
+     */
+
+    if (
+      code === "502" ||
+      raw.includes("bad gateway") ||
+      raw.includes("upstream")
+    ) {
+
+      return (
+        "Provider gagal merespons dengan baik. " +
+        "Silakan coba lagi."
+      );
+
+    }
+
+
+    /*
+     * API key / permission
+     */
+
+    if (
+      code === "401" ||
+      code === "403" ||
+      raw.includes("unauthorized") ||
+      raw.includes("permission") ||
+      raw.includes("api key") ||
+      raw.includes("authentication")
+    ) {
+
+      return (
+        "Layanan provider sedang tidak tersedia. " +
+        "Silakan gunakan provider lain atau coba lagi nanti."
+      );
+
+    }
+
+
+    /*
+     * Duration tidak valid
+     */
+
+    if (
+      raw.includes("durationseconds") ||
+      raw.includes("duration seconds") ||
+      raw.includes("needs to be a number")
+    ) {
+
+      return (
+        "Parameter durasi tidak valid. " +
+        "Silakan gunakan durasi yang didukung."
+      );
+
+    }
+
+
+    /*
+     * inlineData tidak didukung
+     */
+
+    if (
+      raw.includes("inlinedata") ||
+      raw.includes("inline data") ||
+      raw.includes("isn't supported by this model")
+    ) {
+
+      return (
+        "Reference image belum didukung " +
+        "oleh model/provider ini."
+      );
+
+    }
+
+
+    /*
+     * Kombinasi model, durasi dan reference
+     */
+
+    if (
+      raw.includes("kombinasi model") ||
+      (
+        raw.includes("model") &&
+        raw.includes("duration") &&
+        raw.includes("reference image")
+      ) ||
+      raw.includes("reference image tidak didukung")
+    ) {
+
+      return (
+        "Kombinasi model, durasi, dan " +
+        "reference image tidak didukung."
+      );
+
+    }
+
+
+    /*
+     * Image-to-video / 1080p / 4K
+     */
+
+    if (
+      raw.includes("1080p") ||
+      raw.includes("4k") ||
+      raw.includes("image-to-video") ||
+      raw.includes("membutuhkan 8 detik")
+    ) {
+
+      return (
+        "Untuk image-to-video atau 1080p/4K, " +
+        "gunakan durasi 8 detik."
+      );
+
+    }
+
+
+    /*
+     * Safety / policy
+     */
+
+    if (
+      raw.includes("safety") ||
+      raw.includes("blocked") ||
+      raw.includes("policy") ||
+      raw.includes("sensitive") ||
+      raw.includes("unsafe")
+    ) {
+
+      return (
+        "Permintaan tidak dapat diproses " +
+        "oleh provider. Silakan ubah prompt."
+      );
+
+    }
+
+
+    /*
+     * Error generik.
+     */
+
+    return (
+      "Generation gagal diproses. " +
+      "Silakan coba lagi."
+    );
 
   }
 
@@ -669,16 +880,11 @@
       session.user.id;
 
 
-    console.log(
-      "[GEN-Z HISTORY] User:",
-      userId
-    );
-
-
     const response =
       await fetch(
         "/api/history?limit=1000&offset=0",
         {
+
           method:
             "GET",
 
@@ -723,13 +929,6 @@
       !response.ok
     ) {
 
-      console.error(
-        "[GEN-Z HISTORY] API error:",
-        response.status,
-        payload
-      );
-
-
       throw new Error(
 
         payload?.error ||
@@ -746,8 +945,11 @@
     ) {
 
       throw new Error(
+
         payload?.error ||
+
         "API riwayat tidak mengembalikan data."
+
       );
 
     }
@@ -764,71 +966,16 @@
     state.jobs =
       jobs.filter(
         job =>
+
           String(
             job?.user_id ||
             ""
           ) ===
+
           String(
             userId
           )
       );
-
-
-    console.log(
-      "[GEN-Z HISTORY] API total:",
-      jobs.length
-    );
-
-
-    console.log(
-      "[GEN-Z HISTORY] User total:",
-      state.jobs.length
-    );
-
-
-    const failed =
-      state.jobs.filter(
-        job =>
-          normalizeStatus(
-            job
-          ) ===
-          "failed"
-      ).length;
-
-
-    const completed =
-      state.jobs.filter(
-        job =>
-          normalizeStatus(
-            job
-          ) ===
-          "completed"
-      ).length;
-
-
-    const processing =
-      state.jobs.filter(
-        job =>
-          normalizeStatus(
-            job
-          ) ===
-          "processing"
-      ).length;
-
-
-    console.log(
-      "[GEN-Z HISTORY]",
-      {
-        total:
-          state.jobs.length,
-
-        completed,
-
-        failed,
-
-        processing
-      }
-    );
 
 
     return state.jobs;
@@ -856,18 +1003,13 @@
 
     if (!grid) {
 
-      console.error(
-        "[GEN-Z HISTORY] historyGrid tidak ditemukan."
-      );
-
       return;
 
     }
 
 
     const jobs =
-      state.jobs ||
-      [];
+      state.jobs || [];
 
 
     if (count) {
@@ -886,16 +1028,9 @@
 
         <div
           class="history-empty"
-          style="
-            padding:40px 20px;
-            text-align:center;
-            opacity:.75;
-          "
         >
-
           Belum ada percobaan
           generate video.
-
         </div>
 
       `;
@@ -909,7 +1044,10 @@
 
       jobs.map(
 
-        (job) => {
+        (
+          job,
+          index
+        ) => {
 
           const status =
             normalizeStatus(
@@ -947,10 +1085,13 @@
             );
 
 
-          let preview = "";
+          let preview =
+            "";
 
 
-          /* COMPLETED */
+          /*
+           * VIDEO SELESAI
+           */
 
           if (
             status ===
@@ -981,7 +1122,11 @@
           }
 
 
-          /* FAILED */
+          /*
+           * GENERATE GAGAL
+           *
+           * Tidak menampilkan last_error.
+           */
 
           else if (
             status ===
@@ -991,7 +1136,10 @@
             preview = `
 
               <div
-                class="history-placeholder history-failed"
+                class="
+                  history-placeholder
+                  history-failed
+                "
                 style="
                   width:100%;
                   height:100%;
@@ -1035,14 +1183,19 @@
           }
 
 
-          /* PROCESSING */
+          /*
+           * MASIH DIPROSES
+           */
 
           else {
 
             preview = `
 
               <div
-                class="history-placeholder history-processing"
+                class="
+                  history-placeholder
+                  history-processing
+                "
                 style="
                   width:100%;
                   height:100%;
@@ -1076,20 +1229,11 @@
           }
 
 
-          const error =
-            job?.last_error ||
-            "";
-
-
           return `
 
             <div
               class="history-card"
-              data-history-index="${escapeHtml(
-                jobs.indexOf(
-                  job
-                )
-              )}"
+              data-history-index="${index}"
               style="
                 cursor:pointer;
               "
@@ -1169,25 +1313,6 @@
 
                 </div>
 
-
-                ${
-                  error
-                    ? `
-                      <div
-                        style="
-                          margin-top:8px;
-                          font-size:12px;
-                          opacity:.65;
-                        "
-                      >
-                        ${escapeHtml(
-                          error
-                        )}
-                      </div>
-                    `
-                    : ""
-                }
-
               </div>
 
             </div>
@@ -1216,12 +1341,6 @@
     }
 
 
-    const metadata =
-      getMetadata(
-        job
-      );
-
-
     const status =
       normalizeStatus(
         job
@@ -1234,194 +1353,377 @@
       );
 
 
-    const error =
-      job?.last_error ||
-      "-";
+    /*
+     * PENTING:
+     * Jangan pernah menampilkan job.last_error
+     * langsung ke browser.
+     */
+
+    const friendlyError =
+      getFriendlyError(
+        job
+      );
 
 
-    const details = `
+    const modal =
+      $(
+        "historyModal"
+      );
+
+
+    const body =
+      $(
+        "historyDialogBody"
+      );
+
+
+    const title =
+      $(
+        "historyDialogTitle"
+      );
+
+
+    if (
+      !modal ||
+      !body
+    ) {
+
+      return;
+
+    }
+
+
+    if (title) {
+
+      title.textContent =
+        status === "failed"
+          ? "Detail Generate Gagal"
+          : "Detail Video";
+
+    }
+
+
+    let content = `
 
       <div
-        style="
-          padding:20px;
-        "
+        class="history-detail-grid"
       >
 
-        <h3>
-          Detail Generate
-        </h3>
+        <div
+          class="history-detail-item"
+        >
 
-        <p>
-          <strong>Status:</strong>
-          ${escapeHtml(
-            statusLabel(
-              status
-            )
-          )}
-        </p>
+          <span>Status</span>
 
-        <p>
-          <strong>Provider:</strong>
-          ${escapeHtml(
-            providerLabel(
-              job.provider
-            )
-          )}
-        </p>
+          <strong>
+            ${escapeHtml(
+              statusLabel(
+                status
+              )
+            )}
+          </strong>
 
-        <p>
-          <strong>Model:</strong>
-          ${escapeHtml(
-            getModel(
-              job
-            )
-          )}
-        </p>
+        </div>
 
-        <p>
-          <strong>Durasi:</strong>
-          ${escapeHtml(
-            getDuration(
-              job
-            )
-          )}
-        </p>
 
-        <p>
-          <strong>Aspect Ratio:</strong>
-          ${escapeHtml(
-            getAspectRatio(
-              job
-            )
-          )}
-        </p>
+        <div
+          class="history-detail-item"
+        >
 
-        <p>
-          <strong>Resolusi:</strong>
-          ${escapeHtml(
-            getResolution(
-              job
-            )
-          )}
-        </p>
+          <span>Provider</span>
 
-        <p>
-          <strong>Tanggal:</strong>
-          ${escapeHtml(
-            formatDate(
-              job.created_at
-            )
-          )}
-        </p>
+          <strong>
+            ${escapeHtml(
+              providerLabel(
+                job.provider
+              )
+            )}
+          </strong>
 
-        <p>
-          <strong>Job ID:</strong>
-          ${escapeHtml(
-            job.id
-          )}
-        </p>
+        </div>
 
-        <p>
-          <strong>Prompt:</strong>
-          ${escapeHtml(
-            prompt ||
-            "-"
-          )}
-        </p>
 
-        <p>
-          <strong>Error:</strong>
-          ${escapeHtml(
-            error
-          )}
-        </p>
+        <div
+          class="history-detail-item"
+        >
 
-        <p>
-          <strong>Error Code:</strong>
-          ${escapeHtml(
-            job.last_error_code ||
-            "-"
-          )}
-        </p>
+          <span>Model</span>
 
-        <p>
-          <strong>Refund:</strong>
-          ${job.refunded
-            ? "Ya"
-            : "Tidak"}
-        </p>
+          <strong>
+            ${escapeHtml(
+              getModel(
+                job
+              )
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Durasi</span>
+
+          <strong>
+            ${escapeHtml(
+              getDuration(
+                job
+              )
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Aspect Ratio</span>
+
+          <strong>
+            ${escapeHtml(
+              getAspectRatio(
+                job
+              )
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Resolusi</span>
+
+          <strong>
+            ${escapeHtml(
+              getResolution(
+                job
+              )
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Tanggal</span>
+
+          <strong>
+            ${escapeHtml(
+              formatDate(
+                job.created_at
+              )
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Job ID</span>
+
+          <strong>
+            ${escapeHtml(
+              job.id
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Error Code</span>
+
+          <strong>
+            ${escapeHtml(
+              job.last_error_code ||
+              "-"
+            )}
+          </strong>
+
+        </div>
+
+
+        <div
+          class="history-detail-item"
+        >
+
+          <span>Refund</span>
+
+          <strong>
+            ${job.refunded
+              ? "Ya"
+              : "Tidak"}
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div
+        class="history-detail-prompt"
+      >
+
+        <strong>
+          Prompt
+        </strong>
+
+        <br><br>
+
+        ${escapeHtml(
+          prompt ||
+          "-"
+        )}
 
       </div>
 
     `;
 
 
-    const modal =
-      document.createElement(
-        "div"
-      );
+    /*
+     * ERROR HANYA DITAMPILKAN
+     * DALAM VERSI YANG SUDAH DISANITASI.
+     */
+
+    if (
+      status ===
+      "failed"
+    ) {
+
+      content += `
+
+        <div
+          class="history-error"
+        >
+
+          <strong>
+            Penyebab:
+          </strong>
+
+          <br>
+
+          ${escapeHtml(
+            friendlyError
+          )}
+
+        </div>
+
+      `;
+
+    }
 
 
-    modal.style.cssText = `
+    /*
+     * VIDEO SELESAI
+     */
 
-      position:fixed;
-      inset:0;
-      z-index:99999;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      background:rgba(0,0,0,.65);
+    if (
+      status ===
+      "completed"
+    ) {
 
-    `;
-
-
-    const box =
-      document.createElement(
-        "div"
-      );
+      const videoUrl =
+        getVideoUrl(
+          job
+        );
 
 
-    box.style.cssText = `
+      if (videoUrl) {
 
-      width:min(600px,100%);
-      max-height:90vh;
-      overflow:auto;
-      background:#111;
-      color:#fff;
-      border-radius:16px;
+        content = `
 
-    `;
+          <video
+            class="history-player"
+            src="${escapeHtml(
+              videoUrl
+            )}"
+            controls
+            playsinline
+          ></video>
 
-
-    box.innerHTML =
-      details;
-
-
-    modal.appendChild(
-      box
-    );
+        ` + content;
 
 
-    modal.addEventListener(
-      "click",
-      event => {
+        content += `
 
-        if (
-          event.target ===
-          modal
-        ) {
+          <a
+            class="history-download"
+            href="${escapeHtml(
+              videoUrl
+            )}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Buka / Download Video
+          </a>
 
-          modal.remove();
-
-        }
+        `;
 
       }
+
+    }
+
+
+    body.innerHTML =
+      content;
+
+
+    modal.classList.remove(
+      "hidden"
     );
 
 
-    document.body.appendChild(
-      modal
+    modal.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
+  }
+
+
+  /* =======================================================
+     CLOSE DETAIL
+  ======================================================= */
+
+  function closeDetail() {
+
+    const modal =
+      $(
+        "historyModal"
+      );
+
+
+    if (!modal) {
+
+      return;
+
+    }
+
+
+    modal.classList.add(
+      "hidden"
+    );
+
+
+    modal.setAttribute(
+      "aria-hidden",
+      "true"
     );
 
   }
@@ -1490,12 +1792,93 @@
         }
 
 
+        state.selected =
+          state.jobs[index] ||
+          null;
+
+
         openDetail(
-          state.jobs[index]
+          state.selected
         );
 
       }
     );
+
+
+    const closeButton =
+      $(
+        "historyClose"
+      );
+
+
+    if (closeButton) {
+
+      closeButton.addEventListener(
+        "click",
+        closeDetail
+      );
+
+    }
+
+
+    const modal =
+      $(
+        "historyModal"
+      );
+
+
+    if (modal) {
+
+      modal.addEventListener(
+        "click",
+        event => {
+
+          if (
+            event.target ===
+            modal
+          ) {
+
+            closeDetail();
+
+          }
+
+        }
+      );
+
+    }
+
+
+    document.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key ===
+          "Escape"
+        ) {
+
+          closeDetail();
+
+        }
+
+      }
+    );
+
+
+    const refreshButton =
+      $(
+        "historyRefresh"
+      );
+
+
+    if (refreshButton) {
+
+      refreshButton.addEventListener(
+        "click",
+        refresh
+      );
+
+    }
 
 
     state.bound =
@@ -1529,6 +1912,20 @@
       );
 
 
+    const status =
+      $(
+        "historyStatus"
+      );
+
+
+    if (status) {
+
+      status.textContent =
+        "Memuat riwayat...";
+
+    }
+
+
     if (grid) {
 
       grid.innerHTML = `
@@ -1554,6 +1951,14 @@
 
       render();
 
+
+      if (status) {
+
+        status.textContent =
+          "";
+
+      }
+
     } catch (
       error
     ) {
@@ -1564,35 +1969,24 @@
       );
 
 
+      if (status) {
+
+        status.textContent =
+          error?.message ||
+          "Riwayat belum dapat dimuat.";
+
+      }
+
+
       if (grid) {
 
         grid.innerHTML = `
 
           <div
-            style="
-              padding:30px;
-              text-align:center;
-            "
+            class="history-empty"
           >
 
-            <strong>
-              Riwayat belum dapat dimuat
-            </strong>
-
-            <div
-              style="
-                margin-top:10px;
-                opacity:.7;
-                font-size:13px;
-              "
-            >
-
-              ${escapeHtml(
-                error?.message ||
-                "Terjadi kesalahan."
-              )}
-
-            </div>
+            Riwayat belum dapat dimuat.
 
           </div>
 
@@ -1628,47 +2022,13 @@
       );
 
 
-    if (!container) {
-
-      console.warn(
-        "[GEN-Z HISTORY] Container history tidak ditemukan."
-      );
-
-    }
-
-
-    try {
-
-      const response =
-        await fetch(
-          "/components/history.html",
-          {
-            cache:
-              "no-store"
-          }
-        );
-
-
-      if (
-        response.ok &&
-        container
-      ) {
-
-        container.innerHTML =
-          await response.text();
-
-      }
-
-    } catch (
-      error
-    ) {
-
-      console.error(
-        "[GEN-Z HISTORY] Component error:",
-        error
-      );
-
-    }
+    /*
+     * history.html sekarang sudah dimuat
+     * oleh profile.js.
+     *
+     * Jadi jangan mengganti isi container
+     * lagi di sini.
+     */
 
 
     bind();
