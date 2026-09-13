@@ -61,6 +61,7 @@ import {
   historyApi
 } from "./history.js";
 
+
 // ============================================================
 // CONSTANTS
 // ============================================================
@@ -120,6 +121,255 @@ function isSupportedAdapter(
 
 
 // ============================================================
+// USER-FRIENDLY ERROR MESSAGE
+// ============================================================
+
+function getFriendlyErrorMessage(
+  error,
+  status
+) {
+
+  const message =
+    String(
+      error?.message ||
+      ""
+    ).toLowerCase();
+
+
+  // ----------------------------------------------------------
+  // QUOTA / RATE LIMIT
+  // ----------------------------------------------------------
+
+  if (
+    status === 429 ||
+    message.includes(
+      "quota"
+    ) ||
+    message.includes(
+      "rate limit"
+    ) ||
+    message.includes(
+      "rate-limit"
+    ) ||
+    message.includes(
+      "resource exhausted"
+    ) ||
+    message.includes(
+      "too many requests"
+    ) ||
+    message.includes(
+      "exceeded your current"
+    )
+  ) {
+
+    return (
+      "Provider sedang mengalami gangguan " +
+      "atau kuota sedang penuh. " +
+      "Silakan coba lagi beberapa saat."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // TIMEOUT
+  // ----------------------------------------------------------
+
+  if (
+    message.includes(
+      "timeout"
+    ) ||
+    message.includes(
+      "timed out"
+    ) ||
+    message.includes(
+      "deadline exceeded"
+    ) ||
+    message.includes(
+      "upstream timeout"
+    ) ||
+    message.includes(
+      "operation timed out"
+    )
+  ) {
+
+    return (
+      "Provider terlalu lama merespons. " +
+      "Silakan coba lagi beberapa saat."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // SERVICE UNAVAILABLE
+  // ----------------------------------------------------------
+
+  if (
+    status === 503 ||
+    message.includes(
+      "service unavailable"
+    ) ||
+    message.includes(
+      "temporarily unavailable"
+    )
+  ) {
+
+    return (
+      "Provider pusat sedang mengalami gangguan. " +
+      "Silakan coba lagi beberapa saat."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // BAD GATEWAY
+  // ----------------------------------------------------------
+
+  if (
+    status === 502 ||
+    message.includes(
+      "bad gateway"
+    )
+  ) {
+
+    return (
+      "Provider pusat gagal merespons dengan baik. " +
+      "Silakan coba lagi."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // GATEWAY TIMEOUT
+  // ----------------------------------------------------------
+
+  if (
+    status === 504 ||
+    message.includes(
+      "gateway timeout"
+    )
+  ) {
+
+    return (
+      "Provider pusat terlalu lama merespons. " +
+      "Silakan coba lagi beberapa saat."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // API KEY / AUTH PROVIDER
+  // ----------------------------------------------------------
+
+  if (
+    status === 401 ||
+    status === 403 ||
+    message.includes(
+      "invalid api key"
+    ) ||
+    message.includes(
+      "api key"
+    ) ||
+    message.includes(
+      "unauthorized"
+    ) ||
+    message.includes(
+      "permission denied"
+    ) ||
+    message.includes(
+      "authentication"
+    )
+  ) {
+
+    return (
+      "Layanan provider sedang tidak tersedia. " +
+      "Silakan gunakan provider lain atau coba lagi nanti."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // PROVIDER / UPSTREAM ERROR
+  // ----------------------------------------------------------
+
+  if (
+    message.includes(
+      "provider"
+    ) ||
+    message.includes(
+      "upstream"
+    ) ||
+    message.includes(
+      "connection refused"
+    ) ||
+    message.includes(
+      "connection reset"
+    ) ||
+    message.includes(
+      "network error"
+    )
+  ) {
+
+    return (
+      "Provider sedang mengalami gangguan. " +
+      "Silakan coba lagi beberapa saat."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // SERVER ERROR
+  // ----------------------------------------------------------
+
+  if (
+    status >= 500 &&
+    status <= 599
+  ) {
+
+    return (
+      "Provider pusat sedang mengalami gangguan. " +
+      "Silakan coba lagi beberapa saat."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // CONTENT / SAFETY
+  // ----------------------------------------------------------
+
+  if (
+    message.includes(
+      "safety"
+    ) ||
+    message.includes(
+      "blocked"
+    ) ||
+    message.includes(
+      "policy"
+    ) ||
+    message.includes(
+      "sensitive"
+    )
+  ) {
+
+    return (
+      "Permintaan tidak dapat diproses oleh provider. " +
+      "Silakan ubah prompt dan coba lagi."
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // DEFAULT
+  // ----------------------------------------------------------
+
+  return (
+    "Generation gagal diproses. " +
+    "Silakan coba lagi."
+  );
+}
+
+
+// ============================================================
 // ROUTER
 // ============================================================
 
@@ -137,6 +387,7 @@ export async function router(
     request.method ===
     "OPTIONS"
   ) {
+
     return new Response(
       null,
       {
@@ -220,6 +471,7 @@ export async function router(
 
 
       if (!res.ok) {
+
         throw new HttpError(
           "Gagal membaca konfigurasi provider.",
           502
@@ -263,6 +515,7 @@ export async function router(
                       );
 
                     return {
+
                       id:
                         provider.id,
 
@@ -324,6 +577,7 @@ export async function router(
 
 
       if (!res.ok) {
+
         throw new HttpError(
           "Gagal mengambil daftar provider.",
           502
@@ -474,21 +728,23 @@ export async function router(
       );
     }
 
-    // ========================================================
-// HISTORY
-// ========================================================
 
-if (
-  url.pathname ===
-    "/api/history" &&
-  request.method ===
-    "GET"
-) {
-  return await historyApi(
-    request,
-    env
-  );
-}
+    // ========================================================
+    // HISTORY
+    // ========================================================
+
+    if (
+      url.pathname ===
+        "/api/history" &&
+      request.method ===
+        "GET"
+    ) {
+
+      return await historyApi(
+        request,
+        env
+      );
+    }
 
 
     // ========================================================
@@ -507,6 +763,7 @@ if (
           "content-length"
         );
 
+
       const contentLength =
         Number(
           contentLengthHeader || 0
@@ -520,6 +777,7 @@ if (
         contentLength >
           MAX_GENERATE_REQUEST_BYTES
       ) {
+
         throw new HttpError(
           "Request generation terlalu besar.",
           413
@@ -599,6 +857,9 @@ if (
 
     // --------------------------------------------------------
     // SERVER LOG
+    //
+    // Error asli tetap disimpan di log Worker untuk debugging.
+    // Jangan dikirim mentah ke browser.
     // --------------------------------------------------------
 
     const status =
@@ -607,11 +868,13 @@ if (
         500
       );
 
+
     const safeStatus =
       status >= 400 &&
       status <= 599
         ? status
         : 500;
+
 
     const rawMessage =
       String(
@@ -619,20 +882,44 @@ if (
         "unknown"
       ).slice(
         0,
-        500
+        2000
       );
+
 
     console.error(
       "request failed",
-      safeStatus,
-      rawMessage
+      {
+        status:
+          safeStatus,
+
+        message:
+          rawMessage,
+
+        path:
+          url.pathname,
+
+        method:
+          request.method
+      }
     );
 
+
     // --------------------------------------------------------
-    // ERROR RESPONSE
+    // USER-FRIENDLY ERROR
+    // --------------------------------------------------------
+
+    const userMessage =
+      getFriendlyErrorMessage(
+        err,
+        safeStatus
+      );
+
+
+    // --------------------------------------------------------
+    // RESPONSE KE BROWSER
     //
-    // Untuk sementara pesan asli dikirim agar akar error
-    // backend dapat diketahui. Tidak mengirim:
+    // Tidak mengirim:
+    // - raw provider error
     // - API key
     // - Authorization header
     // - request body
@@ -644,7 +931,7 @@ if (
           false,
 
         error:
-          rawMessage,
+          userMessage,
 
         status:
           safeStatus
