@@ -602,13 +602,18 @@
 
   </main>
 
-  <!--
-    ==========================================================
-    SCRIPT UTAMA
-    ==========================================================
-    Sengaja menggunakan script biasa, bukan dynamic loader.
-    Dengan begitu browser langsung meminta kedua file ini.
-  -->
+  <!-- ==========================================================
+       SUPABASE
+       Harus dimuat sebelum auth.js.
+       ========================================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <!-- ==========================================================
+       SCRIPT UTAMA
+       ========================================================== -->
 
   <script
     src="/js/auth.js?v=provider-20260913-2"
@@ -618,13 +623,9 @@
     src="/js/admin-providers.js?v=provider-20260913-2"
   ></script>
 
-  <!--
-    ==========================================================
-    WATCHDOG
-    ==========================================================
-    Jika JavaScript gagal dimuat, halaman tidak akan diam
-    selamanya pada "Memuat Provider".
-  -->
+  <!-- ==========================================================
+       WATCHDOG
+       ========================================================== -->
 
   <script>
     (function () {
@@ -632,42 +633,67 @@
 
       var startedAt = Date.now();
 
-      var timer = setInterval(function () {
+      setTimeout(function () {
 
-        if (window.GENZ_ADMIN_PROVIDERS) {
-          clearInterval(timer);
+        var app =
+          document.getElementById(
+            "providerApp"
+          );
+
+        var loading =
+          document.getElementById(
+            "providerLoading"
+          );
+
+        var error =
+          document.getElementById(
+            "providerBootError"
+          );
+
+        var text =
+          document.getElementById(
+            "providerLoadingText"
+          );
+
+        if (
+          window.GENZ_ADMIN_PROVIDERS
+        ) {
           return;
         }
 
-        if (Date.now() - startedAt < 12000) {
+        if (
+          app &&
+          !app.hidden
+        ) {
           return;
         }
 
-        clearInterval(timer);
+        if (
+          loading &&
+          !loading.hidden
+        ) {
 
-        var loading = document.getElementById("providerLoading");
-        var loadingText = document.getElementById("providerLoadingText");
-        var bootError = document.getElementById("providerBootError");
+          if (text) {
 
-        if (loading) {
-          loading.classList.add("error");
+            text.textContent =
+              "JavaScript Provider Management tidak berhasil dijalankan.";
+
+          }
+
+          if (error) {
+
+            error.hidden =
+              false;
+
+            error.textContent =
+              "File admin-providers.js tidak terdeteksi setelah 12 detik. Kemungkinan deployment/cache masih menggunakan versi lama. Refresh deployment Cloudflare lalu buka kembali halaman ini.";
+
+          }
+
         }
 
-        if (loadingText) {
-          loadingText.textContent =
-            "JavaScript Provider Management tidak berhasil dijalankan.";
-        }
+      }, 12000);
 
-        if (bootError) {
-          bootError.hidden = false;
-
-          bootError.textContent =
-            "File admin-providers.js tidak terdeteksi setelah 12 detik. " +
-            "Kemungkinan deployment/cache masih menggunakan versi lama. " +
-            "Refresh deployment Cloudflare lalu buka kembali halaman ini.";
-        }
-
-      }, 500);
     })();
   </script>
 
