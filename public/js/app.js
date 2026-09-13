@@ -29,6 +29,8 @@ let topupSettingsLoading = null;
 
 let dashboardLoading = null;
 
+let profileLoading = null;
+
 /* =======================================================
 UTILITY
 ======================================================= */
@@ -87,15 +89,19 @@ src,
 moduleName
 ) {
 
+/* =====================================================
+   MODULE ALREADY AVAILABLE
+===================================================== */
+
 if (
   moduleName === 'topupSettings' &&
   GENZ.topupSettings &&
   typeof GENZ.topupSettings.load === 'function'
 ) {
 
-  return Promise.resolve(
-    GENZ.topupSettings
-  );
+return Promise.resolve(
+  GENZ.topupSettings
+);
 
 }
 
@@ -105,18 +111,34 @@ if (
   typeof GENZ.dashboard.load === 'function'
 ) {
 
-  return Promise.resolve(
-    GENZ.dashboard
-  );
+return Promise.resolve(
+  GENZ.dashboard
+);
 
 }
+
+if (
+  moduleName === 'profile' &&
+  GENZ.profile &&
+  typeof GENZ.profile.load === 'function'
+) {
+
+return Promise.resolve(
+  GENZ.profile
+);
+
+}
+
+/* =====================================================
+   MODULE CURRENTLY LOADING
+===================================================== */
 
 if (
   moduleName === 'topupSettings' &&
   topupSettingsLoading
 ) {
 
-  return topupSettingsLoading;
+return topupSettingsLoading;
 
 }
 
@@ -125,20 +147,210 @@ if (
   dashboardLoading
 ) {
 
-  return dashboardLoading;
+return dashboardLoading;
 
 }
 
-const promise =
-  new Promise(
-    function (resolve, reject) {
+if (
+  moduleName === 'profile' &&
+  profileLoading
+) {
 
-      const existing =
-        document.querySelector(
-          `script[data-genz-module="${moduleName}"]`
+return profileLoading;
+
+}
+
+/* =====================================================
+   CREATE LOADER
+===================================================== */
+
+const promise =
+new Promise(
+  function (resolve, reject) {
+
+    const existing =
+      document.querySelector(
+        `script[data-genz-module="${moduleName}"]`
+      );
+
+    /* ===================================================
+       EXISTING SCRIPT
+    =================================================== */
+
+    if (existing) {
+
+      function resolveModule() {
+
+        if (
+          moduleName === 'topupSettings' &&
+          GENZ.topupSettings &&
+          typeof GENZ.topupSettings.load === 'function'
+        ) {
+
+          resolve(
+            GENZ.topupSettings
+          );
+
+          return true;
+
+        }
+
+        if (
+          moduleName === 'dashboard' &&
+          GENZ.dashboard &&
+          typeof GENZ.dashboard.load === 'function'
+        ) {
+
+          resolve(
+            GENZ.dashboard
+          );
+
+          return true;
+
+        }
+
+        if (
+          moduleName === 'profile' &&
+          GENZ.profile &&
+          typeof GENZ.profile.load === 'function'
+        ) {
+
+          resolve(
+            GENZ.profile
+          );
+
+          return true;
+
+        }
+
+        return false;
+
+      }
+
+      /* Module already initialized */
+
+      if (
+        resolveModule()
+      ) {
+
+        return;
+
+      }
+
+      /* Script was marked loaded */
+
+      if (
+        existing.dataset.genzLoaded === 'true'
+      ) {
+
+        setTimeout(
+          function () {
+
+            if (
+              !resolveModule()
+            ) {
+
+              reject(
+                new Error(
+                  `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
+                )
+              );
+
+            }
+
+          },
+          0
         );
 
-      if (existing) {
+        return;
+
+      }
+
+      /* Wait for existing script */
+
+      const onLoad =
+        function () {
+
+          existing.dataset.genzLoaded =
+            'true';
+
+          if (
+            !resolveModule()
+          ) {
+
+            reject(
+              new Error(
+                `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
+              )
+            );
+
+          }
+
+        };
+
+      const onError =
+        function () {
+
+          reject(
+            new Error(
+              `Gagal memuat ${src}`
+            )
+          );
+
+        };
+
+      existing.addEventListener(
+        'load',
+        onLoad,
+        {
+          once: true
+        }
+      );
+
+      existing.addEventListener(
+        'error',
+        onError,
+        {
+          once: true
+        }
+      );
+
+      setTimeout(
+        function () {
+
+          resolveModule();
+
+        },
+        0
+      );
+
+      return;
+
+    }
+
+    /* ===================================================
+       CREATE SCRIPT
+    =================================================== */
+
+    const script =
+      document.createElement(
+        'script'
+      );
+
+    script.src =
+      src;
+
+    script.async =
+      true;
+
+    script.dataset.genzModule =
+      moduleName;
+
+    script.onload =
+      function () {
+
+        script.dataset.genzLoaded =
+          'true';
 
         if (
           moduleName === 'topupSettings' &&
@@ -168,230 +380,72 @@ const promise =
 
         }
 
-        function resolveModule() {
-
-          if (
-            moduleName === 'topupSettings' &&
-            GENZ.topupSettings &&
-            typeof GENZ.topupSettings.load === 'function'
-          ) {
-
-            resolve(
-              GENZ.topupSettings
-            );
-
-            return true;
-
-          }
-
-          if (
-            moduleName === 'dashboard' &&
-            GENZ.dashboard &&
-            typeof GENZ.dashboard.load === 'function'
-          ) {
-
-            resolve(
-              GENZ.dashboard
-            );
-
-            return true;
-
-          }
-
-          return false;
-
-        }
-
         if (
-          existing.dataset.genzLoaded === 'true'
+          moduleName === 'profile' &&
+          GENZ.profile &&
+          typeof GENZ.profile.load === 'function'
         ) {
 
-          setTimeout(
-            function () {
-
-              if (
-                !resolveModule()
-              ) {
-
-                reject(
-                  new Error(
-                    `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
-                  )
-                );
-
-              }
-
-            },
-            0
+          resolve(
+            GENZ.profile
           );
 
           return;
 
         }
 
-        const onLoad =
-          function () {
-
-            existing.dataset.genzLoaded =
-              'true';
-
-            if (
-              !resolveModule()
-            ) {
-
-              reject(
-                new Error(
-                  `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
-                )
-              );
-
-            }
-
-          };
-
-        const onError =
-          function () {
-
-            reject(
-              new Error(
-                `Gagal memuat ${src}`
-              )
-            );
-
-          };
-
-        existing.addEventListener(
-          'load',
-          onLoad,
-          {
-            once: true
-          }
+        reject(
+          new Error(
+            `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
+          )
         );
 
-        existing.addEventListener(
-          'error',
-          onError,
-          {
-            once: true
-          }
+      };
+
+    script.onerror =
+      function () {
+
+        reject(
+          new Error(
+            `Gagal memuat ${src}`
+          )
         );
 
-        setTimeout(
-          function () {
+      };
 
-            if (
-              resolveModule()
-            ) {
+    document.head.appendChild(
+      script
+    );
 
-              existing.dataset.genzLoaded =
-                'true';
+  }
+);
 
-            }
-
-          },
-          0
-        );
-
-        return;
-
-      }
-
-      const script =
-        document.createElement(
-          'script'
-        );
-
-      script.src =
-        src;
-
-      script.async =
-        true;
-
-      script.dataset.genzModule =
-        moduleName;
-
-      script.onload =
-        function () {
-
-          script.dataset.genzLoaded =
-            'true';
-
-          if (
-            moduleName === 'topupSettings' &&
-            GENZ.topupSettings &&
-            typeof GENZ.topupSettings.load === 'function'
-          ) {
-
-            resolve(
-              GENZ.topupSettings
-            );
-
-            return;
-
-          }
-
-          if (
-            moduleName === 'dashboard' &&
-            GENZ.dashboard &&
-            typeof GENZ.dashboard.load === 'function'
-          ) {
-
-            resolve(
-              GENZ.dashboard
-            );
-
-            return;
-
-          }
-
-          reject(
-            new Error(
-              `Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
-            )
-          );
-
-        };
-
-      script.onerror =
-        function () {
-
-          reject(
-            new Error(
-              `Gagal memuat ${src}`
-            )
-          );
-
-        };
-
-      document.head.appendChild(
-        script
-      );
-
-    }
-  );
+/* =====================================================
+   SAVE LOADING STATE
+===================================================== */
 
 if (
   moduleName === 'topupSettings'
 ) {
 
-  topupSettingsLoading =
-    promise;
+topupSettingsLoading =
+  promise;
 
-  promise.finally(
-    function () {
+promise.finally(
+  function () {
 
-      if (
-        topupSettingsLoading ===
-        promise
-      ) {
+    if (
+      topupSettingsLoading ===
+      promise
+    ) {
 
-        topupSettingsLoading =
-          null;
-
-      }
+      topupSettingsLoading =
+        null;
 
     }
-  );
+
+  }
+);
 
 }
 
@@ -399,24 +453,49 @@ if (
   moduleName === 'dashboard'
 ) {
 
-  dashboardLoading =
-    promise;
+dashboardLoading =
+  promise;
 
-  promise.finally(
-    function () {
+promise.finally(
+  function () {
 
-      if (
-        dashboardLoading ===
-        promise
-      ) {
+    if (
+      dashboardLoading ===
+      promise
+    ) {
 
-        dashboardLoading =
-          null;
-
-      }
+      dashboardLoading =
+        null;
 
     }
-  );
+
+  }
+);
+
+}
+
+if (
+  moduleName === 'profile'
+) {
+
+profileLoading =
+  promise;
+
+promise.finally(
+  function () {
+
+    if (
+      profileLoading ===
+      promise
+    ) {
+
+      profileLoading =
+        null;
+
+    }
+
+  }
+);
 
 }
 
@@ -435,13 +514,13 @@ if (
   typeof GENZ.topupSettings.load === 'function'
 ) {
 
-  return GENZ.topupSettings;
+return GENZ.topupSettings;
 
 }
 
 return await loadScriptOnce(
-  '/js/topup-settings.js',
-  'topupSettings'
+'/js/topup-settings.js',
+'topupSettings'
 );
 
 }
@@ -457,13 +536,35 @@ if (
   typeof GENZ.dashboard.load === 'function'
 ) {
 
-  return GENZ.dashboard;
+return GENZ.dashboard;
 
 }
 
 return await loadScriptOnce(
-  '/js/dashboard.js',
-  'dashboard'
+'/js/dashboard.js',
+'dashboard'
+);
+
+}
+
+/* =======================================================
+ENSURE PROFILE / HISTORY
+======================================================= */
+
+async function ensureProfile() {
+
+if (
+  GENZ.profile &&
+  typeof GENZ.profile.load === 'function'
+) {
+
+return GENZ.profile;
+
+}
+
+return await loadScriptOnce(
+'/js/profile.js',
+'profile'
 );
 
 }
@@ -475,308 +576,308 @@ LOAD MAIN COMPONENTS
 async function loadComponents() {
 
 const app =
-  $('app');
+$('app');
 
 if (!app) {
 
-  throw new Error(
-    'Element #app tidak ditemukan'
-  );
+throw new Error(
+'Element #app tidak ditemukan'
+);
 
 }
 
 app.innerHTML = `
 
-  <div
-    id="auth-container">
-  </div>
+<div
+  id="auth-container">
+</div>
+
+<div
+  id="application-container"
+  class="hidden">
 
   <div
-    id="application-container"
+    id="header-container">
+  </div>
+
+  <main
+    id="main-container">
+  </main>
+
+  <div
+    id="pageContent"
     class="hidden">
-
-    <div
-      id="header-container">
-    </div>
-
-    <main
-      id="main-container">
-    </main>
-
-    <div
-      id="pageContent"
-      class="hidden">
-    </div>
-
   </div>
+
+</div>
 
 `;
 
 if (
-  typeof GENZ.loadComponent !== 'function'
+typeof GENZ.loadComponent !== 'function'
 ) {
 
-  throw new Error(
-    'GENZ.loadComponent tidak tersedia. Pastikan core.js dimuat.'
-  );
+throw new Error(
+'GENZ.loadComponent tidak tersedia. Pastikan core.js dimuat.'
+);
 
 }
 
 const authContainer =
-  $('auth-container');
+$('auth-container');
 
 if (!authContainer) {
 
-  throw new Error(
-    'Element #auth-container tidak ditemukan'
-  );
+throw new Error(
+'Element #auth-container tidak ditemukan'
+);
 
 }
 
 try {
 
-  await GENZ.loadComponent(
-    '#auth-container',
-    '/components/auth.html'
-  );
+await GENZ.loadComponent(
+'#auth-container',
+'/components/auth.html'
+);
 
 } catch (authComponentError) {
 
-  error(
-    'Gagal memuat auth.html:',
-    authComponentError
-  );
+error(
+'Gagal memuat auth.html:',
+authComponentError
+);
 
-  authContainer.innerHTML = `
+authContainer.innerHTML = `
 
-    <section
-      id="auth"
-      class="auth-page">
+<section
+  id="auth"
+  class="auth-page">
+
+  <div
+    class="auth-card">
+
+    <div
+      class="auth-header">
 
       <div
-        class="auth-card">
+        class="auth-logo">
+        GEN-Z.AI
+      </div>
 
-        <div
-          class="auth-header">
+      <h1>
+        Selamat Datang
+      </h1>
 
-          <div
-            class="auth-logo">
-            GEN-Z.AI
-          </div>
+      <p>
+        Login untuk menggunakan GEN-Z.AI
+      </p>
 
-          <h1>
-            Selamat Datang
-          </h1>
+    </div>
 
-          <p>
-            Login untuk menggunakan GEN-Z.AI
-          </p>
+    <form
+      id="authForm">
 
-        </div>
+      <div
+        class="form-group">
 
-        <form
-          id="authForm">
+        <label
+          for="email">
+          Email
+        </label>
 
-          <div
-            class="form-group">
-
-            <label
-              for="email">
-              Email
-            </label>
-
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Masukkan email"
-              autocomplete="email"
-              required>
-
-          </div>
-
-          <div
-            class="form-group">
-
-            <label
-              for="password">
-              Password
-            </label>
-
-            <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Masukkan password"
-              autocomplete="current-password"
-              required>
-
-          </div>
-
-          <div
-            id="authMsg"
-            class="auth-message"
-            aria-live="polite">
-          </div>
-
-          <button
-            id="login"
-            type="submit"
-            class="auth-primary-btn">
-
-            LOGIN
-
-          </button>
-
-          <div
-            class="auth-actions">
-
-            <button
-              id="register"
-              type="button"
-              class="auth-secondary-btn">
-
-              DAFTAR
-
-            </button>
-
-            <button
-              id="forgotPassword"
-              type="button"
-              class="auth-link-btn">
-
-              LUPA PASSWORD?
-
-            </button>
-
-          </div>
-
-        </form>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="Masukkan email"
+          autocomplete="email"
+          required>
 
       </div>
 
-    </section>
+      <div
+        class="form-group">
 
-  `;
+        <label
+          for="password">
+          Password
+        </label>
+
+        <input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Masukkan password"
+          autocomplete="current-password"
+          required>
+
+      </div>
+
+      <div
+        id="authMsg"
+        class="auth-message"
+        aria-live="polite">
+      </div>
+
+      <button
+        id="login"
+        type="submit"
+        class="auth-primary-btn">
+
+        LOGIN
+
+      </button>
+
+      <div
+        class="auth-actions">
+
+        <button
+          id="register"
+          type="button"
+          class="auth-secondary-btn">
+
+          DAFTAR
+
+        </button>
+
+        <button
+          id="forgotPassword"
+          type="button"
+          class="auth-link-btn">
+
+          LUPA PASSWORD?
+
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</section>
+
+`;
 
 }
 
 const headerContainer =
-  $('header-container');
+$('header-container');
 
 if (!headerContainer) {
 
-  throw new Error(
-    'Element #header-container tidak ditemukan'
-  );
+throw new Error(
+'Element #header-container tidak ditemukan'
+);
 
 }
 
 try {
 
-  await GENZ.loadComponent(
-    '#header-container',
-    '/components/header.html'
-  );
+await GENZ.loadComponent(
+'#header-container',
+'/components/header.html'
+);
 
 } catch (headerError) {
 
-  error(
-    'Gagal memuat header.html:',
-    headerError
-  );
+error(
+'Gagal memuat header.html:',
+headerError
+);
 
-  headerContainer.innerHTML = `
+headerContainer.innerHTML = `
 
-    <header
-      class="app-header">
+<header
+  class="app-header">
 
-      <div>
+  <div>
 
-        <strong>
-          GEN-Z.AI
-        </strong>
+    <strong>
+      GEN-Z.AI
+    </strong>
 
-      </div>
+  </div>
 
-    </header>
+</header>
 
-  `;
+`;
 
 }
 
 const main =
-  $('main-container');
+$('main-container');
 
 if (!main) {
 
-  throw new Error(
-    'Element #main-container tidak ditemukan'
-  );
+throw new Error(
+'Element #main-container tidak ditemukan'
+);
 
 }
 
 try {
 
-  await GENZ.loadComponent(
-    '#main-container',
-    '/components/generator.html'
-  );
+await GENZ.loadComponent(
+'#main-container',
+'/components/generator.html'
+);
 
 } catch (componentError) {
 
-  error(
-    'Gagal memuat generator.html:',
-    componentError
-  );
+error(
+'Gagal memuat generator.html:',
+componentError
+);
 
-  main.innerHTML = `
+main.innerHTML = `
 
-    <section
-      class="page-card">
+<section
+  class="page-card">
 
-      <h2>
-        GEN-Z.AI
-      </h2>
+  <h2>
+    GEN-Z.AI
+  </h2>
 
-      <p>
-        Generator belum dapat dimuat.
-      </p>
+  <p>
+    Generator belum dapat dimuat.
+  </p>
 
-      <small>
-        Periksa file
-        /components/generator.html
-      </small>
+  <small>
+    Periksa file
+    /components/generator.html
+  </small>
 
-    </section>
+</section>
 
-  `;
+`;
 
 }
 
 if (
-  GENZ.account &&
-  typeof GENZ.account.init === 'function'
+GENZ.account &&
+typeof GENZ.account.init === 'function'
 ) {
 
-  try {
+try {
 
-    await GENZ.account.init();
+await GENZ.account.init();
 
-  } catch (accountError) {
+} catch (accountError) {
 
-    error(
-      'Account module error:',
-      accountError
-    );
+error(
+'Account module error:',
+accountError
+);
 
-  }
+}
 
 } else {
 
-  console.warn(
-    '[GEN-Z.AI] account.js belum tersedia'
-  );
+console.warn(
+'[GEN-Z.AI] account.js belum tersedia'
+);
 
 }
 
@@ -790,93 +891,93 @@ async function syncAuth() {
 
 try {
 
-  let session =
-    null;
+let session =
+null;
 
-  if (
-    window.GENZ_AUTH &&
-    typeof window.GENZ_AUTH.getSession === 'function'
-  ) {
+if (
+window.GENZ_AUTH &&
+typeof window.GENZ_AUTH.getSession === 'function'
+) {
 
-    session =
-      await window.GENZ_AUTH.getSession();
+session =
+await window.GENZ_AUTH.getSession();
 
-  } else {
+} else {
 
-    const client =
-      window.GENZ_AUTH_CLIENT;
+const client =
+window.GENZ_AUTH_CLIENT;
 
-    if (
-      !client ||
-      !client.auth ||
-      typeof client.auth.getSession !== 'function'
-    ) {
+if (
+!client ||
+!client.auth ||
+typeof client.auth.getSession !== 'function'
+) {
 
-      console.warn(
-        '[GEN-Z.AI] Auth client belum tersedia'
-      );
+console.warn(
+'[GEN-Z.AI] Auth client belum tersedia'
+);
 
-      await handleLogout(
-        false
-      );
+await handleLogout(
+false
+);
 
-      return false;
+return false;
 
-    }
+}
 
-    const result =
-      await client.auth.getSession();
+const result =
+await client.auth.getSession();
 
-    session =
-      result?.data?.session ||
-      null;
+session =
+result?.data?.session ||
+null;
 
-  }
+}
 
-  if (
-    session &&
-    session.user
-  ) {
+if (
+session &&
+session.user
+) {
 
-    GENZ.state.loggedIn =
-      true;
+GENZ.state.loggedIn =
+true;
 
-    GENZ.state.user =
-      session.user;
+GENZ.state.user =
+session.user;
 
-    await handleLogin(
-      session.user,
-      false
-    );
+await handleLogin(
+session.user,
+false
+);
 
-    return true;
+return true;
 
-  }
+}
 
-  GENZ.state.loggedIn =
-    false;
+GENZ.state.loggedIn =
+false;
 
-  GENZ.state.user =
-    null;
+GENZ.state.user =
+null;
 
-  await handleLogout(
-    false
-  );
+await handleLogout(
+false
+);
 
-  return false;
+return false;
 
 } catch (authError) {
 
-  error(
-    'Auth sync error:',
-    authError
-  );
+error(
+'Auth sync error:',
+authError
+);
 
-  await handleLogout(
-    false
-  );
+await handleLogout(
+false
+);
 
-  return false;
+return false;
 
 }
 
@@ -893,165 +994,165 @@ emitEvent = false
 
 if (user) {
 
-  GENZ.state.loggedIn =
-    true;
+GENZ.state.loggedIn =
+true;
 
-  GENZ.state.user =
-    user;
+GENZ.state.user =
+user;
 
 }
 
 if (!GENZ.state.user) {
 
-  return;
+return;
 
 }
 
 GENZ.state.account = {
 
-  ...(GENZ.state.account || {}),
+...(GENZ.state.account || {}),
 
-  isAdmin:
-    false,
+isAdmin:
+false,
 
-  roleValidated:
-    false
+roleValidated:
+false
 
 };
 
 if (
-  GENZ.account &&
-  typeof GENZ.account.ensureUI === 'function'
+GENZ.account &&
+typeof GENZ.account.ensureUI === 'function'
 ) {
 
-  try {
+try {
 
-    await GENZ.account.ensureUI();
+await GENZ.account.ensureUI();
 
-  } catch (accountError) {
+} catch (accountError) {
 
-    error(
-      'Account UI error:',
-      accountError
-    );
+error(
+'Account UI error:',
+accountError
+);
 
-  }
+}
 
 }
 
 if (
-  GENZ.account &&
-  typeof GENZ.account.updateUser === 'function'
+GENZ.account &&
+typeof GENZ.account.updateUser === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.account.updateUser(
-      GENZ.state.user
-    );
+GENZ.account.updateUser(
+GENZ.state.user
+);
 
-  } catch (updateError) {
+} catch (updateError) {
 
-    error(
-      'Account user update error:',
-      updateError
-    );
+error(
+'Account user update error:',
+updateError
+);
 
-  }
+}
 
 }
 
 if (
-  GENZ.account &&
-  typeof GENZ.account.refresh === 'function'
+GENZ.account &&
+typeof GENZ.account.refresh === 'function'
 ) {
 
-  try {
+try {
 
-    await GENZ.account.refresh();
+await GENZ.account.refresh();
 
-  } catch (refreshError) {
+} catch (refreshError) {
 
-    error(
-      'Account refresh error:',
-      refreshError
-    );
+error(
+'Account refresh error:',
+refreshError
+);
 
-  }
+}
 
 }
 
 if (
-  GENZ.providers &&
-  typeof GENZ.providers.load === 'function'
+GENZ.providers &&
+typeof GENZ.providers.load === 'function'
 ) {
 
-  try {
+try {
 
-    await GENZ.providers.load();
+await GENZ.providers.load();
 
-  } catch (providerError) {
+} catch (providerError) {
 
-    error(
-      'Provider loading error:',
-      providerError
-    );
+error(
+'Provider loading error:',
+providerError
+);
 
-  }
+}
 
 }
 
 if (
-  GENZ.upload &&
-  typeof GENZ.upload.init === 'function'
+GENZ.upload &&
+typeof GENZ.upload.init === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.upload.init();
+GENZ.upload.init();
 
-  } catch (uploadError) {
+} catch (uploadError) {
 
-    error(
-      'Upload module error:',
-      uploadError
-    );
+error(
+'Upload module error:',
+uploadError
+);
 
-  }
+}
 
 }
 
 if (
-  GENZ.generator &&
-  typeof GENZ.generator.init === 'function'
+GENZ.generator &&
+typeof GENZ.generator.init === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.generator.init();
+GENZ.generator.init();
 
-  } catch (generatorError) {
+} catch (generatorError) {
 
-    error(
-      'Generator module error:',
-      generatorError
-    );
+error(
+'Generator module error:',
+generatorError
+);
 
-  }
+}
 
 }
 
 showStudio();
 
 if (
-  emitEvent &&
-  typeof GENZ.emit === 'function'
+emitEvent &&
+typeof GENZ.emit === 'function'
 ) {
 
-  GENZ.emit(
-    'auth-login',
-    GENZ.state.user
-  );
+GENZ.emit(
+'auth-login',
+GENZ.state.user
+);
 
 }
 
@@ -1066,160 +1167,176 @@ emitEvent = false
 ) {
 
 GENZ.state.loggedIn =
-  false;
+false;
 
 GENZ.state.user =
-  null;
+null;
 
 GENZ.state.account = {
 
-  isAdmin:
-    false,
+isAdmin:
+false,
 
-  roleValidated:
-    false
+roleValidated:
+false
 
 };
 
 if (
-  GENZ.video &&
-  typeof GENZ.video.stopPolling === 'function'
+GENZ.video &&
+typeof GENZ.video.stopPolling === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.video.stopPolling();
+GENZ.video.stopPolling();
 
-  } catch (_) {}
+} catch (_) {}
 
 }
 
 if (
-  GENZ.video &&
-  typeof GENZ.video.clear === 'function'
+GENZ.video &&
+typeof GENZ.video.clear === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.video.clear();
+GENZ.video.clear();
 
-  } catch (_) {}
+} catch (_) {}
 
 }
 
 if (
-  GENZ.account &&
-  typeof GENZ.account.close === 'function'
+GENZ.account &&
+typeof GENZ.account.close === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.account.close();
+GENZ.account.close();
 
-  } catch (_) {}
+} catch (_) {}
 
 }
 
 const application =
-  $('application-container');
+$('application-container');
 
 if (application) {
 
-  application.classList.add(
-    'hidden'
-  );
+application.classList.add(
+'hidden'
+);
 
 }
 
 const authContainer =
-  $('auth-container');
+$('auth-container');
 
 if (authContainer) {
 
-  authContainer.classList.remove(
-    'hidden'
-  );
+authContainer.classList.remove(
+'hidden'
+);
 
 }
 
 if (
-  GENZ.auth &&
-  typeof GENZ.auth.showLoggedOutUI === 'function'
+GENZ.auth &&
+typeof GENZ.auth.showLoggedOutUI === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.auth.showLoggedOutUI();
+GENZ.auth.showLoggedOutUI();
 
-  } catch (_) {}
+} catch (_) {}
 
 } else {
 
-  const auth =
-    $('auth');
+const auth =
+$('auth');
 
-  if (auth) {
+if (auth) {
 
-    auth.style.display =
-      'block';
+auth.style.display =
+'block';
 
-    auth.classList.remove(
-      'hidden'
-    );
+auth.classList.remove(
+'hidden'
+);
 
-  }
+}
 
 }
 
 GENZ.state.currentPage =
-  'studio';
+'studio';
 
 const main =
-  $('main-container');
+$('main-container');
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (main) {
 
-  main.classList.remove(
-    'hidden'
-  );
+main.classList.remove(
+'hidden'
+);
 
 }
 
 if (pages) {
 
-  pages.classList.add(
-    'hidden'
-  );
+pages.classList.add(
+'hidden'
+);
 
-  pages.innerHTML =
-    '';
-
-}
-
-if (
-  GENZ.dashboard &&
-  GENZ.dashboard.state
-) {
-
-  GENZ.dashboard.state.loaded =
-    false;
-
-  GENZ.dashboard.state.selectedVideo =
-    null;
+pages.innerHTML =
+'';
 
 }
 
 if (
-  emitEvent &&
-  typeof GENZ.emit === 'function'
+GENZ.dashboard &&
+GENZ.dashboard.state
 ) {
 
-  GENZ.emit(
-    'auth-logout'
-  );
+GENZ.dashboard.state.loaded =
+false;
+
+GENZ.dashboard.state.selectedVideo =
+null;
+
+}
+
+if (
+GENZ.history &&
+GENZ.history.state
+) {
+
+GENZ.history.state.jobs =
+[];
+
+GENZ.history.state.loading =
+false;
+
+GENZ.history.state.selected =
+null;
+
+}
+
+if (
+emitEvent &&
+typeof GENZ.emit === 'function'
+) {
+
+GENZ.emit(
+'auth-logout'
+);
 
 }
 
@@ -1233,71 +1350,71 @@ function bindAuth() {
 
 if (authBound) {
 
-  return;
+return;
 
 }
 
 authBound =
-  true;
+true;
 
 window.addEventListener(
-  'genz-auth-login',
-  function (event) {
+'genz-auth-login',
+function (event) {
 
-    const detail =
-      event?.detail ||
-      {};
+const detail =
+event?.detail ||
+{};
 
-    const user =
-      detail?.user ||
-      (
-        detail?.email ||
-        detail?.id
-          ? detail
-          : GENZ.state.user
-      );
+const user =
+detail?.user ||
+(
+detail?.email ||
+detail?.id
+? detail
+: GENZ.state.user
+);
 
-    if (!user) {
+if (!user) {
 
-      return;
+return;
 
-    }
+}
 
-    handleLogin(
-      user,
-      false
-    ).catch(
-      authError => {
+handleLogin(
+user,
+false
+).catch(
+authError => {
 
-        error(
-          'Login handler error:',
-          authError
-        );
+error(
+'Login handler error:',
+authError
+);
 
-      }
-    );
+}
+);
 
-  }
+}
 );
 
 window.addEventListener(
-  'genz-auth-logout',
-  function () {
+'genz-auth-logout',
+function () {
 
-    handleLogout(
-      false
-    ).catch(
-      authError => {
+handleLogout(
+false
+).catch(
+authError => {
 
-        error(
-          'Logout handler error:',
-          authError
-        );
+error(
+'Logout handler error:',
+authError
+);
 
-      }
-    );
+}
+);
 
-  }
+}
 );
 
 }
@@ -1309,83 +1426,83 @@ SHOW STUDIO
 function showStudio() {
 
 const authContainer =
-  $('auth-container');
+$('auth-container');
 
 const application =
-  $('application-container');
+$('application-container');
 
 const main =
-  $('main-container');
+$('main-container');
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (authContainer) {
 
-  authContainer.classList.add(
-    'hidden'
-  );
+authContainer.classList.add(
+'hidden'
+);
 
 }
 
 const auth =
-  $('auth');
+$('auth');
 
 if (auth) {
 
-  auth.style.display =
-    'none';
+auth.style.display =
+'none';
 
 }
 
 if (application) {
 
-  application.classList.remove(
-    'hidden'
-  );
+application.classList.remove(
+'hidden'
+);
 
 }
 
 if (pages) {
 
-  pages.classList.add(
-    'hidden'
-  );
+pages.classList.add(
+'hidden'
+);
 
 }
 
 if (main) {
 
-  main.classList.remove(
-    'hidden'
-  );
+main.classList.remove(
+'hidden'
+);
 
 }
 
 GENZ.state.currentPage =
-  'studio';
+'studio';
 
 const back =
-  $('backToStudio');
+$('backToStudio');
 
 if (back) {
 
-  back.classList.add(
-    'hidden'
-  );
+back.classList.add(
+'hidden'
+);
 
 }
 
 if (
-  GENZ.dashboard &&
-  typeof GENZ.dashboard.closePreview === 'function'
+GENZ.dashboard &&
+typeof GENZ.dashboard.closePreview === 'function'
 ) {
 
-  try {
+try {
 
-    GENZ.dashboard.closePreview();
+GENZ.dashboard.closePreview();
 
-  } catch (_) {}
+} catch (_) {}
 
 }
 
@@ -1401,347 +1518,343 @@ page
 
 if (!page) {
 
-  showStudio();
+showStudio();
 
-  return;
+return;
 
 }
 
 if (!isLoggedIn()) {
 
-  await handleLogout(
-    false
-  );
+await handleLogout(
+false
+);
 
-  return;
+return;
 
 }
 
 const main =
-  $('main-container');
+$('main-container');
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (!pages) {
 
-  error(
-    'Element #pageContent tidak ditemukan'
-  );
+error(
+'Element #pageContent tidak ditemukan'
+);
 
-  return;
+return;
 
 }
 
 if (main) {
 
-  main.classList.add(
-    'hidden'
-  );
+main.classList.add(
+'hidden'
+);
 
 }
 
 pages.classList.remove(
-  'hidden'
+'hidden'
 );
 
 GENZ.state.currentPage =
-  page;
+page;
 
 const back =
-  $('backToStudio');
+$('backToStudio');
 
 if (back) {
 
-  back.classList.remove(
-    'hidden'
-  );
+back.classList.remove(
+'hidden'
+);
 
 }
 
 /* =====================================================
-   ROUTING
+ROUTING
 ===================================================== */
 
 switch (page) {
 
-  /* ===================================================
-     DASHBOARD
-     =================================================== */
+/* ===================================================
+   DASHBOARD
+=================================================== */
 
-  case 'dashboard':
+case 'dashboard':
 
-    try {
+try {
 
-      const dashboard =
-        await ensureDashboard();
+const dashboard =
+await ensureDashboard();
 
-      if (
-        dashboard &&
-        typeof dashboard.load === 'function'
-      ) {
+if (
+dashboard &&
+typeof dashboard.load === 'function'
+) {
 
-        await dashboard.load();
+await dashboard.load();
 
-      } else {
+} else {
 
-        showModuleUnavailable(
-          'Dashboard',
-          '/js/dashboard.js'
-        );
+showModuleUnavailable(
+'Dashboard',
+'/js/dashboard.js'
+);
 
-      }
+}
 
-    } catch (dashboardError) {
+} catch (dashboardError) {
 
-      error(
-        'Dashboard module error:',
-        dashboardError
-      );
+error(
+'Dashboard module error:',
+dashboardError
+);
 
-      showModuleUnavailable(
-        'Dashboard',
-        '/js/dashboard.js'
-      );
+showModuleUnavailable(
+'Dashboard',
+'/js/dashboard.js'
+);
 
-    }
+}
 
-    break;
+break;
 
-  /* ===================================================
-     PROFILE / RIWAYAT
-     =================================================== */
+/* ===================================================
+   PROFILE / RIWAYAT VIDEO
+=================================================== */
 
-  case 'profile':
+case 'profile':
 
-    if (
-      GENZ.profile &&
-      typeof GENZ.profile.load === 'function'
-    ) {
+try {
 
-      try {
+const profile =
+await ensureProfile();
 
-        await GENZ.profile.load();
+if (
+profile &&
+typeof profile.load === 'function'
+) {
 
-      } catch (profileError) {
+await profile.load();
 
-        error(
-          'Profile module error:',
-          profileError
-        );
+} else {
 
-        showModuleUnavailable(
-          'Profile',
-          '/js/profile.js'
-        );
+showModuleUnavailable(
+'Riwayat Video',
+'/js/profile.js'
+);
 
-      }
+}
 
-    } else {
+} catch (profileError) {
 
-      showModuleUnavailable(
-        'Profile',
-        '/js/profile.js'
-      );
+error(
+'Profile / History module error:',
+profileError
+);
 
-    }
+showModuleUnavailable(
+'Riwayat Video',
+'/js/profile.js'
+);
 
-    break;
+}
 
-  /* ===================================================
-     CREDIT
-     =================================================== */
+break;
 
-  case 'credit':
+/* ===================================================
+   CREDIT
+=================================================== */
 
-    if (
-      GENZ.credit &&
-      typeof GENZ.credit.load === 'function'
-    ) {
+case 'credit':
 
-      try {
+if (
+GENZ.credit &&
+typeof GENZ.credit.load === 'function'
+) {
 
-        await GENZ.credit.load();
+try {
 
-      } catch (creditError) {
+await GENZ.credit.load();
 
-        error(
-          'Credit module error:',
-          creditError
-        );
+} catch (creditError) {
 
-        showModuleUnavailable(
-          'Credit',
-          '/js/credit.js'
-        );
+error(
+'Credit module error:',
+creditError
+);
 
-      }
+showModuleUnavailable(
+'Credit',
+'/js/credit.js'
+);
 
-    } else {
+}
 
-      showModuleUnavailable(
-        'Credit',
-        '/js/credit.js'
-      );
+} else {
 
-    }
+showModuleUnavailable(
+'Credit',
+'/js/credit.js'
+);
 
-    break;
+}
 
-  /* ===================================================
-     TOP UP
-     LEGACY ROUTE
-     =================================================== */
+break;
 
-  case 'topup':
+/* ===================================================
+   TOP UP
+   LEGACY ROUTE
+=================================================== */
 
-    await showPage(
-      'credit'
-    );
+case 'topup':
 
-    break;
+await showPage(
+'credit'
+);
 
-  /* ===================================================
-     TOP UP SETTING
-     ADMIN / OWNER ONLY
-     =================================================== */
+break;
 
-  case 'topup-settings':
+/* ===================================================
+   TOP UP SETTING
+   ADMIN / OWNER ONLY
+=================================================== */
 
-    if (!isAdmin()) {
+case 'topup-settings':
 
-      showAccessDenied(
-        'Akses Top Up Setting hanya untuk Admin / Owner.'
-      );
+if (!isAdmin()) {
 
-      break;
+showAccessDenied(
+'Akses Top Up Setting hanya untuk Admin / Owner.'
+);
 
-    }
+break;
 
-    try {
+}
 
-      const topupSettings =
-        await ensureTopupSettings();
+try {
 
-      if (
-        topupSettings &&
-        typeof topupSettings.load === 'function'
-      ) {
+const topupSettings =
+await ensureTopupSettings();
 
-        await topupSettings.load();
+if (
+topupSettings &&
+typeof topupSettings.load === 'function'
+) {
 
-      } else {
+await topupSettings.load();
 
-        showModuleUnavailable(
-          'Top Up Setting',
-          '/js/topup-settings.js'
-        );
+} else {
 
-      }
+showModuleUnavailable(
+'Top Up Setting',
+'/js/topup-settings.js'
+);
 
-    } catch (moduleError) {
+}
 
-      error(
-        'Top Up Setting module error:',
-        moduleError
-      );
+} catch (moduleError) {
 
-      showModuleUnavailable(
-        'Top Up Setting',
-        '/js/topup-settings.js'
-      );
+error(
+'Top Up Setting module error:',
+moduleError
+);
 
-    }
+showModuleUnavailable(
+'Top Up Setting',
+'/js/topup-settings.js'
+);
 
-    break;
+}
 
-  /* ===================================================
-     ADMIN PANEL
-     
-     Untuk tahap ini Admin diarahkan ke admin.html
-     statis agar seluruh struktur panel dapat terlihat
-     terlebih dahulu.
-     =================================================== */
+break;
 
-  case 'admin':
+/* ===================================================
+   ADMIN PANEL
+=================================================== */
 
-    if (!isAdmin()) {
+case 'admin':
 
-      showAccessDenied(
-        'Panel Admin hanya dapat diakses oleh Admin / Owner.'
-      );
+if (!isAdmin()) {
 
-      break;
+showAccessDenied(
+'Panel Admin hanya dapat diakses oleh Admin / Owner.'
+);
 
-    }
+break;
 
-    window.location.href =
-      '/admin.html';
+}
 
-    break;
+window.location.href =
+'/admin.html';
 
-  /* ===================================================
-     CONTACT ADMIN
-     USER BIASA ONLY
-     =================================================== */
+break;
 
-  case 'contact':
+/* ===================================================
+   CONTACT ADMIN
+=================================================== */
 
-    if (isAdmin()) {
+case 'contact':
 
-      showAccessDenied(
-        'Menu Hub Admin tidak tersedia untuk Admin / Owner.'
-      );
+if (isAdmin()) {
 
-      break;
+showAccessDenied(
+'Menu Hub Admin tidak tersedia untuk Admin / Owner.'
+);
 
-    }
+break;
 
-    showContactAdmin();
+}
 
-    break;
+showContactAdmin();
 
-  /* ===================================================
-     MEMBERSHIP
-     USER BIASA ONLY
-     =================================================== */
+break;
 
-  case 'membership':
+/* ===================================================
+   MEMBERSHIP
+=================================================== */
 
-    if (isAdmin()) {
+case 'membership':
 
-      showAccessDenied(
-        'Menu Membership tidak tersedia untuk Admin / Owner.'
-      );
+if (isAdmin()) {
 
-      break;
+showAccessDenied(
+'Menu Membership tidak tersedia untuk Admin / Owner.'
+);
 
-    }
+break;
 
-    showMembership();
+}
 
-    break;
+showMembership();
 
-  /* ===================================================
-     AFFILIATE
-     USER + ADMIN
-     =================================================== */
+break;
 
-  case 'affiliate':
+/* ===================================================
+   AFFILIATE
+=================================================== */
 
-    showAffiliate();
+case 'affiliate':
 
-    break;
+showAffiliate();
 
-  /* ===================================================
-     DEFAULT
-     =================================================== */
+break;
 
-  default:
+/* ===================================================
+   DEFAULT
+=================================================== */
 
-    showStudio();
+default:
 
-    break;
+showStudio();
+
+break;
 
 }
 
@@ -1756,64 +1869,64 @@ message
 ) {
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (!pages) {
 
-  return;
+return;
 
 }
 
 pages.innerHTML = `
 
-  <section
-    class="page-card">
+<section
+  class="page-card">
 
-    <div
-      class="page-header">
+  <div
+    class="page-header">
 
-      <button
-        type="button"
-        class="back-btn"
-        id="accessDeniedBack">
+    <button
+      type="button"
+      class="back-btn"
+      id="accessDeniedBack">
 
-        ←
+      ←
 
-      </button>
+    </button>
 
-      <div>
+    <div>
 
-        <h2>
-          Akses Ditolak
-        </h2>
+      <h2>
+        Akses Ditolak
+      </h2>
 
-        <p>
-          ${escapeHtml(
-            message ||
-            'Anda tidak memiliki akses ke halaman ini.'
-          )}
-        </p>
-
-      </div>
+      <p>
+        ${escapeHtml(
+          message ||
+          'Anda tidak memiliki akses ke halaman ini.'
+        )}
+      </p>
 
     </div>
 
-  </section>
+  </div>
+
+</section>
 
 `;
 
 const back =
-  $('accessDeniedBack');
+$('accessDeniedBack');
 
 if (back) {
 
-  back.addEventListener(
-    'click',
-    showStudio,
-    {
-      once: true
-    }
-  );
+back.addEventListener(
+'click',
+showStudio,
+{
+  once: true
+}
+);
 
 }
 
@@ -1829,79 +1942,79 @@ fileName
 ) {
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (!pages) {
 
-  return;
+return;
 
 }
 
 pages.innerHTML = `
 
-  <section
-    class="page-card">
+<section
+  class="page-card">
 
-    <div
-      class="page-header">
+  <div
+    class="page-header">
 
-      <button
-        type="button"
-        class="back-btn"
-        id="moduleUnavailableBack">
+    <button
+      type="button"
+      class="back-btn"
+      id="moduleUnavailableBack">
 
-        ←
+      ←
 
-      </button>
+    </button>
 
-      <div>
+    <div>
 
-        <h2>
-          ${escapeHtml(
-            moduleName
-          )}
-        </h2>
-
-        <p>
-          Modul belum tersedia.
-        </p>
-
-      </div>
-
-    </div>
-
-    <div
-      class="contact-admin">
+      <h2>
+        ${escapeHtml(
+          moduleName
+        )}
+      </h2>
 
       <p>
-        File modul belum dimuat oleh aplikasi.
+        Modul belum tersedia.
       </p>
-
-      <small>
-        Periksa:
-        ${escapeHtml(
-          fileName
-        )}
-      </small>
 
     </div>
 
-  </section>
+  </div>
+
+  <div
+    class="contact-admin">
+
+    <p>
+      File modul belum dimuat oleh aplikasi.
+    </p>
+
+    <small>
+      Periksa:
+      ${escapeHtml(
+        fileName
+      )}
+    </small>
+
+  </div>
+
+</section>
 
 `;
 
 const back =
-  $('moduleUnavailableBack');
+$('moduleUnavailableBack');
 
 if (back) {
 
-  back.addEventListener(
-    'click',
-    showStudio,
-    {
-      once: true
-    }
-  );
+back.addEventListener(
+'click',
+showStudio,
+{
+  once: true
+}
+);
 
 }
 
@@ -1914,72 +2027,72 @@ CONTACT ADMIN
 function showContactAdmin() {
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (!pages) {
 
-  return;
+return;
 
 }
 
 pages.innerHTML = `
 
-  <section
-    class="page-card">
+<section
+  class="page-card">
 
-    <div
-      class="page-header">
+  <div
+    class="page-header">
 
-      <button
-        type="button"
-        class="back-btn"
-        id="contactBack">
+    <button
+      type="button"
+      class="back-btn"
+      id="contactBack">
 
-        ←
+      ←
 
-      </button>
+    </button>
 
-      <div>
+    <div>
 
-        <h2>
-          Chat Admin
-        </h2>
-
-        <p>
-          Hubungi administrator GEN-Z.AI
-        </p>
-
-      </div>
-
-    </div>
-
-    <div
-      class="contact-admin">
+      <h2>
+        Chat Admin
+      </h2>
 
       <p>
-        Silakan hubungi admin untuk
-        bantuan akun, kredit, atau
-        kendala penggunaan GEN-Z.AI.
+        Hubungi administrator GEN-Z.AI
       </p>
 
     </div>
 
-  </section>
+  </div>
+
+  <div
+    class="contact-admin">
+
+    <p>
+      Silakan hubungi admin untuk
+      bantuan akun, kredit, atau
+      kendala penggunaan GEN-Z.AI.
+    </p>
+
+  </div>
+
+</section>
 
 `;
 
 const back =
-  $('contactBack');
+$('contactBack');
 
 if (back) {
 
-  back.addEventListener(
-    'click',
-    showStudio,
-    {
-      once: true
-    }
-  );
+back.addEventListener(
+'click',
+showStudio,
+{
+  once: true
+}
+);
 
 }
 
@@ -1992,71 +2105,71 @@ MEMBERSHIP
 function showMembership() {
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (!pages) {
 
-  return;
+return;
 
 }
 
 pages.innerHTML = `
 
-  <section
-    class="page-card">
+<section
+  class="page-card">
 
-    <div
-      class="page-header">
+  <div
+    class="page-header">
 
-      <button
-        type="button"
-        class="back-btn"
-        id="membershipBack">
+    <button
+      type="button"
+      class="back-btn"
+      id="membershipBack">
 
-        ←
+      ←
 
-      </button>
+    </button>
 
-      <div>
+    <div>
 
-        <h2>
-          Membership
-        </h2>
-
-        <p>
-          Informasi membership GEN-Z.AI
-        </p>
-
-      </div>
-
-    </div>
-
-    <div
-      class="contact-admin">
+      <h2>
+        Membership
+      </h2>
 
       <p>
-        Halaman membership sedang
-        dipersiapkan.
+        Informasi membership GEN-Z.AI
       </p>
 
     </div>
 
-  </section>
+  </div>
+
+  <div
+    class="contact-admin">
+
+    <p>
+      Halaman membership sedang
+      dipersiapkan.
+    </p>
+
+  </div>
+
+</section>
 
 `;
 
 const back =
-  $('membershipBack');
+$('membershipBack');
 
 if (back) {
 
-  back.addEventListener(
-    'click',
-    showStudio,
-    {
-      once: true
-    }
-  );
+back.addEventListener(
+'click',
+showStudio,
+{
+  once: true
+}
+);
 
 }
 
@@ -2069,71 +2182,71 @@ AFFILIATE
 function showAffiliate() {
 
 const pages =
-  $('pageContent');
+$('pageContent');
 
 if (!pages) {
 
-  return;
+return;
 
 }
 
 pages.innerHTML = `
 
-  <section
-    class="page-card">
+<section
+  class="page-card">
 
-    <div
-      class="page-header">
+  <div
+    class="page-header">
 
-      <button
-        type="button"
-        class="back-btn"
-        id="affiliateBack">
+    <button
+      type="button"
+      class="back-btn"
+      id="affiliateBack">
 
-        ←
+      ←
 
-      </button>
+    </button>
 
-      <div>
+    <div>
 
-        <h2>
-          Affiliate
-        </h2>
-
-        <p>
-          Program affiliate GEN-Z.AI
-        </p>
-
-      </div>
-
-    </div>
-
-    <div
-      class="contact-admin">
+      <h2>
+        Affiliate
+      </h2>
 
       <p>
-        Halaman affiliate sedang
-        dipersiapkan.
+        Program affiliate GEN-Z.AI
       </p>
 
     </div>
 
-  </section>
+  </div>
+
+  <div
+    class="contact-admin">
+
+    <p>
+      Halaman affiliate sedang
+      dipersiapkan.
+    </p>
+
+  </div>
+
+</section>
 
 `;
 
 const back =
-  $('affiliateBack');
+$('affiliateBack');
 
 if (back) {
 
-  back.addEventListener(
-    'click',
-    showStudio,
-    {
-      once: true
-    }
-  );
+back.addEventListener(
+'click',
+showStudio,
+{
+  once: true
+}
+);
 
 }
 
@@ -2148,37 +2261,37 @@ value
 ) {
 
 if (
-  GENZ.escapeHtml &&
-  typeof GENZ.escapeHtml === 'function'
+GENZ.escapeHtml &&
+typeof GENZ.escapeHtml === 'function'
 ) {
 
-  return GENZ.escapeHtml(
-    String(value ?? '')
-  );
+return GENZ.escapeHtml(
+String(value ?? '')
+);
 
 }
 
 return String(value ?? '')
-  .replace(
-    /&/g,
-    '&amp;'
-  )
-  .replace(
-    /</g,
-    '&lt;'
-  )
-  .replace(
-    />/g,
-    '&gt;'
-  )
-  .replace(
-    /"/g,
-    '&quot;'
-  )
-  .replace(
-    /'/g,
-    '&#039;'
-  );
+.replace(
+/&/g,
+'&amp;'
+)
+.replace(
+/</g,
+'&lt;'
+)
+.replace(
+/>/g,
+'&gt;'
+)
+.replace(
+/"/g,
+'&quot;'
+)
+.replace(
+/'/g,
+'&#039;'
+);
 
 }
 
@@ -2190,163 +2303,163 @@ function bindNavigation() {
 
 if (navigationBound) {
 
-  return;
+return;
 
 }
 
 navigationBound =
-  true;
+true;
 
 document.addEventListener(
-  'click',
-  function (event) {
+'click',
+function (event) {
 
-    const target =
-      event.target;
+const target =
+event.target;
 
-    if (
-      !target ||
-      typeof target.closest !== 'function'
-    ) {
+if (
+!target ||
+typeof target.closest !== 'function'
+) {
 
-      return;
+return;
 
-    }
+}
 
-    const button =
-      target.closest(
-        '[data-page]'
-      );
+const button =
+target.closest(
+'[data-page]'
+);
 
-    if (!button) {
+if (!button) {
 
-      return;
+return;
 
-    }
+}
 
-    const page =
-      button.dataset.page;
+const page =
+button.dataset.page;
 
-    if (!page) {
+if (!page) {
 
-      return;
+return;
 
-    }
+}
 
-    event.preventDefault();
+event.preventDefault();
 
-    showPage(
-      page
-    ).catch(
-      pageError => {
+showPage(
+page
+).catch(
+pageError => {
 
-        error(
-          'Page loading error:',
-          pageError
-        );
+error(
+'Page loading error:',
+pageError
+);
 
-      }
-    );
+}
+);
 
-  }
+}
 );
 
 document.addEventListener(
-  'click',
-  function (event) {
+'click',
+function (event) {
 
-    const target =
-      event.target;
+const target =
+event.target;
 
-    if (
-      !target ||
-      typeof target.closest !== 'function'
-    ) {
+if (
+!target ||
+typeof target.closest !== 'function'
+) {
 
-      return;
+return;
 
-    }
+}
 
-    const button =
-      target.closest(
-        '[data-back-studio]'
-      );
+const button =
+target.closest(
+'[data-back-studio]'
+);
 
-    if (!button) {
+if (!button) {
 
-      return;
+return;
 
-    }
+}
 
-    event.preventDefault();
+event.preventDefault();
 
-    showStudio();
+showStudio();
 
-  }
+}
 );
 
 document.addEventListener(
-  'click',
-  function (event) {
+'click',
+function (event) {
 
-    const target =
-      event.target;
+const target =
+event.target;
 
-    if (
-      !target ||
-      typeof target.closest !== 'function'
-    ) {
+if (
+!target ||
+typeof target.closest !== 'function'
+) {
 
-      return;
+return;
 
-    }
+}
 
-    const button =
-      target.closest(
-        '#backToStudio'
-      );
+const button =
+target.closest(
+'#backToStudio'
+);
 
-    if (!button) {
+if (!button) {
 
-      return;
+return;
 
-    }
+}
 
-    event.preventDefault();
+event.preventDefault();
 
-    showStudio();
+showStudio();
 
-  }
+}
 );
 
 if (
-  typeof GENZ.on === 'function'
+typeof GENZ.on === 'function'
 ) {
 
-  GENZ.on(
-    'show-studio',
-    showStudio
-  );
+GENZ.on(
+'show-studio',
+showStudio
+);
 
-  GENZ.on(
-    'show-page',
-    function (page) {
+GENZ.on(
+'show-page',
+function (page) {
 
-      showPage(
-        page
-      ).catch(
-        pageError => {
+showPage(
+page
+).catch(
+pageError => {
 
-          error(
-            'show-page error:',
-            pageError
-          );
+error(
+'show-page error:',
+pageError
+);
 
-        }
-      );
+}
+);
 
-    }
-  );
+}
+);
 
 }
 
@@ -2360,113 +2473,113 @@ async function start() {
 
 if (started) {
 
-  return;
+return;
 
 }
 
 log(
-  'APPLICATION START'
+'APPLICATION START'
 );
 
 try {
 
-  GENZ.state =
-    GENZ.state ||
-    {};
+GENZ.state =
+GENZ.state ||
+{};
 
-  GENZ.state.account =
-    GENZ.state.account ||
-    {
+GENZ.state.account =
+GENZ.state.account ||
+{
 
-      isAdmin:
-        false,
+isAdmin:
+false,
 
-      roleValidated:
-        false
+roleValidated:
+false
 
-    };
+};
 
-  GENZ.state.loggedIn =
-    GENZ.state.loggedIn === true;
+GENZ.state.loggedIn =
+GENZ.state.loggedIn === true;
 
-  GENZ.state.initialized =
-    false;
+GENZ.state.initialized =
+false;
 
-  bindNavigation();
+bindNavigation();
 
-  bindAuth();
+bindAuth();
 
-  await loadComponents();
+await loadComponents();
 
-  const application =
-    $('application-container');
+const application =
+$('application-container');
 
-  if (application) {
+if (application) {
 
-    application.classList.add(
-      'hidden'
-    );
+application.classList.add(
+'hidden'
+);
 
-  }
+}
 
-  await syncAuth();
+await syncAuth();
 
-  started =
-    true;
+started =
+true;
 
-  GENZ.state.initialized =
-    true;
+GENZ.state.initialized =
+true;
 
-  log(
-    'APPLICATION READY'
-  );
+log(
+'APPLICATION READY'
+);
 
 } catch (startupError) {
 
-  GENZ.state.initialized =
-    false;
+GENZ.state.initialized =
+false;
 
-  error(
-    'APPLICATION START ERROR:',
-    startupError
-  );
+error(
+'APPLICATION START ERROR:',
+startupError
+);
 
-  const app =
-    $('app');
+const app =
+$('app');
 
-  if (app) {
+if (app) {
 
-    const errorMessage =
-      startupError?.message ||
-      'Unknown error';
+const errorMessage =
+startupError?.message ||
+'Unknown error';
 
-    const safeMessage =
-      escapeHtml(
-        errorMessage
-      );
+const safeMessage =
+escapeHtml(
+errorMessage
+);
 
-    app.innerHTML = `
+app.innerHTML = `
 
-      <section
-        class="page-card">
+<section
+  class="page-card">
 
-        <h2>
-          GEN-Z.AI
-        </h2>
+  <h2>
+    GEN-Z.AI
+  </h2>
 
-        <p>
-          Aplikasi gagal dimuat.
-        </p>
+  <p>
+    Aplikasi gagal dimuat.
+  </p>
 
-        <small>
-          ${safeMessage}
-        </small>
+  <small>
+    ${safeMessage}
+  </small>
 
-      </section>
+</section>
 
-    `;
+`;
 
-  }
+}
 
 }
 
@@ -2494,37 +2607,37 @@ document.readyState === 'loading'
 ) {
 
 document.addEventListener(
-  'DOMContentLoaded',
-  function () {
+'DOMContentLoaded',
+function () {
 
-    start().catch(
-      startupError => {
+start().catch(
+startupError => {
 
-        error(
-          'Unhandled startup error:',
-          startupError
-        );
+error(
+'Unhandled startup error:',
+startupError
+);
 
-      }
-    );
+}
+);
 
-  },
-  {
-    once: true
-  }
+},
+{
+once: true
+}
 );
 
 } else {
 
 start().catch(
-  startupError => {
+startupError => {
 
-    error(
-      'Unhandled startup error:',
-      startupError
-    );
+error(
+'Unhandled startup error:',
+startupError
+);
 
-  }
+}
 );
 
 }
