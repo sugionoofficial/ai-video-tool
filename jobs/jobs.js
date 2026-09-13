@@ -8,16 +8,45 @@ import {
   sb
 } from "../lib/supabase.js";
 
+
+/* ============================================================
+GEN-Z.AI
+JOB RESERVATION SERVICE
+============================================================ */
+
+const MAX_USER_ID_LENGTH =
+  256;
+
+const MAX_PROVIDER_ID_LENGTH =
+  64;
+
+const MAX_COST =
+  1000;
+
+const MAX_IDEMPOTENCY_KEY_LENGTH =
+  128;
+
+const MAX_FINGERPRINT_LENGTH =
+  256;
+
+
+/* ============================================================
+HELPERS
+============================================================ */
+
 function normalizeString(
   value,
   maxLength
 ) {
   const result =
-    String(value ?? "").trim();
+    String(
+      value ?? ""
+    ).trim();
 
   if (
     !result ||
-    result.length > maxLength
+    result.length >
+      maxLength
   ) {
     return null;
   }
@@ -25,22 +54,74 @@ function normalizeString(
   return result;
 }
 
+
+function normalizeProvider(
+  value
+) {
+  const provider =
+    normalizeString(
+      value,
+      MAX_PROVIDER_ID_LENGTH
+    );
+
+  if (!provider) {
+    return null;
+  }
+
+  const normalized =
+    provider.toLowerCase();
+
+  if (
+    !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
+      normalized
+    )
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+
 function normalizeCost(
   value
 ) {
   const cost =
-    Number(value);
+    Number(
+      value
+    );
 
   if (
-    !Number.isInteger(cost) ||
+    !Number.isInteger(
+      cost
+    ) ||
     cost < 1 ||
-    cost > 1000
+    cost > MAX_COST
   ) {
     return null;
   }
 
   return cost;
 }
+
+
+function isPlainObject(
+  value
+) {
+  return (
+    value !== null &&
+    typeof value ===
+      "object" &&
+    !Array.isArray(
+      value
+    )
+  );
+}
+
+
+/* ============================================================
+RESERVE JOB
+============================================================ */
 
 export async function reserveJob(
   userId,
@@ -53,13 +134,12 @@ export async function reserveJob(
   const normalizedUserId =
     normalizeString(
       userId,
-      200
+      MAX_USER_ID_LENGTH
     );
 
   const normalizedProvider =
-    normalizeString(
-      provider,
-      100
+    normalizeProvider(
+      provider
     );
 
   const normalizedCost =
@@ -70,14 +150,19 @@ export async function reserveJob(
   const normalizedIdempotencyKey =
     normalizeString(
       idempotencyKey,
-      128
+      MAX_IDEMPOTENCY_KEY_LENGTH
     );
 
   const normalizedFingerprint =
     normalizeString(
       fingerprint,
-      256
+      MAX_FINGERPRINT_LENGTH
     );
+
+
+  /* ==========================================================
+  VALIDATION
+  ========================================================== */
 
   if (
     !normalizedUserId ||
@@ -108,7 +193,12 @@ export async function reserveJob(
     );
   }
 
-  const res =
+
+  /* ==========================================================
+  START VIDEO JOB RPC
+  ========================================================== */
+
+  const response =
     await sb(
       "/rest/v1/rpc/start_video_job",
       {
@@ -144,21 +234,24 @@ export async function reserveJob(
       env
     );
 
+
+  /* ==========================================================
+  PARSE RESPONSE
+  ========================================================== */
+
   const data =
     await safeJson(
-      res
+      response
     );
 
+
+  /* ==========================================================
+  RPC ERROR
+  ========================================================== */
+
   if (
-    !res.ok
+    !response.ok
   ) {
-    /*
-     * 402 hanya digunakan ketika RPC memang
-     * melaporkan masalah kredit.
-     *
-     * Error database/RPC lainnya harus tetap
-     * dianggap sebagai kegagalan server.
-     */
     const message =
       apiError(
         data,
@@ -168,11 +261,15 @@ export async function reserveJob(
     const normalizedMessage =
       String(
         message || ""
-      ).toLowerCase();
+      )
+        .trim()
+        .toLowerCase();
 
     const creditError =
-      res.status === 402 ||
-      res.status === 403 ||
+      response.status ===
+        402 ||
+      response.status ===
+        403 ||
       normalizedMessage.includes(
         "credit"
       ) ||
@@ -193,10 +290,12 @@ export async function reserveJob(
       );
     }
 
+
     console.error(
       "start_video_job RPC failed",
-      res.status,
-      message || "unknown error"
+      response.status,
+      message ||
+        "unknown error"
     );
 
     throw new HttpError(
@@ -205,21 +304,63 @@ export async function reserveJob(
     );
   }
 
-  /*
-   * RPC seharusnya mengembalikan object job.
-   * Jangan meneruskan null/array kosong sebagai
-   * job yang valid karena generate.js dapat
-   * menganggap reservasi berhasil.
-   */
+
+  /* ==========================================================
+  RESPONSE VALIDATION
+  ========================================================== */
+
   if (
-    data === null ||
-    data === undefined
+    !isPlainObject(
+      data
+    )
   ) {
+    console.error(
+      "start_video_job returned invalid data"
+    );
+
     throw new HttpError(
       "Respons reservasi job tidak valid.",
       502
     );
   }
 
-  return data;
+
+  /* ==========================================================
+  REQUIRED JOB DATA
+  ========================================================== */
+
+  const jobId =
+    String(
+      data.id ??
+      data.job_id ??
+      ""
+    ).trim();
+
+  if (
+    !jobId
+  ) {
+    console.error(
+      "start_video_job response missing job id"
+    );
+
+    throw new HttpError(
+      "Job tidak berhasil dibuat.",
+      502
+    );
+  }
+
+
+  /* ==========================================================
+  NORMALIZED RETURN VALUE
+  ========================================================== */
+
+  return {
+    ...data,
+
+    id:
+      jobId,
+
+    provider:
+      normalizedProvider
+  };
 }
