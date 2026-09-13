@@ -52,25 +52,49 @@ Semua implementasi provider berada di adapter masing-masing.
 ============================================================ */
 
 
+/* ============================================================
+MAIN STATUS HANDLER
+============================================================ */
+
 export async function handleStatus(
   request,
   env
 ) {
-
   const user =
     await requireUser(
       request,
       env
     );
 
+
+  /* ==========================================================
+  CONTENT TYPE
+  ========================================================== */
+
   requireJsonContentType(
     request
   );
+
+
+  /* ==========================================================
+  REQUEST BODY
+  ========================================================== */
 
   const body =
     await readJson(
       request
     );
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body)
+  ) {
+    throw new HttpError(
+      "Data status tidak valid.",
+      400
+    );
+  }
 
 
   /* ==========================================================
@@ -182,14 +206,11 @@ export async function handleStatus(
   let adapter;
 
   try {
-
     adapter =
       resolveAdapter(
         adapterId
       );
-
-  } catch (error) {
-
+  } catch {
     throw new HttpError(
       `Adapter "${adapterId}" belum tersedia di Worker.`,
       400
@@ -202,7 +223,6 @@ export async function handleStatus(
     typeof adapter.status !==
       "function"
   ) {
-
     throw new HttpError(
       `Adapter "${adapterId}" tidak menyediakan fungsi status().`,
       500
@@ -244,7 +264,6 @@ export async function handleStatus(
     result.status ===
     "completed"
   ) {
-
     const proxyUrl =
       `/api/video?provider=${encodeURIComponent(
         id
@@ -253,53 +272,54 @@ export async function handleStatus(
       )}`;
 
 
-    const previousMetadata =
-      {
-        ...(job.metadata || {})
-      };
+    const previousMetadata = {
+      ...(job.metadata || {})
+    };
 
 
-    const nextMetadata =
-      {
-        ...previousMetadata,
+    const nextMetadata = {
+      ...previousMetadata,
 
-        ...result,
+      ...result,
 
-        provider:
-          id,
+      provider:
+        id,
 
-        adapter:
-          adapterId,
+      adapter:
+        adapterId,
 
-        prompt:
-          previousMetadata.prompt ||
-          result.prompt ||
-          null,
+      prompt:
+        previousMetadata.prompt ||
+        result.prompt ||
+        null,
 
-        model:
-          previousMetadata.model ||
-          result.model ||
-          job.model ||
-          null,
+      model:
+        previousMetadata.model ||
+        result.model ||
+        job.model ||
+        null,
 
-        duration:
-          previousMetadata.duration ??
-          result.duration ??
-          null,
+      duration:
+        previousMetadata.duration ??
+        result.duration ??
+        null,
 
-        aspectRatio:
-          previousMetadata.aspectRatio ||
-          result.aspectRatio ||
-          null,
+      aspectRatio:
+        previousMetadata.aspectRatio ||
+        result.aspectRatio ||
+        null,
 
-        resolution:
-          previousMetadata.resolution ||
-          result.resolution ||
-          null
-      };
+      resolution:
+        previousMetadata.resolution ||
+        result.resolution ||
+        null
+    };
 
 
-    /*
+    /* ========================================================
+    PROVIDER FILE ID
+    ========================================================
+
     MiniMax dapat mengembalikan fileId.
     Provider lain seperti Veo/Luma dapat
     mengembalikan videoUrl.
@@ -308,7 +328,6 @@ export async function handleStatus(
     if (
       result.fileId
     ) {
-
       nextMetadata.provider_file_id =
         result.fileId;
     }
@@ -399,6 +418,13 @@ export async function handleStatus(
     result.status ===
     "failed"
   ) {
+    const alreadyFailed =
+      String(
+        job.status ||
+        ""
+      ).toLowerCase() ===
+      "failed";
+
 
     await updateJob(
       job.id,
@@ -461,33 +487,42 @@ export async function handleStatus(
 
     /* ========================================================
     REFUND
+
+    Refund hanya dilakukan sekali.
+
+    Jika job sudah berstatus failed sebelum
+    polling ini, jangan refund lagi.
     ======================================================== */
 
-    await refundJob(
-      job.id,
-      env
-    );
+    if (
+      !alreadyFailed
+    ) {
+      await refundJob(
+        job.id,
+        env
+      );
 
 
-    await recordJobEvent(
-      job.id,
-      user.id,
-      "refunded",
-      {
-        message:
-          "Credit refunded after provider failure",
+      await recordJobEvent(
+        job.id,
+        user.id,
+        "refunded",
+        {
+          message:
+            "Credit refunded after provider failure",
 
-        metadata:
-          {
-            provider:
-              id,
+          metadata:
+            {
+              provider:
+                id,
 
-            adapter:
-              adapterId
-          }
-      },
-      env
-    );
+              adapter:
+                adapterId
+            }
+        },
+        env
+      );
+    }
   }
 
 
@@ -496,15 +531,25 @@ export async function handleStatus(
   ========================================================== */
 
   else {
+    const currentAttempt =
+      Number(
+        job.attempt_count ||
+        0
+      );
+
+    const nextAttempt =
+      Number.isFinite(
+        currentAttempt
+      )
+        ? currentAttempt + 1
+        : 1;
+
 
     await updateJob(
       job.id,
       {
         attempt_count:
-          Number(
-            job.attempt_count ||
-            0
-          ) + 1,
+          nextAttempt,
 
         provider_status:
           "processing",
