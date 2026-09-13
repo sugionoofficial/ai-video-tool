@@ -188,11 +188,6 @@ export async function router(
 
     // ========================================================
     // DIAGNOSTIC
-    //
-    // HANYA ADMIN / OWNER
-    //
-    // Endpoint ini membaca konfigurasi provider dari database.
-    // API key mentah tidak pernah dikirim ke client.
     // ========================================================
 
     if (
@@ -303,17 +298,6 @@ export async function router(
 
     // ========================================================
     // PUBLIC PROVIDERS
-    //
-    // Hanya provider yang:
-    // 1. enabled
-    // 2. mempunyai API key
-    // 3. mempunyai adapter yang sudah terdaftar
-    //
-    // Provider baru boleh disimpan di database sebelum
-    // adapter-nya di-deploy.
-    //
-    // Provider tersebut tidak muncul di generator sampai
-    // adapter tersedia.
     // ========================================================
 
     if (
@@ -524,12 +508,6 @@ export async function router(
       }
 
 
-      /*
-       * Jika Content-Length tidak tersedia,
-       * validasi ukuran body dilakukan oleh
-       * handler generate.
-       */
-
       return await handleGenerate(
         request,
         env
@@ -602,29 +580,7 @@ export async function router(
 
     // --------------------------------------------------------
     // SERVER LOG
-    //
-    // Jangan log:
-    // - API key
-    // - Authorization header
-    // - request body
-    // - credential provider
     // --------------------------------------------------------
-
-    console.error(
-      "request failed",
-      Number(
-        err?.status ||
-        500
-      ),
-      String(
-        err?.message ||
-        "unknown"
-      ).slice(
-        0,
-        300
-      )
-    );
-
 
     const status =
       Number(
@@ -632,22 +588,36 @@ export async function router(
         500
       );
 
-
     const safeStatus =
       status >= 400 &&
       status <= 599
         ? status
         : 500;
 
+    const rawMessage =
+      String(
+        err?.message ||
+        "unknown"
+      ).slice(
+        0,
+        500
+      );
 
-    const message =
-      safeStatus >= 500
-        ? "Internal Worker error."
-        : (
-            err?.message ||
-            "Request error."
-          );
+    console.error(
+      "request failed",
+      safeStatus,
+      rawMessage
+    );
 
+    // --------------------------------------------------------
+    // ERROR RESPONSE
+    //
+    // Untuk sementara pesan asli dikirim agar akar error
+    // backend dapat diketahui. Tidak mengirim:
+    // - API key
+    // - Authorization header
+    // - request body
+    // --------------------------------------------------------
 
     return json(
       {
@@ -655,7 +625,10 @@ export async function router(
           false,
 
         error:
-          message
+          rawMessage,
+
+        status:
+          safeStatus
       },
       safeStatus,
       env
