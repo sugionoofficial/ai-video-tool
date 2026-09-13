@@ -129,13 +129,6 @@ function normalizeExternalId(
 
 /* ============================================================
    ALLOWED JOB PATCH FIELDS
-   ============================================================
-
-   updateJob() hanya boleh mengubah field yang memang
-   digunakan oleh lifecycle video job.
-
-   Ini mencegah field database lain ikut berubah akibat
-   kesalahan caller internal.
    ============================================================ */
 
 const ALLOWED_PATCH_FIELDS =
@@ -168,9 +161,7 @@ function sanitizeJobPatch(
     );
   }
 
-
   const sanitized = {};
-
 
   for (
     const [
@@ -181,7 +172,6 @@ function sanitizeJobPatch(
       patch
     )
   ) {
-
     if (
       !ALLOWED_PATCH_FIELDS.has(
         key
@@ -194,7 +184,6 @@ function sanitizeJobPatch(
       value;
   }
 
-
   if (
     Object.keys(
       sanitized
@@ -205,7 +194,6 @@ function sanitizeJobPatch(
       400
     );
   }
-
 
   return sanitized;
 }
@@ -225,12 +213,10 @@ export async function updateJob(
       jobId
     );
 
-
   const sanitizedPatch =
     sanitizeJobPatch(
       patch
     );
-
 
   const payload = {
     ...sanitizedPatch,
@@ -239,7 +225,6 @@ export async function updateJob(
       new Date()
         .toISOString()
   };
-
 
   const response =
     await sb(
@@ -269,21 +254,40 @@ export async function updateJob(
       env
     );
 
-
   if (
     !response.ok
   ) {
+    let errorMessage =
+      "Gagal memperbarui status job.";
+
+    try {
+      const errorBody =
+        await response.json();
+
+      errorMessage =
+        String(
+          errorBody?.message ||
+          errorBody?.error ||
+          errorMessage
+        ).slice(
+          0,
+          500
+        );
+    } catch {
+      // Ignore invalid error body.
+    }
+
     console.error(
       "job update failed",
-      response.status
+      response.status,
+      errorMessage
     );
 
     throw new HttpError(
-      "Gagal memperbarui status job.",
+      errorMessage,
       500
     );
   }
-
 
   return true;
 }
@@ -301,18 +305,15 @@ export async function recordJobEvent(
   env
 ) {
   try {
-
     const normalizedJobId =
       normalizeJobId(
         jobId
       );
 
-
     const normalizedUserId =
       normalizeUserId(
         userId
       );
-
 
     const normalizedEventType =
       normalizeString(
@@ -320,7 +321,6 @@ export async function recordJobEvent(
         MAX_EVENT_TYPE_LENGTH,
         "Event job tidak valid."
       );
-
 
     const providerStatus =
       extra?.providerStatus
@@ -334,7 +334,6 @@ export async function recordJobEvent(
             )
         : null;
 
-
     const errorCode =
       extra?.errorCode
         ? String(
@@ -346,7 +345,6 @@ export async function recordJobEvent(
               MAX_ERROR_CODE_LENGTH
             )
         : null;
-
 
     const message =
       extra?.message
@@ -360,14 +358,12 @@ export async function recordJobEvent(
             )
         : "";
 
-
     const metadata =
       isPlainObject(
         extra?.metadata
       )
         ? extra.metadata
         : {};
-
 
     const response =
       await sb(
@@ -411,25 +407,43 @@ export async function recordJobEvent(
         env
       );
 
-
     if (
       !response.ok
     ) {
+      let errorMessage =
+        "Gagal mencatat event job.";
+
+      try {
+        const errorBody =
+          await response.json();
+
+        errorMessage =
+          String(
+            errorBody?.message ||
+            errorBody?.error ||
+            errorMessage
+          ).slice(
+            0,
+            500
+          );
+      } catch {
+        // Ignore invalid error body.
+      }
+
       console.error(
         "job event logging failed",
-        response.status
+        response.status,
+        errorMessage
       );
 
       return false;
     }
-
 
     return true;
 
   } catch (
     err
   ) {
-
     console.error(
       "job event logging failed",
       String(
@@ -460,7 +474,6 @@ export async function refundJob(
       jobId
     );
 
-
   const response =
     await sb(
       "/rest/v1/rpc/refund_video_job",
@@ -485,21 +498,124 @@ export async function refundJob(
       env
     );
 
-
   if (
     !response.ok
   ) {
+    let errorMessage =
+      "Gagal mengembalikan kredit job.";
+
+    let errorCode =
+      "";
+
+    let errorDetails =
+      "";
+
+    let errorHint =
+      "";
+
+    try {
+      const errorBody =
+        await response.json();
+
+      errorMessage =
+        String(
+          errorBody?.message ||
+          errorBody?.error ||
+          errorMessage
+        ).slice(
+          0,
+          500
+        );
+
+      errorCode =
+        String(
+          errorBody?.code ||
+          ""
+        ).slice(
+          0,
+          100
+        );
+
+      errorDetails =
+        String(
+          errorBody?.details ||
+          ""
+        ).slice(
+          0,
+          500
+        );
+
+      errorHint =
+        String(
+          errorBody?.hint ||
+          ""
+        ).slice(
+          0,
+          500
+        );
+
+    } catch {
+      try {
+        const rawBody =
+          await response.text();
+
+        errorDetails =
+          String(
+            rawBody ||
+            ""
+          ).slice(
+            0,
+            500
+          );
+      } catch {
+        // Ignore unreadable response body.
+      }
+    }
+
     console.error(
       "job refund failed",
-      response.status
+      {
+        status:
+          response.status,
+
+        code:
+          errorCode,
+
+        message:
+          errorMessage,
+
+        details:
+          errorDetails,
+
+        hint:
+          errorHint
+      }
     );
 
+    const diagnosticParts =
+      [
+        errorMessage,
+        errorCode
+          ? `code=${errorCode}`
+          : "",
+        errorDetails
+          ? `details=${errorDetails}`
+          : "",
+        errorHint
+          ? `hint=${errorHint}`
+          : ""
+      ].filter(
+        Boolean
+      );
+
     throw new HttpError(
+      diagnosticParts.join(
+        " | "
+      ) ||
       "Gagal mengembalikan kredit job.",
       500
     );
   }
-
 
   return true;
 }
@@ -520,18 +636,15 @@ export async function getJob(
       userId
     );
 
-
   const normalizedProvider =
     normalizeProvider(
       provider
     );
 
-
   const normalizedExternalId =
     normalizeExternalId(
       externalId
     );
-
 
   const query =
     `/rest/v1/video_jobs?user_id=eq.${encodeURIComponent(
@@ -541,7 +654,6 @@ export async function getJob(
     )}&external_id=eq.${encodeURIComponent(
       normalizedExternalId
     )}&select=*&limit=1`;
-
 
   const response =
     await sb(
@@ -554,7 +666,6 @@ export async function getJob(
       },
       env
     );
-
 
   if (
     !response.ok
@@ -570,9 +681,7 @@ export async function getJob(
     );
   }
 
-
   let rows;
-
 
   try {
     rows =
@@ -585,7 +694,6 @@ export async function getJob(
     );
   }
 
-
   if (
     !Array.isArray(
       rows
@@ -593,7 +701,6 @@ export async function getJob(
   ) {
     return null;
   }
-
 
   return (
     rows[0] ||
