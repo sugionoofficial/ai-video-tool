@@ -4,19 +4,21 @@
 
    RIWAYAT VIDEO GENERATION
 
-   Menampilkan seluruh percobaan generate milik
-   akun yang sedang login.
+   Data diambil melalui:
+   GET /api/history
 
-   Sumber data:
-   Supabase client yang sudah dibuat oleh auth.js
+   Backend:
+   worker.js
+      ↓
+   router/index.js
+      ↓
+   router/history.js
+      ↓
+   requireUser()
+      ↓
+   Supabase video_jobs
 
-   Tidak menggunakan:
-   - /api/config
-   - service role key
-   - anonymous client baru
-   - filter status
-
-   Status yang ditampilkan:
+   Semua status ditampilkan:
    - completed
    - failed
    - processing
@@ -28,10 +30,6 @@
 
   "use strict";
 
-
-  /* =======================================================
-     GLOBAL
-  ======================================================= */
 
   const GENZ =
     window.GENZ ||
@@ -63,50 +61,39 @@
 
 
   /* =======================================================
-     ESCAPE HTML
+     HTML ESCAPE
   ======================================================= */
 
   function escapeHtml(value) {
 
-    return String(value ?? "")
+    return String(
+      value ?? ""
+    )
 
-      .replace(/&/g, "&amp;")
+      .replace(
+        /&/g,
+        "&amp;"
+      )
 
-      .replace(/</g, "&lt;")
+      .replace(
+        /</g,
+        "&lt;"
+      )
 
-      .replace(/>/g, "&gt;")
+      .replace(
+        />/g,
+        "&gt;"
+      )
 
-      .replace(/"/g, "&quot;")
+      .replace(
+        /"/g,
+        "&quot;"
+      )
 
-      .replace(/'/g, "&#039;");
-
-  }
-
-
-  /* =======================================================
-     SUPABASE CLIENT
-  ======================================================= */
-
-  function getSupabaseClient() {
-
-    const client =
-      window.GENZ_AUTH_CLIENT;
-
-
-    if (
-      client &&
-      client.auth &&
-      typeof client.from === "function"
-    ) {
-
-      return client;
-
-    }
-
-
-    throw new Error(
-      "Koneksi Supabase belum siap. Silakan login kembali."
-    );
+      .replace(
+        /'/g,
+        "&#039;"
+      );
 
   }
 
@@ -118,14 +105,30 @@
   async function getSession() {
 
     const client =
-      getSupabaseClient();
+      window.GENZ_AUTH_CLIENT;
+
+
+    if (
+      !client ||
+      !client.auth ||
+      typeof client.auth.getSession !==
+        "function"
+    ) {
+
+      throw new Error(
+        "Sistem login belum siap."
+      );
+
+    }
 
 
     const result =
       await client.auth.getSession();
 
 
-    if (result?.error) {
+    if (
+      result?.error
+    ) {
 
       throw result.error;
 
@@ -162,38 +165,60 @@
         .toLowerCase();
 
 
-    const combined =
-      `${status} ${providerStatus}`;
+    const failedStatuses = [
+
+      "failed",
+      "failure",
+      "error",
+      "errored",
+      "rejected",
+      "declined",
+      "timeout",
+      "timed_out",
+      "cancelled",
+      "canceled",
+      "aborted"
+
+    ];
 
 
-    /* SUCCESS */
+    const completedStatuses = [
+
+      "completed",
+      "complete",
+      "success",
+      "successful",
+      "succeeded",
+      "done",
+      "finished",
+      "ready"
+
+    ];
+
+
+    const processingStatuses = [
+
+      "pending",
+      "queued",
+      "queue",
+      "processing",
+      "generating",
+      "submitted",
+      "running",
+      "in_progress",
+      "in-progress",
+      "starting"
+
+    ];
+
 
     if (
-
-      [
-        "completed",
-        "complete",
-        "success",
-        "successful",
-        "succeeded",
-        "done",
-        "finished",
-        "ready"
-      ].includes(status)
-
-      ||
-
-      [
-        "completed",
-        "complete",
-        "success",
-        "successful",
-        "succeeded",
-        "done",
-        "finished",
-        "ready"
-      ].includes(providerStatus)
-
+      completedStatuses.includes(
+        status
+      ) ||
+      completedStatuses.includes(
+        providerStatus
+      )
     ) {
 
       return "completed";
@@ -201,40 +226,13 @@
     }
 
 
-    /* FAILED */
-
     if (
-
-      [
-        "failed",
-        "failure",
-        "error",
-        "errored",
-        "rejected",
-        "declined",
-        "timeout",
-        "timed_out",
-        "cancelled",
-        "canceled",
-        "aborted"
-      ].includes(status)
-
-      ||
-
-      [
-        "failed",
-        "failure",
-        "error",
-        "errored",
-        "rejected",
-        "declined",
-        "timeout",
-        "timed_out",
-        "cancelled",
-        "canceled",
-        "aborted"
-      ].includes(providerStatus)
-
+      failedStatuses.includes(
+        status
+      ) ||
+      failedStatuses.includes(
+        providerStatus
+      )
     ) {
 
       return "failed";
@@ -242,22 +240,29 @@
     }
 
 
-    /* EXTRA FAILURE */
+    const combined =
+      `${status} ${providerStatus}`;
+
 
     if (
-
-      combined.includes("failed") ||
-
-      combined.includes("failure") ||
-
-      combined.includes("error") ||
-
-      combined.includes("reject") ||
-
-      combined.includes("timeout") ||
-
-      combined.includes("cancel")
-
+      combined.includes(
+        "failed"
+      ) ||
+      combined.includes(
+        "failure"
+      ) ||
+      combined.includes(
+        "error"
+      ) ||
+      combined.includes(
+        "reject"
+      ) ||
+      combined.includes(
+        "timeout"
+      ) ||
+      combined.includes(
+        "cancel"
+      )
     ) {
 
       return "failed";
@@ -265,59 +270,26 @@
     }
 
 
-    /* PROCESSING */
+    if (
+      job?.last_error ||
+      job?.last_error_code
+    ) {
+
+      return "failed";
+
+    }
+
 
     if (
-
-      [
-        "pending",
-        "queued",
-        "queue",
-        "processing",
-        "generating",
-        "submitted",
-        "running",
-        "in_progress",
-        "in-progress",
-        "starting"
-      ].includes(status)
-
-      ||
-
-      [
-        "pending",
-        "queued",
-        "queue",
-        "processing",
-        "generating",
-        "submitted",
-        "running",
-        "in_progress",
-        "in-progress",
-        "starting"
-      ].includes(providerStatus)
-
+      processingStatuses.includes(
+        status
+      ) ||
+      processingStatuses.includes(
+        providerStatus
+      )
     ) {
 
       return "processing";
-
-    }
-
-
-    /*
-      Kalau status tidak dikenal tetapi
-      ada error, tetap dianggap gagal.
-    */
-
-    if (
-
-      job?.last_error ||
-
-      job?.last_error_code
-
-    ) {
-
-      return "failed";
 
     }
 
@@ -334,7 +306,8 @@
   function statusLabel(status) {
 
     if (
-      status === "completed"
+      status ===
+      "completed"
     ) {
 
       return "Selesai";
@@ -343,7 +316,8 @@
 
 
     if (
-      status === "failed"
+      status ===
+      "failed"
     ) {
 
       return "Gagal";
@@ -360,10 +334,14 @@
      PROVIDER
   ======================================================= */
 
-  function providerLabel(provider) {
+  function providerLabel(
+    provider
+  ) {
 
     const value =
-      String(provider || "")
+      String(
+        provider || ""
+      )
         .trim()
         .toLowerCase();
 
@@ -389,13 +367,9 @@
 
 
     return (
-
       map[value] ||
-
       provider ||
-
       "Provider"
-
     );
 
   }
@@ -412,7 +386,8 @@
 
 
     if (
-      typeof metadata === "string"
+      typeof metadata ===
+      "string"
     ) {
 
       try {
@@ -431,17 +406,13 @@
     }
 
 
-    if (
+    return (
       metadata &&
-      typeof metadata === "object"
-    ) {
-
-      return metadata;
-
-    }
-
-
-    return {};
+      typeof metadata ===
+        "object"
+    )
+      ? metadata
+      : {};
 
   }
 
@@ -453,7 +424,9 @@
   function getPrompt(job) {
 
     const metadata =
-      getMetadata(job);
+      getMetadata(
+        job
+      );
 
 
     return (
@@ -480,7 +453,9 @@
   function getModel(job) {
 
     const metadata =
-      getMetadata(job);
+      getMetadata(
+        job
+      );
 
 
     return (
@@ -505,7 +480,9 @@
   function getDuration(job) {
 
     const metadata =
-      getMetadata(job);
+      getMetadata(
+        job
+      );
 
 
     return (
@@ -530,7 +507,9 @@
   function getAspectRatio(job) {
 
     const metadata =
-      getMetadata(job);
+      getMetadata(
+        job
+      );
 
 
     return (
@@ -555,7 +534,9 @@
   function getResolution(job) {
 
     const metadata =
-      getMetadata(job);
+      getMetadata(
+        job
+      );
 
 
     return (
@@ -572,10 +553,12 @@
 
 
   /* =======================================================
-     FORMAT DATE
+     DATE
   ======================================================= */
 
-  function formatDate(value) {
+  function formatDate(
+    value
+  ) {
 
     if (!value) {
 
@@ -586,27 +569,24 @@
 
     try {
 
-      return new Date(value)
+      return new Date(
+        value
+      ).toLocaleString(
+        "id-ID",
+        {
+          dateStyle:
+            "medium",
 
-        .toLocaleString(
-
-          "id-ID",
-
-          {
-
-            dateStyle:
-              "medium",
-
-            timeStyle:
-              "short"
-
-          }
-
-        );
+          timeStyle:
+            "short"
+        }
+      );
 
     } catch (_) {
 
-      return String(value);
+      return String(
+        value
+      );
 
     }
 
@@ -617,14 +597,15 @@
      VIDEO URL
   ======================================================= */
 
-  function getVideoUrl(job) {
-
-    const status =
-      normalizeStatus(job);
-
+  function getVideoUrl(
+    job
+  ) {
 
     if (
-      status !== "completed"
+      normalizeStatus(
+        job
+      ) !==
+      "completed"
     ) {
 
       return "";
@@ -664,14 +645,10 @@
 
 
   /* =======================================================
-     LOAD JOBS
+     LOAD HISTORY
   ======================================================= */
 
   async function loadJobs() {
-
-    const client =
-      getSupabaseClient();
-
 
     const session =
       await getSession();
@@ -698,149 +675,159 @@
     );
 
 
-    /*
-      Query langsung menggunakan Supabase client
-      yang sudah terautentikasi.
+    const response =
+      await fetch(
+        "/api/history?limit=1000&offset=0",
+        {
+          method:
+            "GET",
 
-      Tidak memakai /api/config.
-      Tidak memakai service-role key.
-    */
+          headers: {
 
-    const {
+            "Accept":
+              "application/json",
 
-      data,
+            "Authorization":
+              `Bearer ${session.access_token}`
 
-      error
+          },
 
-    } =
+          credentials:
+            "include",
 
-      await client
+          cache:
+            "no-store"
 
-        .from("video_jobs")
-
-        .select(
-
-          [
-            "id",
-            "user_id",
-            "provider",
-            "external_id",
-            "status",
-            "credit_cost",
-            "refunded",
-            "model",
-            "video_url",
-            "metadata",
-            "attempt_count",
-            "last_error",
-            "last_error_code",
-            "provider_status",
-            "created_at",
-            "updated_at"
-          ].join(",")
-
-        )
-
-        .eq(
-          "user_id",
-          userId
-        )
-
-        .order(
-          "created_at",
-          {
-            ascending:
-              false
-          }
-        );
+        }
+      );
 
 
-    if (error) {
+    let payload =
+      null;
+
+
+    try {
+
+      payload =
+        await response.json();
+
+    } catch (_) {
+
+      payload =
+        null;
+
+    }
+
+
+    if (
+      !response.ok
+    ) {
 
       console.error(
-        "[GEN-Z HISTORY] Supabase error:",
-        error
+        "[GEN-Z HISTORY] API error:",
+        response.status,
+        payload
       );
 
 
       throw new Error(
 
-        error.message ||
+        payload?.error ||
 
-        "Gagal mengambil riwayat video dari Supabase."
+        `Gagal mengambil riwayat. HTTP ${response.status}`
 
       );
 
     }
 
 
+    if (
+      !payload?.success
+    ) {
+
+      throw new Error(
+        payload?.error ||
+        "API riwayat tidak mengembalikan data."
+      );
+
+    }
+
+
     const jobs =
-      Array.isArray(data)
-        ? data
+      Array.isArray(
+        payload.jobs
+      )
+        ? payload.jobs
         : [];
 
 
-    /*
-      Perlindungan tambahan.
-    */
-
     state.jobs =
       jobs.filter(
-
         job =>
-
           String(
-            job?.user_id || ""
+            job?.user_id ||
+            ""
           ) ===
-
-          String(userId)
-
+          String(
+            userId
+          )
       );
 
 
     console.log(
-      "[GEN-Z HISTORY] Total:",
+      "[GEN-Z HISTORY] API total:",
+      jobs.length
+    );
+
+
+    console.log(
+      "[GEN-Z HISTORY] User total:",
       state.jobs.length
     );
 
 
     const failed =
       state.jobs.filter(
-
         job =>
-          normalizeStatus(job) ===
+          normalizeStatus(
+            job
+          ) ===
           "failed"
-
       ).length;
 
 
     const completed =
       state.jobs.filter(
-
         job =>
-          normalizeStatus(job) ===
+          normalizeStatus(
+            job
+          ) ===
           "completed"
-
       ).length;
 
 
     const processing =
       state.jobs.filter(
-
         job =>
-          normalizeStatus(job) ===
+          normalizeStatus(
+            job
+          ) ===
           "processing"
-
       ).length;
 
 
     console.log(
-      "[GEN-Z HISTORY] Selesai:",
-      completed,
-      "| Gagal:",
-      failed,
-      "| Diproses:",
-      processing
+      "[GEN-Z HISTORY]",
+      {
+        total:
+          state.jobs.length,
+
+        completed,
+
+        failed,
+
+        processing
+      }
     );
 
 
@@ -856,14 +843,22 @@
   function render() {
 
     const grid =
-      $("historyGrid");
+      $(
+        "historyGrid"
+      );
 
 
     const count =
-      $("historyCount");
+      $(
+        "historyCount"
+      );
 
 
     if (!grid) {
+
+      console.error(
+        "[GEN-Z HISTORY] historyGrid tidak ditemukan."
+      );
 
       return;
 
@@ -871,7 +866,8 @@
 
 
     const jobs =
-      state.jobs || [];
+      state.jobs ||
+      [];
 
 
     if (count) {
@@ -882,11 +878,20 @@
     }
 
 
-    if (!jobs.length) {
+    if (
+      !jobs.length
+    ) {
 
       grid.innerHTML = `
 
-        <div class="history-empty">
+        <div
+          class="history-empty"
+          style="
+            padding:40px 20px;
+            text-align:center;
+            opacity:.75;
+          "
+        >
 
           Belum ada percobaan
           generate video.
@@ -904,10 +909,12 @@
 
       jobs.map(
 
-        (job, index) => {
+        (job) => {
 
           const status =
-            normalizeStatus(job);
+            normalizeStatus(
+              job
+            );
 
 
           const provider =
@@ -917,15 +924,21 @@
 
 
           const prompt =
-            getPrompt(job);
+            getPrompt(
+              job
+            );
 
 
           const videoUrl =
-            getVideoUrl(job);
+            getVideoUrl(
+              job
+            );
 
 
           const model =
-            getModel(job);
+            getModel(
+              job
+            );
 
 
           const date =
@@ -940,28 +953,27 @@
           /* COMPLETED */
 
           if (
-
             status ===
               "completed" &&
-
             videoUrl
-
           ) {
 
             preview = `
 
               <video
-
                 src="${escapeHtml(
                   videoUrl
                 )}"
-
                 muted
-
                 playsinline
-
                 preload="metadata"
-
+                controls
+                style="
+                  width:100%;
+                  height:100%;
+                  object-fit:cover;
+                  border-radius:12px;
+                "
               ></video>
 
             `;
@@ -972,53 +984,48 @@
           /* FAILED */
 
           else if (
-
             status ===
             "failed"
-
           ) {
 
             preview = `
 
               <div
-
                 class="history-placeholder history-failed"
-
+                style="
+                  width:100%;
+                  height:100%;
+                  min-height:180px;
+                  display:flex;
+                  flex-direction:column;
+                  align-items:center;
+                  justify-content:center;
+                  text-align:center;
+                  border-radius:12px;
+                  background:rgba(255,60,60,.08);
+                "
               >
 
                 <div
-
                   style="
-                    font-size:32px;
+                    font-size:38px;
                     margin-bottom:8px;
                   "
-
                 >
-
                   ❌
-
                 </div>
 
-
                 <strong>
-
                   Generate Gagal
-
                 </strong>
 
-
                 <small
-
                   style="
-                    display:block;
                     margin-top:6px;
-                    opacity:.75;
+                    opacity:.7;
                   "
-
                 >
-
-                  Tap untuk melihat detail
-
+                  Klik untuk melihat detail
                 </small>
 
               </div>
@@ -1035,45 +1042,32 @@
             preview = `
 
               <div
-
                 class="history-placeholder history-processing"
-
+                style="
+                  width:100%;
+                  height:100%;
+                  min-height:180px;
+                  display:flex;
+                  flex-direction:column;
+                  align-items:center;
+                  justify-content:center;
+                  text-align:center;
+                  border-radius:12px;
+                "
               >
 
                 <div
-
                   style="
-                    font-size:32px;
+                    font-size:38px;
                     margin-bottom:8px;
                   "
-
                 >
-
                   ⏳
-
                 </div>
 
-
                 <strong>
-
                   Sedang Diproses
-
                 </strong>
-
-
-                <small
-
-                  style="
-                    display:block;
-                    margin-top:6px;
-                    opacity:.75;
-                  "
-
-                >
-
-                  Tap untuk melihat detail
-
-                </small>
 
               </div>
 
@@ -1082,28 +1076,27 @@
           }
 
 
-          const safePrompt =
-            escapeHtml(
-              prompt
-            );
+          const error =
+            job?.last_error ||
+            "";
 
 
           return `
 
-            <article
-
+            <div
               class="history-card"
-
-              data-history-index="${index}"
-
-              style="cursor:pointer"
-
+              data-history-index="${escapeHtml(
+                jobs.indexOf(
+                  job
+                )
+              )}"
+              style="
+                cursor:pointer;
+              "
             >
 
               <div
-
                 class="history-preview"
-
               >
 
                 ${preview}
@@ -1112,22 +1105,14 @@
 
 
               <div
-
-                class="history-card-body"
-
+                class="history-info"
               >
 
                 <div
-
-                  class="history-card-top"
-
+                  class="history-status"
                 >
 
-                  <span
-
-                    class="history-status history-status-${status}"
-
-                  >
+                  <span>
 
                     ${escapeHtml(
                       statusLabel(
@@ -1137,76 +1122,75 @@
 
                   </span>
 
+                </div>
 
-                  <span
 
-                    class="history-provider"
+                <div
+                  class="history-provider"
+                >
 
-                  >
-
-                    ${escapeHtml(
-                      provider
-                    )}
-
-                  </span>
+                  ${escapeHtml(
+                    provider
+                  )}
 
                 </div>
 
 
-                <h3>
+                <div
+                  class="history-model"
+                >
 
                   ${escapeHtml(
                     model
                   )}
 
-                </h3>
-
-
-                <p
-
-                  class="history-prompt"
-
-                >
-
-                  ${
-                    safePrompt ||
-
-                    "Tidak ada prompt."
-                  }
-
-                </p>
+                </div>
 
 
                 <div
-
-                  class="history-meta"
-
+                  class="history-prompt"
                 >
 
-                  <span>
-
-                    ${escapeHtml(
-                      date
-                    )}
-
-                  </span>
-
-
-                  <span>
-
-                    ${
-                      Number(
-                        job.credit_cost
-                      ) || 0
-                    } kredit
-
-                  </span>
+                  ${escapeHtml(
+                    prompt ||
+                    "Tidak ada prompt"
+                  )}
 
                 </div>
 
+
+                <div
+                  class="history-date"
+                >
+
+                  ${escapeHtml(
+                    date
+                  )}
+
+                </div>
+
+
+                ${
+                  error
+                    ? `
+                      <div
+                        style="
+                          margin-top:8px;
+                          font-size:12px;
+                          opacity:.65;
+                        "
+                      >
+                        ${escapeHtml(
+                          error
+                        )}
+                      </div>
+                    `
+                    : ""
+                }
+
               </div>
 
-            </article>
+            </div>
 
           `;
 
@@ -1214,48 +1198,16 @@
 
       ).join("");
 
-
-    grid
-      .querySelectorAll(
-        "[data-history-index]"
-      )
-      .forEach(
-
-        card => {
-
-          card.addEventListener(
-
-            "click",
-
-            () => {
-
-              const index =
-                Number(
-                  card.dataset
-                    .historyIndex
-                );
-
-
-              openDetail(
-                state.jobs[index]
-              );
-
-            }
-
-          );
-
-        }
-
-      );
-
   }
 
 
   /* =======================================================
-     DETAIL MODAL
+     DETAIL
   ======================================================= */
 
-  function openDetail(job) {
+  function openDetail(
+    job
+  ) {
 
     if (!job) {
 
@@ -1264,564 +1216,290 @@
     }
 
 
-    state.selected =
-      job;
-
-
-    const modal =
-      $("historyModal");
-
-
-    const body =
-      $("historyDialogBody");
-
-
-    if (!modal || !body) {
-
-      return;
-
-    }
-
-
-    const status =
-      normalizeStatus(job);
-
-
     const metadata =
-      getMetadata(job);
-
-
-    const prompt =
-      getPrompt(job);
-
-
-    const provider =
-      providerLabel(
-        job.provider
+      getMetadata(
+        job
       );
 
 
-    const model =
-      getModel(job);
+    const status =
+      normalizeStatus(
+        job
+      );
 
 
-    const duration =
-      getDuration(job);
-
-
-    const aspectRatio =
-      getAspectRatio(job);
-
-
-    const resolution =
-      getResolution(job);
+    const prompt =
+      getPrompt(
+        job
+      );
 
 
     const error =
-      job.last_error || "";
+      job?.last_error ||
+      "-";
 
 
-    const errorCode =
-      job.last_error_code || "";
-
-
-    const providerStatus =
-      job.provider_status || "";
-
-
-    const refunded =
-      job.refunded === true;
-
-
-    const videoUrl =
-      getVideoUrl(job);
-
-
-    let videoHtml = "";
-
-
-    if (
-
-      status ===
-        "completed" &&
-
-      videoUrl
-
-    ) {
-
-      videoHtml = `
-
-        <div
-
-          style="
-            margin-bottom:18px;
-          "
-
-        >
-
-          <video
-
-            src="${escapeHtml(
-              videoUrl
-            )}"
-
-            controls
-
-            playsinline
-
-            preload="metadata"
-
-            style="
-              width:100%;
-              max-height:420px;
-              border-radius:14px;
-              background:#000;
-            "
-
-          ></video>
-
-        </div>
-
-      `;
-
-    }
-
-
-    body.innerHTML = `
-
-      ${videoHtml}
-
+    const details = `
 
       <div
-
-        class="history-detail"
-
+        style="
+          padding:20px;
+        "
       >
 
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Status</strong>
-
-          <span>
-
-            ${escapeHtml(
-              statusLabel(
-                status
-              )
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Provider</strong>
-
-          <span>
-
-            ${escapeHtml(
-              provider
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Model</strong>
-
-          <span>
-
-            ${escapeHtml(
-              model
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Durasi</strong>
-
-          <span>
-
-            ${escapeHtml(
-              duration
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Aspect Ratio</strong>
-
-          <span>
-
-            ${escapeHtml(
-              aspectRatio
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Resolusi</strong>
-
-          <span>
-
-            ${escapeHtml(
-              resolution
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Tanggal</strong>
-
-          <span>
-
-            ${escapeHtml(
-              formatDate(
-                job.created_at
-              )
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Job ID</strong>
-
-          <span
-
-            style="
-              word-break:break-all;
-            "
-
-          >
-
-            ${escapeHtml(
-              job.id
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Percobaan</strong>
-
-          <span>
-
-            ${escapeHtml(
-              job.attempt_count ??
-              "-"
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Kredit</strong>
-
-          <span>
-
-            ${escapeHtml(
-              job.credit_cost ??
-              0
-            )}
-
-          </span>
-
-        </div>
-
-
-        <div
-
-          class="history-detail-row"
-
-        >
-
-          <strong>Refund</strong>
-
-          <span>
-
-            ${
-              refunded
-                ? "Ya"
-                : "Tidak"
-            }
-
-          </span>
-
-        </div>
-
-
-        ${
-          providerStatus
-            ? `
-
-              <div
-
-                class="history-detail-row"
-
-              >
-
-                <strong>
-                  Provider Status
-                </strong>
-
-                <span>
-
-                  ${escapeHtml(
-                    providerStatus
-                  )}
-
-                </span>
-
-              </div>
-
-            `
-            : ""
-        }
-
-
-        ${
-          errorCode
-            ? `
-
-              <div
-
-                class="history-detail-row"
-
-              >
-
-                <strong>
-                  Error Code
-                </strong>
-
-                <span>
-
-                  ${escapeHtml(
-                    errorCode
-                  )}
-
-                </span>
-
-              </div>
-
-            `
-            : ""
-        }
-
-
-        ${
-          error
-            ? `
-
-              <div
-
-                style="
-                  margin-top:16px;
-                  padding:14px;
-                  border-radius:12px;
-                  background:rgba(239,68,68,.10);
-                  border:1px solid rgba(239,68,68,.25);
-                "
-
-              >
-
-                <strong
-
-                  style="
-                    display:block;
-                    margin-bottom:7px;
-                  "
-
-                >
-
-                  Detail Error
-
-                </strong>
-
-
-                <div
-
-                  style="
-                    white-space:pre-wrap;
-                    word-break:break-word;
-                    line-height:1.5;
-                    opacity:.9;
-                  "
-
-                >
-
-                  ${escapeHtml(
-                    error
-                  )}
-
-                </div>
-
-              </div>
-
-            `
-            : ""
-        }
-
-
-        ${
-          prompt
-            ? `
-
-              <div
-
-                style="
-                  margin-top:16px;
-                "
-
-              >
-
-                <strong>
-
-                  Prompt
-
-                </strong>
-
-
-                <div
-
-                  style="
-                    margin-top:8px;
-                    padding:14px;
-                    border-radius:12px;
-                    background:rgba(255,255,255,.05);
-                    white-space:pre-wrap;
-                    word-break:break-word;
-                    line-height:1.5;
-                  "
-
-                >
-
-                  ${escapeHtml(
-                    prompt
-                  )}
-
-                </div>
-
-              </div>
-
-            `
-            : ""
-        }
+        <h3>
+          Detail Generate
+        </h3>
+
+        <p>
+          <strong>Status:</strong>
+          ${escapeHtml(
+            statusLabel(
+              status
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Provider:</strong>
+          ${escapeHtml(
+            providerLabel(
+              job.provider
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Model:</strong>
+          ${escapeHtml(
+            getModel(
+              job
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Durasi:</strong>
+          ${escapeHtml(
+            getDuration(
+              job
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Aspect Ratio:</strong>
+          ${escapeHtml(
+            getAspectRatio(
+              job
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Resolusi:</strong>
+          ${escapeHtml(
+            getResolution(
+              job
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Tanggal:</strong>
+          ${escapeHtml(
+            formatDate(
+              job.created_at
+            )
+          )}
+        </p>
+
+        <p>
+          <strong>Job ID:</strong>
+          ${escapeHtml(
+            job.id
+          )}
+        </p>
+
+        <p>
+          <strong>Prompt:</strong>
+          ${escapeHtml(
+            prompt ||
+            "-"
+          )}
+        </p>
+
+        <p>
+          <strong>Error:</strong>
+          ${escapeHtml(
+            error
+          )}
+        </p>
+
+        <p>
+          <strong>Error Code:</strong>
+          ${escapeHtml(
+            job.last_error_code ||
+            "-"
+          )}
+        </p>
+
+        <p>
+          <strong>Refund:</strong>
+          ${job.refunded
+            ? "Ya"
+            : "Tidak"}
+        </p>
 
       </div>
 
     `;
 
 
-    modal.classList.remove(
-      "hidden"
+    const modal =
+      document.createElement(
+        "div"
+      );
+
+
+    modal.style.cssText = `
+
+      position:fixed;
+      inset:0;
+      z-index:99999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      background:rgba(0,0,0,.65);
+
+    `;
+
+
+    const box =
+      document.createElement(
+        "div"
+      );
+
+
+    box.style.cssText = `
+
+      width:min(600px,100%);
+      max-height:90vh;
+      overflow:auto;
+      background:#111;
+      color:#fff;
+      border-radius:16px;
+
+    `;
+
+
+    box.innerHTML =
+      details;
+
+
+    modal.appendChild(
+      box
     );
 
 
-    modal.style.display =
-      "flex";
+    modal.addEventListener(
+      "click",
+      event => {
+
+        if (
+          event.target ===
+          modal
+        ) {
+
+          modal.remove();
+
+        }
+
+      }
+    );
+
+
+    document.body.appendChild(
+      modal
+    );
 
   }
 
 
   /* =======================================================
-     CLOSE MODAL
+     EVENTS
   ======================================================= */
 
-  function closeDetail() {
+  function bind() {
 
-    const modal =
-      $("historyModal");
-
-
-    if (!modal) {
+    if (
+      state.bound
+    ) {
 
       return;
 
     }
 
 
-    modal.classList.add(
-      "hidden"
+    const grid =
+      $(
+        "historyGrid"
+      );
+
+
+    if (!grid) {
+
+      return;
+
+    }
+
+
+    grid.addEventListener(
+      "click",
+      event => {
+
+        const card =
+          event.target.closest(
+            "[data-history-index]"
+          );
+
+
+        if (!card) {
+
+          return;
+
+        }
+
+
+        const index =
+          Number(
+            card.dataset
+              .historyIndex
+          );
+
+
+        if (
+          !Number.isFinite(
+            index
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        openDetail(
+          state.jobs[index]
+        );
+
+      }
     );
 
 
-    modal.style.display =
-      "none";
-
-
-    state.selected =
-      null;
+    state.bound =
+      true;
 
   }
 
@@ -1841,18 +1519,31 @@
     }
 
 
-    const status =
-      $("historyStatus");
-
-
     state.loading =
       true;
 
 
-    if (status) {
+    const grid =
+      $(
+        "historyGrid"
+      );
 
-      status.textContent =
-        "Memuat riwayat...";
+
+    if (grid) {
+
+      grid.innerHTML = `
+
+        <div
+          style="
+            padding:40px;
+            text-align:center;
+            opacity:.7;
+          "
+        >
+          Memuat riwayat video...
+        </div>
+
+      `;
 
     }
 
@@ -1861,55 +1552,51 @@
 
       await loadJobs();
 
-
       render();
 
-
-      const failed =
-        state.jobs.filter(
-
-          job =>
-            normalizeStatus(job) ===
-            "failed"
-
-        ).length;
-
-
-      if (status) {
-
-        status.textContent =
-
-          failed > 0
-
-            ? `${failed} generate gagal ditemukan.`
-
-            : "Riwayat berhasil dimuat.";
-
-      }
-
-
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       console.error(
-        "[GEN-Z HISTORY] Load error:",
+        "[GEN-Z HISTORY]",
         error
       );
 
 
-      state.jobs =
-        [];
+      if (grid) {
 
+        grid.innerHTML = `
 
-      render();
+          <div
+            style="
+              padding:30px;
+              text-align:center;
+            "
+          >
 
+            <strong>
+              Riwayat belum dapat dimuat
+            </strong>
 
-      if (status) {
+            <div
+              style="
+                margin-top:10px;
+                opacity:.7;
+                font-size:13px;
+              "
+            >
 
-        status.textContent =
+              ${escapeHtml(
+                error?.message ||
+                "Terjadi kesalahan."
+              )}
 
-          error?.message ||
+            </div>
 
-          "Gagal memuat riwayat.";
+          </div>
+
+        `;
 
       }
 
@@ -1924,187 +1611,67 @@
 
 
   /* =======================================================
-     BIND EVENTS
-  ======================================================= */
-
-  function bindEvents() {
-
-    if (
-      state.bound
-    ) {
-
-      return;
-
-    }
-
-
-    state.bound =
-      true;
-
-
-    const back =
-      $("historyBack");
-
-
-    const refreshButton =
-      $("historyRefresh");
-
-
-    const close =
-      $("historyClose");
-
-
-    if (back) {
-
-      back.addEventListener(
-
-        "click",
-
-        () => {
-
-          if (
-            typeof GENZ.showStudio ===
-            "function"
-          ) {
-
-            GENZ.showStudio();
-
-          }
-
-        }
-
-      );
-
-    }
-
-
-    if (refreshButton) {
-
-      refreshButton.addEventListener(
-
-        "click",
-
-        () => {
-
-          refresh();
-
-        }
-
-      );
-
-    }
-
-
-    if (close) {
-
-      close.addEventListener(
-
-        "click",
-
-        () => {
-
-          closeDetail();
-
-        }
-
-      );
-
-    }
-
-
-    const modal =
-      $("historyModal");
-
-
-    if (modal) {
-
-      modal.addEventListener(
-
-        "click",
-
-        event => {
-
-          if (
-            event.target ===
-            modal
-          ) {
-
-            closeDetail();
-
-          }
-
-        }
-
-      );
-
-    }
-
-
-    document.addEventListener(
-
-      "keydown",
-
-      event => {
-
-        if (
-          event.key ===
-          "Escape"
-        ) {
-
-          closeDetail();
-
-        }
-
-      }
-
-    );
-
-  }
-
-
-  /* =======================================================
      LOAD COMPONENT
   ======================================================= */
 
   async function load() {
 
-    /*
-      Jangan memuat history.html
-      kalau GENZ.loadComponent belum tersedia.
-    */
+    const container =
+      $(
+        "profilePage"
+      ) ||
+      $(
+        "page-profile"
+      ) ||
+      $(
+        "historyPage"
+      );
 
-    if (
-      typeof GENZ.loadComponent !==
-      "function"
-    ) {
 
-      throw new Error(
-        "Loader komponen GEN-Z.AI belum siap."
+    if (!container) {
+
+      console.warn(
+        "[GEN-Z HISTORY] Container history tidak ditemukan."
       );
 
     }
 
 
-    await GENZ.loadComponent(
+    try {
 
-      "#pageContent",
-
-      "/components/history.html"
-
-    );
-
-
-    /*
-      Reset binding karena DOM
-      history.html baru saja dibuat.
-    */
-
-    state.bound =
-      false;
+      const response =
+        await fetch(
+          "/components/history.html",
+          {
+            cache:
+              "no-store"
+          }
+        );
 
 
-    bindEvents();
+      if (
+        response.ok &&
+        container
+      ) {
 
+        container.innerHTML =
+          await response.text();
+
+      }
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "[GEN-Z HISTORY] Component error:",
+        error
+      );
+
+    }
+
+
+    bind();
 
     await refresh();
 
@@ -2117,22 +1684,19 @@
 
   GENZ.history = {
 
-    state,
-
     load,
 
     refresh,
 
-    openDetail,
+    loadJobs,
 
-    closeDetail
+    get jobs() {
+
+      return state.jobs;
+
+    }
 
   };
-
-
-  console.log(
-    "[GEN-Z HISTORY] Module ready."
-  );
 
 
 })();
