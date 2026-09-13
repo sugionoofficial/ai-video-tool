@@ -1,10 +1,6 @@
 const ID = "veo";
 const NAME = "Gemini / Veo";
 
-/* ============================================================
-   GEMINI / VEO CAPABILITIES
-============================================================ */
-
 const CAPABILITIES = {
 
   models: [
@@ -89,11 +85,16 @@ const CAPABILITIES = {
    ERROR
 ============================================================ */
 
-function providerError(message, status = 400) {
+function providerError(
+  message,
+  status = 400
+) {
 
-  const error = new Error(message);
+  const error =
+    new Error(message);
 
-  error.status = status;
+  error.status =
+    status;
 
   return error;
 
@@ -104,9 +105,12 @@ function providerError(message, status = 400) {
    SAFE JSON
 ============================================================ */
 
-async function safeJson(response) {
+async function safeJson(
+  response
+) {
 
-  const text = await response.text();
+  const text =
+    await response.text();
 
   if (!text) {
     return {};
@@ -131,13 +135,18 @@ async function safeJson(response) {
    API ERROR
 ============================================================ */
 
-function apiError(data, fallback) {
+function apiError(
+  data,
+  fallback
+) {
 
   if (
     typeof data?.error ===
     "string"
   ) {
+
     return data.error;
+
   }
 
   if (
@@ -145,21 +154,27 @@ function apiError(data, fallback) {
     typeof data.error.message ===
     "string"
   ) {
+
     return data.error.message;
+
   }
 
   if (
     typeof data?.message ===
     "string"
   ) {
+
     return data.message;
+
   }
 
   if (
     typeof data?.raw ===
     "string"
   ) {
+
     return data.raw;
+
   }
 
   return fallback;
@@ -171,15 +186,21 @@ function apiError(data, fallback) {
    NORMALIZE DURATION
 ============================================================ */
 
-function normalizeDuration(value, fallback = 8) {
+function normalizeDuration(
+  value,
+  fallback = 8
+) {
 
-  const duration = Number(
-    value ?? fallback
-  );
+  const duration =
+    Number(
+      value ?? fallback
+    );
 
   if (
     !Number.isFinite(duration) ||
-    !CAPABILITIES.durations.includes(duration)
+    !CAPABILITIES.durations.includes(
+      duration
+    )
   ) {
 
     throw providerError(
@@ -198,10 +219,13 @@ function normalizeDuration(value, fallback = 8) {
    MODEL RULES
 ============================================================ */
 
-function getModelRules(model) {
+function getModelRules(
+  model
+) {
 
   const rules =
-    CAPABILITIES.constraints?.[model];
+    CAPABILITIES
+      .constraints?.[model];
 
   if (!rules) {
 
@@ -228,7 +252,9 @@ function getAllowedResolutions(
 ) {
 
   const rules =
-    getModelRules(model);
+    getModelRules(
+      model
+    );
 
   const mode =
     hasImage
@@ -260,7 +286,10 @@ function validateModelCombination(
 ) {
 
   const rules =
-    getModelRules(model);
+    getModelRules(
+      model
+    );
+
 
   if (
     hasImage &&
@@ -274,12 +303,14 @@ function validateModelCombination(
 
   }
 
+
   const allowed =
     getAllowedResolutions(
       model,
       duration,
       hasImage
     );
+
 
   if (!allowed.length) {
 
@@ -290,8 +321,11 @@ function validateModelCombination(
 
   }
 
+
   if (
-    !allowed.includes(resolution)
+    !allowed.includes(
+      resolution
+    )
   ) {
 
     throw providerError(
@@ -316,9 +350,12 @@ function parseImageData(
 ) {
 
   if (
-    typeof value !== "string"
+    typeof value !==
+    "string"
   ) {
+
     return null;
+
   }
 
   const match =
@@ -327,7 +364,9 @@ function parseImageData(
     );
 
   if (!match) {
+
     return null;
+
   }
 
   const base64 =
@@ -340,7 +379,9 @@ function parseImageData(
     base64.length * 0.75 >
     maxBytes
   ) {
+
     return null;
+
   }
 
   return {
@@ -391,6 +432,7 @@ export async function generate(
       provider?.api_key || ""
     ).trim();
 
+
   if (!key) {
 
     throw providerError(
@@ -400,14 +442,18 @@ export async function generate(
 
   }
 
+
   const model =
     String(
       body?.model ||
       CAPABILITIES.models[0]
     ).trim();
 
+
   if (
-    !CAPABILITIES.models.includes(model)
+    !CAPABILITIES.models.includes(
+      model
+    )
   ) {
 
     throw providerError(
@@ -417,17 +463,20 @@ export async function generate(
 
   }
 
+
   const duration =
     normalizeDuration(
       body?.duration,
       8
     );
 
+
   const aspectRatio =
     String(
       body?.aspectRatio ||
       "16:9"
     ).trim();
+
 
   if (
     !CAPABILITIES.aspects.includes(
@@ -442,11 +491,13 @@ export async function generate(
 
   }
 
+
   const resolution =
     String(
       body?.resolution ||
       "720p"
     ).trim();
+
 
   if (
     !CAPABILITIES.resolutions.includes(
@@ -461,10 +512,12 @@ export async function generate(
 
   }
 
+
   const hasImage =
     Boolean(
       body?.imageData
     );
+
 
   validateModelCombination(
     model,
@@ -473,10 +526,12 @@ export async function generate(
     hasImage
   );
 
+
   const prompt =
     String(
       body?.prompt || ""
     ).trim();
+
 
   if (!prompt) {
 
@@ -487,6 +542,7 @@ export async function generate(
 
   }
 
+
   const instance = {
     prompt
   };
@@ -495,14 +551,11 @@ export async function generate(
   /* ==========================================================
      IMAGE TO VIDEO
 
-     PENTING:
-     predictLongRunning Veo tidak menggunakan inlineData.
+     predictLongRunning tidak menggunakan inlineData.
 
-     Format yang digunakan:
-     image: {
-       bytesBase64Encoded,
-       mimeType
-     }
+     Gunakan:
+     bytesBase64Encoded
+     mimeType
   ========================================================== */
 
   if (hasImage) {
@@ -512,6 +565,7 @@ export async function generate(
         body.imageData
       );
 
+
     if (!image) {
 
       throw providerError(
@@ -520,6 +574,7 @@ export async function generate(
       );
 
     }
+
 
     instance.image = {
 
@@ -544,6 +599,37 @@ export async function generate(
     )}:predictLongRunning`;
 
 
+  const requestBody = {
+
+    instances: [
+      instance
+    ],
+
+    parameters: {
+
+      aspectRatio,
+
+      resolution,
+
+      /*
+       * WAJIB NUMBER.
+       *
+       * Jangan gunakan:
+       * String(duration)
+       *
+       * Gemini mengharapkan:
+       * 4
+       * 6
+       * 8
+       */
+      durationSeconds:
+        duration
+
+    }
+
+  };
+
+
   const response =
     await fetch(
       endpoint,
@@ -563,26 +649,9 @@ export async function generate(
         },
 
         body:
-          JSON.stringify({
-
-            instances: [
-              instance
-            ],
-
-            parameters: {
-
-              aspectRatio,
-
-              resolution,
-
-              durationSeconds:
-                String(
-                  duration
-                )
-
-            }
-
-          })
+          JSON.stringify(
+            requestBody
+          )
 
       }
     );
@@ -664,6 +733,7 @@ export async function status(
       provider?.api_key || ""
     ).trim();
 
+
   if (!key) {
 
     throw providerError(
@@ -672,6 +742,7 @@ export async function status(
     );
 
   }
+
 
   const operation =
     String(
@@ -683,6 +754,7 @@ export async function status(
         ""
       );
 
+
   if (!operation) {
 
     throw providerError(
@@ -691,6 +763,7 @@ export async function status(
     );
 
   }
+
 
   const response =
     await fetch(
@@ -707,10 +780,12 @@ export async function status(
       }
     );
 
+
   const data =
     await safeJson(
       response
     );
+
 
   if (!response.ok) {
 
@@ -723,6 +798,7 @@ export async function status(
     );
 
   }
+
 
   if (!data?.done) {
 
@@ -740,6 +816,7 @@ export async function status(
     };
 
   }
+
 
   if (data?.error) {
 
@@ -763,6 +840,7 @@ export async function status(
     };
 
   }
+
 
   const videoUrl =
     data
@@ -836,6 +914,7 @@ export async function fetchVideo(
       provider?.api_key || ""
     ).trim();
 
+
   if (!key) {
 
     throw providerError(
@@ -845,10 +924,12 @@ export async function fetchVideo(
 
   }
 
+
   const rawTarget =
     String(
       target || ""
     ).trim();
+
 
   if (!rawTarget) {
 
@@ -859,7 +940,9 @@ export async function fetchVideo(
 
   }
 
+
   let url;
+
 
   try {
 
@@ -877,6 +960,7 @@ export async function fetchVideo(
 
   }
 
+
   const allowedHosts = [
 
     "generativelanguage.googleapis.com",
@@ -884,6 +968,7 @@ export async function fetchVideo(
     "storage.googleapis.com"
 
   ];
+
 
   if (
     url.protocol !==
@@ -900,9 +985,11 @@ export async function fetchVideo(
 
   }
 
+
   url.searchParams.delete(
     "key"
   );
+
 
   return fetch(
     url.toString(),
