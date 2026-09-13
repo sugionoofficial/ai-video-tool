@@ -1,78 +1,26 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <meta
-    name="robots"
-    content="noindex,nofollow"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
 
   <title>GEN-Z.AI - Provider Management</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/style.css?v=provider-20260913"
-  >
-
-  <link
-    rel="stylesheet"
-    href="/css/admin.css?v=provider-20260913"
-  >
+  <link rel="stylesheet" href="/css/style.css?v=provider-boot-20260913">
+  <link rel="stylesheet" href="/css/admin.css?v=provider-boot-20260913">
 
   <style>
-
-    :root {
-      --gz-bg: #07090f;
-      --gz-panel: #0d111a;
-      --gz-panel-2: #111722;
-      --gz-border: rgba(255,255,255,.08);
-      --gz-border-hover: rgba(255,255,255,.16);
-      --gz-text: #f5f7fb;
-      --gz-muted: #8d96a8;
-      --gz-primary: #7c5cff;
-      --gz-primary-2: #5b8cff;
-      --gz-success: #27d69a;
-      --gz-warning: #f5b94c;
-      --gz-danger: #ff5f6d;
-      --gz-radius: 18px;
-      --gz-shadow: 0 20px 60px rgba(0,0,0,.28);
-    }
-
     * {
       box-sizing: border-box;
     }
 
-    html {
-      min-height: 100%;
-      background: var(--gz-bg);
-    }
-
+    html,
     body {
       margin: 0;
-      min-height: 100vh;
-
-      color: var(--gz-text);
-
-      background:
-        radial-gradient(
-          circle at 15% 0%,
-          rgba(124,92,255,.13),
-          transparent 32%
-        ),
-        radial-gradient(
-          circle at 100% 20%,
-          rgba(91,140,255,.08),
-          transparent 28%
-        ),
-        var(--gz-bg);
-
+      min-height: 100%;
+      background: #07090f;
+      color: #f5f7fb;
       font-family:
         Inter,
         ui-sans-serif,
@@ -83,9 +31,12 @@
         sans-serif;
     }
 
+    body {
+      min-height: 100vh;
+    }
+
     button,
     input,
-    select,
     textarea {
       font: inherit;
     }
@@ -98,674 +49,368 @@
       display: none !important;
     }
 
-    /* ========================================================
-       HEADER
-       ======================================================== */
-
-    .admin-header {
+    .provider-header {
       position: sticky;
       top: 0;
       z-index: 20;
 
-      min-height: 76px;
-      padding: 14px 28px;
+      min-height: 72px;
+      padding: 14px 24px;
 
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
 
-      gap: 20px;
+      background: rgba(7, 9, 15, .94);
+      border-bottom: 1px solid rgba(255,255,255,.08);
 
-      background:
-        rgba(7,9,15,.88);
-
-      border-bottom:
-        1px solid var(--gz-border);
-
-      backdrop-filter:
-        blur(18px);
-
-      -webkit-backdrop-filter:
-        blur(18px);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
     }
 
-    .admin-header h1 {
+    .provider-brand h1 {
       margin: 0;
-
       font-size: 20px;
       font-weight: 800;
-
-      letter-spacing: -.4px;
-
       color: #fff;
     }
 
-    .admin-header p {
+    .provider-brand p {
       margin: 4px 0 0;
-
-      color: var(--gz-muted);
-
       font-size: 12px;
+      color: #8d96a8;
     }
 
     #providerAdminEmail {
-      display: inline-flex;
-
-      align-items: center;
-
-      gap: 8px;
-
-      padding:
-        8px 12px;
-
-      border:
-        1px solid var(--gz-border);
-
-      border-radius:
-        999px;
-
-      background:
-        rgba(255,255,255,.035);
-
-      color:
-        #cdd3df;
-
-      font-size:
-        12px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 999px;
+      background: rgba(255,255,255,.035);
+      color: #cdd3df;
+      font-size: 12px;
     }
 
-    #providerAdminEmail::before {
-      content: "";
+    .provider-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 70px;
+    }
 
-      width: 7px;
-      height: 7px;
+    .provider-box {
+      width: min(620px, 100%);
+      margin: 80px auto;
+      padding: 34px;
+
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 22px;
+
+      background: #0d111a;
+      box-shadow: 0 20px 60px rgba(0,0,0,.28);
+    }
+
+    .provider-box h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      color: #fff;
+    }
+
+    .provider-box p {
+      margin: 0;
+      line-height: 1.6;
+      color: #8d96a8;
+    }
+
+    .provider-box.error {
+      border-color: rgba(255,95,109,.35);
+    }
+
+    .provider-box.error h2 {
+      color: #ff7d88;
+    }
+
+    .provider-error-detail {
+      margin-top: 18px !important;
+      padding: 14px;
+
+      border-radius: 12px;
+      background: rgba(255,95,109,.08);
+
+      color: #ffb2b9 !important;
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .provider-loading-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
 
       border-radius: 50%;
+      background: #7c5cff;
 
-      background:
-        var(--gz-success);
-
-      box-shadow:
-        0 0 12px
-        rgba(39,214,154,.55);
+      animation: providerPulse 1s infinite ease-in-out;
     }
 
-    /* ========================================================
-       MAIN
-       ======================================================== */
+    @keyframes providerPulse {
+      0%, 100% {
+        opacity: .3;
+        transform: scale(.8);
+      }
 
-    .shell {
-      width:
-        min(
-          1180px,
-          calc(100% - 32px)
-        );
-
-      margin:
-        0 auto;
-
-      padding:
-        34px 0 70px;
+      50% {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
-
-    /* ========================================================
-       LOADING
-       ======================================================== */
-
-    #providerLoading,
-    #providerDenied {
-
-      width:
-        min(
-          620px,
-          100%
-        );
-
-      margin:
-        80px auto;
-
-      padding:
-        34px;
-
-      border:
-        1px solid
-        var(--gz-border);
-
-      border-radius:
-        22px;
-
-      background:
-        rgba(13,17,26,.92);
-
-      box-shadow:
-        var(--gz-shadow);
-    }
-
-    #providerLoading h2,
-    #providerDenied h2 {
-
-      margin:
-        0 0 8px;
-
-      font-size:
-        22px;
-    }
-
-    #providerLoading p,
-    #providerDenied p {
-
-      margin:
-        0;
-
-      color:
-        var(--gz-muted);
-
-      line-height:
-        1.6;
-    }
-
-    /* ========================================================
-       CARDS
-       ======================================================== */
 
     .admin-card {
+      margin-bottom: 18px;
+      overflow: hidden;
 
-      margin-bottom:
-        18px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
 
-      overflow:
-        hidden;
-
-      border:
-        1px solid
-        var(--gz-border);
-
-      border-radius:
-        var(--gz-radius);
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,.045),
-          rgba(255,255,255,.015)
-        ),
-        var(--gz-panel);
-
-      box-shadow:
-        var(--gz-shadow);
+      background: #0d111a;
+      box-shadow: 0 20px 60px rgba(0,0,0,.20);
     }
 
     .admin-card-header {
+      padding: 22px 24px;
 
-      padding:
-        22px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
 
-      display:
-        flex;
-
-      align-items:
-        center;
-
-      justify-content:
-        space-between;
-
-      gap:
-        20px;
-
-      border-bottom:
-        1px solid
-        var(--gz-border);
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
 
     .admin-card-header h2,
     .admin-card-header h3 {
-
-      margin:
-        0;
-
-      color:
-        var(--gz-text);
+      margin: 0;
+      color: #fff;
     }
 
     .admin-card-header h2 {
-      font-size:
-        22px;
+      font-size: 22px;
     }
 
     .admin-card-header h3 {
-      font-size:
-        15px;
+      font-size: 15px;
     }
 
     .admin-card-header p {
-
-      margin:
-        6px 0 0;
-
-      color:
-        var(--gz-muted);
-
-      font-size:
-        13px;
-
-      line-height:
-        1.5;
+      margin: 6px 0 0;
+      color: #8d96a8;
+      font-size: 13px;
     }
 
-    /* ========================================================
-       TOP ACTIONS
-       ======================================================== */
-
     .admin-toolbar {
+      padding: 18px 24px;
 
-      padding:
-        18px 24px;
-
-      display:
-        flex;
-
-      align-items:
-        center;
-
-      justify-content:
-        space-between;
-
-      gap:
-        14px;
-
-      flex-wrap:
-        wrap;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
     }
 
     .admin-actions {
-
-      display:
-        flex;
-
-      align-items:
-        center;
-
-      gap:
-        8px;
-
-      flex-wrap:
-        wrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .admin-actions button,
     .admin-primary-btn {
+      min-height: 40px;
+      padding: 9px 14px;
 
-      min-height:
-        40px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
 
-      padding:
-        9px 14px;
+      background: rgba(255,255,255,.045);
+      color: #e8ebf2;
 
-      border:
-        1px solid
-        var(--gz-border);
-
-      border-radius:
-        10px;
-
-      background:
-        rgba(255,255,255,.045);
-
-      color:
-        #e8ebf2;
-
-      font-weight:
-        600;
+      font-weight: 600;
     }
 
     .admin-actions button:hover,
     .admin-primary-btn:hover {
-
-      border-color:
-        var(--gz-border-hover);
-
-      background:
-        rgba(255,255,255,.08);
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.16);
     }
 
     .admin-primary-btn {
-
-      border:
-        0;
-
-      background:
-        linear-gradient(
-          135deg,
-          var(--gz-primary),
-          var(--gz-primary-2)
-        );
-
-      color:
-        #fff;
+      border: 0;
+      background: linear-gradient(135deg, #7c5cff, #5b8cff);
+      color: #fff;
     }
 
-    /* ========================================================
-       STATUS
-       ======================================================== */
-
     .admin-status-message {
+      padding: 0 24px;
+      min-height: 0;
 
-      min-height:
-        0;
-
-      padding:
-        0 24px;
-
-      color:
-        var(--gz-muted);
-
-      font-size:
-        12px;
+      color: #8d96a8;
+      font-size: 12px;
     }
 
     .admin-status-message:not(:empty) {
+      padding-top: 13px;
+      padding-bottom: 13px;
 
-      padding-top:
-        13px;
-
-      padding-bottom:
-        13px;
-
-      border-top:
-        1px solid
-        var(--gz-border);
-
-      background:
-        rgba(255,255,255,.018);
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.018);
     }
 
     .admin-status-message.success {
-      color:
-        var(--gz-success);
+      color: #27d69a;
     }
 
     .admin-status-message.error {
-      color:
-        var(--gz-danger);
+      color: #ff5f6d;
     }
-
-    /* ========================================================
-       COUNT
-       ======================================================== */
 
     #providerCount {
+      display: inline-flex;
+      align-items: center;
 
-      display:
-        inline-flex;
+      padding: 6px 10px;
 
-      align-items:
-        center;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 999px;
 
-      padding:
-        6px 10px;
+      background: rgba(124,92,255,.08);
+      color: #bdb4ff;
 
-      border:
-        1px solid
-        var(--gz-border);
-
-      border-radius:
-        999px;
-
-      background:
-        rgba(124,92,255,.08);
-
-      color:
-        #bdb4ff;
-
-      font-size:
-        11px;
-
-      font-weight:
-        700;
+      font-size: 11px;
+      font-weight: 700;
     }
 
-    /* ========================================================
-       LIST
-       ======================================================== */
-
     .admin-list {
-
-      display:
-        grid;
-
-      grid-template-columns:
-        repeat(
-          2,
-          minmax(0,1fr)
-        );
-
-      gap:
-        14px;
-
-      padding:
-        18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 14px;
+      padding: 18px;
     }
 
     .admin-list-item {
+      min-width: 0;
+      padding: 20px;
 
-      min-width:
-        0;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
 
-      padding:
-        20px;
-
-      border:
-        1px solid
-        var(--gz-border);
-
-      border-radius:
-        16px;
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,.035),
-          rgba(255,255,255,.012)
-        );
+      background: rgba(255,255,255,.018);
     }
 
     .admin-list-item:hover {
-
-      border-color:
-        var(--gz-border-hover);
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(124,92,255,.07),
-          rgba(255,255,255,.018)
-        );
+      border-color: rgba(255,255,255,.16);
+      background: rgba(124,92,255,.05);
     }
 
     .admin-list-main h3 {
-
-      margin:
-        0 0 10px;
-
-      color:
-        #fff;
-
-      font-size:
-        17px;
+      margin: 0 0 10px;
+      color: #fff;
+      font-size: 17px;
     }
 
     .admin-list-main p {
-
-      margin:
-        5px 0;
-
-      color:
-        var(--gz-muted);
-
-      font-size:
-        12px;
-
-      word-break:
-        break-word;
+      margin: 5px 0;
+      color: #8d96a8;
+      font-size: 12px;
+      word-break: break-word;
     }
 
     .status-badge {
-
-      display:
-        inline-flex;
-
-      margin-top:
-        10px;
-
-      padding:
-        5px 9px;
-
-      border-radius:
-        999px;
-
-      font-size:
-        11px;
-
-      font-weight:
-        700;
+      display: inline-flex;
+      margin-top: 10px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
     }
 
     .status-badge.active {
-
-      background:
-        rgba(39,214,154,.1);
-
-      color:
-        var(--gz-success);
+      background: rgba(39,214,154,.1);
+      color: #27d69a;
     }
 
     .status-badge.inactive {
-
-      background:
-        rgba(255,95,109,.1);
-
-      color:
-        var(--gz-danger);
+      background: rgba(255,95,109,.1);
+      color: #ff5f6d;
     }
-
-    /* ========================================================
-       LOADING / EMPTY
-       ======================================================== */
 
     .admin-loading,
     .admin-empty {
-
-      grid-column:
-        1 / -1;
-
-      padding:
-        36px 20px;
-
-      text-align:
-        center;
-
-      color:
-        var(--gz-muted);
+      grid-column: 1 / -1;
+      padding: 36px 20px;
+      text-align: center;
+      color: #8d96a8;
     }
 
     .admin-empty strong {
-      color:
-        #fff;
+      color: #fff;
     }
 
-    /* ========================================================
-       FORM
-       ======================================================== */
-
     .admin-form {
-
-      padding:
-        24px;
-
-      display:
-        grid;
-
-      gap:
-        18px;
+      padding: 24px;
+      display: grid;
+      gap: 18px;
     }
 
     .form-group {
-
-      display:
-        grid;
-
-      gap:
-        8px;
+      display: grid;
+      gap: 8px;
     }
 
     .form-group label {
-
-      color:
-        #e9edf5;
-
-      font-size:
-        13px;
-
-      font-weight:
-        700;
+      color: #e9edf5;
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .form-group small {
-
-      color:
-        var(--gz-muted);
-
-      font-size:
-        11px;
-
-      line-height:
-        1.5;
+      color: #8d96a8;
+      font-size: 11px;
+      line-height: 1.5;
     }
 
     .form-group input,
     .form-group textarea {
+      width: 100%;
+      padding: 12px 14px;
 
-      width:
-        100%;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
 
-      padding:
-        12px 14px;
+      outline: none;
 
-      border:
-        1px solid
-        var(--gz-border);
-
-      border-radius:
-        10px;
-
-      outline:
-        none;
-
-      background:
-        rgba(0,0,0,.18);
-
-      color:
-        #fff;
+      background: rgba(0,0,0,.18);
+      color: #fff;
     }
 
     .form-group input:focus,
     .form-group textarea:focus {
-
-      border-color:
-        rgba(124,92,255,.65);
-
-      box-shadow:
-        0 0 0 3px
-        rgba(124,92,255,.1);
+      border-color: rgba(124,92,255,.65);
+      box-shadow: 0 0 0 3px rgba(124,92,255,.1);
     }
 
     .form-group textarea {
-
-      min-height:
-        160px;
-
-      resize:
-        vertical;
+      min-height: 160px;
+      resize: vertical;
 
       font-family:
         ui-monospace,
@@ -775,271 +420,172 @@
         Consolas,
         monospace;
 
-      font-size:
-        12px;
+      font-size: 12px;
     }
 
     .admin-checkbox {
-
-      display:
-        flex !important;
-
-      align-items:
-        center;
-
-      gap:
-        9px;
+      display: flex !important;
+      align-items: center;
+      gap: 9px;
     }
 
     .admin-checkbox input {
-
-      width:
-        auto !important;
+      width: auto !important;
     }
 
-    /* ========================================================
-       MOBILE
-       ======================================================== */
-
     @media (max-width: 760px) {
-
-      .admin-header {
-
-        padding:
-          14px 18px;
-
+      .provider-header {
+        padding: 14px 18px;
       }
 
-      .shell {
-
-        width:
-          min(
-            100% - 20px,
-            1180px
-          );
-
-        padding:
-          20px 0 50px;
-
+      .provider-shell {
+        width: min(100% - 20px, 1180px);
+        padding: 20px 0 50px;
       }
 
       .admin-list {
-
-        grid-template-columns:
-          1fr;
-
-        padding:
-          12px;
+        grid-template-columns: 1fr;
+        padding: 12px;
       }
 
       .admin-card-header {
-
-        padding:
-          18px;
+        padding: 18px;
       }
 
       .admin-toolbar {
-
-        padding:
-          16px 18px;
-
+        padding: 16px 18px;
       }
 
       .admin-actions {
-
-        width:
-          100%;
+        width: 100%;
       }
 
       .admin-actions button,
       .admin-primary-btn {
-
-        flex:
-          1 1 auto;
+        flex: 1 1 auto;
       }
-
     }
 
     @media (max-width: 480px) {
-
       #providerAdminEmail {
-
-        display:
-          none;
+        display: none;
       }
 
-      .admin-header h1 {
-
-        font-size:
-          18px;
+      .provider-brand h1 {
+        font-size: 18px;
       }
-
-      .admin-card-header h2 {
-
-        font-size:
-          19px;
-      }
-
-      #providerLoading,
-      #providerDenied {
-
-        margin:
-          45px auto;
-
-        padding:
-          25px;
-      }
-
     }
-
   </style>
-
 </head>
-
 
 <body>
 
-
-  <!-- ======================================================
-       HEADER
-       ====================================================== -->
-
-  <header class="admin-header">
-
-    <div>
-
-      <h1>
-        GEN-Z.AI
-      </h1>
-
-      <p>
-        Provider Management
-      </p>
-
+  <header class="provider-header">
+    <div class="provider-brand">
+      <h1>GEN-Z.AI</h1>
+      <p>Provider Management</p>
     </div>
 
-
-    <div>
-
-      <span id="providerAdminEmail">
-        Memeriksa...
-      </span>
-
-    </div>
-
+    <div id="providerAdminEmail"></div>
   </header>
 
+  <main class="provider-shell">
 
-  <!-- ======================================================
-       LOADING
-       ====================================================== -->
-
-  <section
-    id="providerLoading"
-  >
-
-    <h2>
-      Memuat Provider
-    </h2>
-
-    <p id="providerLoadingText">
-      Memeriksa akses administrator...
-    </p>
-
-  </section>
-
-
-  <!-- ======================================================
-       ACCESS DENIED
-       ====================================================== -->
-
-  <section
-    id="providerDenied"
-    hidden
-  >
-
-    <h2>
-      Akses Ditolak
-    </h2>
-
-    <p>
-      Sesi login tidak valid atau akun bukan administrator.
-    </p>
-
-  </section>
-
-
-  <!-- ======================================================
-       APPLICATION
-       ====================================================== -->
-
-  <main
-    id="providerApp"
-    class="shell"
-    hidden
-  >
-
-    <!-- ====================================================
-         PROVIDER HEADER
-         ==================================================== -->
+    <!-- =====================================================
+         BOOT LOADING
+         ===================================================== -->
 
     <section
-      class="admin-card"
+      id="providerLoading"
+      class="provider-box"
+    >
+      <h2>
+        <span class="provider-loading-dot"></span>
+        Memuat Provider
+      </h2>
+
+      <p id="providerLoadingText">
+        Memeriksa akses administrator...
+      </p>
+
+      <p
+        id="providerBootError"
+        class="provider-error-detail"
+        hidden
+      ></p>
+    </section>
+
+
+    <!-- =====================================================
+         ACCESS DENIED
+         ===================================================== -->
+
+    <section
+      id="providerDenied"
+      class="provider-box error"
+      hidden
+    >
+      <h2>Akses Provider Ditolak</h2>
+
+      <p>
+        Halaman Provider Management tidak dapat dibuka.
+      </p>
+
+      <p id="providerDeniedMessage">
+        Akses administrator diperlukan.
+      </p>
+    </section>
+
+
+    <!-- =====================================================
+         PROVIDER APP
+         ===================================================== -->
+
+    <section
+      id="providerApp"
+      hidden
     >
 
-      <div
-        class="admin-card-header"
-      >
+      <div class="admin-card">
 
-        <div>
+        <div class="admin-card-header">
 
-          <h2>
-            Provider Management
-          </h2>
+          <div>
+            <h2>Provider Management</h2>
 
-          <p>
-            Kelola engine provider GEN-Z.AI.
-          </p>
+            <p>
+              Kelola provider, adapter, API key, konfigurasi,
+              dan status provider.
+            </p>
+          </div>
 
-        </div>
-
-        <span
-          id="providerCount"
-        >
-          0 provider
-        </span>
-
-      </div>
-
-
-      <div
-        class="admin-toolbar"
-      >
-
-        <div
-          class="admin-actions"
-        >
-
-          <button
-            type="button"
-            id="providerBackBtn"
-          >
-            Kembali
-          </button>
-
-          <button
-            type="button"
-            id="refreshProvidersBtn"
-          >
-            Refresh
-          </button>
+          <span id="providerCount">
+            0 providers
+          </span>
 
         </div>
 
 
-        <div
-          class="admin-actions"
-        >
+        <div class="admin-toolbar">
+
+          <div class="admin-actions">
+
+            <button
+              type="button"
+              id="providerBackBtn"
+            >
+              Kembali
+            </button>
+
+            <button
+              type="button"
+              id="refreshProvidersBtn"
+            >
+              Refresh
+            </button>
+
+          </div>
+
 
           <button
             type="button"
@@ -1051,156 +597,295 @@
 
         </div>
 
+
+        <div
+          id="providerStatus"
+          class="admin-status-message"
+          aria-live="polite"
+        ></div>
+
+
+        <div
+          id="providerList"
+          class="admin-list"
+        >
+          <div class="admin-loading">
+            Memuat provider...
+          </div>
+        </div>
+
       </div>
 
 
       <div
-        id="providerStatus"
-        class="admin-status-message"
+        id="providerEditor"
+        hidden
       ></div>
 
     </section>
 
-
-    <!-- ====================================================
-         PROVIDER LIST
-         ==================================================== -->
-
-    <section
-      class="admin-card"
-      id="providerListCard"
-    >
-
-      <div
-        class="admin-card-header"
-      >
-
-        <div>
-
-          <h3>
-            Daftar Provider
-          </h3>
-
-          <p>
-            Engine yang tersedia untuk sistem generasi GEN-Z.AI.
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <div
-        id="providerList"
-        class="admin-list"
-      >
-
-        <div
-          class="admin-loading"
-        >
-          Memuat provider...
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- ====================================================
-         PROVIDER EDITOR
-         ==================================================== -->
-
-    <div
-      id="providerEditor"
-    ></div>
-
   </main>
 
 
-  <!-- ======================================================
-       SUPABASE
-       CACHE BUSTED
-       ====================================================== -->
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-  ></script>
-
-
-  <!-- ======================================================
-       AUTH
-       CACHE BUSTED
-       ====================================================== -->
-
-  <script
-    src="/js/auth.js?v=provider-20260913"
-  ></script>
-
-
-  <!-- ======================================================
-       PROVIDER ADMIN
-       CACHE BUSTED
-       ====================================================== -->
-
-  <script
-    src="/js/admin-providers.js?v=provider-20260913"
-  ></script>
-
-
-  <!-- ======================================================
-       PROVIDER BOOT WATCHDOG
-       ====================================================== -->
+  <!-- =======================================================
+       PROVIDER BOOT LOADER
+       ======================================================= -->
 
   <script>
-
     (function () {
 
       "use strict";
 
+      var VERSION = "provider-boot-20260913";
+      var TIMEOUT = 12000;
 
-      /*
-       * Watchdog hanya untuk halaman Provider.
-       *
-       * Jika JavaScript Provider gagal dimuat,
-       * halaman tidak boleh diam selamanya pada
-       * "Memeriksa akses administrator...".
-       */
+      var loading =
+        document.getElementById("providerLoading");
 
-      var started =
-        Date.now();
+      var loadingText =
+        document.getElementById("providerLoadingText");
+
+      var bootError =
+        document.getElementById("providerBootError");
+
+      var denied =
+        document.getElementById("providerDenied");
+
+      var deniedMessage =
+        document.getElementById("providerDeniedMessage");
+
+      var app =
+        document.getElementById("providerApp");
 
 
-      var watchdog =
-        setInterval(
-          function () {
+      function showBootError(message) {
 
-            var app =
-              document.getElementById(
-                "providerApp"
+        if (loading) {
+          loading.classList.add("error");
+        }
+
+        if (loadingText) {
+          loadingText.textContent =
+            "Provider gagal melakukan inisialisasi.";
+        }
+
+        if (bootError) {
+          bootError.hidden = false;
+          bootError.textContent = message;
+        }
+
+      }
+
+
+      function showDenied(message) {
+
+        if (loading) {
+          loading.hidden = true;
+        }
+
+        if (app) {
+          app.hidden = true;
+        }
+
+        if (denied) {
+          denied.hidden = false;
+        }
+
+        if (deniedMessage) {
+          deniedMessage.textContent =
+            message || "Akses administrator ditolak.";
+        }
+
+      }
+
+
+      function showApp() {
+
+        if (loading) {
+          loading.hidden = true;
+        }
+
+        if (denied) {
+          denied.hidden = true;
+        }
+
+        if (app) {
+          app.hidden = false;
+        }
+
+      }
+
+
+      function loadScript(src, callback) {
+
+        var script =
+          document.createElement("script");
+
+        var finished = false;
+
+
+        function done(error) {
+
+          if (finished) {
+            return;
+          }
+
+          finished = true;
+
+          if (error) {
+            callback(error);
+            return;
+          }
+
+          callback(null);
+        }
+
+
+        script.src = src;
+
+        script.async = false;
+
+        script.onload = function () {
+          done(null);
+        };
+
+        script.onerror = function () {
+          done(
+            new Error(
+              "Gagal memuat script: " + src
+            )
+          );
+        };
+
+
+        document.head.appendChild(script);
+
+
+        setTimeout(function () {
+
+          if (finished) {
+            return;
+          }
+
+          done(
+            new Error(
+              "Timeout saat memuat script: " + src
+            )
+          );
+
+        }, TIMEOUT);
+
+      }
+
+
+      function startProvider() {
+
+        if (
+          !window.GENZ_ADMIN_PROVIDERS ||
+          typeof window.GENZ_ADMIN_PROVIDERS.init !==
+            "function"
+        ) {
+
+          showBootError(
+            "admin-providers.js berhasil dimuat, " +
+            "tetapi window.GENZ_ADMIN_PROVIDERS tidak tersedia. " +
+            "Kemungkinan file gagal dieksekusi."
+          );
+
+          return;
+
+        }
+
+
+        try {
+
+          var result =
+            window.GENZ_ADMIN_PROVIDERS.init();
+
+          if (
+            result &&
+            typeof result.catch === "function"
+          ) {
+
+            result.catch(function (error) {
+
+              console.error(
+                "[GEN-Z.AI Provider] Init error:",
+                error
               );
 
-            var loading =
-              document.getElementById(
-                "providerLoading"
+              if (
+                error &&
+                error.status === 401
+              ) {
+
+                showDenied(
+                  "Sesi login tidak ditemukan atau sudah berakhir."
+                );
+
+                return;
+
+              }
+
+              if (
+                error &&
+                error.status === 403
+              ) {
+
+                showDenied(
+                  "Akses administrator ditolak."
+                );
+
+                return;
+
+              }
+
+              showBootError(
+                error &&
+                error.message
+                  ? error.message
+                  : "Provider gagal melakukan inisialisasi."
               );
 
-            var denied =
-              document.getElementById(
-                "providerDenied"
-              );
+            });
 
-            var api =
-              window.GENZ_ADMIN_PROVIDERS;
+          }
+
+        } catch (error) {
+
+          console.error(
+            "[GEN-Z.AI Provider] Start error:",
+            error
+          );
+
+          showBootError(
+            error &&
+            error.message
+              ? error.message
+              : "Terjadi kesalahan saat menjalankan Provider Management."
+          );
+
+        }
+
+      }
 
 
-            if (
-              api &&
-              typeof api.init ===
-                "function"
-            ) {
+      function loadAdminProviderScript() {
 
-              clearInterval(
-                watchdog
+        if (loadingText) {
+          loadingText.textContent =
+            "Memuat engine Provider Management...";
+        }
+
+
+        loadScript(
+          "/js/admin-providers.js?v=" + VERSION,
+          function (error) {
+
+            if (error) {
+
+              showBootError(
+                error.message
               );
 
               return;
@@ -1209,68 +894,123 @@
 
 
             if (
-              Date.now() -
-                started >
-              12000
+              !window.GENZ_ADMIN_PROVIDERS
             ) {
 
-              clearInterval(
-                watchdog
+              showBootError(
+                "File admin-providers.js termuat tetapi tidak mendaftarkan GENZ_ADMIN_PROVIDERS."
               );
 
-
-              if (
-                loading &&
-                !app?.hidden
-              ) {
-
-                return;
-
-              }
-
-
-              if (
-                loading &&
-                !loading.hidden
-              ) {
-
-                loading.hidden =
-                  true;
-
-              }
-
-
-              if (denied) {
-
-                denied.hidden =
-                  false;
-
-
-                var paragraph =
-                  denied.querySelector(
-                    "p"
-                  );
-
-
-                if (paragraph) {
-
-                  paragraph.textContent =
-                    "Engine Provider gagal dimuat. Pastikan file admin-providers.js versi terbaru sudah ter-deploy.";
-
-                }
-
-              }
+              return;
 
             }
 
-          },
-          250
+
+            if (loadingText) {
+              loadingText.textContent =
+                "Memeriksa akses administrator...";
+            }
+
+
+            startProvider();
+
+          }
         );
 
+      }
+
+
+      function loadAuthScript() {
+
+        if (loadingText) {
+          loadingText.textContent =
+            "Memuat sistem autentikasi...";
+        }
+
+
+        if (
+          window.GENZ_AUTH &&
+          window.GENZ_AUTH_CLIENT
+        ) {
+
+          loadAdminProviderScript();
+          return;
+
+        }
+
+
+        loadScript(
+          "/js/auth.js?v=" + VERSION,
+          function (error) {
+
+            if (error) {
+
+              showBootError(
+                error.message
+              );
+
+              return;
+
+            }
+
+
+            loadAdminProviderScript();
+
+          }
+        );
+
+      }
+
+
+      /*
+       * Jangan menunggu DOMContentLoaded.
+       * Script ini berada di bagian paling bawah body,
+       * sehingga DOM sudah tersedia.
+       */
+
+      try {
+
+        loadAuthScript();
+
+      } catch (error) {
+
+        showBootError(
+          error &&
+          error.message
+            ? error.message
+            : "Boot Provider gagal."
+        );
+
+      }
+
+
+      /*
+       * Pengaman terakhir.
+       *
+       * Kalau seluruh proses tidak memberikan hasil,
+       * jangan biarkan layar loading menggantung selamanya.
+       */
+
+      setTimeout(function () {
+
+        if (
+          loading &&
+          !loading.hidden &&
+          !window.GENZ_ADMIN_PROVIDERS
+        ) {
+
+          showBootError(
+            "Provider Management berhenti saat boot. " +
+            "Periksa Network/Console untuk mengetahui file " +
+            "yang gagal dimuat."
+          );
+
+        }
+
+      }, TIMEOUT + 3000);
+
     })();
-
   </script>
-
 
 </body>
 </html>
