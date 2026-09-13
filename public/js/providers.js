@@ -5,20 +5,25 @@
    File:
    public/js/providers.js
 
-   Prinsip:
-   - Provider berasal dari database/backend
-   - Tidak ada provider instance palsu
+   Arsitektur:
+   - Provider berasal dari backend/database
+   - Adapter ditentukan oleh backend
+   - Capability berasal dari adapter
+   - Tidak ada daftar provider hard-coded
    - Tidak ada API key di browser
-   - Worker menentukan adapter
-   - Fallback hanya untuk capability
-   - Provider disabled tidak ditampilkan
-   - Capability mengikuti aturan adapter
+   - Tidak ada aturan khusus Veo/MiniMax/Luma di UI
+   - Provider baru cukup memiliki adapter + capability
+   - UI otomatis mengikuti capability provider
    ========================================================= */
 
 (function () {
 
   'use strict';
 
+
+  /* =======================================================
+     GLOBAL
+  ======================================================= */
 
   window.GENZ =
     window.GENZ || {};
@@ -41,108 +46,12 @@
 
 
   /* =======================================================
-     CAPABILITY FALLBACK
-  ======================================================= */
-
-  const CAPABILITY_FALLBACK = {
-
-    veo: {
-
-      models: [
-        'veo-3.1-fast-generate-preview',
-        'veo-3.1-generate-preview',
-        'veo-3.1-lite-generate-preview'
-      ],
-
-      durations: [
-        4,
-        6,
-        8
-      ],
-
-      aspects: [
-        '16:9',
-        '9:16'
-      ],
-
-      resolutions: [
-        '720p',
-        '1080p',
-        '4k'
-      ]
-
-    },
-
-
-    minimax: {
-
-      models: [
-        'MiniMax-Hailuo-2.3',
-        'MiniMax-Hailuo-2.3-Fast',
-        'MiniMax-Hailuo-02'
-      ],
-
-      durations: [
-        6,
-        10
-      ],
-
-      aspects: [
-        '16:9',
-        '9:16'
-      ],
-
-      resolutions: [
-        '512P',
-        '768P',
-        '1080P'
-      ]
-
-    },
-
-
-    luma: {
-
-      models: [
-        'ray-2',
-        'ray-flash-2'
-      ],
-
-      durations: [
-        '5s',
-        '9s'
-      ],
-
-      aspects: [
-        '1:1',
-        '16:9',
-        '9:16',
-        '4:3',
-        '3:4',
-        '21:9',
-        '9:21'
-      ],
-
-      resolutions: [
-        '720p',
-        '1080p',
-        '4k'
-      ]
-
-    }
-
-  };
-
-
-  /* =======================================================
      HELPERS
   ======================================================= */
 
   function $(id) {
 
-    return document.getElementById(
-      id
-    );
+    return document.getElementById(id);
 
   }
 
@@ -150,10 +59,9 @@
   function text(value) {
 
     return String(
-      value || ''
+      value ?? ''
     )
-      .trim()
-      .toLowerCase();
+      .trim();
 
   }
 
@@ -161,209 +69,127 @@
   function normalizeId(value) {
 
     return text(value)
+      .toLowerCase()
       .replace(
-        /[^a-z0-9]+/g,
+        /[^a-z0-9_-]+/g,
         '-'
       )
       .replace(
-        /^-+|-+$/g,
-        '');
+        /^[-_]+|[-_]+$/g,
+        ''
+      );
+
+  }
+
+
+  function cloneArray(value) {
+
+    return Array.isArray(value)
+      ? [...value]
+      : [];
 
   }
 
 
   /* =======================================================
-     DETECT ADAPTER TYPE
+     CAPABILITY SOURCE
+  =======================================================
+
+     Capability TIDAK lagi disimpan di frontend.
+
+     Sumber utama:
+
+       provider.capabilities
+
+     Fallback hanya membaca property provider langsung
+     jika backend mengirim format tersebut.
+
+     Tidak ada fallback provider-specific.
   ======================================================= */
 
-  function detectType(provider) {
+  function normalizeCapabilities(provider) {
 
     if (!provider) {
 
-      return null;
+      return {
+        models: [],
+        durations: [],
+        aspects: [],
+        resolutions: []
+      };
 
     }
-
-
-    const values = [
-
-      provider.adapter,
-
-      provider.id,
-
-      provider.name
-
-    ];
-
-
-    const value =
-      values
-        .filter(Boolean)
-        .map(text)
-        .join(' ');
-
-
-    if (
-      value.includes('gemini') ||
-      value.includes('veo')
-    ) {
-
-      return 'veo';
-
-    }
-
-
-    if (
-      value.includes('minimax') ||
-      value.includes('mini max')
-    ) {
-
-      return 'minimax';
-
-    }
-
-
-    if (
-      value.includes('luma')
-    ) {
-
-      return 'luma';
-
-    }
-
-
-    return null;
-
-  }
-
-
-  /* =======================================================
-     NORMALIZE CAPABILITIES
-  ======================================================= */
-
-  function normalizeCapabilities(
-    provider
-  ) {
-
-    const type =
-      detectType(
-        provider
-      );
-
-
-    const fallback =
-      type
-        ? CAPABILITY_FALLBACK[type]
-        : null;
 
 
     const source =
-      provider?.capabilities ||
-      provider?.config?.capabilities ||
-      {};
+      provider.capabilities &&
+      typeof provider.capabilities === 'object'
+
+        ? provider.capabilities
+
+        : (
+            provider.config?.capabilities &&
+            typeof provider.config.capabilities === 'object'
+
+              ? provider.config.capabilities
+
+              : {}
+          );
 
 
     const models =
-      Array.isArray(
-        source.models
-      ) &&
-      source.models.length
-
+      Array.isArray(source.models)
         ? source.models
-
         : (
-            Array.isArray(
-              provider?.models
-            ) &&
-            provider.models.length
-
+            Array.isArray(provider.models)
               ? provider.models
-
-              : (
-                  fallback?.models ||
-                  []
-                )
+              : []
           );
 
 
     const durations =
-      Array.isArray(
-        source.durations
-      ) &&
-      source.durations.length
-
+      Array.isArray(source.durations)
         ? source.durations
-
         : (
-            Array.isArray(
-              provider?.durations
-            ) &&
-            provider.durations.length
-
+            Array.isArray(provider.durations)
               ? provider.durations
-
-              : (
-                  fallback?.durations ||
-                  []
-                )
+              : []
           );
 
 
     const aspects =
-      Array.isArray(
-        source.aspects
-      ) &&
-      source.aspects.length
-
+      Array.isArray(source.aspects)
         ? source.aspects
-
         : (
-            Array.isArray(
-              provider?.aspects
-            ) &&
-            provider.aspects.length
-
+            Array.isArray(provider.aspects)
               ? provider.aspects
-
-              : (
-                  fallback?.aspects ||
-                  []
-                )
+              : []
           );
 
 
     const resolutions =
-      Array.isArray(
-        source.resolutions
-      ) &&
-      source.resolutions.length
-
+      Array.isArray(source.resolutions)
         ? source.resolutions
-
         : (
-            Array.isArray(
-              provider?.resolutions
-            ) &&
-            provider.resolutions.length
-
+            Array.isArray(provider.resolutions)
               ? provider.resolutions
-
-              : (
-                  fallback?.resolutions ||
-                  []
-                )
+              : []
           );
 
 
     return {
 
-      models,
+      models:
+        cloneArray(models),
 
-      durations,
+      durations:
+        cloneArray(durations),
 
-      aspects,
+      aspects:
+        cloneArray(aspects),
 
-      resolutions
+      resolutions:
+        cloneArray(resolutions)
 
     };
 
@@ -420,192 +246,25 @@
      EFFECTIVE CAPABILITIES
   =======================================================
 
-     Capability dasar berasal dari adapter.
+     Semua aturan kombinasi provider sekarang harus
+     berasal dari adapter/backend.
 
-     Setelah itu UI menerapkan aturan kombinasi
-     yang memang diketahui oleh adapter.
+     UI hanya menggunakan capability yang diberikan.
 
+     Tidak ada:
+       - if veo
+       - if minimax
+       - if luma
+       - model khusus
+       - resolution khusus
+       - duration khusus
   ======================================================= */
 
-  function getEffectiveCapabilities(
-    provider
-  ) {
+  function getEffectiveCapabilities(provider) {
 
-    const base =
-      normalizeCapabilities(
-        provider
-      );
-
-
-    const type =
-      detectType(
-        provider
-      );
-
-
-    const result = {
-
-      models: [
-        ...base.models
-      ],
-
-      durations: [
-        ...base.durations
-      ],
-
-      aspects: [
-        ...base.aspects
-      ],
-
-      resolutions: [
-        ...base.resolutions
-      ]
-
-    };
-
-
-    const selectedResolution =
-      String(
-        $('resolution')?.value ||
-        ''
-      ).trim();
-
-
-    const selectedModel =
-      String(
-        $('model')?.value ||
-        ''
-      ).trim();
-
-
-    const hasImage =
-      hasImageReference();
-
-
-    /* =====================================================
-       VEO
-    ===================================================== */
-
-    if (
-      type === 'veo'
-    ) {
-
-      /*
-       * Veo image-to-video membutuhkan 8 detik.
-       */
-
-      if (
-        hasImage
-      ) {
-
-        result.durations =
-          result.durations.filter(
-            value =>
-              Number(value) === 8
-          );
-
-      }
-
-
-      /*
-       * Veo 1080p dan 4K membutuhkan 8 detik.
-       */
-
-      if (
-        selectedResolution === '1080p' ||
-        selectedResolution === '4k'
-      ) {
-
-        result.durations =
-          result.durations.filter(
-            value =>
-              Number(value) === 8
-          );
-
-      }
-
-
-      /*
-       * Veo Lite tidak mendukung 4K.
-       */
-
-      if (
-        selectedModel ===
-          'veo-3.1-lite-generate-preview'
-      ) {
-
-        result.resolutions =
-          result.resolutions.filter(
-            value =>
-              String(value)
-                .toLowerCase() !==
-              '4k'
-          );
-
-      }
-
-    }
-
-
-    /* =====================================================
-       MINIMAX
-    ===================================================== */
-
-    if (
-      type === 'minimax'
-    ) {
-
-      /*
-       * MiniMax 1080P menggunakan 6 detik.
-       */
-
-      if (
-        selectedResolution ===
-        '1080P'
-      ) {
-
-        result.durations =
-          result.durations.filter(
-            value =>
-              Number(value) === 6
-          );
-
-      }
-
-
-      /*
-       * 512P hanya untuk Hailuo 02.
-       */
-
-      if (
-        selectedModel &&
-        selectedModel !==
-          'MiniMax-Hailuo-02'
-      ) {
-
-        result.resolutions =
-          result.resolutions.filter(
-            value =>
-              String(value)
-                .toUpperCase() !==
-              '512P'
-          );
-
-      }
-
-
-      /*
-       * Hailuo 2.3 Fast membutuhkan
-       * image reference.
-       *
-       * Jangan hapus modelnya.
-       * Kita tandai melalui UI.
-       */
-
-    }
-
-
-    return result;
+    return normalizeCapabilities(
+      provider
+    );
 
   }
 
@@ -614,9 +273,7 @@
      NORMALIZE PROVIDER LIST
   ======================================================= */
 
-  function normalizeProviderList(
-    list
-  ) {
+  function normalizeProviderList(list) {
 
     if (
       !Array.isArray(list)
@@ -660,18 +317,23 @@
         provider => {
 
           const id =
-            String(
+            text(
               provider.id ||
-              provider.name ||
-              ''
-            ).trim();
+              provider.name
+            );
 
 
           const name =
-            String(
+            text(
               provider.name ||
               id
-            ).trim();
+            );
+
+
+          const capabilities =
+            normalizeCapabilities(
+              provider
+            );
 
 
           return {
@@ -682,10 +344,7 @@
 
             name,
 
-            capabilities:
-              normalizeCapabilities(
-                provider
-              )
+            capabilities
 
           };
 
@@ -699,9 +358,7 @@
      PROVIDER DROPDOWN
   ======================================================= */
 
-  function renderProviderSelect(
-    providers
-  ) {
+  function renderProviderSelect(providers) {
 
     const element =
       $('provider');
@@ -715,9 +372,9 @@
 
 
     const previous =
-      String(
-        element.value || ''
-      ).trim();
+      text(
+        element.value
+      );
 
 
     element.innerHTML =
@@ -793,10 +450,7 @@
      OPTION HELPERS
   ======================================================= */
 
-  function setOptions(
-    id,
-    values
-  ) {
+  function setOptions(id, values) {
 
     const element =
       $(id);
@@ -816,8 +470,8 @@
 
 
     const previous =
-      String(
-        element.value || ''
+      text(
+        element.value
       );
 
 
@@ -878,30 +532,29 @@
     );
 
 
-    if (
-      previous &&
-      list
-        .map(
-          value =>
-            String(value)
-        )
-        .includes(
-          previous
-        )
-    ) {
+    const normalizedPrevious =
+      String(previous);
+
+
+    const exists =
+      list.some(
+        value =>
+          String(value) ===
+          normalizedPrevious
+      );
+
+
+    if (exists) {
 
       element.value =
-        previous;
+        normalizedPrevious;
 
     }
 
   }
 
 
-  function setValue(
-    id,
-    value
-  ) {
+  function setValue(id, value) {
 
     const element =
       $(id);
@@ -926,9 +579,7 @@
      SAFE DURATION SELECTION
   ======================================================= */
 
-  function ensureValidDuration(
-    provider
-  ) {
+  function ensureValidDuration(provider) {
 
     const duration =
       $('duration');
@@ -941,14 +592,14 @@
     }
 
 
-    const effective =
+    const capabilities =
       getEffectiveCapabilities(
         provider
       );
 
 
     const allowed =
-      effective.durations.map(
+      capabilities.durations.map(
         value =>
           String(value)
       );
@@ -957,6 +608,9 @@
     if (
       !allowed.length
     ) {
+
+      duration.value =
+        '';
 
       return;
 
@@ -987,9 +641,7 @@
      SAFE RESOLUTION SELECTION
   ======================================================= */
 
-  function ensureValidResolution(
-    provider
-  ) {
+  function ensureValidResolution(provider) {
 
     const resolution =
       $('resolution');
@@ -1002,79 +654,40 @@
     }
 
 
-    const base =
-      normalizeCapabilities(
+    const capabilities =
+      getEffectiveCapabilities(
         provider
       );
 
 
-    const model =
-      String(
-        $('model')?.value ||
-        ''
-      ).trim();
-
-
-    let allowed =
-      base.resolutions.map(
+    const allowed =
+      capabilities.resolutions.map(
         value =>
           String(value)
       );
-
-
-    const type =
-      detectType(
-        provider
-      );
-
-
-    if (
-      type === 'veo' &&
-      model ===
-        'veo-3.1-lite-generate-preview'
-    ) {
-
-      allowed =
-        allowed.filter(
-          value =>
-            value.toLowerCase() !==
-            '4k'
-        );
-
-    }
-
-
-    if (
-      type === 'minimax' &&
-      model &&
-      model !==
-        'MiniMax-Hailuo-02'
-    ) {
-
-      allowed =
-        allowed.filter(
-          value =>
-            value.toUpperCase() !==
-            '512P'
-        );
-
-    }
 
 
     if (
       !allowed.length
     ) {
 
+      resolution.value =
+        '';
+
       return;
 
     }
 
 
+    const current =
+      String(
+        resolution.value || ''
+      );
+
+
     if (
       !allowed.includes(
-        String(
-          resolution.value
-        )
+        current
       )
     ) {
 
@@ -1087,12 +700,142 @@
 
 
   /* =======================================================
+     SAFE MODEL SELECTION
+  ======================================================= */
+
+  function ensureValidModel(provider) {
+
+    const model =
+      $('model');
+
+
+    if (!model) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      capabilities.models.map(
+        value =>
+          String(value)
+      );
+
+
+    if (
+      !allowed.length
+    ) {
+
+      model.value =
+        '';
+
+      return;
+
+    }
+
+
+    const current =
+      String(
+        model.value || ''
+      );
+
+
+    if (
+      !allowed.includes(
+        current
+      )
+    ) {
+
+      model.value =
+        allowed[0];
+
+    }
+
+  }
+
+
+  /* =======================================================
+     SAFE ASPECT SELECTION
+  ======================================================= */
+
+  function ensureValidAspect(provider) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      capabilities.aspects.map(
+        value =>
+          String(value)
+      );
+
+
+    const fields = [
+      $('ratio'),
+      $('aspect')
+    ];
+
+
+    fields.forEach(
+      element => {
+
+        if (!element) {
+
+          return;
+
+        }
+
+
+        if (
+          !allowed.length
+        ) {
+
+          element.value =
+            '';
+
+          return;
+
+        }
+
+
+        const current =
+          String(
+            element.value || ''
+          );
+
+
+        if (
+          !allowed.includes(
+            current
+          )
+        ) {
+
+          element.value =
+            allowed[0];
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
      UPDATE GENERATE BUTTON
   ======================================================= */
 
-  function updateGenerateButton(
-    provider
-  ) {
+  function updateGenerateButton(provider) {
 
     const button =
       $('generateVideo') ||
@@ -1138,12 +881,144 @@
 
 
   /* =======================================================
+     UPDATE IMAGE AVAILABILITY
+  ======================================================= */
+
+  function updateImageAvailability() {
+
+    const imageInput =
+      $('image');
+
+
+    if (!imageInput) {
+
+      return;
+
+    }
+
+
+    /*
+     * Provider menentukan sendiri apakah image reference
+     * didukung melalui adapter.
+     *
+     * UI tidak lagi memblokir image input berdasarkan
+     * nama provider.
+     */
+
+    imageInput.disabled =
+      false;
+
+  }
+
+
+  /* =======================================================
+     ACTIVE BUTTON
+  ======================================================= */
+
+  function updateActiveButton(providerId) {
+
+    document
+      .querySelectorAll(
+        '[data-providers] [data-provider]'
+      )
+      .forEach(
+        button => {
+
+          button.classList.toggle(
+            'active',
+
+            String(
+              button.dataset.provider
+            ) ===
+            String(
+              providerId
+            )
+
+          );
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     MODEL COMPATIBILITY
+  =======================================================
+
+     Tidak ada lagi hard-coded model compatibility.
+
+     Adapter/backend bertanggung jawab terhadap validasi
+     kombinasi model, image, duration, resolution, dll.
+
+     Browser hanya memastikan pilihan masih berada dalam
+     capability yang diterima.
+  ======================================================= */
+
+  function updateModelCompatibility(provider) {
+
+    const model =
+      $('model');
+
+
+    if (!model) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      capabilities.models.map(
+        value =>
+          String(value)
+      );
+
+
+    Array.from(
+      model.options
+    ).forEach(
+      option => {
+
+        const available =
+          allowed.includes(
+            String(
+              option.value
+            )
+          );
+
+
+        option.disabled =
+          !available;
+
+
+        option.title =
+          available
+            ? ''
+            : 'Model tidak tersedia untuk provider ini.';
+
+      }
+    );
+
+
+    ensureValidModel(
+      provider
+    );
+
+  }
+
+
+  /* =======================================================
      UPDATE PROVIDER UI
   ======================================================= */
 
-  function updateProviderUI(
-    provider
-  ) {
+  function updateProviderUI(provider) {
 
     if (!provider) {
 
@@ -1153,7 +1028,7 @@
 
 
     const capabilities =
-      normalizeCapabilities(
+      getEffectiveCapabilities(
         provider
       );
 
@@ -1206,6 +1081,16 @@
       provider;
 
 
+    ensureValidModel(
+      provider
+    );
+
+
+    ensureValidAspect(
+      provider
+    );
+
+
     ensureValidResolution(
       provider
     );
@@ -1242,199 +1127,13 @@
 
 
   /* =======================================================
-     MODEL COMPATIBILITY
+     DISPATCH PROVIDER EVENT
   ======================================================= */
 
-  function updateModelCompatibility(
-    provider
-  ) {
-
-    const model =
-      $('model');
-
-
-    if (!model) {
-
-      return;
-
-    }
-
-
-    const type =
-      detectType(
-        provider
-      );
-
-
-    const hasImage =
-      hasImageReference();
-
-
-    Array.from(
-      model.options
-    ).forEach(
-      option => {
-
-        option.disabled =
-          false;
-
-
-        option.title =
-          '';
-
-      }
-    );
-
-
-    /*
-     * MiniMax Hailuo 2.3 Fast
-     * membutuhkan image reference.
-     */
-
-    if (
-      type === 'minimax'
-    ) {
-
-      const fast =
-        Array.from(
-          model.options
-        ).find(
-          option =>
-            option.value ===
-            'MiniMax-Hailuo-2.3-Fast'
-        );
-
-
-      if (fast) {
-
-        fast.disabled =
-          !hasImage;
-
-
-        fast.title =
-          hasImage
-            ? ''
-            : 'Model ini membutuhkan image reference.';
-
-      }
-
-
-      /*
-       * Jika model Fast sedang dipilih
-       * tetapi image tidak ada,
-       * pindahkan ke model normal.
-       */
-
-      if (
-        model.value ===
-          'MiniMax-Hailuo-2.3-Fast' &&
-        !hasImage
-      ) {
-
-        const fallback =
-          Array.from(
-            model.options
-          ).find(
-            option =>
-              !option.disabled
-          );
-
-
-        if (fallback) {
-
-          model.value =
-            fallback.value;
-
-        }
-
-      }
-
-    }
-
-
-    /*
-     * Setelah model berubah,
-     * resolution dan duration bisa
-     * berubah juga.
-     */
-
-    ensureValidResolution(
-      provider
-    );
-
-
-    ensureValidDuration(
-      provider
-    );
-
-  }
-
-
-  /* =======================================================
-     IMAGE INPUT
-  ======================================================= */
-
-  function updateImageAvailability() {
-
-    const imageInput =
-      $('image');
-
-
-    if (!imageInput) {
-
-      return;
-
-    }
-
-
-    imageInput.disabled =
-      false;
-
-  }
-
-
-  /* =======================================================
-     ACTIVE BUTTON
-  ======================================================= */
-
-  function updateActiveButton(
-    providerId
-  ) {
-
-    document
-      .querySelectorAll(
-        '[data-providers] [data-provider]'
-      )
-      .forEach(
-        button => {
-
-          button.classList.toggle(
-            'active',
-
-            String(
-              button.dataset.provider
-            ) ===
-            String(
-              providerId
-            )
-          );
-
-        }
-      );
-
-  }
-
-
-  /* =======================================================
-     PROVIDER CHANGE EVENT
-  ======================================================= */
-
-  function dispatchProviderChange(
-    provider
-  ) {
+  function dispatchProviderChange(provider) {
 
     const capabilities =
-      normalizeCapabilities(
+      getEffectiveCapabilities(
         provider
       );
 
@@ -1470,14 +1169,13 @@
 
 
   /* =======================================================
-     REFRESH CURRENT PROVIDER OPTIONS
+     REFRESH CURRENT OPTIONS
   ======================================================= */
 
   function refreshCurrentOptions() {
 
     const provider =
-      GENZ.providers
-        .currentProvider;
+      GENZ.providers.currentProvider;
 
 
     if (!provider) {
@@ -1487,150 +1185,160 @@
     }
 
 
-    const type =
-      detectType(
+    /*
+     * Jangan menerapkan aturan provider-specific
+     * di browser.
+     *
+     * Capability sudah berasal dari adapter.
+     */
+
+    const capabilities =
+      getEffectiveCapabilities(
         provider
       );
-
-
-    const base =
-      normalizeCapabilities(
-        provider
-      );
-
-
-    let durations =
-      [
-        ...base.durations
-      ];
-
-
-    let resolutions =
-      [
-        ...base.resolutions
-      ];
-
-
-    const currentResolution =
-      String(
-        $('resolution')?.value ||
-        ''
-      ).trim();
 
 
     const currentModel =
-      String(
-        $('model')?.value ||
-        ''
-      ).trim();
+      text(
+        $('model')?.value
+      );
 
 
-    const hasImage =
-      hasImageReference();
+    const currentDuration =
+      text(
+        $('duration')?.value
+      );
 
 
-    /* =====================================================
-       VEO RULES
-    ===================================================== */
-
-    if (
-      type === 'veo'
-    ) {
-
-      if (
-        hasImage ||
-        currentResolution ===
-          '1080p' ||
-        currentResolution ===
-          '4k'
-      ) {
-
-        durations =
-          durations.filter(
-            value =>
-              Number(value) === 8
-          );
-
-      }
+    const currentResolution =
+      text(
+        $('resolution')?.value
+      );
 
 
-      if (
-        currentModel ===
-          'veo-3.1-lite-generate-preview'
-      ) {
-
-        resolutions =
-          resolutions.filter(
-            value =>
-              String(value)
-                .toLowerCase() !==
-              '4k'
-          );
-
-      }
-
-    }
+    const currentAspect =
+      text(
+        $('aspect')?.value ||
+        $('ratio')?.value
+      );
 
 
-    /* =====================================================
-       MINIMAX RULES
-    ===================================================== */
-
-    if (
-      type === 'minimax'
-    ) {
-
-      if (
-        currentResolution ===
-          '1080P'
-      ) {
-
-        durations =
-          durations.filter(
-            value =>
-              Number(value) === 6
-          );
-
-      }
-
-
-      if (
-        currentModel &&
-        currentModel !==
-          'MiniMax-Hailuo-02'
-      ) {
-
-        resolutions =
-          resolutions.filter(
-            value =>
-              String(value)
-                .toUpperCase() !==
-              '512P'
-          );
-
-      }
-
-    }
+    setOptions(
+      'model',
+      capabilities.models
+    );
 
 
     setOptions(
       'duration',
-      durations
+      capabilities.durations
     );
 
 
     setOptions(
       'resolution',
-      resolutions
+      capabilities.resolutions
     );
 
 
-    ensureValidDuration(
+    setOptions(
+      'ratio',
+      capabilities.aspects
+    );
+
+
+    setOptions(
+      'aspect',
+      capabilities.aspects
+    );
+
+
+    if (
+      capabilities.models.some(
+        value =>
+          String(value) ===
+          currentModel
+      )
+    ) {
+
+      setValue(
+        'model',
+        currentModel
+      );
+
+    }
+
+
+    if (
+      capabilities.durations.some(
+        value =>
+          String(value) ===
+          currentDuration
+      )
+    ) {
+
+      setValue(
+        'duration',
+        currentDuration
+      );
+
+    }
+
+
+    if (
+      capabilities.resolutions.some(
+        value =>
+          String(value) ===
+          currentResolution
+      )
+    ) {
+
+      setValue(
+        'resolution',
+        currentResolution
+      );
+
+    }
+
+
+    if (
+      capabilities.aspects.some(
+        value =>
+          String(value) ===
+          currentAspect
+      )
+    ) {
+
+      setValue(
+        'aspect',
+        currentAspect
+      );
+
+
+      setValue(
+        'ratio',
+        currentAspect
+      );
+
+    }
+
+
+    ensureValidModel(
+      provider
+    );
+
+
+    ensureValidAspect(
       provider
     );
 
 
     ensureValidResolution(
+      provider
+    );
+
+
+    ensureValidDuration(
       provider
     );
 
@@ -1646,9 +1354,7 @@
      PROVIDER BUTTONS
   ======================================================= */
 
-  function renderButtons(
-    providers
-  ) {
+  function renderButtons(providers) {
 
     const container =
       document.querySelector(
@@ -1748,9 +1454,7 @@
      FIND PROVIDER
   ======================================================= */
 
-  function findProvider(
-    providerId
-  ) {
+  function findProvider(providerId) {
 
     const providers =
       GENZ.providers.list ||
@@ -1786,9 +1490,7 @@
      SELECT PROVIDER
   ======================================================= */
 
-  function selectProvider(
-    providerId
-  ) {
+  function selectProvider(providerId) {
 
     const provider =
       findProvider(
@@ -1927,11 +1629,10 @@
 
 
     const requested =
-      String(
+      text(
         GENZ.state.provider ||
-        $('provider')?.value ||
-        ''
-      ).trim();
+        $('provider')?.value
+      );
 
 
     let selected =
@@ -1939,7 +1640,8 @@
         provider =>
           String(
             provider.id
-          ) === requested
+          ) ===
+          requested
       );
 
 
@@ -2161,22 +1863,12 @@
 
 
         if (
-          target.id ===
-            'resolution' ||
-          target.id ===
-            'model' ||
-          target.id ===
-            'duration'
-        ) {
-
-          refreshCurrentOptions();
-
-        }
-
-
-        if (
-          target.id ===
-          'image'
+          target.id === 'resolution' ||
+          target.id === 'model' ||
+          target.id === 'duration' ||
+          target.id === 'ratio' ||
+          target.id === 'aspect' ||
+          target.id === 'image'
         ) {
 
           refreshCurrentOptions();
@@ -2207,6 +1899,24 @@
 
   GENZ.providers.find =
     findProvider;
+
+
+  GENZ.providers.getCapabilities =
+    function (providerId) {
+
+      const provider =
+        providerId
+          ? findProvider(
+              providerId
+            )
+          : GENZ.providers.currentProvider;
+
+
+      return getEffectiveCapabilities(
+        provider
+      );
+
+    };
 
 
   GENZ.videoProviders.load =
