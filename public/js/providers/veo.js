@@ -1,37 +1,8 @@
 const ID = "veo";
 const NAME = "Gemini / Veo";
 
-
 /* ============================================================
    GEMINI / VEO CAPABILITIES
-
-   Semua aturan durasi + resolusi ditentukan PER MODEL.
-
-   Model:
-   - veo-3.1-fast-generate-preview
-   - veo-3.1-generate-preview
-   - veo-3.1-lite-generate-preview
-
-   Aturan:
-   Veo 3.1 / Fast
-   - 4s  -> 720p
-   - 6s  -> 720p
-   - 8s  -> 720p / 1080p / 4k
-   - reference image -> 8s
-   - 1080p -> 8s
-   - 4k -> 8s
-
-   Veo 3.1 Lite
-   - 4s  -> 720p
-   - 6s  -> 720p
-   - 8s  -> 720p / 1080p
-   - reference image -> 8s
-   - 1080p -> 8s
-   - 4k -> TIDAK TERSEDIA
-   - reference image -> TIDAK DIDUKUNG
-
-   UI nantinya membaca "constraints" ini.
-   Backend tetap menjadi validator terakhir.
 ============================================================ */
 
 const CAPABILITIES = {
@@ -64,99 +35,45 @@ const CAPABILITIES = {
     "veo-3.1-fast-generate-preview": {
 
       textToVideo: {
-
-        4: [
-          "720p"
-        ],
-
-        6: [
-          "720p"
-        ],
-
-        8: [
-          "720p",
-          "1080p",
-          "4k"
-        ]
-
+        4: ["720p"],
+        6: ["720p"],
+        8: ["720p", "1080p", "4k"]
       },
 
       imageToVideo: {
-
-        8: [
-          "720p",
-          "1080p",
-          "4k"
-        ]
-
+        8: ["720p", "1080p", "4k"]
       },
 
       imageReferenceSupported: true
 
     },
-
 
     "veo-3.1-generate-preview": {
 
       textToVideo: {
-
-        4: [
-          "720p"
-        ],
-
-        6: [
-          "720p"
-        ],
-
-        8: [
-          "720p",
-          "1080p",
-          "4k"
-        ]
-
+        4: ["720p"],
+        6: ["720p"],
+        8: ["720p", "1080p", "4k"]
       },
 
       imageToVideo: {
-
-        8: [
-          "720p",
-          "1080p",
-          "4k"
-        ]
-
+        8: ["720p", "1080p", "4k"]
       },
 
       imageReferenceSupported: true
 
     },
 
-
     "veo-3.1-lite-generate-preview": {
 
       textToVideo: {
-
-        4: [
-          "720p"
-        ],
-
-        6: [
-          "720p"
-        ],
-
-        8: [
-          "720p",
-          "1080p"
-        ]
-
+        4: ["720p"],
+        6: ["720p"],
+        8: ["720p", "1080p"]
       },
 
       imageToVideo: {
-
-        8: [
-          "720p",
-          "1080p"
-        ]
-
+        8: ["720p", "1080p"]
       },
 
       imageReferenceSupported: false
@@ -172,16 +89,11 @@ const CAPABILITIES = {
    ERROR
 ============================================================ */
 
-function providerError(
-  message,
-  status = 400
-) {
+function providerError(message, status = 400) {
 
-  const error =
-    new Error(message);
+  const error = new Error(message);
 
-  error.status =
-    status;
+  error.status = status;
 
   return error;
 
@@ -192,12 +104,9 @@ function providerError(
    SAFE JSON
 ============================================================ */
 
-async function safeJson(
-  response
-) {
+async function safeJson(response) {
 
-  const text =
-    await response.text();
+  const text = await response.text();
 
   if (!text) {
     return {};
@@ -222,18 +131,13 @@ async function safeJson(
    API ERROR
 ============================================================ */
 
-function apiError(
-  data,
-  fallback
-) {
+function apiError(data, fallback) {
 
   if (
     typeof data?.error ===
     "string"
   ) {
-
     return data.error;
-
   }
 
   if (
@@ -241,27 +145,21 @@ function apiError(
     typeof data.error.message ===
     "string"
   ) {
-
     return data.error.message;
-
   }
 
   if (
     typeof data?.message ===
     "string"
   ) {
-
     return data.message;
-
   }
 
   if (
     typeof data?.raw ===
     "string"
   ) {
-
     return data.raw;
-
   }
 
   return fallback;
@@ -273,21 +171,15 @@ function apiError(
    NORMALIZE DURATION
 ============================================================ */
 
-function normalizeDuration(
-  value,
-  fallback = 8
-) {
+function normalizeDuration(value, fallback = 8) {
 
-  const duration =
-    Number(
-      value ?? fallback
-    );
+  const duration = Number(
+    value ?? fallback
+  );
 
   if (
     !Number.isFinite(duration) ||
-    !CAPABILITIES.durations.includes(
-      duration
-    )
+    !CAPABILITIES.durations.includes(duration)
   ) {
 
     throw providerError(
@@ -303,16 +195,13 @@ function normalizeDuration(
 
 
 /* ============================================================
-   GET MODEL RULES
+   MODEL RULES
 ============================================================ */
 
-function getModelRules(
-  model
-) {
+function getModelRules(model) {
 
   const rules =
-    CAPABILITIES
-      .constraints?.[model];
+    CAPABILITIES.constraints?.[model];
 
   if (!rules) {
 
@@ -329,7 +218,7 @@ function getModelRules(
 
 
 /* ============================================================
-   GET ALLOWED RESOLUTIONS
+   ALLOWED RESOLUTIONS
 ============================================================ */
 
 function getAllowedResolutions(
@@ -339,9 +228,7 @@ function getAllowedResolutions(
 ) {
 
   const rules =
-    getModelRules(
-      model
-    );
+    getModelRules(model);
 
   const mode =
     hasImage
@@ -362,7 +249,7 @@ function getAllowedResolutions(
 
 
 /* ============================================================
-   VALIDATE MODEL RULES
+   VALIDATE MODEL COMBINATION
 ============================================================ */
 
 function validateModelCombination(
@@ -373,15 +260,7 @@ function validateModelCombination(
 ) {
 
   const rules =
-    getModelRules(
-      model
-    );
-
-
-  /*
-   * Reference image hanya boleh
-   * jika model mendukungnya.
-   */
+    getModelRules(model);
 
   if (
     hasImage &&
@@ -395,20 +274,12 @@ function validateModelCombination(
 
   }
 
-
-  /*
-   * Ambil resolusi yang benar-benar
-   * diperbolehkan untuk kombinasi
-   * model + mode + durasi.
-   */
-
   const allowed =
     getAllowedResolutions(
       model,
       duration,
       hasImage
     );
-
 
   if (!allowed.length) {
 
@@ -419,11 +290,8 @@ function validateModelCombination(
 
   }
 
-
   if (
-    !allowed.includes(
-      resolution
-    )
+    !allowed.includes(resolution)
   ) {
 
     throw providerError(
@@ -432,7 +300,6 @@ function validateModelCombination(
     );
 
   }
-
 
   return allowed;
 
@@ -449,12 +316,9 @@ function parseImageData(
 ) {
 
   if (
-    typeof value !==
-    "string"
+    typeof value !== "string"
   ) {
-
     return null;
-
   }
 
   const match =
@@ -463,9 +327,7 @@ function parseImageData(
     );
 
   if (!match) {
-
     return null;
-
   }
 
   const base64 =
@@ -478,9 +340,7 @@ function parseImageData(
     base64.length * 0.75 >
     maxBytes
   ) {
-
     return null;
-
   }
 
   return {
@@ -531,7 +391,6 @@ export async function generate(
       provider?.api_key || ""
     ).trim();
 
-
   if (!key) {
 
     throw providerError(
@@ -541,18 +400,14 @@ export async function generate(
 
   }
 
-
   const model =
     String(
       body?.model ||
       CAPABILITIES.models[0]
     ).trim();
 
-
   if (
-    !CAPABILITIES.models.includes(
-      model
-    )
+    !CAPABILITIES.models.includes(model)
   ) {
 
     throw providerError(
@@ -562,20 +417,17 @@ export async function generate(
 
   }
 
-
   const duration =
     normalizeDuration(
       body?.duration,
       8
     );
 
-
   const aspectRatio =
     String(
       body?.aspectRatio ||
       "16:9"
     ).trim();
-
 
   if (
     !CAPABILITIES.aspects.includes(
@@ -590,13 +442,11 @@ export async function generate(
 
   }
 
-
   const resolution =
     String(
       body?.resolution ||
       "720p"
     ).trim();
-
 
   if (
     !CAPABILITIES.resolutions.includes(
@@ -611,19 +461,10 @@ export async function generate(
 
   }
 
-
   const hasImage =
     Boolean(
       body?.imageData
     );
-
-
-  /*
-   * VALIDASI FINAL GEMINI
-   *
-   * Model + image mode +
-   * duration + resolution.
-   */
 
   validateModelCombination(
     model,
@@ -632,12 +473,10 @@ export async function generate(
     hasImage
   );
 
-
   const prompt =
     String(
       body?.prompt || ""
     ).trim();
-
 
   if (!prompt) {
 
@@ -648,17 +487,23 @@ export async function generate(
 
   }
 
-
   const instance = {
-
     prompt
-
   };
 
 
-  /*
-   * IMAGE-TO-VIDEO
-   */
+  /* ==========================================================
+     IMAGE TO VIDEO
+
+     PENTING:
+     predictLongRunning Veo tidak menggunakan inlineData.
+
+     Format yang digunakan:
+     image: {
+       bytesBase64Encoded,
+       mimeType
+     }
+  ========================================================== */
 
   if (hasImage) {
 
@@ -666,7 +511,6 @@ export async function generate(
       parseImageData(
         body.imageData
       );
-
 
     if (!image) {
 
@@ -677,23 +521,22 @@ export async function generate(
 
     }
 
-
     instance.image = {
 
-      inlineData: {
+      bytesBase64Encoded:
+        image.base64,
 
-        mimeType:
-          image.mimeType,
-
-        data:
-          image.base64
-
-      }
+      mimeType:
+        image.mimeType
 
     };
 
   }
 
+
+  /* ==========================================================
+     GEMINI VEO ENDPOINT
+  ========================================================== */
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
@@ -821,7 +664,6 @@ export async function status(
       provider?.api_key || ""
     ).trim();
 
-
   if (!key) {
 
     throw providerError(
@@ -830,7 +672,6 @@ export async function status(
     );
 
   }
-
 
   const operation =
     String(
@@ -842,7 +683,6 @@ export async function status(
         ""
       );
 
-
   if (!operation) {
 
     throw providerError(
@@ -851,7 +691,6 @@ export async function status(
     );
 
   }
-
 
   const response =
     await fetch(
@@ -868,12 +707,10 @@ export async function status(
       }
     );
 
-
   const data =
     await safeJson(
       response
     );
-
 
   if (!response.ok) {
 
@@ -886,7 +723,6 @@ export async function status(
     );
 
   }
-
 
   if (!data?.done) {
 
@@ -904,7 +740,6 @@ export async function status(
     };
 
   }
-
 
   if (data?.error) {
 
@@ -929,13 +764,13 @@ export async function status(
 
   }
 
-
   const videoUrl =
     data
       ?.response
       ?.generateVideoResponse
       ?.generatedSamples?.[0]
       ?.video?.uri ||
+
     data
       ?.response
       ?.generateVideoResponse
@@ -1001,7 +836,6 @@ export async function fetchVideo(
       provider?.api_key || ""
     ).trim();
 
-
   if (!key) {
 
     throw providerError(
@@ -1011,12 +845,10 @@ export async function fetchVideo(
 
   }
 
-
   const rawTarget =
     String(
       target || ""
     ).trim();
-
 
   if (!rawTarget) {
 
@@ -1027,9 +859,7 @@ export async function fetchVideo(
 
   }
 
-
   let url;
-
 
   try {
 
@@ -1047,7 +877,6 @@ export async function fetchVideo(
 
   }
 
-
   const allowedHosts = [
 
     "generativelanguage.googleapis.com",
@@ -1055,7 +884,6 @@ export async function fetchVideo(
     "storage.googleapis.com"
 
   ];
-
 
   if (
     url.protocol !==
@@ -1072,11 +900,9 @@ export async function fetchVideo(
 
   }
 
-
   url.searchParams.delete(
     "key"
   );
-
 
   return fetch(
     url.toString(),
