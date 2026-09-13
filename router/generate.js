@@ -35,11 +35,11 @@ import {
   refundJob
 } from "../jobs/job-service.js";
 
-/*
- * ============================================================
- * GENERATE ROUTER
- * ============================================================
- */
+
+/* ============================================================
+GEN-Z.AI
+GENERATE ROUTER
+============================================================ */
 
 export async function handleGenerate(
   request,
@@ -90,13 +90,11 @@ export async function handleGenerate(
     );
   }
 
-  /*
-   * Generate hanya boleh menggunakan provider aktif.
-   *
-   * Provider yang disabled tetap boleh digunakan
-   * oleh status/video untuk menyelesaikan atau
-   * mengambil job lama.
-   */
+
+  /* ==========================================================
+  LOAD ACTIVE PROVIDER
+  ========================================================== */
+
   const provider =
     await getProvider(
       id,
@@ -104,17 +102,67 @@ export async function handleGenerate(
       false
     );
 
-  const adapter =
-    resolveAdapter(
-      provider
-    );
 
-  if (!adapter) {
+  /* ==========================================================
+  RESOLVE ADAPTER
+
+  Provider ID dan Adapter ID adalah dua hal berbeda.
+
+  Contoh:
+
+  provider.id      = google-veo-production
+  provider.adapter = veo
+
+  provider.id      = kling-main
+  provider.adapter = kling
+
+  Registry hanya menerima adapter ID.
+  ========================================================== */
+
+  const adapterId =
+    String(
+      provider?.adapter ||
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (!adapterId) {
     throw new HttpError(
-      `Adapter provider ${id} belum didukung Worker.`,
+      `Provider "${id}" belum memiliki adapter.`,
       400
     );
   }
+
+  let adapter;
+
+  try {
+    adapter =
+      resolveAdapter(
+        adapterId
+      );
+  } catch {
+    throw new HttpError(
+      `Adapter "${adapterId}" belum tersedia di Worker.`,
+      400
+    );
+  }
+
+  if (
+    !adapter ||
+    typeof adapter.generate !==
+      "function"
+  ) {
+    throw new HttpError(
+      `Adapter "${adapterId}" tidak memiliki fungsi generate().`,
+      500
+    );
+  }
+
+
+  /* ==========================================================
+  PROMPT
+  ========================================================== */
 
   const prompt =
     String(
@@ -132,12 +180,22 @@ export async function handleGenerate(
     );
   }
 
+
+  /* ==========================================================
+  MODEL
+  ========================================================== */
+
   const requestedModel =
     body?.model != null
       ? String(
           body.model
         ).trim()
       : null;
+
+
+  /* ==========================================================
+  DURATION
+  ========================================================== */
 
   const requestedDuration =
     body?.duration != null
@@ -163,7 +221,7 @@ export async function handleGenerate(
   ) {
     const info =
       getAdapterInfo(
-        provider.adapter
+        adapterId
       );
 
     const allowed =
@@ -190,11 +248,16 @@ export async function handleGenerate(
       )
     ) {
       throw new HttpError(
-        "Duration tidak didukung oleh provider.",
+        "Duration tidak didukung oleh adapter provider.",
         400
       );
     }
   }
+
+
+  /* ==========================================================
+  ASPECT RATIO
+  ========================================================== */
 
   const requestedAspectRatio =
     body?.aspectRatio != null
@@ -203,12 +266,22 @@ export async function handleGenerate(
         ).trim()
       : null;
 
+
+  /* ==========================================================
+  RESOLUTION
+  ========================================================== */
+
   const requestedResolution =
     body?.resolution != null
       ? String(
           body.resolution
         ).trim()
       : null;
+
+
+  /* ==========================================================
+  CREDIT COST
+  ========================================================== */
 
   const cost =
     Math.max(
@@ -218,6 +291,11 @@ export async function handleGenerate(
           1
       )
     );
+
+
+  /* ==========================================================
+  IDEMPOTENCY
+  ========================================================== */
 
   const idem =
     String(
@@ -236,10 +314,18 @@ export async function handleGenerate(
     );
   }
 
+
+  /* ==========================================================
+  FINGERPRINT
+  ========================================================== */
+
   const fingerprintSource =
     JSON.stringify({
       provider:
         id,
+
+      adapter:
+        adapterId,
 
       model:
         requestedModel,
@@ -286,6 +372,11 @@ export async function handleGenerate(
       )
       .join("");
 
+
+  /* ==========================================================
+  RESERVE JOB
+  ========================================================== */
+
   const reservation =
     await reserveJob(
       user.id,
@@ -306,6 +397,11 @@ export async function handleGenerate(
       500
     );
   }
+
+
+  /* ==========================================================
+  IDEMPOTENT REQUEST
+  ========================================================== */
 
   if (
     reservation?.existing
@@ -339,6 +435,9 @@ export async function handleGenerate(
           provider:
             id,
 
+          adapter:
+            adapterId,
+
           status:
             reservation.status ||
             "processing"
@@ -354,6 +453,11 @@ export async function handleGenerate(
     );
   }
 
+
+  /* ==========================================================
+  GENERATION
+  ========================================================== */
+
   try {
     const initialMetadata =
       {
@@ -361,7 +465,7 @@ export async function handleGenerate(
           id,
 
         adapter:
-          provider.adapter,
+          adapterId,
 
         prompt,
 
@@ -378,6 +482,11 @@ export async function handleGenerate(
           requestedResolution
       };
 
+
+    /* ========================================================
+    INITIAL JOB DATA
+    ======================================================== */
+
     await updateJob(
       jobId,
       {
@@ -389,6 +498,7 @@ export async function handleGenerate(
       },
       env
     );
+
 
     await recordJobEvent(
       jobId,
@@ -403,6 +513,11 @@ export async function handleGenerate(
       },
       env
     );
+
+
+    /* ========================================================
+    CALL PROVIDER ADAPTER
+    ======================================================== */
 
     const result =
       await adapter.generate(
@@ -424,6 +539,14 @@ export async function handleGenerate(
     result.provider =
       id;
 
+    result.adapter =
+      adapterId;
+
+
+    /* ========================================================
+    FINAL METADATA
+    ======================================================== */
+
     const metadata =
       {
         ...initialMetadata,
@@ -434,7 +557,7 @@ export async function handleGenerate(
           id,
 
         adapter:
-          provider.adapter,
+          adapterId,
 
         prompt,
 
@@ -452,6 +575,11 @@ export async function handleGenerate(
         resolution:
           requestedResolution
       };
+
+
+    /* ========================================================
+    UPDATE JOB
+    ======================================================== */
 
     await updateJob(
       jobId,
@@ -486,6 +614,11 @@ export async function handleGenerate(
       env
     );
 
+
+    /* ========================================================
+    PROVIDER EVENT
+    ======================================================== */
+
     await recordJobEvent(
       jobId,
       user.id,
@@ -503,6 +636,11 @@ export async function handleGenerate(
       env
     );
 
+
+    /* ========================================================
+    RESPONSE
+    ======================================================== */
+
     return json(
       {
         success:
@@ -515,13 +653,22 @@ export async function handleGenerate(
         provider:
           id,
 
+        adapter:
+          adapterId,
+
         creditsRemaining:
           reservation.credits_remaining
       },
       200,
       env
     );
+
   } catch (err) {
+
+    /* ========================================================
+    MARK JOB FAILED
+    ======================================================== */
+
     await updateJob(
       jobId,
       {
@@ -544,6 +691,11 @@ export async function handleGenerate(
     ).catch(
       () => {}
     );
+
+
+    /* ========================================================
+    ERROR EVENT
+    ======================================================== */
 
     await recordJobEvent(
       jobId,
@@ -568,10 +720,16 @@ export async function handleGenerate(
       env
     );
 
+
+    /* ========================================================
+    REFUND
+    ======================================================== */
+
     await refundJob(
       jobId,
       env
     );
+
 
     await recordJobEvent(
       jobId,
@@ -583,6 +741,7 @@ export async function handleGenerate(
       },
       env
     );
+
 
     throw err;
   }
