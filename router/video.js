@@ -23,6 +23,7 @@ import {
   sb
 } from "../lib/supabase.js";
 
+
 /*
  * ============================================================
  * GEN-Z.AI
@@ -33,23 +34,88 @@ import {
  *
  * Alur:
  *
- *   provider
- *      ↓
- *   provider.adapter
- *      ↓
+ *   job
+ *     ↓
+ *   metadata.adapter
+ *     ↓
  *   adapter.fetchVideo()
  *
- * Semua logika khusus provider berada di adapter masing-masing.
- *
- * Contoh:
- *
- *   /public/js/providers/veo.js
- *   /public/js/providers/minimax.js
- *   /public/js/providers/luma.js
- *
- * Provider baru tidak membutuhkan perubahan pada router ini.
+ * Adapter yang tersimpan pada job menjadi sumber utama.
+ * Ini penting agar video lama tetap menggunakan adapter
+ * yang benar meskipun konfigurasi provider berubah.
  * ============================================================
  */
+
+const MAX_JOB_ID_LENGTH = 128;
+const MAX_PROVIDER_ID_LENGTH = 64;
+const MAX_TARGET_LENGTH = 2048;
+
+
+/* ============================================================
+HELPERS
+============================================================ */
+
+function normalizeId(
+  value,
+  maxLength,
+  message
+) {
+  const id =
+    String(
+      value || ""
+    ).trim();
+
+  if (!id) {
+    throw new HttpError(
+      message,
+      400
+    );
+  }
+
+  if (
+    id.length >
+    maxLength
+  ) {
+    throw new HttpError(
+      message,
+      400
+    );
+  }
+
+  return id;
+}
+
+
+function normalizeAdapterId(
+  value
+) {
+  return String(
+    value || ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+
+function getJobAdapterId(
+  job
+) {
+  const metadata =
+    job?.metadata &&
+    typeof job.metadata === "object" &&
+    !Array.isArray(job.metadata)
+      ? job.metadata
+      : {};
+
+  return normalizeAdapterId(
+    metadata.adapter
+  );
+}
+
+
+/* ============================================================
+MAIN VIDEO HANDLER
+============================================================ */
 
 export async function handleVideo(
   request,
@@ -61,10 +127,16 @@ export async function handleVideo(
       env
     );
 
+
   const url =
     new URL(
       request.url
     );
+
+
+  /* ==========================================================
+  PROVIDER
+  ========================================================== */
 
   const id =
     canonicalProvider(
@@ -73,26 +145,41 @@ export async function handleVideo(
       )
     );
 
-  const jobId =
-    String(
-      url.searchParams.get(
-        "jobId"
-      ) || ""
-    ).trim();
-
-  if (!jobId) {
-    throw new HttpError(
-      "jobId wajib.",
-      400
-    );
-  }
-
   if (!id) {
     throw new HttpError(
       "Provider wajib.",
       400
     );
   }
+
+  if (
+    id.length >
+    MAX_PROVIDER_ID_LENGTH
+  ) {
+    throw new HttpError(
+      "Provider tidak valid.",
+      400
+    );
+  }
+
+
+  /* ==========================================================
+  JOB ID
+  ========================================================== */
+
+  const jobId =
+    normalizeId(
+      url.searchParams.get(
+        "jobId"
+      ),
+      MAX_JOB_ID_LENGTH,
+      "jobId wajib."
+    );
+
+
+  /* ==========================================================
+  LOAD JOB
+  ========================================================== */
 
   const jobRows =
     await sb(
@@ -101,9 +188,15 @@ export async function handleVideo(
       )}&user_id=eq.${encodeURIComponent(
         user.id
       )}&select=id,user_id,provider,status,video_url,metadata&limit=1`,
-      {},
+      {
+        headers: {
+          Accept:
+            "application/json"
+        }
+      },
       env
     );
+
 
   if (!jobRows.ok) {
     throw new HttpError(
@@ -112,10 +205,17 @@ export async function handleVideo(
     );
   }
 
+
+  const rows =
+    await jobRows.json();
+
   const job =
-    (
-      await jobRows.json()
-    )?.[0];
+    Array.isArray(
+      rows
+    )
+      ? rows[0]
+      : null;
+
 
   if (!job) {
     throw new HttpError(
@@ -124,9 +224,19 @@ export async function handleVideo(
     );
   }
 
+
+  /* ==========================================================
+  PROVIDER OWNERSHIP CHECK
+  ========================================================== */
+
+  const jobProvider =
+    canonicalProvider(
+      job.provider
+    );
+
   if (
-    job.provider !==
-    id
+    !jobProvider ||
+    jobProvider !== id
   ) {
     throw new HttpError(
       "Provider job tidak cocok.",
@@ -134,8 +244,17 @@ export async function handleVideo(
     );
   }
 
+
+  /* ==========================================================
+  STATUS
+  ========================================================== */
+
   if (
-    job.status !==
+    String(
+      job.status || ""
+    )
+      .trim()
+      .toLowerCase() !==
     "completed"
   ) {
     throw new HttpError(
@@ -144,12 +263,24 @@ export async function handleVideo(
     );
   }
 
+
+  /* ==========================================================
+  LOAD PROVIDER
+  ==========================================================
+  
+  includeDisabled = true
+
+  Video yang sudah selesai tetap dapat diambil walaupun
+  provider saat ini dinonaktifkan oleh admin.
+  ========================================================== */
+
   const provider =
     await getProvider(
       id,
       env,
       true
     );
+
 
   if (!provider) {
     throw new HttpError(
@@ -158,18 +289,58 @@ export async function handleVideo(
     );
   }
 
+
+  /* ==========================================================
+  RESOLVE ADAPTER
+  ==========================================================
+  
+  PRIORITAS:
+  
+  1. Adapter yang disimpan pada job
+  2. Adapter provider saat ini sebagai fallback
+  
+  Dengan begitu perubahan adapter di Admin tidak merusak
+  job lama yang sudah tersimpan.
+  ========================================================== */
+
+  const jobAdapterId =
+    getJobAdapterId(
+      job
+    );
+
+  const providerAdapterId =
+    normalizeAdapterId(
+      provider?.adapter
+    );
+
   const adapterId =
-    String(
-      provider?.adapter ||
-        ""
-    ).trim().toLowerCase();
+    jobAdapterId ||
+    providerAdapterId;
+
 
   if (!adapterId) {
     throw new HttpError(
-      `Provider ${id} belum memiliki adapter.`,
+      `Job ${job.id} belum memiliki adapter.`,
       400
     );
   }
+
+
+  /* ==========================================================
+  VALIDATE ADAPTER ID
+  ========================================================== */
+
+  if (
+    !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
+      adapterId
+    )
+  ) {
+    throw new HttpError(
+      `Adapter "${adapterId}" tidak valid.`,
+      400
+    );
+  }
+
 
   let adapter;
 
@@ -185,12 +356,16 @@ export async function handleVideo(
     );
   }
 
-  if (!adapter) {
+
+  if (
+    !adapter
+  ) {
     throw new HttpError(
       `Adapter "${adapterId}" belum tersedia di Worker.`,
       400
     );
   }
+
 
   if (
     typeof adapter.fetchVideo !==
@@ -202,42 +377,45 @@ export async function handleVideo(
     );
   }
 
-  /*
-   * ==========================================================
-   * TARGET VIDEO
-   * ==========================================================
-   *
-   * Router tidak membedakan provider.
-   *
-   * Adapter menentukan sendiri bagaimana target digunakan.
-   *
-   * Prioritas:
-   *
-   * 1. provider_file_id
-   * 2. video_url
-   *
-   * MiniMax dapat menggunakan file ID.
-   * Veo / Luma dapat menggunakan URL.
-   * Provider baru bebas menentukan format targetnya sendiri.
-   * ==========================================================
-   */
+
+  /* ==========================================================
+  TARGET VIDEO
+  ==========================================================
+  
+  Prioritas:
+  
+  1. provider_file_id
+  2. video_url
+  
+  Adapter menentukan sendiri cara menggunakan target.
+  ========================================================== */
+
+  const metadata =
+    job?.metadata &&
+    typeof job.metadata === "object" &&
+    !Array.isArray(job.metadata)
+      ? job.metadata
+      : {};
+
 
   const providerFileId =
     String(
-      job?.metadata
-        ?.provider_file_id ||
-        ""
+      metadata.provider_file_id ||
+      ""
     ).trim();
+
 
   const videoUrl =
     String(
       job?.video_url ||
-        ""
+      ""
     ).trim();
+
 
   const target =
     providerFileId ||
     videoUrl;
+
 
   if (!target) {
     throw new HttpError(
@@ -246,9 +424,22 @@ export async function handleVideo(
     );
   }
 
-  /*
-   * Jangan izinkan proxy memanggil dirinya sendiri.
-   */
+
+  if (
+    target.length >
+    MAX_TARGET_LENGTH
+  ) {
+    throw new HttpError(
+      "Target video provider terlalu panjang.",
+      400
+    );
+  }
+
+
+  /* ==========================================================
+  SELF-PROXY PROTECTION
+  ========================================================== */
+
   if (
     target.startsWith(
       "/api/video"
@@ -260,18 +451,39 @@ export async function handleVideo(
     );
   }
 
-  /*
-   * ==========================================================
-   * ADAPTER EXECUTION
-   * ==========================================================
-   */
 
-  const response =
-    await adapter.fetchVideo(
-      target,
-      provider,
-      env
+  /* ==========================================================
+  ADAPTER EXECUTION
+  ========================================================== */
+
+  let response;
+
+  try {
+    response =
+      await adapter.fetchVideo(
+        target,
+        provider,
+        env
+      );
+  } catch (error) {
+    console.error(
+      "video adapter failed",
+      adapterId,
+      String(
+        error?.message ||
+        "unknown"
+      ).slice(
+        0,
+        300
+      )
     );
+
+    throw new HttpError(
+      "Gagal mengambil video dari provider.",
+      502
+    );
+  }
+
 
   if (!response) {
     throw new HttpError(
@@ -280,20 +492,39 @@ export async function handleVideo(
     );
   }
 
+
   if (
     !response.ok
   ) {
+    const providerStatus =
+      Number(
+        response.status || 502
+      );
+
+    const safeStatus =
+      providerStatus >= 400 &&
+      providerStatus <= 599
+        ? providerStatus
+        : 502;
+
+
     throw new HttpError(
-      `Gagal mengambil video (${response.status}).`,
-      response.status
+      `Gagal mengambil video (${safeStatus}).`,
+      safeStatus
     );
   }
 
-  /*
-   * ==========================================================
-   * RETURN VIDEO
-   * ==========================================================
-   */
+
+  /* ==========================================================
+  RETURN VIDEO
+  ========================================================== */
+
+  const contentType =
+    response.headers.get(
+      "Content-Type"
+    ) ||
+    "video/mp4";
+
 
   return new Response(
     response.body,
@@ -306,10 +537,7 @@ export async function handleVideo(
         ),
 
         "Content-Type":
-          response.headers.get(
-            "Content-Type"
-          ) ||
-          "video/mp4",
+          contentType,
 
         "Cache-Control":
           "private, no-store"
