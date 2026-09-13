@@ -4,19 +4,22 @@
  * ADMIN PROVIDER MANAGEMENT
  * ============================================================
  *
- * Adapter dibuat fleksibel.
- * Admin dapat memasukkan adapter secara manual.
+ * Provider Management
  *
- * Contoh:
- * veo
- * minimax
- * luma
- * kling
- * runway
- * seedance
- * adapter-provider-baru
+ * Fitur:
+ * - List provider
+ * - Tambah provider
+ * - Edit provider
+ * - Activate / Deactivate
+ * - Delete provider
+ * - Provider ID
+ * - Provider Name
+ * - Adapter bebas
+ * - API Key
+ * - Config JSON
+ * - Status
  *
- * Implementasi adapter tetap berada di file masing-masing.
+ * Adapter tidak dikunci di frontend.
  * ============================================================
  */
 
@@ -24,7 +27,7 @@
   "use strict";
 
   const API_TIMEOUT = 15000;
-  const AUTH_TIMEOUT = 10000;
+  const AUTH_TIMEOUT = 8000;
 
   const state = {
     providers: [],
@@ -35,7 +38,7 @@
 
 
   /* ============================================================
-   * DOM HELPER
+   * DOM
    * ============================================================ */
 
   function $(id) {
@@ -69,7 +72,7 @@
     }
 
     el.textContent = message || "";
-    el.className = "status";
+    el.className = "admin-status-message";
 
     if (type) {
       el.classList.add(type);
@@ -78,82 +81,140 @@
 
 
   /* ============================================================
-   * AUTH READY
-   *
-   * Jangan bergantung pada GENZ_AUTH_INITIALIZED karena flag
-   * tersebut tidak dijamin tersedia.
-   *
-   * Provider page menggunakan window.GENZ.auth secara langsung.
+   * AUTH
    * ============================================================ */
 
-  function authIsReady() {
+  function authAvailable() {
     return !!(
       window.GENZ &&
-      window.GENZ.auth &&
-      (
-        typeof window.GENZ.auth.token === "function" ||
-        typeof window.GENZ.auth.getSession === "function"
-      )
+      window.GENZ.auth
     );
   }
 
 
+  async function withTimeout(
+    promise,
+    timeout,
+    message
+  ) {
+    let timer;
+
+    const timeoutPromise =
+      new Promise(function (_, reject) {
+        timer = setTimeout(function () {
+          const error =
+            new Error(message);
+
+          error.status = 408;
+
+          reject(error);
+        }, timeout);
+      });
+
+    try {
+      return await Promise.race([
+        promise,
+        timeoutPromise
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+
   async function waitForAuth() {
-    if (authIsReady()) {
+    if (authAvailable()) {
       return true;
     }
 
-    const started = Date.now();
+    const started =
+      Date.now();
 
-    while (Date.now() - started < AUTH_TIMEOUT) {
-      if (authIsReady()) {
+    while (
+      Date.now() - started <
+      AUTH_TIMEOUT
+    ) {
+      if (authAvailable()) {
         return true;
       }
 
-      await new Promise(function (resolve) {
-        setTimeout(resolve, 100);
-      });
+      await new Promise(
+        function (resolve) {
+          setTimeout(
+            resolve,
+            100
+          );
+        }
+      );
     }
 
-    return authIsReady();
+    return authAvailable();
   }
 
 
   async function getAuthToken() {
-    if (!authIsReady()) {
+    const ready =
+      await waitForAuth();
+
+    if (!ready) {
       throw new Error(
         "Sistem autentikasi belum tersedia."
       );
     }
 
+
+    /*
+     * Prioritas:
+     * window.GENZ.auth.token()
+     */
     if (
       typeof window.GENZ.auth.token ===
       "function"
     ) {
       const token =
-        await window.GENZ.auth.token();
+        await withTimeout(
+          window.GENZ.auth.token(),
+          AUTH_TIMEOUT,
+          "Sesi autentikasi tidak merespons."
+        );
 
       if (token) {
         return token;
       }
     }
 
+
+    /*
+     * Fallback:
+     * window.GENZ.auth.getSession()
+     */
     if (
       typeof window.GENZ.auth.getSession ===
       "function"
     ) {
-      const sessionResult =
-        await window.GENZ.auth.getSession();
+      const result =
+        await withTimeout(
+          window.GENZ.auth.getSession(),
+          AUTH_TIMEOUT,
+          "Sesi autentikasi tidak merespons."
+        );
 
-      const session =
-        sessionResult &&
-        sessionResult.data &&
-        sessionResult.data.session
-          ? sessionResult.data.session
-          : sessionResult &&
-              sessionResult.session
-            ? sessionResult.session
-            : null;
+      let session = null;
+
+      if (
+        result &&
+        result.data &&
+        result.data.session
+      ) {
+        session =
+          result.data.session;
+      } else if (
+        result &&
+        result.session
+      ) {
+        session =
+          result.session;
+      }
 
       if (
         session &&
@@ -162,6 +223,7 @@
         return session.access_token;
       }
     }
+
 
     throw new Error(
       "Sesi login tidak ditemukan."
@@ -173,19 +235,27 @@
    * API
    * ============================================================ */
 
-  async function api(path, options) {
-    const opts = options || {};
+  async function api(
+    path,
+    options
+  ) {
+    const opts =
+      options || {};
 
     const token =
       await getAuthToken();
 
-    const headers = Object.assign(
-      {
-        Accept: "application/json",
-        Authorization: "Bearer " + token
-      },
-      opts.headers || {}
-    );
+    const headers =
+      Object.assign(
+        {
+          Accept:
+            "application/json",
+
+          Authorization:
+            "Bearer " + token
+        },
+        opts.headers || {}
+      );
 
     if (
       opts.body !== undefined &&
@@ -198,10 +268,13 @@
     const controller =
       new AbortController();
 
-    const timeout =
-      setTimeout(function () {
-        controller.abort();
-      }, API_TIMEOUT);
+    const timer =
+      setTimeout(
+        function () {
+          controller.abort();
+        },
+        API_TIMEOUT
+      );
 
     try {
       const response =
@@ -217,7 +290,10 @@
               opts.body,
 
             signal:
-              controller.signal
+              controller.signal,
+
+            cache:
+              "no-store"
           }
         );
 
@@ -236,7 +312,7 @@
         try {
           data =
             await response.json();
-        } catch {
+        } catch (_) {
           data = null;
         }
       } else {
@@ -244,13 +320,12 @@
           const text =
             await response.text();
 
-          data =
-            text
-              ? {
-                  message: text
-                }
-              : null;
-        } catch {
+          if (text) {
+            data = {
+              message: text
+            };
+          }
+        } catch (_) {
           data = null;
         }
       }
@@ -291,7 +366,7 @@
       ) {
         const timeoutError =
           new Error(
-            "Permintaan terlalu lama. Server tidak merespons."
+            "Server terlalu lama merespons."
           );
 
         timeoutError.status =
@@ -303,7 +378,7 @@
       throw error;
 
     } finally {
-      clearTimeout(timeout);
+      clearTimeout(timer);
     }
   }
 
@@ -332,14 +407,14 @@
         )
       );
 
-    const roleValidated =
+    const validated =
       data &&
       (
         data.roleValidated === true ||
         data.role_validated === true
       );
 
-    const isAdmin =
+    const admin =
       data &&
       (
         data.isAdmin === true ||
@@ -349,12 +424,12 @@
       );
 
     if (
-      !isAdmin ||
-      roleValidated !== true
+      !admin ||
+      validated !== true
     ) {
       const error =
         new Error(
-          "Akses admin diperlukan."
+          "Akses admin ditolak."
         );
 
       error.status =
@@ -372,21 +447,21 @@
    * ============================================================ */
 
   function showApp() {
-    const denied =
-      $("providerDenied");
-
     const loading =
       $("providerLoading");
+
+    const denied =
+      $("providerDenied");
 
     const app =
       $("providerApp");
 
-    if (denied) {
-      denied.hidden = true;
-    }
-
     if (loading) {
       loading.hidden = true;
+    }
+
+    if (denied) {
+      denied.hidden = true;
     }
 
     if (app) {
@@ -396,11 +471,11 @@
 
 
   function showDenied(message) {
-    const denied =
-      $("providerDenied");
-
     const loading =
       $("providerLoading");
+
+    const denied =
+      $("providerDenied");
 
     const app =
       $("providerApp");
@@ -416,15 +491,28 @@
     if (denied) {
       denied.hidden = false;
 
-      const messageEl =
+      const text =
         denied.querySelector(
           "[data-provider-denied-message]"
         );
 
-      if (messageEl) {
-        messageEl.textContent =
+      if (text) {
+        text.textContent =
           message ||
-          "Anda tidak memiliki akses ke halaman ini.";
+          "Akses ditolak.";
+      } else {
+        const paragraphs =
+          denied.querySelectorAll(
+            "p"
+          );
+
+        if (paragraphs.length) {
+          paragraphs[
+            paragraphs.length - 1
+          ].textContent =
+            message ||
+            "Akses ditolak.";
+        }
       }
     }
 
@@ -437,10 +525,12 @@
 
 
   /* ============================================================
-   * NORMALIZE PROVIDER
+   * NORMALIZE
    * ============================================================ */
 
-  function normalizeProvider(provider) {
+  function normalizeProvider(
+    provider
+  ) {
     const item =
       provider || {};
 
@@ -489,7 +579,7 @@
 
 
   /* ============================================================
-   * RENDER PROVIDERS
+   * RENDER PROVIDER LIST
    * ============================================================ */
 
   function renderProviders() {
@@ -510,8 +600,11 @@
 
     if (count) {
       count.textContent =
-        String(
-          providers.length
+        providers.length +
+        (
+          providers.length === 1
+            ? " provider"
+            : " provider"
         );
     }
 
@@ -527,81 +620,92 @@
 
     list.innerHTML =
       providers
-        .map(function (provider) {
-          const statusClass =
-            provider.enabled
-              ? "enabled"
-              : "disabled";
+        .map(
+          function (provider) {
+            const active =
+              provider.enabled;
 
-          const statusText =
-            provider.enabled
-              ? "Aktif"
-              : "Nonaktif";
+            return (
+              '<div class="provider-card" data-provider-id="' +
+                escapeHtml(
+                  provider.id
+                ) +
+              '">' +
 
-          return (
-            '<div class="provider-card" data-provider-id="' +
-              escapeHtml(provider.id) +
-            '">' +
+                '<div class="provider-info">' +
 
-              '<div class="provider-info">' +
+                  '<div class="provider-name">' +
+                    escapeHtml(
+                      provider.name ||
+                      provider.id
+                    ) +
+                  "</div>" +
 
-                '<div class="provider-name">' +
-                  escapeHtml(
-                    provider.name ||
-                    provider.id
-                  ) +
+                  '<div class="provider-meta">' +
+
+                    "<span>ID: " +
+                      escapeHtml(
+                        provider.id
+                      ) +
+                    "</span>" +
+
+                    "<span>Adapter: " +
+                      escapeHtml(
+                        provider.adapter ||
+                        "-"
+                      ) +
+                    "</span>" +
+
+                    '<span class="provider-status ' +
+                      (
+                        active
+                          ? "enabled"
+                          : "disabled"
+                      ) +
+                    '">' +
+                      (
+                        active
+                          ? "Aktif"
+                          : "Nonaktif"
+                      ) +
+                    "</span>" +
+
+                  "</div>" +
+
                 "</div>" +
 
-                '<div class="provider-meta">' +
+                '<div class="provider-actions">' +
 
-                  "<span>ID: " +
+                  '<button type="button" class="btn btn-secondary" data-action="edit" data-id="' +
                     escapeHtml(
                       provider.id
                     ) +
-                  "</span>" +
+                  '">Edit</button>' +
 
-                  "<span>Adapter: " +
+                  '<button type="button" class="btn btn-secondary" data-action="toggle" data-id="' +
                     escapeHtml(
-                      provider.adapter ||
-                      "-"
+                      provider.id
                     ) +
-                  "</span>" +
-
-                  '<span class="provider-status ' +
-                    statusClass +
                   '">' +
-                    statusText +
-                  "</span>" +
+                    (
+                      active
+                        ? "Deactivate"
+                        : "Activate"
+                    ) +
+                  "</button>" +
+
+                  '<button type="button" class="btn btn-danger" data-action="delete" data-id="' +
+                    escapeHtml(
+                      provider.id
+                    ) +
+                  '">Delete</button>' +
 
                 "</div>" +
 
-              "</div>" +
-
-              '<div class="provider-actions">' +
-
-                '<button type="button" class="btn btn-secondary" data-action="edit" data-id="' +
-                  escapeHtml(provider.id) +
-                '">Edit</button>' +
-
-                '<button type="button" class="btn btn-secondary" data-action="toggle" data-id="' +
-                  escapeHtml(provider.id) +
-                '">' +
-                  (
-                    provider.enabled
-                      ? "Deactivate"
-                      : "Activate"
-                  ) +
-                "</button>" +
-
-                '<button type="button" class="btn btn-danger" data-action="delete" data-id="' +
-                  escapeHtml(provider.id) +
-                '">Delete</button>' +
-
-              "</div>" +
-
-            "</div>"
-          );
-        })
+              "</div>"
+            );
+          }
+        )
         .join("");
   }
 
@@ -620,12 +724,9 @@
     const list =
       $("providerList");
 
-    if (
-      list &&
-      !state.providers.length
-    ) {
+    if (list) {
       list.innerHTML =
-        '<div class="loading-state">Memuat provider...</div>';
+        '<div class="admin-loading">Memuat provider...</div>';
     }
 
     try {
@@ -634,20 +735,31 @@
           "/api/admin/providers"
         );
 
-      const providers =
+      let providers = [];
+
+      if (
         Array.isArray(data)
-          ? data
-          : data &&
-              Array.isArray(
-                data.providers
-              )
-            ? data.providers
-            : data &&
-                Array.isArray(
-                  data.data
-                )
-              ? data.data
-              : [];
+      ) {
+        providers = data;
+
+      } else if (
+        data &&
+        Array.isArray(
+          data.providers
+        )
+      ) {
+        providers =
+          data.providers;
+
+      } else if (
+        data &&
+        Array.isArray(
+          data.data
+        )
+      ) {
+        providers =
+          data.data;
+      }
 
       state.providers =
         providers.map(
@@ -664,16 +776,20 @@
 
     } catch (error) {
       console.error(
-        "GEN-Z.AI provider load error:",
+        "[GEN-Z.AI Provider] Load error:",
         error
       );
 
-      if (error.status === 401) {
+      if (
+        error.status === 401
+      ) {
         showDenied(
           "Sesi login tidak valid. Silakan login kembali."
         );
 
-      } else if (error.status === 403) {
+      } else if (
+        error.status === 403
+      ) {
         showDenied(
           "Akses admin ditolak."
         );
@@ -706,41 +822,115 @@
 
 
   /* ============================================================
-   * EDITOR
+   * EDITOR HTML
    * ============================================================ */
 
-  function renderEditor(provider) {
+  function createEditor() {
     const editor =
       $("providerEditor");
-
-    const title =
-      $("providerEditorTitle");
 
     if (!editor) {
       return;
     }
 
-    const isEdit =
-      !!provider;
+    editor.innerHTML =
+      '<div class="admin-card">' +
 
-    state.editingId =
-      isEdit
-        ? provider.id
-        : null;
+        '<div class="admin-card-header">' +
 
-    if (title) {
-      title.textContent =
-        isEdit
-          ? "Edit Provider"
-          : "Tambah Provider";
+          '<div>' +
+            '<h2 id="providerEditorTitle">Tambah Provider</h2>' +
+            '<p>Masukkan konfigurasi provider AI.</p>' +
+          "</div>" +
+
+        "</div>" +
+
+        '<div class="admin-form-grid">' +
+
+          "<label>" +
+            "<span>Provider ID</span>" +
+            '<input id="providerIdInput" type="text" autocomplete="off" placeholder="contoh: veo-v8">' +
+            "<small>ID unik provider.</small>" +
+          "</label>" +
+
+          "<label>" +
+            "<span>Nama Provider</span>" +
+            '<input id="providerNameInput" type="text" autocomplete="off" placeholder="contoh: Google Veo">' +
+            "<small>Nama yang tampil di Admin Control.</small>" +
+          "</label>" +
+
+          "<label>" +
+            "<span>Adapter</span>" +
+            '<input id="providerAdapterInput" type="text" autocomplete="off" spellcheck="false" placeholder="contoh: veo, kling, runway, seedance">' +
+            "<small>Adapter bebas. Tidak dibatasi daftar tertentu.</small>" +
+          "</label>" +
+
+          "<label>" +
+            "<span>API Key</span>" +
+            '<input id="providerApiKeyInput" type="password" autocomplete="new-password" placeholder="Masukkan API key provider">' +
+            "<small>API key provider.</small>" +
+          "</label>" +
+
+          '<label style="grid-column: 1 / -1;">' +
+            "<span>Config</span>" +
+            '<textarea id="providerConfigInput" rows="10" spellcheck="false" placeholder="{\n  &quot;model&quot;: &quot;...&quot;\n}"></textarea>' +
+            "<small>Harus berupa JSON object yang valid.</small>" +
+          "</label>" +
+
+          '<label style="display:flex;align-items:center;gap:10px;">' +
+            '<input id="providerEnabledInput" type="checkbox" checked>' +
+            "<span>Provider Aktif</span>" +
+          "</label>" +
+
+          '<div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;">' +
+
+            '<button type="button" id="providerCancelButton" class="btn btn-secondary">' +
+              "Batal" +
+            "</button>" +
+
+            '<button type="button" id="providerSaveButton" class="btn admin-primary-btn">' +
+              "Simpan Provider" +
+            "</button>" +
+
+          "</div>" +
+
+        "</div>" +
+
+      "</div>";
+  }
+
+
+  /* ============================================================
+   * EDITOR
+   * ============================================================ */
+
+  function renderEditor(
+    provider
+  ) {
+    const editor =
+      $("providerEditor");
+
+    if (!editor) {
+      return;
     }
 
-    const normalized =
+    const item =
       normalizeProvider(
         provider || {}
       );
 
-    editor.hidden = false;
+    const editing =
+      !!provider;
+
+    state.editingId =
+      editing
+        ? item.id
+        : null;
+
+    createEditor();
+
+    const title =
+      $("providerEditorTitle");
 
     const idInput =
       $("providerIdInput");
@@ -760,45 +950,45 @@
     const enabledInput =
       $("providerEnabledInput");
 
+    if (title) {
+      title.textContent =
+        editing
+          ? "Edit Provider"
+          : "Tambah Provider";
+    }
+
     if (idInput) {
       idInput.value =
-        normalized.id || "";
+        item.id || "";
 
       idInput.disabled =
-        isEdit;
+        editing;
     }
 
     if (nameInput) {
       nameInput.value =
-        normalized.name || "";
+        item.name || "";
     }
 
-    /*
-     * Adapter sengaja menggunakan INPUT TEXT.
-     * Tidak ada daftar adapter yang dikunci di frontend.
-     */
     if (adapterInput) {
       adapterInput.value =
-        normalized.adapter || "";
-
-      adapterInput.placeholder =
-        "contoh: veo, minimax, luma, kling, runway, seedance";
+        item.adapter || "";
     }
 
     if (apiKeyInput) {
       apiKeyInput.value =
-        normalized.apiKey || "";
+        item.apiKey || "";
     }
 
     if (configInput) {
       try {
         configInput.value =
           JSON.stringify(
-            normalized.config || {},
+            item.config || {},
             null,
             2
           );
-      } catch {
+      } catch (_) {
         configInput.value =
           "{}";
       }
@@ -806,13 +996,18 @@
 
     if (enabledInput) {
       enabledInput.checked =
-        normalized.enabled !== false;
+        item.enabled !== false;
     }
+
+    editor.hidden =
+      false;
 
     editor.scrollIntoView({
       behavior: "smooth",
       block: "start"
     });
+
+    bindEditorEvents();
   }
 
 
@@ -821,18 +1016,26 @@
       $("providerEditor");
 
     if (editor) {
-      editor.hidden = true;
+      editor.hidden =
+        true;
+
+      editor.innerHTML =
+        "";
     }
 
-    state.editingId = null;
+    state.editingId =
+      null;
   }
 
 
   /* ============================================================
-   * FORM VALUE
+   * CONFIG
    * ============================================================ */
 
-  function readConfig(input) {
+  function readConfig() {
+    const input =
+      $("providerConfigInput");
+
     const raw =
       input
         ? input.value.trim()
@@ -842,32 +1045,34 @@
       return {};
     }
 
+    let parsed;
+
     try {
-      const parsed =
+      parsed =
         JSON.parse(raw);
 
-      if (
-        parsed === null ||
-        typeof parsed !== "object" ||
-        Array.isArray(parsed)
-      ) {
-        throw new Error(
-          "Config harus berupa object JSON."
-        );
-      }
-
-      return parsed;
-
-    } catch (error) {
+    } catch (_) {
       throw new Error(
         "Config JSON tidak valid."
       );
     }
+
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      throw new Error(
+        "Config harus berupa JSON object."
+      );
+    }
+
+    return parsed;
   }
 
 
   /* ============================================================
-   * SAVE PROVIDER
+   * SAVE
    * ============================================================ */
 
   async function saveProvider() {
@@ -882,9 +1087,6 @@
 
     const apiKeyInput =
       $("providerApiKeyInput");
-
-    const configInput =
-      $("providerConfigInput");
 
     const enabledInput =
       $("providerEnabledInput");
@@ -942,9 +1144,8 @@
 
     try {
       config =
-        readConfig(
-          configInput
-        );
+        readConfig();
+
     } catch (error) {
       setStatus(
         error.message,
@@ -957,16 +1158,17 @@
       id,
       name,
       adapter,
-      api_key: apiKey,
+      api_key:
+        apiKey,
       config,
       enabled
     };
 
-    const isEdit =
+    const editing =
       !!state.editingId;
 
     const path =
-      isEdit
+      editing
         ? "/api/admin/providers/" +
           encodeURIComponent(
             state.editingId
@@ -974,15 +1176,19 @@
         : "/api/admin/providers";
 
     const method =
-      isEdit
+      editing
         ? "PUT"
         : "POST";
 
-    const saveButton =
+    const button =
       $("providerSaveButton");
 
-    if (saveButton) {
-      saveButton.disabled = true;
+    if (button) {
+      button.disabled =
+        true;
+
+      button.textContent =
+        "Menyimpan...";
     }
 
     try {
@@ -997,20 +1203,20 @@
         }
       );
 
+      closeEditor();
+
       setStatus(
-        isEdit
+        editing
           ? "Provider berhasil diperbarui."
           : "Provider berhasil ditambahkan.",
         "success"
       );
 
-      closeEditor();
-
       await loadProviders();
 
     } catch (error) {
       console.error(
-        "GEN-Z.AI provider save error:",
+        "[GEN-Z.AI Provider] Save error:",
         error
       );
 
@@ -1021,18 +1227,24 @@
       );
 
     } finally {
-      if (saveButton) {
-        saveButton.disabled = false;
+      if (button) {
+        button.disabled =
+          false;
+
+        button.textContent =
+          "Simpan Provider";
       }
     }
   }
 
 
   /* ============================================================
-   * TOGGLE PROVIDER
+   * TOGGLE
    * ============================================================ */
 
-  async function toggleProvider(id) {
+  async function toggleProvider(
+    id
+  ) {
     if (!id) {
       return;
     }
@@ -1050,7 +1262,7 @@
       return;
     }
 
-    const nextEnabled =
+    const enabled =
       !provider.enabled;
 
     try {
@@ -1060,16 +1272,16 @@
         "/toggle",
         {
           method: "POST",
+
           body:
             JSON.stringify({
-              enabled:
-                nextEnabled
+              enabled
             })
         }
       );
 
       setStatus(
-        nextEnabled
+        enabled
           ? "Provider berhasil diaktifkan."
           : "Provider berhasil dinonaktifkan.",
         "success"
@@ -1079,7 +1291,7 @@
 
     } catch (error) {
       console.error(
-        "GEN-Z.AI provider toggle error:",
+        "[GEN-Z.AI Provider] Toggle error:",
         error
       );
 
@@ -1093,10 +1305,12 @@
 
 
   /* ============================================================
-   * DELETE PROVIDER
+   * DELETE
    * ============================================================ */
 
-  async function deleteProvider(id) {
+  async function deleteProvider(
+    id
+  ) {
     if (!id) {
       return;
     }
@@ -1120,7 +1334,7 @@
       window.confirm(
         'Hapus provider "' +
         name +
-        '"? Tindakan ini tidak dapat dibatalkan.'
+        '"?\n\nTindakan ini tidak dapat dibatalkan.'
       );
 
     if (!confirmed) {
@@ -1132,13 +1346,15 @@
         "/api/admin/providers/" +
         encodeURIComponent(id),
         {
-          method: "DELETE"
+          method:
+            "DELETE"
         }
       );
 
       if (
-        String(state.editingId) ===
-        String(id)
+        String(
+          state.editingId
+        ) === String(id)
       ) {
         closeEditor();
       }
@@ -1152,7 +1368,7 @@
 
     } catch (error) {
       console.error(
-        "GEN-Z.AI provider delete error:",
+        "[GEN-Z.AI Provider] Delete error:",
         error
       );
 
@@ -1166,61 +1382,42 @@
 
 
   /* ============================================================
-   * FIND PROVIDER
+   * FIND
    * ============================================================ */
 
   function findProvider(id) {
-    return state.providers.find(
-      function (provider) {
-        return String(
-          provider.id
-        ) === String(id);
-      }
-    ) || null;
+    return (
+      state.providers.find(
+        function (provider) {
+          return String(
+            provider.id
+          ) === String(id);
+        }
+      ) ||
+      null
+    );
   }
 
 
   /* ============================================================
-   * EVENTS
+   * EDITOR EVENTS
    * ============================================================ */
 
-  function bindEvents() {
-    const addButton =
-      $("addProviderButton") ||
-      $("addProviderBtn");
-
-    const refreshButton =
-      $("refreshProviderButton") ||
-      $("refreshProvidersButton") ||
-      $("refreshProviderBtn");
-
-    const saveButton =
+  function bindEditorEvents() {
+    const save =
       $("providerSaveButton");
 
-    const cancelButton =
-      $("providerCancelButton") ||
-      $("providerCancelBtn");
+    const cancel =
+      $("providerCancelButton");
 
-    if (addButton) {
-      addButton.addEventListener(
-        "click",
-        function () {
-          renderEditor(null);
-        }
-      );
-    }
+    if (
+      save &&
+      !save.dataset.bound
+    ) {
+      save.dataset.bound =
+        "true";
 
-    if (refreshButton) {
-      refreshButton.addEventListener(
-        "click",
-        function () {
-          loadProviders();
-        }
-      );
-    }
-
-    if (saveButton) {
-      saveButton.addEventListener(
+      save.addEventListener(
         "click",
         function () {
           saveProvider();
@@ -1228,19 +1425,96 @@
       );
     }
 
-    if (cancelButton) {
-      cancelButton.addEventListener(
+    if (
+      cancel &&
+      !cancel.dataset.bound
+    ) {
+      cancel.dataset.bound =
+        "true";
+
+      cancel.addEventListener(
         "click",
         function () {
           closeEditor();
         }
       );
     }
+  }
+
+
+  /* ============================================================
+   * MAIN EVENTS
+   * ============================================================ */
+
+  function bindEvents() {
+    const add =
+      $("addProviderBtn");
+
+    const refresh =
+      $("refreshProvidersBtn");
+
+    const back =
+      $("providerBackBtn");
+
+    if (
+      add &&
+      !add.dataset.bound
+    ) {
+      add.dataset.bound =
+        "true";
+
+      add.addEventListener(
+        "click",
+        function () {
+          renderEditor(
+            null
+          );
+        }
+      );
+    }
+
+    if (
+      refresh &&
+      !refresh.dataset.bound
+    ) {
+      refresh.dataset.bound =
+        "true";
+
+      refresh.addEventListener(
+        "click",
+        function () {
+          loadProviders();
+        }
+      );
+    }
+
+    if (
+      back &&
+      !back.dataset.bound
+    ) {
+      back.dataset.bound =
+        "true";
+
+      back.addEventListener(
+        "click",
+        function () {
+          window.location.href =
+            "/admin.html";
+        }
+      );
+    }
+
 
     const list =
       $("providerList");
 
-    if (list) {
+    if (
+      list &&
+      !list.dataset.bound
+    ) {
+      list.dataset.bound =
+        "true";
+
       list.addEventListener(
         "click",
         function (event) {
@@ -1259,7 +1533,10 @@
           const id =
             button.dataset.id;
 
-          if (action === "edit") {
+          if (
+            action ===
+            "edit"
+          ) {
             const provider =
               findProvider(id);
 
@@ -1272,13 +1549,24 @@
             return;
           }
 
-          if (action === "toggle") {
-            toggleProvider(id);
+          if (
+            action ===
+            "toggle"
+          ) {
+            toggleProvider(
+              id
+            );
+
             return;
           }
 
-          if (action === "delete") {
-            deleteProvider(id);
+          if (
+            action ===
+            "delete"
+          ) {
+            deleteProvider(
+              id
+            );
           }
         }
       );
@@ -1295,49 +1583,76 @@
       return;
     }
 
-    state.initialized = true;
+    state.initialized =
+      true;
 
     const loading =
       $("providerLoading");
 
     if (loading) {
-      loading.hidden = false;
+      loading.hidden =
+        false;
     }
 
     try {
       /*
-       * Tunggu object auth yang benar-benar digunakan.
-       * Tidak lagi menunggu GENZ_AUTH_INITIALIZED.
+       * Pastikan auth API sudah tersedia,
+       * tetapi jangan menggantung halaman
+       * tanpa batas.
        */
-      const authReady =
+      const ready =
         await waitForAuth();
 
-      if (!authReady) {
+      if (!ready) {
         throw new Error(
-          "Sistem autentikasi belum siap."
+          "Sistem autentikasi belum tersedia."
         );
       }
 
+      /*
+       * Verifikasi dilakukan oleh server.
+       */
       await verifyAdmin();
+
+      /*
+       * Siapkan editor container.
+       */
+      const editor =
+        $("providerEditor");
+
+      if (editor) {
+        editor.hidden =
+          true;
+      }
 
       bindEvents();
 
       showApp();
 
+      /*
+       * Baru setelah akses valid,
+       * ambil provider.
+       */
       await loadProviders();
 
     } catch (error) {
       console.error(
-        "GEN-Z.AI provider initialization error:",
+        "[GEN-Z.AI Provider] Initialization error:",
         error
       );
 
-      if (error.status === 401) {
+      if (
+        error.status ===
+        401
+      ) {
         showDenied(
           "Sesi login tidak valid. Silakan login kembali."
         );
 
-      } else if (error.status === 403) {
+      } else if (
+        error.status ===
+        403
+      ) {
         showDenied(
           "Akses admin ditolak."
         );
@@ -1358,20 +1673,29 @@
 
   window.GENZ_ADMIN_PROVIDERS = {
     init,
-    load: loadProviders,
-    refresh: loadProviders,
-    getState: function () {
-      return {
-        providers:
-          state.providers.slice(),
-        editingId:
-          state.editingId,
-        loading:
-          state.loading,
-        initialized:
-          state.initialized
-      };
-    }
+
+    load:
+      loadProviders,
+
+    refresh:
+      loadProviders,
+
+    getState:
+      function () {
+        return {
+          providers:
+            state.providers.slice(),
+
+          editingId:
+            state.editingId,
+
+          loading:
+            state.loading,
+
+          initialized:
+            state.initialized
+        };
+      }
   };
 
 
