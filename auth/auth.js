@@ -1,37 +1,139 @@
 import { HttpError } from "../lib/http.js";
 
-export async function currentUser(request, env) {
-  const auth =
-    request.headers.get("Authorization") || "";
+const AUTH_TIMEOUT_MS = 10000;
 
-  if (!auth.startsWith("Bearer ")) {
+function getSupabaseConfig(env) {
+  const baseUrl =
+    String(env?.SUPABASE_URL || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+  const serviceRoleKey =
+    String(env?.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+
+  if (!baseUrl) {
+    throw new HttpError(
+      "Konfigurasi SUPABASE_URL belum tersedia.",
+      500
+    );
+  }
+
+  if (!serviceRoleKey) {
+    throw new HttpError(
+      "Konfigurasi Supabase server belum tersedia.",
+      500
+    );
+  }
+
+  return {
+    baseUrl,
+    serviceRoleKey
+  };
+}
+
+function getBearerToken(request) {
+  const authorization =
+    String(
+      request?.headers?.get("Authorization") || ""
+    ).trim();
+
+  if (!/^Bearer\s+/i.test(authorization)) {
     return null;
   }
 
   const token =
-    auth.slice(7).trim();
+    authorization
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+
+  return token || null;
+}
+
+async function readUserResponse(response) {
+  const text =
+    await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    const data =
+      JSON.parse(text);
+
+    if (
+      !data ||
+      typeof data !== "object" ||
+      Array.isArray(data)
+    ) {
+      return null;
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function currentUser(request, env) {
+  const token =
+    getBearerToken(request);
 
   if (!token) {
     return null;
   }
 
-  const res =
-    await fetch(
-      `${env.SUPABASE_URL}/auth/v1/user`,
-      {
-        headers: {
-          apikey:
-            env.SUPABASE_SERVICE_ROLE_KEY,
+  const {
+    baseUrl,
+    serviceRoleKey
+  } = getSupabaseConfig(env);
 
-          Authorization:
-            `Bearer ${token}`
-        }
-      }
+  const controller =
+    new AbortController();
+
+  const timeout =
+    setTimeout(
+      () => controller.abort(),
+      AUTH_TIMEOUT_MS
     );
 
-  return res.ok
-    ? await res.json()
-    : null;
+  try {
+    const response =
+      await fetch(
+        `${baseUrl}/auth/v1/user`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${token}`
+          },
+          signal: controller.signal
+        }
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const user =
+      await readUserResponse(response);
+
+    if (!user?.id) {
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error(
+      "Supabase authentication request failed:",
+      error?.message || error
+    );
+
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function requireUser(request, env) {
