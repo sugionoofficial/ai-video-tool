@@ -48,11 +48,14 @@ NORMALIZE ADAPTER ID
 ============================================================ */
 
 function normalizeProviderId(value) {
+
   if (
     value === null ||
     value === undefined
   ) {
+
     return "";
+
   }
 
   return String(value)
@@ -60,6 +63,7 @@ function normalizeProviderId(value) {
     .toLowerCase()
     .replace(/[_\s]+/g, "-")
     .replace(/-+/g, "-");
+
 }
 
 
@@ -72,51 +76,73 @@ function registerAdapter(
   adapter,
   aliases = []
 ) {
+
   const normalizedId =
     normalizeProviderId(id);
 
   if (!normalizedId) {
+
     throw new Error(
       "Adapter ID tidak boleh kosong."
     );
+
   }
 
   if (
     !adapter ||
     typeof adapter !== "object"
   ) {
+
     throw new Error(
       `Implementasi adapter "${normalizedId}" tidak valid.`
     );
+
   }
 
   /*
   Register sebagai adapter utama.
   */
-  PROVIDERS[normalizedId] = adapter;
-  PRIMARY_ADAPTERS[normalizedId] = adapter;
+  PROVIDERS[normalizedId] =
+    adapter;
+
+  PRIMARY_ADAPTERS[normalizedId] =
+    adapter;
 
   /*
   Register alias.
   */
-  if (Array.isArray(aliases)) {
+  if (
+    Array.isArray(aliases)
+  ) {
+
     aliases.forEach(
-      (alias) => {
+      alias => {
+
         const normalizedAlias =
-          normalizeProviderId(alias);
+          normalizeProviderId(
+            alias
+          );
 
         if (
           normalizedAlias &&
-          normalizedAlias !== normalizedId
+          normalizedAlias !==
+            normalizedId
         ) {
-          PROVIDERS[normalizedAlias] =
+
+          PROVIDERS[
+            normalizedAlias
+          ] =
             adapter;
+
         }
+
       }
     );
+
   }
 
   return adapter;
+
 }
 
 
@@ -124,43 +150,77 @@ function registerAdapter(
 BUILT-IN ADAPTERS
 ============================================================ */
 
-import * as veo from "./veo.js";
-import * as minimax from "./minimax.js";
-import * as luma from "./luma.js";
+import * as veo
+  from "./veo.js";
 
+import * as minimax
+  from "./minimax.js";
+
+import * as luma
+  from "./luma.js";
+
+
+/* ============================================================
+GOOGLE GEMINI / VEO
+============================================================ */
 
 registerAdapter(
   "veo",
   veo,
   [
+
     "gemini",
+
+    "gemini2",
+
     "google-veo",
+
     "google veo",
+
     "gemini-veo",
+
     "gemini/veo"
+
   ]
 );
 
+
+/* ============================================================
+MINIMAX
+============================================================ */
 
 registerAdapter(
   "minimax",
   minimax,
   [
+
     "mini max",
+
     "mini-max",
+
     "minimax-ai",
+
     "minimax ai"
+
   ]
 );
 
+
+/* ============================================================
+LUMA
+============================================================ */
 
 registerAdapter(
   "luma",
   luma,
   [
+
     "luma-ai",
+
     "luma ai",
+
     "dream-machine"
+
   ]
 );
 
@@ -169,15 +229,26 @@ registerAdapter(
 GET ADAPTER
 ============================================================ */
 
-function getAdapter(providerId) {
+function getAdapter(
+  providerId
+) {
+
   const id =
-    normalizeProviderId(providerId);
+    normalizeProviderId(
+      providerId
+    );
 
   if (!id) {
+
     return null;
+
   }
 
-  return PROVIDERS[id] || null;
+  return (
+    PROVIDERS[id] ||
+    null
+  );
+
 }
 
 
@@ -189,22 +260,32 @@ function readAdapterMetadata(
   id,
   adapter
 ) {
+
   let metadata = {};
+
 
   /*
   Prioritaskan info() jika adapter menyediakan.
   */
   try {
+
     if (
       typeof adapter?.info ===
       "function"
     ) {
+
       metadata =
-        adapter.info() || {};
+        adapter.info() ||
+        {};
+
     }
+
   } catch {
+
     metadata = {};
+
   }
+
 
   /*
   Fallback ke property adapter.
@@ -214,7 +295,9 @@ function readAdapterMetadata(
     adapter?.capabilities ||
     {};
 
+
   return {
+
     id:
       metadata.id ||
       adapter?.id ||
@@ -254,7 +337,9 @@ function readAdapterMetadata(
       )
         ? capabilities.resolutions
         : []
+
   };
+
 }
 
 
@@ -262,12 +347,21 @@ function readAdapterMetadata(
 GET ADAPTER INFO
 ============================================================ */
 
-function getAdapterInfo(providerId) {
+function getAdapterInfo(
+  providerId
+) {
+
   const id =
-    normalizeProviderId(providerId);
+    normalizeProviderId(
+      providerId
+    );
+
 
   const adapter =
-    getAdapter(id);
+    getAdapter(
+      id
+    );
+
 
   /*
   Adapter belum memiliki implementasi.
@@ -277,18 +371,39 @@ function getAdapterInfo(providerId) {
   di database tanpa membuat sistem crash.
   */
   if (!adapter) {
+
     return {
+
       id,
-      name: id,
-      supported: false,
-      adapter: null,
-      capabilities: {},
-      models: [],
-      durations: [],
-      aspects: [],
-      resolutions: []
+
+      name:
+        id,
+
+      supported:
+        false,
+
+      adapter:
+        null,
+
+      capabilities:
+        {},
+
+      models:
+        [],
+
+      durations:
+        [],
+
+      aspects:
+        [],
+
+      resolutions:
+        []
+
     };
+
   }
+
 
   const metadata =
     readAdapterMetadata(
@@ -296,14 +411,19 @@ function getAdapterInfo(providerId) {
       adapter
     );
 
+
   return {
+
     id:
-      metadata.id || id,
+      metadata.id ||
+      id,
 
     name:
-      metadata.name || id,
+      metadata.name ||
+      id,
 
-    supported: true,
+    supported:
+      true,
 
     adapter,
 
@@ -321,7 +441,9 @@ function getAdapterInfo(providerId) {
 
     resolutions:
       metadata.resolutions
+
   };
+
 }
 
 
@@ -332,13 +454,17 @@ CHECK ADAPTER SUPPORT
 function adapterSupported(
   providerId
 ) {
-  const id =
-    normalizeProviderId(providerId);
 
-  return !!(
+  const id =
+    normalizeProviderId(
+      providerId
+    );
+
+  return Boolean(
     id &&
     PROVIDERS[id]
   );
+
 }
 
 
@@ -347,15 +473,18 @@ LIST PRIMARY ADAPTERS
 ============================================================ */
 
 function listAdapters() {
+
   /*
   Tidak hard-coded.
 
   Adapter yang sudah diregistrasikan
   akan otomatis muncul di daftar.
   */
+
   return Object.keys(
     PRIMARY_ADAPTERS
   );
+
 }
 
 
@@ -366,19 +495,32 @@ RESOLVE ADAPTER
 function resolveAdapter(
   providerId
 ) {
+
   const id =
-    normalizeProviderId(providerId);
+    normalizeProviderId(
+      providerId
+    );
+
 
   const adapter =
-    getAdapter(id);
+    getAdapter(
+      id
+    );
+
 
   if (!adapter) {
+
     throw new Error(
-      `Adapter "${String(providerId || "")}" belum tersedia.`
+      `Adapter "${String(
+        providerId || ""
+      )}" belum tersedia.`
     );
+
   }
 
+
   return adapter;
+
 }
 
 
@@ -387,9 +529,13 @@ GET REGISTRY
 ============================================================ */
 
 function getRegistry() {
+
   return Object.freeze({
+
     ...PROVIDERS
+
   });
+
 }
 
 
@@ -398,15 +544,25 @@ PUBLIC EXPORTS
 ============================================================ */
 
 export {
+
   PROVIDERS,
+
   registerAdapter,
+
   getAdapter,
+
   getAdapterInfo,
+
   listAdapters,
+
   resolveAdapter,
+
   adapterSupported,
+
   normalizeProviderId,
+
   getRegistry
+
 };
 
 
@@ -415,16 +571,28 @@ BROWSER COMPATIBILITY BRIDGE
 ============================================================ */
 
 if (
-  typeof window !== "undefined"
+  typeof window !==
+  "undefined"
 ) {
+
   window.GENZ_PROVIDERS = {
+
     getAdapter,
+
     getAdapterInfo,
+
     listAdapters,
+
     resolveAdapter,
+
     adapterSupported,
+
     normalizeProviderId,
+
     registerAdapter,
+
     getRegistry
+
   };
+
 }
