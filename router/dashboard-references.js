@@ -6,14 +6,28 @@ import {
 
 import { requireUser } from "../auth/auth.js";
 import { sb } from "../lib/supabase.js";
+
 /*
  * ============================================================
  * DASHBOARD REFERENCES API
  * ============================================================
+ *
+ * Endpoint:
+ * GET /api/dashboard/references
+ *
+ * Fungsi:
+ * - Mengambil video referensi aktif.
+ * - Mendukung filter kategori.
+ * - Tidak mengekspos data yang tidak diperlukan.
+ *
+ * Catatan:
+ * - CRUD admin tidak ditempatkan di sini.
+ * - "all" hanya digunakan sebagai filter frontend,
+ *   bukan sebagai kategori database.
+ * ============================================================
  */
 
 const DASHBOARD_REFERENCE_CATEGORIES = [
-  "all",
   "vlog",
   "motion",
   "affiliate",
@@ -21,13 +35,16 @@ const DASHBOARD_REFERENCE_CATEGORIES = [
   "product"
 ];
 
+const MAX_URL_LENGTH = 2048;
+
 function validateReferenceUrl(
   value,
   fieldName,
   required = false
 ) {
   const raw =
-    String(value || "").trim();
+    String(value || "")
+      .trim();
 
   if (!raw) {
     if (required) {
@@ -40,10 +57,21 @@ function validateReferenceUrl(
     return "";
   }
 
+  if (
+    raw.length >
+    MAX_URL_LENGTH
+  ) {
+    throw new HttpError(
+      `${fieldName} terlalu panjang.`,
+      400
+    );
+  }
+
   let parsed;
 
   try {
-    parsed = new URL(raw);
+    parsed =
+      new URL(raw);
   } catch {
     throw new HttpError(
       `${fieldName} tidak valid.`,
@@ -52,7 +80,10 @@ function validateReferenceUrl(
   }
 
   if (
-    !["http:", "https:"].includes(
+    ![
+      "http:",
+      "https:"
+    ].includes(
       parsed.protocol
     )
   ) {
@@ -100,7 +131,8 @@ function normalizeDashboardReference(
       );
     }
 
-    result.title = title;
+    result.title =
+      title;
   }
 
   if (
@@ -109,7 +141,7 @@ function normalizeDashboardReference(
   ) {
     const category =
       String(
-        body.category || "all"
+        body.category || ""
       )
         .trim()
         .toLowerCase();
@@ -133,7 +165,7 @@ function normalizeDashboardReference(
     !partial ||
     body.category_label !== undefined
   ) {
-    result.category_label =
+    const categoryLabel =
       String(
         body.category_label ||
           body.category ||
@@ -141,6 +173,10 @@ function normalizeDashboardReference(
       )
         .trim()
         .slice(0, 100);
+
+    result.category_label =
+      categoryLabel ||
+      "Semua";
   }
 
   if (
@@ -274,6 +310,18 @@ function normalizeDashboardReference(
       );
     }
 
+    if (
+      sortOrder <
+        -100000 ||
+      sortOrder >
+        100000
+    ) {
+      throw new HttpError(
+        "Urutan referensi berada di luar batas yang diizinkan.",
+        400
+      );
+    }
+
     result.sort_order =
       sortOrder;
   }
@@ -312,7 +360,7 @@ export async function dashboardReferencesApi(
       request.url
     );
 
-  const category =
+  const requestedCategory =
     String(
       url.searchParams.get(
         "category"
@@ -321,10 +369,13 @@ export async function dashboardReferencesApi(
       .trim()
       .toLowerCase();
 
+  /*
+   * "all" hanya berarti tanpa filter.
+   */
   if (
-    category !== "all" &&
+    requestedCategory !== "all" &&
     !DASHBOARD_REFERENCE_CATEGORIES.includes(
-      category
+      requestedCategory
     )
   ) {
     throw new HttpError(
@@ -334,16 +385,21 @@ export async function dashboardReferencesApi(
   }
 
   const categoryQuery =
-    category === "all"
+    requestedCategory === "all"
       ? ""
       : `&category=eq.${encodeURIComponent(
-          category
+          requestedCategory
         )}`;
 
   const response =
     await sb(
       `/rest/v1/dashboard_references?enabled=eq.true${categoryQuery}&select=id,title,category,category_label,description,video_url,poster_url,provider,model,duration,aspect_ratio,resolution,prompt,sort_order,enabled,created_at,updated_at&order=sort_order.asc,created_at.desc`,
-      {},
+      {
+        headers: {
+          Accept:
+            "application/json"
+        }
+      },
       env
     );
 
@@ -363,14 +419,27 @@ export async function dashboardReferencesApi(
     );
   }
 
+  const data =
+    await safeJson(
+      response
+    );
+
   const references =
-    await response.json();
+    Array.isArray(
+      data
+    )
+      ? data
+      : [];
 
   return json(
     {
-      success: true,
-      references:
-        references || []
+      success:
+        true,
+
+      category:
+        requestedCategory,
+
+      references
     },
     200,
     env
