@@ -8,18 +8,49 @@ const CAPABILITIES = {
     "veo-3.1-lite-generate-preview"
   ],
   durations: [4, 6, 8],
-  aspects: ["16:9", "9:16"],
-  resolutions: ["720p", "1080p", "4k"]
+  aspects: [
+    "16:9",
+    "9:16"
+  ],
+  resolutions: [
+    "720p",
+    "1080p",
+    "4k"
+  ]
 };
 
-function providerError(message, status = 400) {
-  const error = new Error(message);
-  error.status = status;
+
+/*
+ * ============================================================
+ * ERROR
+ * ============================================================
+ */
+
+function providerError(
+  message,
+  status = 400
+) {
+  const error =
+    new Error(message);
+
+  error.status =
+    status;
+
   return error;
 }
 
-async function safeJson(response) {
-  const text = await response.text();
+
+/*
+ * ============================================================
+ * SAFE JSON
+ * ============================================================
+ */
+
+async function safeJson(
+  response
+) {
+  const text =
+    await response.text();
 
   if (!text) {
     return {};
@@ -34,21 +65,73 @@ async function safeJson(response) {
   }
 }
 
-function apiError(data, fallback) {
-  return typeof data?.error === "string"
-    ? data.error
-    : data?.error?.message ||
-      data?.message ||
-      data?.raw ||
-      fallback;
+
+/*
+ * ============================================================
+ * API ERROR
+ * ============================================================
+ */
+
+function apiError(
+  data,
+  fallback
+) {
+  if (
+    typeof data?.error ===
+    "string"
+  ) {
+    return data.error;
+  }
+
+  if (
+    data?.error &&
+    typeof data.error.message ===
+    "string"
+  ) {
+    return data.error.message;
+  }
+
+  if (
+    typeof data?.message ===
+    "string"
+  ) {
+    return data.message;
+  }
+
+  if (
+    typeof data?.raw ===
+    "string"
+  ) {
+    return data.raw;
+  }
+
+  return fallback;
 }
 
-function normalizeDuration(value, fallback = 8) {
-  const duration = Number(value || fallback);
 
-  if (!CAPABILITIES.durations.includes(duration)) {
+/*
+ * ============================================================
+ * NORMALIZE DURATION
+ * ============================================================
+ */
+
+function normalizeDuration(
+  value,
+  fallback = 8
+) {
+  const duration =
+    Number(
+      value ?? fallback
+    );
+
+  if (
+    !Number.isFinite(duration) ||
+    !CAPABILITIES.durations.includes(
+      duration
+    )
+  ) {
     throw providerError(
-      "Durasi Veo harus 4, 6, atau 8 detik.",
+      "Durasi Veo tidak valid.",
       400
     );
   }
@@ -56,41 +139,89 @@ function normalizeDuration(value, fallback = 8) {
   return duration;
 }
 
-function parseImageData(value, maxBytes = 12 * 1024 * 1024) {
-  if (typeof value !== "string") {
+
+/*
+ * ============================================================
+ * PARSE IMAGE DATA
+ * ============================================================
+ */
+
+function parseImageData(
+  value,
+  maxBytes = 12 * 1024 * 1024
+) {
+  if (
+    typeof value !==
+    "string"
+  ) {
     return null;
   }
 
-  const match = value.match(
-    /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=\s]+)$/s
-  );
+  const match =
+    value.match(
+      /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=\s]+)$/s
+    );
 
   if (!match) {
     return null;
   }
 
-  const base64 = match[2].replace(/\s/g, "");
+  const base64 =
+    match[2].replace(
+      /\s/g,
+      ""
+    );
 
-  if (base64.length * 0.75 > maxBytes) {
+  /*
+   * Perkiraan ukuran byte
+   * dari base64.
+   */
+  if (
+    base64.length * 0.75 >
+    maxBytes
+  ) {
     return null;
   }
 
   return {
-    mimeType: match[1],
+    mimeType:
+      match[1],
+
     base64
   };
 }
+
+
+/*
+ * ============================================================
+ * ADAPTER INFO
+ * ============================================================
+ */
 
 export function info() {
   return {
     id: ID,
     name: NAME,
-    capabilities: CAPABILITIES
+    capabilities:
+      CAPABILITIES
   };
 }
 
-export async function generate(body, provider) {
-  const key = String(provider?.api_key || "").trim();
+
+/*
+ * ============================================================
+ * GENERATE
+ * ============================================================
+ */
+
+export async function generate(
+  body,
+  provider
+) {
+  const key =
+    String(
+      provider?.api_key || ""
+    ).trim();
 
   if (!key) {
     throw providerError(
@@ -99,46 +230,73 @@ export async function generate(body, provider) {
     );
   }
 
-  const model = String(
-    body?.model || CAPABILITIES.models[0]
-  ).trim();
+  const model =
+    String(
+      body?.model ||
+        CAPABILITIES.models[0]
+    ).trim();
 
-  if (!CAPABILITIES.models.includes(model)) {
+  if (
+    !CAPABILITIES.models.includes(
+      model
+    )
+  ) {
     throw providerError(
       "Model Veo tidak valid.",
       400
     );
   }
 
-  const duration = normalizeDuration(
-    body?.duration,
-    8
-  );
+  const duration =
+    normalizeDuration(
+      body?.duration,
+      8
+    );
 
-  const aspectRatio = String(
-    body?.aspectRatio || "16:9"
-  ).trim();
+  const aspectRatio =
+    String(
+      body?.aspectRatio ||
+        "16:9"
+    ).trim();
 
-  if (!CAPABILITIES.aspects.includes(aspectRatio)) {
+  if (
+    !CAPABILITIES.aspects.includes(
+      aspectRatio
+    )
+  ) {
     throw providerError(
       "Aspect ratio Veo tidak valid.",
       400
     );
   }
 
-  const resolution = String(
-    body?.resolution || "720p"
-  ).trim();
+  const resolution =
+    String(
+      body?.resolution ||
+        "720p"
+    ).trim();
 
-  if (!CAPABILITIES.resolutions.includes(resolution)) {
+  if (
+    !CAPABILITIES.resolutions.includes(
+      resolution
+    )
+  ) {
     throw providerError(
       "Resolusi Veo tidak valid.",
       400
     );
   }
 
+  /*
+   * Aturan khusus Veo.
+   *
+   * Tetap berada di adapter.
+   */
   if (
-    (resolution !== "720p" || body?.imageData) &&
+    (
+      resolution !== "720p" ||
+      body?.imageData
+    ) &&
     duration !== 8
   ) {
     throw providerError(
@@ -148,7 +306,8 @@ export async function generate(body, provider) {
   }
 
   if (
-    model === "veo-3.1-lite-generate-preview" &&
+    model ===
+      "veo-3.1-lite-generate-preview" &&
     resolution === "4k"
   ) {
     throw providerError(
@@ -157,9 +316,10 @@ export async function generate(body, provider) {
     );
   }
 
-  const prompt = String(
-    body?.prompt || ""
-  ).trim();
+  const prompt =
+    String(
+      body?.prompt || ""
+    ).trim();
 
   if (!prompt) {
     throw providerError(
@@ -172,8 +332,14 @@ export async function generate(body, provider) {
     prompt
   };
 
+  /*
+   * Image-to-video.
+   */
   if (body?.imageData) {
-    const image = parseImageData(body.imageData);
+    const image =
+      parseImageData(
+        body.imageData
+      );
 
     if (!image) {
       throw providerError(
@@ -184,33 +350,51 @@ export async function generate(body, provider) {
 
     instance.image = {
       inlineData: {
-        mimeType: image.mimeType,
-        data: image.base64
+        mimeType:
+          image.mimeType,
+
+        data:
+          image.base64
       }
     };
   }
 
-  const response = await fetch(
+  const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
       model
-    )}:predictLongRunning`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": key
-      },
-      body: JSON.stringify({
-        instances: [instance],
-        parameters: {
-          aspectRatio,
-          resolution
-        }
-      })
-    }
-  );
+    )}:predictLongRunning`;
 
-  const data = await safeJson(response);
+  const response =
+    await fetch(
+      endpoint,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          "x-goog-api-key":
+            key
+        },
+
+        body: JSON.stringify({
+          instances: [
+            instance
+          ],
+
+          parameters: {
+            aspectRatio,
+            resolution
+          }
+        })
+      }
+    );
+
+  const data =
+    await safeJson(
+      response
+    );
 
   if (!response.ok) {
     throw providerError(
@@ -226,7 +410,11 @@ export async function generate(body, provider) {
     data?.name ||
     data?.operationName;
 
-  if (!operationName) {
+  if (
+    typeof operationName !==
+      "string" ||
+    !operationName.trim()
+  ) {
     throw providerError(
       "Veo tidak mengembalikan operation name.",
       502
@@ -234,20 +422,40 @@ export async function generate(body, provider) {
   }
 
   return {
-    externalId: operationName,
-    provider: ID,
-    status: "processing",
+    externalId:
+      operationName,
+
+    provider:
+      ID,
+
+    status:
+      "processing",
+
     model,
+
     duration,
+
     aspectRatio,
+
     resolution
   };
 }
 
-export async function status(externalId, provider) {
-  const key = String(
-    provider?.api_key || ""
-  ).trim();
+
+/*
+ * ============================================================
+ * STATUS
+ * ============================================================
+ */
+
+export async function status(
+  externalId,
+  provider
+) {
+  const key =
+    String(
+      provider?.api_key || ""
+    ).trim();
 
   if (!key) {
     throw providerError(
@@ -256,9 +464,15 @@ export async function status(externalId, provider) {
     );
   }
 
-  const operation = String(
-    externalId || ""
-  ).replace(/^\//, "");
+  const operation =
+    String(
+      externalId || ""
+    )
+      .trim()
+      .replace(
+        /^\/+/,
+        ""
+      );
 
   if (!operation) {
     throw providerError(
@@ -267,16 +481,21 @@ export async function status(externalId, provider) {
     );
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/${operation}`,
-    {
-      headers: {
-        "x-goog-api-key": key
+  const response =
+    await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${operation}`,
+      {
+        headers: {
+          "x-goog-api-key":
+            key
+        }
       }
-    }
-  );
+    );
 
-  const data = await safeJson(response);
+  const data =
+    await safeJson(
+      response
+    );
 
   if (!response.ok) {
     throw providerError(
@@ -288,56 +507,106 @@ export async function status(externalId, provider) {
     );
   }
 
-  if (!data.done) {
+  if (!data?.done) {
     return {
-      success: true,
-      status: "processing",
-      provider: ID
+      success:
+        true,
+
+      status:
+        "processing",
+
+      provider:
+        ID
     };
   }
 
-  if (data.error) {
+  if (data?.error) {
     return {
-      success: true,
-      status: "failed",
-      provider: ID,
-      error: apiError(
-        data,
-        "Veo generation gagal."
-      )
+      success:
+        true,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
+      error:
+        apiError(
+          data,
+          "Veo generation gagal."
+        )
     };
   }
 
+  /*
+   * Veo dapat mengembalikan
+   * generatedSamples atau
+   * generatedVideos tergantung
+   * bentuk response API.
+   */
   const videoUrl =
-    data?.response?.generateVideoResponse
+    data
+      ?.response
+      ?.generateVideoResponse
       ?.generatedSamples?.[0]
       ?.video?.uri ||
-    data?.response?.generateVideoResponse
+    data
+      ?.response
+      ?.generateVideoResponse
       ?.generatedVideos?.[0]
       ?.video?.uri;
 
-  if (!videoUrl) {
+  if (
+    typeof videoUrl !==
+      "string" ||
+    !videoUrl.trim()
+  ) {
     return {
-      success: true,
-      status: "failed",
-      provider: ID,
+      success:
+        true,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
       error:
         "Veo selesai tetapi URL video tidak ditemukan."
     };
   }
 
   return {
-    success: true,
-    status: "completed",
-    provider: ID,
-    videoUrl
+    success:
+      true,
+
+    status:
+      "completed",
+
+    provider:
+      ID,
+
+    videoUrl:
+      videoUrl.trim()
   };
 }
 
-export async function fetchVideo(target, provider) {
-  const key = String(
-    provider?.api_key || ""
-  ).trim();
+
+/*
+ * ============================================================
+ * FETCH VIDEO
+ * ============================================================
+ */
+
+export async function fetchVideo(
+  target,
+  provider
+) {
+  const key =
+    String(
+      provider?.api_key || ""
+    ).trim();
 
   if (!key) {
     throw providerError(
@@ -346,18 +615,47 @@ export async function fetchVideo(target, provider) {
     );
   }
 
-  const url = new URL(
-    String(target || "")
-  );
+  const rawTarget =
+    String(
+      target || ""
+    ).trim();
 
+  if (!rawTarget) {
+    throw providerError(
+      "Target video Veo kosong.",
+      400
+    );
+  }
+
+  let url;
+
+  try {
+    url =
+      new URL(
+        rawTarget
+      );
+  } catch {
+    throw providerError(
+      "URL video Veo tidak valid.",
+      400
+    );
+  }
+
+  /*
+   * Hanya host resmi yang
+   * boleh diproxy.
+   */
   const allowedHosts = [
     "generativelanguage.googleapis.com",
     "storage.googleapis.com"
   ];
 
   if (
-    url.protocol !== "https:" ||
-    !allowedHosts.includes(url.hostname)
+    url.protocol !==
+      "https:" ||
+    !allowedHosts.includes(
+      url.hostname
+    )
   ) {
     throw providerError(
       "Host video Veo tidak diizinkan.",
@@ -365,24 +663,47 @@ export async function fetchVideo(target, provider) {
     );
   }
 
-  url.searchParams.delete("key");
+  /*
+   * Jangan pernah meneruskan
+   * API key dari target URL.
+   */
+  url.searchParams.delete(
+    "key"
+  );
 
   return fetch(
     url.toString(),
     {
       headers: {
-        "x-goog-api-key": key
+        "x-goog-api-key":
+          key
       }
     }
   );
 }
 
+
+/*
+ * ============================================================
+ * DEFAULT EXPORT
+ * ============================================================
+ */
+
 export default {
-  id: ID,
-  name: NAME,
-  capabilities: CAPABILITIES,
+  id:
+    ID,
+
+  name:
+    NAME,
+
+  capabilities:
+    CAPABILITIES,
+
   info,
+
   generate,
+
   status,
+
   fetchVideo
 };
