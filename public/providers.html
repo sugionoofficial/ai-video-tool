@@ -7,8 +7,8 @@
 
   <title>GEN-Z.AI - Provider Management</title>
 
-  <link rel="stylesheet" href="/css/style.css?v=provider-boot-20260913">
-  <link rel="stylesheet" href="/css/admin.css?v=provider-boot-20260913">
+  <link rel="stylesheet" href="/css/style.css?v=provider-20260913-2">
+  <link rel="stylesheet" href="/css/admin.css?v=provider-20260913-2">
 
   <style>
     * {
@@ -137,6 +137,7 @@
       background: rgba(255,95,109,.08);
 
       color: #ffb2b9 !important;
+
       font-family:
         ui-monospace,
         SFMono-Regular,
@@ -491,14 +492,7 @@
 
   <main class="provider-shell">
 
-    <!-- =====================================================
-         BOOT LOADING
-         ===================================================== -->
-
-    <section
-      id="providerLoading"
-      class="provider-box"
-    >
+    <section id="providerLoading" class="provider-box">
       <h2>
         <span class="provider-loading-dot"></span>
         Memuat Provider
@@ -514,11 +508,6 @@
         hidden
       ></p>
     </section>
-
-
-    <!-- =====================================================
-         ACCESS DENIED
-         ===================================================== -->
 
     <section
       id="providerDenied"
@@ -536,15 +525,7 @@
       </p>
     </section>
 
-
-    <!-- =====================================================
-         PROVIDER APP
-         ===================================================== -->
-
-    <section
-      id="providerApp"
-      hidden
-    >
+    <section id="providerApp" hidden>
 
       <div class="admin-card">
 
@@ -564,7 +545,6 @@
           </span>
 
         </div>
-
 
         <div class="admin-toolbar">
 
@@ -586,7 +566,6 @@
 
           </div>
 
-
           <button
             type="button"
             id="addProviderBtn"
@@ -597,13 +576,11 @@
 
         </div>
 
-
         <div
           id="providerStatus"
           class="admin-status-message"
           aria-live="polite"
         ></div>
-
 
         <div
           id="providerList"
@@ -616,7 +593,6 @@
 
       </div>
 
-
       <div
         id="providerEditor"
         hidden
@@ -626,39 +602,52 @@
 
   </main>
 
+  <!--
+    ==========================================================
+    SCRIPT UTAMA
+    ==========================================================
+    Sengaja menggunakan script biasa, bukan dynamic loader.
+    Dengan begitu browser langsung meminta kedua file ini.
+  -->
 
-  <!-- =======================================================
-       PROVIDER BOOT LOADER
-       ======================================================= -->
+  <script
+    src="/js/auth.js?v=provider-20260913-2"
+  ></script>
+
+  <script
+    src="/js/admin-providers.js?v=provider-20260913-2"
+  ></script>
+
+  <!--
+    ==========================================================
+    WATCHDOG
+    ==========================================================
+    Jika JavaScript gagal dimuat, halaman tidak akan diam
+    selamanya pada "Memuat Provider".
+  -->
 
   <script>
     (function () {
-
       "use strict";
 
-      var VERSION = "provider-boot-20260913";
-      var TIMEOUT = 12000;
+      var startedAt = Date.now();
 
-      var loading =
-        document.getElementById("providerLoading");
+      var timer = setInterval(function () {
 
-      var loadingText =
-        document.getElementById("providerLoadingText");
+        if (window.GENZ_ADMIN_PROVIDERS) {
+          clearInterval(timer);
+          return;
+        }
 
-      var bootError =
-        document.getElementById("providerBootError");
+        if (Date.now() - startedAt < 12000) {
+          return;
+        }
 
-      var denied =
-        document.getElementById("providerDenied");
+        clearInterval(timer);
 
-      var deniedMessage =
-        document.getElementById("providerDeniedMessage");
-
-      var app =
-        document.getElementById("providerApp");
-
-
-      function showBootError(message) {
+        var loading = document.getElementById("providerLoading");
+        var loadingText = document.getElementById("providerLoadingText");
+        var bootError = document.getElementById("providerBootError");
 
         if (loading) {
           loading.classList.add("error");
@@ -666,349 +655,19 @@
 
         if (loadingText) {
           loadingText.textContent =
-            "Provider gagal melakukan inisialisasi.";
+            "JavaScript Provider Management tidak berhasil dijalankan.";
         }
 
         if (bootError) {
           bootError.hidden = false;
-          bootError.textContent = message;
+
+          bootError.textContent =
+            "File admin-providers.js tidak terdeteksi setelah 12 detik. " +
+            "Kemungkinan deployment/cache masih menggunakan versi lama. " +
+            "Refresh deployment Cloudflare lalu buka kembali halaman ini.";
         }
 
-      }
-
-
-      function showDenied(message) {
-
-        if (loading) {
-          loading.hidden = true;
-        }
-
-        if (app) {
-          app.hidden = true;
-        }
-
-        if (denied) {
-          denied.hidden = false;
-        }
-
-        if (deniedMessage) {
-          deniedMessage.textContent =
-            message || "Akses administrator ditolak.";
-        }
-
-      }
-
-
-      function showApp() {
-
-        if (loading) {
-          loading.hidden = true;
-        }
-
-        if (denied) {
-          denied.hidden = true;
-        }
-
-        if (app) {
-          app.hidden = false;
-        }
-
-      }
-
-
-      function loadScript(src, callback) {
-
-        var script =
-          document.createElement("script");
-
-        var finished = false;
-
-
-        function done(error) {
-
-          if (finished) {
-            return;
-          }
-
-          finished = true;
-
-          if (error) {
-            callback(error);
-            return;
-          }
-
-          callback(null);
-        }
-
-
-        script.src = src;
-
-        script.async = false;
-
-        script.onload = function () {
-          done(null);
-        };
-
-        script.onerror = function () {
-          done(
-            new Error(
-              "Gagal memuat script: " + src
-            )
-          );
-        };
-
-
-        document.head.appendChild(script);
-
-
-        setTimeout(function () {
-
-          if (finished) {
-            return;
-          }
-
-          done(
-            new Error(
-              "Timeout saat memuat script: " + src
-            )
-          );
-
-        }, TIMEOUT);
-
-      }
-
-
-      function startProvider() {
-
-        if (
-          !window.GENZ_ADMIN_PROVIDERS ||
-          typeof window.GENZ_ADMIN_PROVIDERS.init !==
-            "function"
-        ) {
-
-          showBootError(
-            "admin-providers.js berhasil dimuat, " +
-            "tetapi window.GENZ_ADMIN_PROVIDERS tidak tersedia. " +
-            "Kemungkinan file gagal dieksekusi."
-          );
-
-          return;
-
-        }
-
-
-        try {
-
-          var result =
-            window.GENZ_ADMIN_PROVIDERS.init();
-
-          if (
-            result &&
-            typeof result.catch === "function"
-          ) {
-
-            result.catch(function (error) {
-
-              console.error(
-                "[GEN-Z.AI Provider] Init error:",
-                error
-              );
-
-              if (
-                error &&
-                error.status === 401
-              ) {
-
-                showDenied(
-                  "Sesi login tidak ditemukan atau sudah berakhir."
-                );
-
-                return;
-
-              }
-
-              if (
-                error &&
-                error.status === 403
-              ) {
-
-                showDenied(
-                  "Akses administrator ditolak."
-                );
-
-                return;
-
-              }
-
-              showBootError(
-                error &&
-                error.message
-                  ? error.message
-                  : "Provider gagal melakukan inisialisasi."
-              );
-
-            });
-
-          }
-
-        } catch (error) {
-
-          console.error(
-            "[GEN-Z.AI Provider] Start error:",
-            error
-          );
-
-          showBootError(
-            error &&
-            error.message
-              ? error.message
-              : "Terjadi kesalahan saat menjalankan Provider Management."
-          );
-
-        }
-
-      }
-
-
-      function loadAdminProviderScript() {
-
-        if (loadingText) {
-          loadingText.textContent =
-            "Memuat engine Provider Management...";
-        }
-
-
-        loadScript(
-          "/js/admin-providers.js?v=" + VERSION,
-          function (error) {
-
-            if (error) {
-
-              showBootError(
-                error.message
-              );
-
-              return;
-
-            }
-
-
-            if (
-              !window.GENZ_ADMIN_PROVIDERS
-            ) {
-
-              showBootError(
-                "File admin-providers.js termuat tetapi tidak mendaftarkan GENZ_ADMIN_PROVIDERS."
-              );
-
-              return;
-
-            }
-
-
-            if (loadingText) {
-              loadingText.textContent =
-                "Memeriksa akses administrator...";
-            }
-
-
-            startProvider();
-
-          }
-        );
-
-      }
-
-
-      function loadAuthScript() {
-
-        if (loadingText) {
-          loadingText.textContent =
-            "Memuat sistem autentikasi...";
-        }
-
-
-        if (
-          window.GENZ_AUTH &&
-          window.GENZ_AUTH_CLIENT
-        ) {
-
-          loadAdminProviderScript();
-          return;
-
-        }
-
-
-        loadScript(
-          "/js/auth.js?v=" + VERSION,
-          function (error) {
-
-            if (error) {
-
-              showBootError(
-                error.message
-              );
-
-              return;
-
-            }
-
-
-            loadAdminProviderScript();
-
-          }
-        );
-
-      }
-
-
-      /*
-       * Jangan menunggu DOMContentLoaded.
-       * Script ini berada di bagian paling bawah body,
-       * sehingga DOM sudah tersedia.
-       */
-
-      try {
-
-        loadAuthScript();
-
-      } catch (error) {
-
-        showBootError(
-          error &&
-          error.message
-            ? error.message
-            : "Boot Provider gagal."
-        );
-
-      }
-
-
-      /*
-       * Pengaman terakhir.
-       *
-       * Kalau seluruh proses tidak memberikan hasil,
-       * jangan biarkan layar loading menggantung selamanya.
-       */
-
-      setTimeout(function () {
-
-        if (
-          loading &&
-          !loading.hidden &&
-          !window.GENZ_ADMIN_PROVIDERS
-        ) {
-
-          showBootError(
-            "Provider Management berhenti saat boot. " +
-            "Periksa Network/Console untuk mengetahui file " +
-            "yang gagal dimuat."
-          );
-
-        }
-
-      }, TIMEOUT + 3000);
-
+      }, 500);
     })();
   </script>
 
