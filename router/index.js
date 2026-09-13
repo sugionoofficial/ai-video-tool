@@ -99,6 +99,7 @@ function hasApiKey(
 function isSupportedAdapter(
   adapter
 ) {
+
   const id =
     normalizedAdapter(
       adapter
@@ -109,14 +110,97 @@ function isSupportedAdapter(
   }
 
   try {
+
     return Boolean(
       resolveAdapter(
         id
       )
     );
+
   } catch {
+
     return false;
+
   }
+}
+
+
+// ============================================================
+// ERROR HELPERS
+// ============================================================
+
+function extractErrorCode(
+  error
+) {
+
+  const code =
+    error?.code ||
+    error?.errorCode ||
+    error?.details?.code ||
+    error?.data?.code ||
+    error?.data?.error?.code ||
+    "";
+
+  return String(
+    code || ""
+  )
+    .trim()
+    .slice(
+      0,
+      100
+    );
+}
+
+
+function getRawErrorMessage(
+  error
+) {
+
+  const candidates = [
+
+    error?.message,
+
+    error?.error?.message,
+
+    error?.data?.error?.message,
+
+    error?.data?.message,
+
+    error?.fail_reason,
+
+    error?.data?.fail_reason,
+
+    error?.reason,
+
+    error?.data?.reason
+
+  ];
+
+
+  for (
+    const value of candidates
+  ) {
+
+    if (
+      typeof value ===
+      "string" &&
+      value.trim()
+    ) {
+
+      return value
+        .trim()
+        .slice(
+          0,
+          2000
+        );
+
+    }
+
+  }
+
+
+  return "unknown";
+
 }
 
 
@@ -129,11 +213,65 @@ function getFriendlyErrorMessage(
   status
 ) {
 
+  const raw =
+    getRawErrorMessage(
+      error
+    );
+
+
   const message =
-    String(
-      error?.message ||
-      ""
-    ).toLowerCase();
+    raw.toLowerCase();
+
+
+  const code =
+    extractErrorCode(
+      error
+    );
+
+
+  // ----------------------------------------------------------
+  // CHINAAPI
+  // ----------------------------------------------------------
+  // Jangan menyamarkan error ChinaAPI.
+  // Adapter ChinaAPI sudah memberikan kode dan pesan provider.
+  // ----------------------------------------------------------
+
+  if (
+    /^chinaapi\s*\[/i.test(
+      raw
+    )
+  ) {
+
+    return raw;
+
+  }
+
+
+  // ----------------------------------------------------------
+  // CHINAAPI ERROR CODE
+  // ----------------------------------------------------------
+  // Jika adapter mengirim code terpisah tetapi message belum
+  // memiliki prefix ChinaAPI, tampilkan informasi tersebut.
+  // ----------------------------------------------------------
+
+  if (
+    code &&
+    (
+      error?.provider ===
+      "chinaapi" ||
+      error?.adapter ===
+      "chinaapi" ||
+      message.includes(
+        "chinaapi"
+      )
+    )
+  ) {
+
+    return (
+      `ChinaAPI [${code}]: ${raw}`
+    );
+
+  }
 
 
   // ----------------------------------------------------------
@@ -167,6 +305,7 @@ function getFriendlyErrorMessage(
       "atau kuota sedang penuh. " +
       "Silakan coba lagi beberapa saat."
     );
+
   }
 
 
@@ -196,6 +335,7 @@ function getFriendlyErrorMessage(
       "Provider terlalu lama merespons. " +
       "Silakan coba lagi beberapa saat."
     );
+
   }
 
 
@@ -217,6 +357,7 @@ function getFriendlyErrorMessage(
       "Provider pusat sedang mengalami gangguan. " +
       "Silakan coba lagi beberapa saat."
     );
+
   }
 
 
@@ -235,6 +376,7 @@ function getFriendlyErrorMessage(
       "Provider pusat gagal merespons dengan baik. " +
       "Silakan coba lagi."
     );
+
   }
 
 
@@ -253,6 +395,7 @@ function getFriendlyErrorMessage(
       "Provider pusat terlalu lama merespons. " +
       "Silakan coba lagi beberapa saat."
     );
+
   }
 
 
@@ -284,6 +427,7 @@ function getFriendlyErrorMessage(
       "Layanan provider sedang tidak tersedia. " +
       "Silakan gunakan provider lain atau coba lagi nanti."
     );
+
   }
 
 
@@ -313,6 +457,7 @@ function getFriendlyErrorMessage(
       "Provider sedang mengalami gangguan. " +
       "Silakan coba lagi beberapa saat."
     );
+
   }
 
 
@@ -329,6 +474,7 @@ function getFriendlyErrorMessage(
       "Provider pusat sedang mengalami gangguan. " +
       "Silakan coba lagi beberapa saat."
     );
+
   }
 
 
@@ -355,6 +501,7 @@ function getFriendlyErrorMessage(
       "Permintaan tidak dapat diproses oleh provider. " +
       "Silakan ubah prompt dan coba lagi."
     );
+
   }
 
 
@@ -366,6 +513,7 @@ function getFriendlyErrorMessage(
     "Generation gagal diproses. " +
     "Silakan coba lagi."
   );
+
 }
 
 
@@ -399,6 +547,7 @@ export async function router(
           )
       }
     );
+
   }
 
 
@@ -437,6 +586,7 @@ export async function router(
         200,
         env
       );
+
     }
 
 
@@ -476,6 +626,7 @@ export async function router(
           "Gagal membaca konfigurasi provider.",
           502
         );
+
       }
 
 
@@ -537,7 +688,9 @@ export async function router(
 
                       adapterSupported:
                         supported
+
                     };
+
                   }
                 )
               : [],
@@ -549,6 +702,7 @@ export async function router(
         200,
         env
       );
+
     }
 
 
@@ -582,6 +736,7 @@ export async function router(
           "Gagal mengambil daftar provider.",
           502
         );
+
       }
 
 
@@ -617,6 +772,7 @@ export async function router(
                   return isSupportedAdapter(
                     provider.adapter
                   );
+
                 }
               )
               .map(
@@ -639,6 +795,7 @@ export async function router(
         200,
         env
       );
+
     }
 
 
@@ -656,6 +813,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -674,6 +832,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -692,6 +851,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -710,6 +870,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -726,6 +887,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -744,6 +906,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -782,6 +945,7 @@ export async function router(
           "Request generation terlalu besar.",
           413
         );
+
       }
 
 
@@ -789,6 +953,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -807,6 +972,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -825,6 +991,7 @@ export async function router(
         request,
         env
       );
+
     }
 
 
@@ -839,6 +1006,7 @@ export async function router(
       return await env.ASSETS.fetch(
         request
       );
+
     }
 
 
@@ -857,9 +1025,6 @@ export async function router(
 
     // --------------------------------------------------------
     // SERVER LOG
-    //
-    // Error asli tetap disimpan di log Worker untuk debugging.
-    // Jangan dikirim mentah ke browser.
     // --------------------------------------------------------
 
     const status =
@@ -877,12 +1042,14 @@ export async function router(
 
 
     const rawMessage =
-      String(
-        err?.message ||
-        "unknown"
-      ).slice(
-        0,
-        2000
+      getRawErrorMessage(
+        err
+      );
+
+
+    const errorCode =
+      extractErrorCode(
+        err
       );
 
 
@@ -895,6 +1062,9 @@ export async function router(
         message:
           rawMessage,
 
+        code:
+          errorCode || undefined,
+
         path:
           url.pathname,
 
@@ -905,22 +1075,7 @@ export async function router(
 
 
     // --------------------------------------------------------
-    // USER-FRIENDLY ERROR
-    //
-    // ADMIN 4xx:
-    // Jangan disamarkan menjadi error provider.
-    //
-    // Contoh:
-    // "Provider masih memiliki job aktif..."
-    //
-    // harus tetap diterima frontend sebagai pesan yang benar.
-    //
-    // ADMIN 5xx:
-    // Tetap gunakan pesan aman agar error database/internal
-    // tidak bocor ke browser.
-    //
-    // ROUTE LAIN:
-    // Tetap menggunakan sistem friendly-error sebelumnya.
+    // ADMIN ROUTE
     // --------------------------------------------------------
 
     const isAdminRoute =
@@ -929,43 +1084,75 @@ export async function router(
       );
 
 
-    const userMessage =
+    // --------------------------------------------------------
+    // USER MESSAGE
+    // --------------------------------------------------------
+
+    let userMessage;
+
+
+    if (
       isAdminRoute &&
       safeStatus >= 400 &&
       safeStatus < 500
-        ? rawMessage
-        : getFriendlyErrorMessage(
-            err,
-            safeStatus
-          );
+    ) {
+
+      // HttpError admin 4xx aman ditampilkan.
+      userMessage =
+        rawMessage;
+
+    } else {
+
+      userMessage =
+        getFriendlyErrorMessage(
+          err,
+          safeStatus
+        );
+
+    }
 
 
     // --------------------------------------------------------
-    // RESPONSE KE BROWSER
-    //
-    // Tidak mengirim:
-    // - raw provider error pada error 5xx
-    // - API key
-    // - Authorization header
-    // - request body
-    //
-    // Untuk admin 4xx, rawMessage digunakan karena berisi
-    // pesan valid dari HttpError yang memang aman ditampilkan.
+    // RESPONSE
     // --------------------------------------------------------
+
+    const responseBody = {
+
+      success:
+        false,
+
+      error:
+        userMessage,
+
+      status:
+        safeStatus
+
+    };
+
+
+    // --------------------------------------------------------
+    // TAMBAHKAN ERROR CODE
+    // --------------------------------------------------------
+    // Tidak membocorkan API key atau request body.
+    // Kode error provider aman untuk debugging.
+    // --------------------------------------------------------
+
+    if (
+      errorCode
+    ) {
+
+      responseBody.errorCode =
+        errorCode;
+
+    }
+
 
     return json(
-      {
-        success:
-          false,
-
-        error:
-          userMessage,
-
-        status:
-          safeStatus
-      },
+      responseBody,
       safeStatus,
       env
     );
+
   }
+
 }
