@@ -364,10 +364,6 @@
 
   function clearImageReference() {
 
-    /*
-     * Bersihkan state utama.
-     */
-
     if (
       GENZ.state
     ) {
@@ -378,10 +374,6 @@
     }
 
 
-    /*
-     * Bersihkan state upload.
-     */
-
     if (
       GENZ.upload
     ) {
@@ -391,10 +383,6 @@
 
     }
 
-
-    /*
-     * Bersihkan file input.
-     */
 
     const imageInput =
       $('image');
@@ -416,10 +404,6 @@
     }
 
 
-    /*
-     * Bersihkan preview.
-     */
-
     const preview =
       $('imagePreview');
 
@@ -439,10 +423,6 @@
     }
 
 
-    /*
-     * Reset status file.
-     */
-
     const fileStatus =
       $('imageFileStatus');
 
@@ -454,12 +434,6 @@
 
     }
 
-
-    /*
-     * Beberapa versi upload
-     * menggunakan object URL.
-     * Bersihkan referensi jika ada.
-     */
 
     if (
       GENZ.upload &&
@@ -509,6 +483,10 @@
   }
 
 
+  /* =======================================================
+     MODEL IMAGE CAPABILITY
+  ======================================================= */
+
   function modelSupportsImage(
     provider,
     model
@@ -522,12 +500,25 @@
 
 
     /*
-     * Jika model mempunyai aturan eksplisit,
-     * ikuti aturan tersebut.
+     * Tidak ada rule model.
+     *
+     * Provider lama tetap dianggap
+     * mendukung image agar kompatibel.
+     */
+
+    if (!rules) {
+
+      return true;
+
+    }
+
+
+    /*
+     * Capability eksplisit memiliki
+     * prioritas paling tinggi.
      */
 
     if (
-      rules &&
       typeof rules.imageReferenceSupported ===
       'boolean'
     ) {
@@ -538,12 +529,110 @@
 
 
     /*
-     * Dukungan legacy:
+     * =====================================================
+     * AUTO-DETECT DARI TYPE MODEL
+     * =====================================================
      *
-     * Jika model tidak mempunyai rule image,
-     * tetap gunakan perilaku lama agar
-     * provider yang belum mendefinisikan
-     * capability tidak rusak.
+     * ChinaAPI saat ini mendefinisikan:
+     *
+     * t2v       = Text To Video
+     * i2v       = Image To Video
+     * r2v       = Reference To Video
+     * videoedit = Video Editing
+     *
+     * Jadi kita tidak bergantung pada flag
+     * imageReferenceSupported yang mungkin belum
+     * tersedia pada model lama.
+     */
+
+    const type =
+      text(
+        rules.type
+      ).toLowerCase();
+
+
+    /*
+     * Text To Video
+     * tidak menggunakan reference image.
+     */
+
+    if (
+      type === 't2v' ||
+      type === 'text-to-video' ||
+      type === 'text2video'
+    ) {
+
+      return false;
+
+    }
+
+
+    /*
+     * Video editing menggunakan video,
+     * bukan reference image biasa.
+     */
+
+    if (
+      type === 'videoedit' ||
+      type === 'video-edit' ||
+      type === 'v2v' ||
+      type === 'video-to-video'
+    ) {
+
+      return false;
+
+    }
+
+
+    /*
+     * Image To Video.
+     */
+
+    if (
+      type === 'i2v' ||
+      type === 'image-to-video' ||
+      type === 'image2video'
+    ) {
+
+      return true;
+
+    }
+
+
+    /*
+     * Reference To Video.
+     */
+
+    if (
+      type === 'r2v' ||
+      type === 'reference-to-video' ||
+      type === 'reference2video'
+    ) {
+
+      return true;
+
+    }
+
+
+    /*
+     * Model yang secara eksplisit
+     * membutuhkan image otomatis
+     * mendukung image.
+     */
+
+    if (
+      rules.requiresImage === true
+    ) {
+
+      return true;
+
+    }
+
+
+    /*
+     * Provider lama yang belum
+     * mendefinisikan type tetap
+     * menggunakan perilaku legacy.
      */
 
     return true;
@@ -576,23 +665,21 @@
 
 
     /*
-     * Jika model tidak mendukung image,
-     * jangan pernah memakai mode imageToVideo.
+     * Jangan memakai imageToVideo jika
+     * model tidak mendukung image.
      */
 
-    if (
-      !rules.imageReferenceSupported
-    ) {
-
-      return (
-        rules.textToVideo ||
-        null
+    const imageSupported =
+      modelSupportsImage(
+        provider,
+        model
       );
 
-    }
 
-
-    if (hasImage) {
+    if (
+      hasImage &&
+      imageSupported
+    ) {
 
       return (
         rules.imageToVideo ||
@@ -1000,6 +1087,99 @@
 
 
   /* =======================================================
+     FIND REFERENCE IMAGE GROUP
+  ======================================================= */
+
+  function findReferenceImageGroup(
+    imageInput
+  ) {
+
+    if (!imageInput) {
+
+      return null;
+
+    }
+
+
+    /*
+     * Struktur utama GEN-Z.AI:
+     *
+     * .reference-group
+     */
+
+    const directGroup =
+      imageInput.closest(
+        '.reference-group'
+      );
+
+
+    if (directGroup) {
+
+      return directGroup;
+
+    }
+
+
+    /*
+     * Fallback apabila komponen upload
+     * dibuat ulang oleh frontend.
+     */
+
+    const preview =
+      $('imagePreview');
+
+
+    if (preview) {
+
+      const previewGroup =
+        preview.closest(
+          '.reference-group'
+        );
+
+
+      if (previewGroup) {
+
+        return previewGroup;
+
+      }
+
+    }
+
+
+    /*
+     * Fallback berdasarkan label
+     * input image.
+     */
+
+    const label =
+      document.querySelector(
+        'label[for="image"]'
+      );
+
+
+    if (label) {
+
+      const labelGroup =
+        label.closest(
+          '.reference-group'
+        );
+
+
+      if (labelGroup) {
+
+        return labelGroup;
+
+      }
+
+    }
+
+
+    return null;
+
+  }
+
+
+  /* =======================================================
      UPDATE IMAGE AVAILABILITY
   ======================================================= */
 
@@ -1024,22 +1204,14 @@
       );
 
 
-    /*
-     * Container utama Reference Image.
-     *
-     * Generator menggunakan:
-     * <div class="reference-group">
-     */
-
     const imageGroup =
-      imageInput.closest(
-        '.reference-group'
+      findReferenceImageGroup(
+        imageInput
       );
 
 
     /*
-     * Jika model belum dipilih,
-     * image tetap ditampilkan.
+     * Model belum dipilih.
      */
 
     if (!model) {
@@ -1057,6 +1229,10 @@
         imageGroup.style.display =
           '';
 
+        imageGroup.removeAttribute(
+          'aria-hidden'
+        );
+
       }
 
       return;
@@ -1071,15 +1247,16 @@
       );
 
 
-    /* =====================================================
-       MODEL TIDAK MENDUKUNG IMAGE
-    ===================================================== */
+    /*
+     * =====================================================
+     * MODEL TIDAK MENDUKUNG REFERENCE IMAGE
+     * =====================================================
+     */
 
     if (!supported) {
 
       /*
-       * Sembunyikan seluruh
-       * Reference Image group.
+       * Sembunyikan seluruh group.
        */
 
       if (imageGroup) {
@@ -1091,17 +1268,31 @@
         imageGroup.style.display =
           'none';
 
+        imageGroup.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+
       }
 
+
+      /*
+       * Disable input sebagai
+       * lapisan pengaman kedua.
+       */
 
       imageInput.disabled =
         true;
 
 
+      imageInput.setAttribute(
+        'aria-disabled',
+        'true'
+      );
+
+
       /*
-       * Bersihkan seluruh state
-       * supaya image lama tidak ikut
-       * terkirim ke backend.
+       * Bersihkan image lama.
        */
 
       clearImageReference();
@@ -1112,9 +1303,11 @@
     }
 
 
-    /* =====================================================
-       MODEL MENDUKUNG IMAGE
-    ===================================================== */
+    /*
+     * =====================================================
+     * MODEL MENDUKUNG REFERENCE IMAGE
+     * =====================================================
+     */
 
     if (imageGroup) {
 
@@ -1125,11 +1318,20 @@
       imageGroup.style.display =
         '';
 
+      imageGroup.removeAttribute(
+        'aria-hidden'
+      );
+
     }
 
 
     imageInput.disabled =
       false;
+
+
+    imageInput.removeAttribute(
+      'aria-disabled'
+    );
 
   }
 
@@ -1165,8 +1367,6 @@
     /*
      * Model berubah ke model
      * yang tidak mendukung image.
-     *
-     * Bersihkan image terlebih dahulu.
      */
 
     if (!imageSupported) {
@@ -1177,8 +1377,7 @@
 
 
     /*
-     * Setelah state dibersihkan,
-     * update tampilan.
+     * Sinkronkan tampilan.
      */
 
     updateImageAvailability(
@@ -1393,9 +1592,6 @@
 
     /*
      * IMAGE
-     *
-     * Harus dieksekusi segera setelah
-     * model ditentukan.
      */
 
     updateImageAvailability(
@@ -1433,8 +1629,7 @@
 
 
     /*
-     * Ambil status image TERBARU
-     * setelah model diproses.
+     * Ambil image state terbaru.
      */
 
     const hasImage =
@@ -1451,13 +1646,6 @@
         previousDuration
       );
 
-
-    /*
-     * Jika image baru saja dipilih,
-     * pertahankan perilaku khusus
-     * provider yang memang membutuhkan
-     * duration tertentu.
-     */
 
     if (
       changedField === 'image' &&
@@ -1505,8 +1693,7 @@
 
 
     /*
-     * Jika user memilih resolution
-     * tertentu, cari duration yang kompatibel.
+     * Resolution → Duration
      */
 
     if (
@@ -1567,8 +1754,7 @@
 
 
     /*
-     * Hitung ulang resolution
-     * setelah duration final.
+     * Hitung ulang resolution.
      */
 
     resolution =
