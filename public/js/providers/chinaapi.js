@@ -442,7 +442,7 @@ function getImageUrl(body) {
     !/^https?:\/\//i.test(url)
   ) {
     throw providerError(
-      "ChinaAPI membutuhkan URL gambar yang dapat diakses publik.",
+      "ChinaAPI membutuhkan URL gambar publik. Upload gambar dari frontend saat ini masih berupa Data URL/Base64.",
       400
     );
   }
@@ -516,11 +516,36 @@ function buildPayload(body) {
       body?.aspectRatio
     );
 
+  /*
+   * Jangan membaca imageData untuk model
+   * yang memang tidak mendukung reference image.
+   *
+   * Ini penting karena frontend menyimpan
+   * upload sebagai Data URL/Base64.
+   */
   const imageUrl =
-    getImageUrl(body);
+    rule.imageReferenceSupported === true
+      ? getImageUrl(body)
+      : null;
 
   const images =
-    getImages(body);
+    rule.imageReferenceSupported === true
+      ? getImages(body)
+      : [];
+
+  /*
+   * Model yang secara eksplisit membutuhkan
+   * gambar wajib mendapat reference image.
+   */
+  if (
+    rule.requiresImage === true &&
+    !imageUrl
+  ) {
+    throw providerError(
+      `${model} membutuhkan gambar referensi berupa URL publik.`,
+      400
+    );
+  }
 
   const resolution =
     String(
@@ -566,7 +591,7 @@ function buildPayload(body) {
     if (rule.type === "i2v") {
       if (!imageUrl) {
         throw providerError(
-          "Wan I2V membutuhkan gambar referensi.",
+          "Wan I2V membutuhkan gambar referensi berupa URL publik.",
           400
         );
       }
@@ -707,7 +732,7 @@ function buildPayload(body) {
    * ==========================================================
    * KLING V3
    * ==========================================================
- */
+   */
 
   if (rule.type === "kling3") {
     if (imageUrl) {
@@ -958,7 +983,7 @@ function buildPayload(body) {
     if (rule.type === "i2v") {
       if (!imageUrl) {
         throw providerError(
-          "HappyHorse I2V membutuhkan gambar referensi.",
+          "HappyHorse I2V membutuhkan gambar referensi berupa URL publik.",
           400
         );
       }
