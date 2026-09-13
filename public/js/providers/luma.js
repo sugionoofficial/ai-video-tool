@@ -1,3 +1,8 @@
+// ============================================================
+// GEN-Z.AI
+// LUMA PROVIDER ADAPTER
+// ============================================================
+
 const ID = "luma";
 const NAME = "Luma";
 
@@ -6,10 +11,12 @@ const CAPABILITIES = {
     "ray-2",
     "ray-flash-2"
   ],
+
   durations: [
     "5s",
     "9s"
   ],
+
   aspects: [
     "1:1",
     "16:9",
@@ -19,6 +26,7 @@ const CAPABILITIES = {
     "21:9",
     "9:21"
   ],
+
   resolutions: [
     "720p",
     "1080p",
@@ -26,11 +34,24 @@ const CAPABILITIES = {
   ]
 };
 
+// ------------------------------------------------------------
+// ERROR
+// ------------------------------------------------------------
+
 function providerError(message, status = 400) {
-  const error = new Error(message);
-  error.status = status;
+  const error = new Error(
+    String(message || "Luma provider error.")
+  );
+
+  error.status = Number(status) || 400;
+  error.provider = ID;
+
   return error;
 }
+
+// ------------------------------------------------------------
+// SAFE JSON
+// ------------------------------------------------------------
 
 async function safeJson(response) {
   const text = await response.text();
@@ -48,22 +69,58 @@ async function safeJson(response) {
   }
 }
 
+// ------------------------------------------------------------
+// API ERROR NORMALIZATION
+// ------------------------------------------------------------
+
 function apiError(data, fallback) {
-  return typeof data?.error === "string"
-    ? data.error
-    : data?.error?.message ||
-      data?.message ||
-      data?.raw ||
-      fallback;
+  if (!data || typeof data !== "object") {
+    return fallback;
+  }
+
+  if (typeof data.error === "string") {
+    return data.error;
+  }
+
+  if (
+    data.error &&
+    typeof data.error === "object" &&
+    typeof data.error.message === "string"
+  ) {
+    return data.error.message;
+  }
+
+  if (typeof data.message === "string") {
+    return data.message;
+  }
+
+  if (typeof data.failure_reason === "string") {
+    return data.failure_reason;
+  }
+
+  if (typeof data.raw === "string") {
+    return data.raw.slice(0, 500);
+  }
+
+  return fallback;
 }
+
+// ------------------------------------------------------------
+// CAPABILITIES
+// ------------------------------------------------------------
 
 export function info() {
   return {
     id: ID,
     name: NAME,
+    supported: true,
     capabilities: CAPABILITIES
   };
 }
+
+// ------------------------------------------------------------
+// GENERATE
+// ------------------------------------------------------------
 
 export async function generate(body, provider) {
   const key = String(
@@ -77,6 +134,10 @@ export async function generate(body, provider) {
     );
   }
 
+  // ----------------------------------------------------------
+  // MODEL
+  // ----------------------------------------------------------
+
   const model = String(
     body?.model || "ray-2"
   ).trim();
@@ -87,6 +148,10 @@ export async function generate(body, provider) {
       400
     );
   }
+
+  // ----------------------------------------------------------
+  // ASPECT RATIO
+  // ----------------------------------------------------------
 
   const aspectRatio = String(
     body?.aspectRatio || "16:9"
@@ -99,6 +164,10 @@ export async function generate(body, provider) {
     );
   }
 
+  // ----------------------------------------------------------
+  // DURATION
+  // ----------------------------------------------------------
+
   const duration = String(
     body?.duration || "5s"
   ).trim();
@@ -109,6 +178,30 @@ export async function generate(body, provider) {
       400
     );
   }
+
+  // ----------------------------------------------------------
+  // RESOLUTION
+  //
+  // Luma API configuration saat ini tidak menggunakan field
+  // resolution secara langsung dalam payload.
+  // Namun nilai tetap divalidasi agar frontend/backend tidak
+  // menerima capability yang tidak dikenal.
+  // ----------------------------------------------------------
+
+  const resolution = String(
+    body?.resolution || "720p"
+  ).trim().toLowerCase();
+
+  if (!CAPABILITIES.resolutions.includes(resolution)) {
+    throw providerError(
+      "Resolusi Luma tidak valid.",
+      400
+    );
+  }
+
+  // ----------------------------------------------------------
+  // PROMPT
+  // ----------------------------------------------------------
 
   const prompt = String(
     body?.prompt || ""
@@ -121,12 +214,24 @@ export async function generate(body, provider) {
     );
   }
 
+  // ----------------------------------------------------------
+  // IMAGE REFERENCE
+  //
+  // Adapter ini hanya menerima prompt untuk konfigurasi
+  // yang digunakan GEN-Z.AI. Jangan mengirim base64 mentah
+  // ke endpoint Luma.
+  // ----------------------------------------------------------
+
   if (body?.imageData) {
     throw providerError(
       "Character reference Luma pada konfigurasi ini memerlukan public image URL. Gunakan Veo atau MiniMax untuk gambar lokal.",
       400
     );
   }
+
+  // ----------------------------------------------------------
+  // PAYLOAD
+  // ----------------------------------------------------------
 
   const payload = {
     model,
@@ -135,17 +240,33 @@ export async function generate(body, provider) {
     duration
   };
 
-  const response = await fetch(
-    "https://api.lumalabs.ai/dream-machine/v1/generations/video",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    }
-  );
+  // ----------------------------------------------------------
+  // REQUEST
+  // ----------------------------------------------------------
+
+  let response;
+
+  try {
+    response = await fetch(
+      "https://api.lumalabs.ai/dream-machine/v1/generations/video",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+
+        body: JSON.stringify(payload)
+      }
+    );
+  } catch {
+    throw providerError(
+      "Tidak dapat terhubung ke server Luma.",
+      502
+    );
+  }
 
   const data = await safeJson(response);
 
@@ -155,14 +276,17 @@ export async function generate(body, provider) {
         data,
         `Luma error (${response.status}).`
       ),
-      response.status
+      response.status >= 400 && response.status < 600
+        ? response.status
+        : 502
     );
   }
 
-  const id =
-    data?.id;
+  const externalId = String(
+    data?.id || ""
+  ).trim();
 
-  if (!id) {
+  if (!externalId) {
     throw providerError(
       "Luma tidak mengembalikan generation ID.",
       502
@@ -170,14 +294,19 @@ export async function generate(body, provider) {
   }
 
   return {
-    externalId: String(id),
+    externalId,
     provider: ID,
     status: "processing",
     model,
     duration,
-    aspectRatio
+    aspectRatio,
+    resolution
   };
 }
+
+// ------------------------------------------------------------
+// STATUS
+// ------------------------------------------------------------
 
 export async function status(
   externalId,
@@ -205,16 +334,26 @@ export async function status(
     );
   }
 
-  const response = await fetch(
-    `https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(
-      id
-    )}`,
-    {
-      headers: {
-        Authorization: `Bearer ${key}`
+  let response;
+
+  try {
+    response = await fetch(
+      `https://api.lumalabs.ai/dream-machine/v1/generations/${encodeURIComponent(id)}`,
+      {
+        method: "GET",
+
+        headers: {
+          Authorization: `Bearer ${key}`,
+          Accept: "application/json"
+        }
       }
-    }
-  );
+    );
+  } catch {
+    throw providerError(
+      "Tidak dapat terhubung ke server Luma.",
+      502
+    );
+  }
 
   const data = await safeJson(response);
 
@@ -224,21 +363,31 @@ export async function status(
         data,
         `Luma status error (${response.status}).`
       ),
-      response.status
+      response.status >= 400 && response.status < 600
+        ? response.status
+        : 502
     );
   }
 
   const state = String(
     data?.state ||
-      data?.status ||
-      ""
-  ).toLowerCase();
+    data?.status ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+  // ----------------------------------------------------------
+  // FAILED
+  // ----------------------------------------------------------
 
   if (
     [
       "failed",
       "failure",
-      "error"
+      "error",
+      "cancelled",
+      "canceled"
     ].includes(state)
   ) {
     return {
@@ -247,23 +396,58 @@ export async function status(
       provider: ID,
       error:
         data?.failure_reason ||
+        data?.error?.message ||
+        data?.error ||
         "Luma generation gagal."
     };
   }
 
+  // ----------------------------------------------------------
+  // VIDEO URL
+  // ----------------------------------------------------------
+
   const videoUrl =
     data?.assets?.video ||
     data?.video?.url ||
-    data?.video_url;
+    data?.video_url ||
+    null;
 
   if (videoUrl) {
     return {
       success: true,
       status: "completed",
       provider: ID,
-      videoUrl
+      videoUrl: String(videoUrl)
     };
   }
+
+  // ----------------------------------------------------------
+  // EXPLICIT SUCCESS TANPA VIDEO
+  //
+  // Jangan menganggap task completed jika Luma belum
+  // memberikan asset video.
+  // ----------------------------------------------------------
+
+  if (
+    [
+      "completed",
+      "complete",
+      "success",
+      "succeeded"
+    ].includes(state)
+  ) {
+    return {
+      success: true,
+      status: "failed",
+      provider: ID,
+      error:
+        "Luma menyatakan generation selesai tetapi video tidak ditemukan."
+    };
+  }
+
+  // ----------------------------------------------------------
+  // PROCESSING
+  // ----------------------------------------------------------
 
   return {
     success: true,
@@ -271,6 +455,10 @@ export async function status(
     provider: ID
   };
 }
+
+// ------------------------------------------------------------
+// FETCH VIDEO
+// ------------------------------------------------------------
 
 export async function fetchVideo(
   target,
@@ -287,38 +475,97 @@ export async function fetchVideo(
     );
   }
 
-  const url = new URL(
-    String(target || "")
-  );
+  const rawTarget = String(
+    target || ""
+  ).trim();
 
-  const allowedHosts = [
+  if (!rawTarget) {
+    throw providerError(
+      "URL video Luma kosong.",
+      400
+    );
+  }
+
+  let url;
+
+  try {
+    url = new URL(rawTarget);
+  } catch {
+    throw providerError(
+      "URL video Luma tidak valid.",
+      400
+    );
+  }
+
+  // ----------------------------------------------------------
+  // SECURITY
+  // ----------------------------------------------------------
+
+  const allowedHosts = new Set([
     "storage.cdn-luma.com",
     "api.lumalabs.ai"
-  ];
+  ]);
 
-  if (
-    url.protocol !== "https:" ||
-    !allowedHosts.includes(url.hostname)
-  ) {
+  const hostname = String(
+    url.hostname || ""
+  ).toLowerCase();
+
+  if (url.protocol !== "https:") {
+    throw providerError(
+      "Video Luma hanya boleh menggunakan HTTPS.",
+      403
+    );
+  }
+
+  if (!allowedHosts.has(hostname)) {
     throw providerError(
       "Host video Luma tidak diizinkan.",
       403
     );
   }
 
-  return fetch(
-    url.toString(),
-    {
-      headers: {
-        Authorization: `Bearer ${key}`
+  // Jangan meneruskan credential sebagai query parameter.
+  url.searchParams.delete("api_key");
+  url.searchParams.delete("key");
+
+  let response;
+
+  try {
+    response = await fetch(
+      url.toString(),
+      {
+        method: "GET",
+
+        headers: {
+          Authorization: `Bearer ${key}`
+        }
       }
-    }
-  );
+    );
+  } catch {
+    throw providerError(
+      "Tidak dapat mengambil video dari Luma.",
+      502
+    );
+  }
+
+  if (!response.ok) {
+    throw providerError(
+      `Gagal mengambil video Luma (${response.status}).`,
+      502
+    );
+  }
+
+  return response;
 }
+
+// ------------------------------------------------------------
+// DEFAULT ADAPTER
+// ------------------------------------------------------------
 
 export default {
   id: ID,
   name: NAME,
+  supported: true,
   capabilities: CAPABILITIES,
   info,
   generate,
