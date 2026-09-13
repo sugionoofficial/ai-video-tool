@@ -46,8 +46,12 @@ import {
 } from "../lib/supabase.js";
 
 import {
-  adapterInfo
-} from "../providers/provider-utils.js";
+  requireAdmin
+} from "../auth/role.js";
+
+import {
+  resolveAdapter
+} from "../providers/index.js";
 
 import {
   publicProvider
@@ -58,14 +62,17 @@ import {
 // CONSTANTS
 // ============================================================
 
-const MAX_GENERATE_REQUEST_BYTES = 65536;
+const MAX_GENERATE_REQUEST_BYTES =
+  65536;
 
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-function normalizedAdapter(value) {
+function normalizedAdapter(
+  value
+) {
   return String(
     value || ""
   )
@@ -74,7 +81,9 @@ function normalizedAdapter(value) {
 }
 
 
-function hasApiKey(provider) {
+function hasApiKey(
+  provider
+) {
   return Boolean(
     String(
       provider?.api_key || ""
@@ -83,18 +92,27 @@ function hasApiKey(provider) {
 }
 
 
-function isSupportedAdapter(adapter) {
-  const id = normalizedAdapter(
-    adapter
-  );
+function isSupportedAdapter(
+  adapter
+) {
+  const id =
+    normalizedAdapter(
+      adapter
+    );
 
   if (!id) {
     return false;
   }
 
-  return Boolean(
-    adapterInfo(id)
-  );
+  try {
+    return Boolean(
+      resolveAdapter(
+        id
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 
@@ -151,7 +169,8 @@ export async function router(
 
       return json(
         {
-          success: true,
+          success:
+            true,
 
           supabaseUrl:
             env.SUPABASE_URL ||
@@ -170,10 +189,10 @@ export async function router(
     // ========================================================
     // DIAGNOSTIC
     //
-    // Diagnostic boleh melihat provider yang tersimpan,
-    // termasuk provider dengan adapter yang belum tersedia.
+    // HANYA ADMIN / OWNER
     //
-    // API key mentah TIDAK PERNAH dikirim ke client.
+    // Endpoint ini membaca konfigurasi provider dari database.
+    // API key mentah tidak pernah dikirim ke client.
     // ========================================================
 
     if (
@@ -182,6 +201,12 @@ export async function router(
       request.method ===
         "GET"
     ) {
+
+      await requireAdmin(
+        request,
+        env
+      );
+
 
       const res =
         await sb(
@@ -210,7 +235,8 @@ export async function router(
 
       return json(
         {
-          success: true,
+          success:
+            true,
 
           worker:
             "GEN-Z.AI",
@@ -284,8 +310,10 @@ export async function router(
     // 3. mempunyai adapter yang sudah terdaftar
     //
     // Provider baru boleh disimpan di database sebelum
-    // adapter-nya di-deploy. Provider tersebut tidak muncul
-    // di generator sampai adapter tersedia.
+    // adapter-nya di-deploy.
+    //
+    // Provider tersebut tidak muncul di generator sampai
+    // adapter tersedia.
     // ========================================================
 
     if (
@@ -497,12 +525,9 @@ export async function router(
 
 
       /*
-       * Jika Content-Length tidak tersedia, lakukan
-       * pre-check terhadap Content-Type dan delegasikan
-       * validasi body ke handler generate.
-       *
-       * Handler generate tetap menjadi lapisan utama
-       * validasi payload.
+       * Jika Content-Length tidak tersedia,
+       * validasi ukuran body dilakukan oleh
+       * handler generate.
        */
 
       return await handleGenerate(
@@ -578,8 +603,11 @@ export async function router(
     // --------------------------------------------------------
     // SERVER LOG
     //
-    // Jangan log API key, authorization header, request body,
-    // atau credential provider.
+    // Jangan log:
+    // - API key
+    // - Authorization header
+    // - request body
+    // - credential provider
     // --------------------------------------------------------
 
     console.error(
