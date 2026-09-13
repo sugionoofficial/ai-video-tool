@@ -19,6 +19,9 @@
    Semua aturan kombinasi berasal dari:
    provider.capabilities.constraints
 
+   imageReferenceSupported WAJIB didefinisikan
+   oleh masing-masing model provider.
+
    Sinkronisasi UI bersifat realtime.
    Tidak membutuhkan refresh halaman.
    ========================================================= */
@@ -500,142 +503,37 @@
 
 
     /*
-     * Tidak ada rule model.
+     * Tidak ada metadata model.
      *
-     * Provider lama tetap dianggap
-     * mendukung image agar kompatibel.
+     * Jangan menebak.
+     *
+     * Model wajib mendefinisikan:
+     *
+     * imageReferenceSupported: true
+     *
+     * jika memang mendukung reference image.
      */
 
     if (!rules) {
 
-      return true;
-
-    }
-
-
-    /*
-     * Capability eksplisit memiliki
-     * prioritas paling tinggi.
-     */
-
-    if (
-      typeof rules.imageReferenceSupported ===
-      'boolean'
-    ) {
-
-      return rules.imageReferenceSupported;
-
-    }
-
-
-    /*
-     * =====================================================
-     * AUTO-DETECT DARI TYPE MODEL
-     * =====================================================
-     *
-     * ChinaAPI saat ini mendefinisikan:
-     *
-     * t2v       = Text To Video
-     * i2v       = Image To Video
-     * r2v       = Reference To Video
-     * videoedit = Video Editing
-     *
-     * Jadi kita tidak bergantung pada flag
-     * imageReferenceSupported yang mungkin belum
-     * tersedia pada model lama.
-     */
-
-    const type =
-      text(
-        rules.type
-      ).toLowerCase();
-
-
-    /*
-     * Text To Video
-     * tidak menggunakan reference image.
-     */
-
-    if (
-      type === 't2v' ||
-      type === 'text-to-video' ||
-      type === 'text2video'
-    ) {
-
       return false;
 
     }
 
 
     /*
-     * Video editing menggunakan video,
-     * bukan reference image biasa.
+     * Capability image harus eksplisit.
+     *
+     * true  = tampilkan reference image
+     * false = sembunyikan reference image
+     *
+     * undefined = dianggap false.
      */
 
-    if (
-      type === 'videoedit' ||
-      type === 'video-edit' ||
-      type === 'v2v' ||
-      type === 'video-to-video'
-    ) {
-
-      return false;
-
-    }
-
-
-    /*
-     * Image To Video.
-     */
-
-    if (
-      type === 'i2v' ||
-      type === 'image-to-video' ||
-      type === 'image2video'
-    ) {
-
-      return true;
-
-    }
-
-
-    /*
-     * Reference To Video.
-     */
-
-    if (
-      type === 'r2v' ||
-      type === 'reference-to-video' ||
-      type === 'reference2video'
-    ) {
-
-      return true;
-
-    }
-
-
-    /*
-     * Model yang secara eksplisit
-     * membutuhkan image otomatis
-     * mendukung image.
-     */
-
-    if (
-      rules.requiresImage === true
-    ) {
-
-      return true;
-
-    }
-
-
-    /*
-     * Provider lama yang belum
-     * mendefinisikan type tetap
-     * menggunakan perilaku legacy.
-     */
-
-    return true;
+    return (
+      rules.imageReferenceSupported ===
+      true
+    );
 
   }
 
@@ -664,17 +562,19 @@
     }
 
 
-    /*
-     * Jangan memakai imageToVideo jika
-     * model tidak mendukung image.
-     */
-
     const imageSupported =
       modelSupportsImage(
         provider,
         model
       );
 
+
+    /*
+     * Jika ada reference image,
+     * hanya gunakan imageToVideo
+     * apabila model memang secara eksplisit
+     * mendukung reference image.
+     */
 
     if (
       hasImage &&
@@ -688,6 +588,11 @@
 
     }
 
+
+    /*
+     * Jika tidak menggunakan image,
+     * gunakan textToVideo.
+     */
 
     return (
       rules.textToVideo ||
@@ -1101,12 +1006,6 @@
     }
 
 
-    /*
-     * Struktur utama GEN-Z.AI:
-     *
-     * .reference-group
-     */
-
     const directGroup =
       imageInput.closest(
         '.reference-group'
@@ -1119,11 +1018,6 @@
 
     }
 
-
-    /*
-     * Fallback apabila komponen upload
-     * dibuat ulang oleh frontend.
-     */
 
     const preview =
       $('imagePreview');
@@ -1145,11 +1039,6 @@
 
     }
 
-
-    /*
-     * Fallback berdasarkan label
-     * input image.
-     */
 
     const label =
       document.querySelector(
@@ -1226,8 +1115,11 @@
           'hidden'
         );
 
-        imageGroup.style.display =
-          '';
+        imageGroup.style.setProperty(
+          'display',
+          '',
+          'important'
+        );
 
         imageGroup.removeAttribute(
           'aria-hidden'
@@ -1247,17 +1139,11 @@
       );
 
 
-    /*
-     * =====================================================
-     * MODEL TIDAK MENDUKUNG REFERENCE IMAGE
-     * =====================================================
-     */
+    /* =====================================================
+       MODEL TIDAK MENDUKUNG REFERENCE IMAGE
+       ===================================================== */
 
     if (!supported) {
-
-      /*
-       * Sembunyikan seluruh group.
-       */
 
       if (imageGroup) {
 
@@ -1265,8 +1151,11 @@
           'hidden'
         );
 
-        imageGroup.style.display =
-          'none';
+        imageGroup.style.setProperty(
+          'display',
+          'none',
+          'important'
+        );
 
         imageGroup.setAttribute(
           'aria-hidden',
@@ -1275,11 +1164,6 @@
 
       }
 
-
-      /*
-       * Disable input sebagai
-       * lapisan pengaman kedua.
-       */
 
       imageInput.disabled =
         true;
@@ -1291,10 +1175,6 @@
       );
 
 
-      /*
-       * Bersihkan image lama.
-       */
-
       clearImageReference();
 
 
@@ -1303,11 +1183,9 @@
     }
 
 
-    /*
-     * =====================================================
-     * MODEL MENDUKUNG REFERENCE IMAGE
-     * =====================================================
-     */
+    /* =====================================================
+       MODEL MENDUKUNG REFERENCE IMAGE
+       ===================================================== */
 
     if (imageGroup) {
 
@@ -1315,8 +1193,11 @@
         'hidden'
       );
 
-      imageGroup.style.display =
-        '';
+      imageGroup.style.setProperty(
+        'display',
+        '',
+        'important'
+      );
 
       imageGroup.removeAttribute(
         'aria-hidden'
@@ -1364,21 +1245,12 @@
       );
 
 
-    /*
-     * Model berubah ke model
-     * yang tidak mendukung image.
-     */
-
     if (!imageSupported) {
 
       clearImageReference();
 
     }
 
-
-    /*
-     * Sinkronkan tampilan.
-     */
 
     updateImageAvailability(
       provider
@@ -1629,7 +1501,7 @@
 
 
     /*
-     * Ambil image state terbaru.
+     * IMAGE STATE TERBARU
      */
 
     const hasImage =
