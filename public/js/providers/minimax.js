@@ -1,5 +1,33 @@
+// ============================================================
+// GEN-Z.AI
+// MINIMAX PROVIDER ADAPTER
+// ============================================================
+
 const ID = "minimax";
 const NAME = "MiniMax";
+
+// ------------------------------------------------------------
+// MODEL RULES
+// ------------------------------------------------------------
+
+const MODEL_RULES = {
+  "MiniMax-Hailuo-2.3": {
+    imageReferenceSupported: true
+  },
+
+  "MiniMax-Hailuo-2.3-Fast": {
+    imageReferenceSupported: true,
+    imageReferenceRequired: true
+  },
+
+  "MiniMax-Hailuo-02": {
+    imageReferenceSupported: true
+  }
+};
+
+// ------------------------------------------------------------
+// CAPABILITIES
+// ------------------------------------------------------------
 
 const CAPABILITIES = {
   models: [
@@ -22,7 +50,9 @@ const CAPABILITIES = {
     "512P",
     "768P",
     "1080P"
-  ]
+  ],
+
+  constraints: MODEL_RULES
 };
 
 
@@ -37,10 +67,18 @@ function providerError(
   status = 400
 ) {
   const error =
-    new Error(message);
+    new Error(
+      String(
+        message ||
+        "MiniMax provider error."
+      )
+    );
 
   error.status =
-    status;
+    Number(status) || 400;
+
+  error.provider =
+    ID;
 
   return error;
 }
@@ -63,7 +101,9 @@ async function safeJson(
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(
+      text
+    );
   } catch {
     return {
       raw: text
@@ -108,7 +148,10 @@ function apiError(
     typeof data?.raw ===
     "string"
   ) {
-    return data.raw;
+    return data.raw.slice(
+      0,
+      500
+    );
   }
 
   return fallback;
@@ -177,6 +220,9 @@ export function info() {
     name:
       NAME,
 
+    supported:
+      true,
+
     capabilities:
       CAPABILITIES
   };
@@ -213,7 +259,7 @@ export async function generate(
   const model =
     String(
       body?.model ||
-        CAPABILITIES.models[0]
+      CAPABILITIES.models[0]
     ).trim();
 
   if (
@@ -229,6 +275,58 @@ export async function generate(
 
 
   /*
+   * MODEL RULE
+   */
+
+  const modelRule =
+    MODEL_RULES[model];
+
+  if (!modelRule) {
+    throw providerError(
+      "Konfigurasi model MiniMax tidak ditemukan.",
+      400
+    );
+  }
+
+
+  /*
+   * IMAGE REFERENCE
+   */
+
+  const hasImage =
+    Boolean(
+      body?.imageData
+    );
+
+  if (
+    hasImage &&
+    modelRule.imageReferenceSupported !== true
+  ) {
+    throw providerError(
+      "Model MiniMax yang dipilih tidak mendukung image reference.",
+      400
+    );
+  }
+
+
+  /*
+   * HAILUO 2.3 FAST
+   *
+   * Model ini membutuhkan image reference.
+   */
+
+  if (
+    modelRule.imageReferenceRequired === true &&
+    !hasImage
+  ) {
+    throw providerError(
+      "Hailuo 2.3 Fast memerlukan image reference.",
+      400
+    );
+  }
+
+
+  /*
    * DURATION
    */
 
@@ -238,7 +336,9 @@ export async function generate(
     );
 
   if (
-    !Number.isFinite(duration) ||
+    !Number.isFinite(
+      duration
+    ) ||
     !CAPABILITIES.durations.includes(
       duration
     )
@@ -257,7 +357,7 @@ export async function generate(
   const aspectRatio =
     String(
       body?.aspectRatio ||
-        "16:9"
+      "16:9"
     ).trim();
 
   if (
@@ -279,7 +379,7 @@ export async function generate(
   const resolution =
     String(
       body?.resolution ||
-        "768P"
+      "768P"
     ).trim();
 
   if (
@@ -295,16 +395,14 @@ export async function generate(
 
 
   /*
-   * ATURAN KHUSUS MINIMAX
+   * 1080P
    *
-   * 1080P hanya 6 detik.
-   *
-   * Jangan mengubah pilihan user
-   * secara diam-diam.
+   * Hanya 6 detik.
    */
 
   if (
-    resolution === "1080P" &&
+    resolution ===
+      "1080P" &&
     duration !== 6
   ) {
     throw providerError(
@@ -315,33 +413,19 @@ export async function generate(
 
 
   /*
-   * 512P hanya untuk Hailuo 02.
+   * 512P
+   *
+   * Hanya Hailuo 02.
    */
 
   if (
     model !==
       "MiniMax-Hailuo-02" &&
-    resolution === "512P"
+    resolution ===
+      "512P"
   ) {
     throw providerError(
       "512P hanya tersedia untuk Hailuo 02.",
-      400
-    );
-  }
-
-
-  /*
-   * Hailuo 2.3 Fast memerlukan
-   * image reference.
-   */
-
-  if (
-    model ===
-      "MiniMax-Hailuo-2.3-Fast" &&
-    !body?.imageData
-  ) {
-    throw providerError(
-      "Hailuo 2.3 Fast memerlukan image reference.",
       400
     );
   }
@@ -367,10 +451,8 @@ export async function generate(
   /*
    * PAYLOAD
    *
-   * aspectRatio disimpan dalam metadata
-   * internal meskipun endpoint MiniMax
-   * yang digunakan saat ini tidak mengirim
-   * field tersebut ke API.
+   * aspectRatio disimpan sebagai
+   * metadata internal GEN-Z.AI.
    */
 
   const payload = {
@@ -387,7 +469,7 @@ export async function generate(
    * IMAGE TO VIDEO
    */
 
-  if (body?.imageData) {
+  if (hasImage) {
     const image =
       parseImageData(
         body.imageData
@@ -409,27 +491,39 @@ export async function generate(
    * SUBMIT
    */
 
-  const response =
-    await fetch(
-      "https://api.minimax.io/v1/video_generation",
-      {
-        method:
-          "POST",
+  let response;
 
-        headers: {
-          Authorization:
-            `Bearer ${key}`,
+  try {
+    response =
+      await fetch(
+        "https://api.minimax.io/v1/video_generation",
+        {
+          method:
+            "POST",
 
-          "Content-Type":
-            "application/json"
-        },
+          headers: {
+            Authorization:
+              `Bearer ${key}`,
 
-        body:
-          JSON.stringify(
-            payload
-          )
-      }
+            "Content-Type":
+              "application/json",
+
+            Accept:
+              "application/json"
+          },
+
+          body:
+            JSON.stringify(
+              payload
+            )
+        }
+      );
+  } catch {
+    throw providerError(
+      "Tidak dapat terhubung ke server MiniMax.",
+      502
     );
+  }
 
 
   const data =
@@ -523,18 +617,33 @@ export async function status(
   }
 
 
-  const response =
-    await fetch(
-      `https://api.minimax.io/v1/query/video_generation?task_id=${encodeURIComponent(
-        taskId
-      )}`,
-      {
-        headers: {
-          Authorization:
-            `Bearer ${key}`
+  let response;
+
+  try {
+    response =
+      await fetch(
+        `https://api.minimax.io/v1/query/video_generation?task_id=${encodeURIComponent(
+          taskId
+        )}`,
+        {
+          method:
+            "GET",
+
+          headers: {
+            Authorization:
+              `Bearer ${key}`,
+
+            Accept:
+              "application/json"
+          }
         }
-      }
+      );
+  } catch {
+    throw providerError(
+      "Tidak dapat terhubung ke server MiniMax.",
+      502
     );
+  }
 
 
   const data =
@@ -557,8 +666,8 @@ export async function status(
   const state =
     String(
       data?.status ||
-        data?.task_status ||
-        ""
+      data?.task_status ||
+      ""
     )
       .trim()
       .toLowerCase();
@@ -572,7 +681,9 @@ export async function status(
     [
       "failed",
       "failure",
-      "error"
+      "error",
+      "cancelled",
+      "canceled"
     ].includes(state)
   ) {
     return {
@@ -722,18 +833,33 @@ export async function fetchVideo(
   }
 
 
-  const response =
-    await fetch(
-      `https://api.minimax.io/v1/files/retrieve?file_id=${encodeURIComponent(
-        id
-      )}`,
-      {
-        headers: {
-          Authorization:
-            `Bearer ${key}`
+  let response;
+
+  try {
+    response =
+      await fetch(
+        `https://api.minimax.io/v1/files/retrieve?file_id=${encodeURIComponent(
+          id
+        )}`,
+        {
+          method:
+            "GET",
+
+          headers: {
+            Authorization:
+              `Bearer ${key}`,
+
+            Accept:
+              "application/json"
+          }
         }
-      }
+      );
+  } catch {
+    throw providerError(
+      "Tidak dapat terhubung ke server MiniMax.",
+      502
     );
+  }
 
 
   const data =
@@ -784,6 +910,10 @@ export async function fetchVideo(
   }
 
 
+  /*
+   * SECURITY
+   */
+
   if (
     url.protocol !==
     "https:"
@@ -813,6 +943,9 @@ export default {
 
   name:
     NAME,
+
+  supported:
+    true,
 
   capabilities:
     CAPABILITIES,
