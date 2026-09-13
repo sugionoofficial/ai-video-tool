@@ -20,7 +20,3 @@ export {
   adapterSupported,
   normalizeProviderId
 } from "../public/js/providers/index.js";
-
-export {
-  default
-} from "../public/js/providers/index.js";
