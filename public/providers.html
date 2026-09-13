@@ -7,8 +7,8 @@
 
   <title>GEN-Z.AI - Provider Management</title>
 
-  <link rel="stylesheet" href="/css/style.css?v=provider-20260913-3">
-  <link rel="stylesheet" href="/css/admin.css?v=provider-20260913-3">
+  <link rel="stylesheet" href="/css/style.css?v=provider-20260913-4">
+  <link rel="stylesheet" href="/css/admin.css?v=provider-20260913-4">
 
   <style>
     * {
@@ -499,7 +499,7 @@
       </h2>
 
       <p id="providerLoadingText">
-        Menyiapkan koneksi administrator...
+        Menyiapkan Provider Management...
       </p>
 
       <p
@@ -587,7 +587,7 @@
           class="admin-list"
         >
           <div class="admin-loading">
-            Menunggu data provider...
+            Memuat provider...
           </div>
         </div>
 
@@ -611,484 +611,54 @@
   ></script>
 
   <!-- ==========================================================
-       PROVIDER PAGE BOOTSTRAP
-       Tidak menggunakan auth.js agar halaman admin provider
-       tidak bergantung pada bootstrap aplikasi utama.
+       PROVIDER MANAGEMENT
+       
+       Auth/session/API initialization ditangani oleh
+       admin-providers.js.
+       
+       Jangan load auth.js di halaman ini karena dapat membuat
+       bootstrap auth berjalan dua kali.
+       ========================================================== -->
+
+  <script
+    src="/js/admin-providers.js?v=provider-20260913-4"
+  ></script>
+
+  <!-- ==========================================================
+       WATCHDOG
        ========================================================== -->
 
   <script>
     (function () {
       "use strict";
 
-      var CONFIG_TIMEOUT = 10000;
-      var BOOT_TIMEOUT = 15000;
-      var ADMIN_SCRIPT = "/js/admin-providers.js?v=provider-20260913-3";
+      var timeoutMs = 15000;
 
-      var loading =
-        document.getElementById("providerLoading");
-
-      var loadingText =
-        document.getElementById("providerLoadingText");
-
-      var bootError =
-        document.getElementById("providerBootError");
-
-      var denied =
-        document.getElementById("providerDenied");
-
-      var deniedMessage =
-        document.getElementById("providerDeniedMessage");
-
-      var adminEmail =
-        document.getElementById("providerAdminEmail");
-
-      var app =
-        document.getElementById("providerApp");
-
-      var bootFinished = false;
-      var scriptLoaded = false;
-
-      function setLoading(message) {
-        if (loadingText) {
-          loadingText.textContent = message;
-        }
-      }
-
-      function showError(message) {
-        if (loading) {
-          loading.hidden = true;
-        }
-
-        if (app) {
-          app.hidden = true;
-        }
-
-        if (denied) {
-          denied.hidden = false;
-        }
-
-        if (deniedMessage) {
-          deniedMessage.textContent = message;
-        }
-
-        if (bootError) {
-          bootError.hidden = false;
-          bootError.textContent = message;
-        }
-      }
-
-      function showBootError(message) {
-        if (loadingText) {
-          loadingText.textContent =
-            "Provider Management gagal dimuat.";
-        }
-
-        if (bootError) {
-          bootError.hidden = false;
-          bootError.textContent = message;
-        }
-      }
-
-      function fetchWithTimeout(url, options, timeout) {
-        var controller = null;
-        var timer = null;
-
-        if (typeof AbortController !== "undefined") {
-          controller = new AbortController();
-
-          options = options || {};
-          options.signal = controller.signal;
-        }
-
-        return Promise.race([
-          fetch(url, options || {}),
-          new Promise(function (_, reject) {
-            timer = setTimeout(function () {
-              if (controller) {
-                controller.abort();
-              }
-
-              reject(
-                new Error(
-                  "Request timeout: " + url
-                )
-              );
-            }, timeout);
-          })
-        ]).finally(function () {
-          if (timer) {
-            clearTimeout(timer);
-          }
-        });
-      }
-
-      function loadAdminScript() {
-        return new Promise(function (resolve, reject) {
-
-          if (
-            window.GENZ_ADMIN_PROVIDERS
-          ) {
-            scriptLoaded = true;
-            resolve();
-            return;
-          }
-
-          var existing =
-            document.querySelector(
-              'script[data-provider-admin-script="1"]'
-            );
-
-          if (existing) {
-            existing.addEventListener(
-              "load",
-              function () {
-                scriptLoaded = true;
-                resolve();
-              },
-              { once: true }
-            );
-
-            existing.addEventListener(
-              "error",
-              function () {
-                reject(
-                  new Error(
-                    "admin-providers.js gagal dimuat."
-                  )
-                );
-              },
-              { once: true }
-            );
-
-            return;
-          }
-
-          var script =
-            document.createElement("script");
-
-          script.src = ADMIN_SCRIPT;
-
-          script.async = false;
-
-          script.dataset.providerAdminScript = "1";
-
-          script.onload = function () {
-            scriptLoaded = true;
-
-            if (
-              window.GENZ_ADMIN_PROVIDERS
-            ) {
-              resolve();
-              return;
-            }
-
-            reject(
-              new Error(
-                "admin-providers.js dimuat tetapi bridge GENZ_ADMIN_PROVIDERS tidak tersedia."
-              )
-            );
-          };
-
-          script.onerror = function () {
-            reject(
-              new Error(
-                "File /js/admin-providers.js tidak dapat dimuat."
-              )
-            );
-          };
-
-          document.head.appendChild(script);
-        });
-      }
-
-      async function boot() {
-
-        if (bootFinished) {
-          return;
-        }
-
-        setLoading(
-          "Menghubungkan ke konfigurasi GEN-Z.AI..."
-        );
-
-        if (
-          !window.supabase ||
-          typeof window.supabase.createClient !== "function"
-        ) {
-          throw new Error(
-            "Library Supabase tidak berhasil dimuat."
-          );
-        }
-
-        var response =
-          await fetchWithTimeout(
-            "/api/config",
-            {
-              method: "GET",
-              headers: {
-                Accept: "application/json"
-              },
-              cache: "no-store"
-            },
-            CONFIG_TIMEOUT
-          );
-
-        var config = null;
-
-        try {
-          config = await response.json();
-        } catch (error) {
-          throw new Error(
-            "Response /api/config bukan JSON yang valid."
-          );
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            config &&
-            (config.error || config.message)
-              ? (
-                  config.error ||
-                  config.message
-                )
-              : "Gagal mengambil konfigurasi GEN-Z.AI."
-          );
-        }
-
-        var supabaseUrl =
-          config &&
-          (
-            config.supabaseUrl ||
-            config.supabase_url ||
-            config.url
-          );
-
-        var publishableKey =
-          config &&
-          (
-            config.supabasePublishableKey ||
-            config.supabase_publishable_key ||
-            config.supabaseAnonKey ||
-            config.supabase_anon_key ||
-            config.anonKey ||
-            config.anon_key
-          );
-
-        if (
-          typeof supabaseUrl !== "string" ||
-          !supabaseUrl
-        ) {
-          throw new Error(
-            "supabaseUrl tidak tersedia dari /api/config."
-          );
-        }
-
-        if (
-          typeof publishableKey !== "string" ||
-          !publishableKey
-        ) {
-          throw new Error(
-            "Supabase publishable key tidak tersedia dari /api/config."
-          );
-        }
-
-        setLoading(
-          "Menyiapkan sesi administrator..."
-        );
-
-        var client =
-          window.supabase.createClient(
-            supabaseUrl,
-            publishableKey,
-            {
-              auth: {
-                persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: true,
-                storageKey:
-                  "gen-z-ai-provider-admin-auth"
-              }
-            }
-          );
-
-        window.GENZ_AUTH_CLIENT = client;
-
-        window.GENZ =
-          window.GENZ || {};
-
-        window.GENZ.auth =
-          window.GENZ.auth || {};
-
-        window.GENZ.auth.getClient =
-          function () {
-            return Promise.resolve(client);
-          };
-
-        window.GENZ.auth.getSession =
-          async function () {
-            var result =
-              await client.auth.getSession();
-
-            return result &&
-              result.data
-              ? result.data.session || null
-              : null;
-          };
-
-        window.GENZ.auth.token =
-          async function () {
-            var session =
-              await window.GENZ.auth.getSession();
-
-            return session &&
-              session.access_token
-              ? session.access_token
-              : null;
-          };
-
-        var sessionResult =
-          await client.auth.getSession();
-
-        if (
-          sessionResult &&
-          sessionResult.error
-        ) {
-          throw new Error(
-            sessionResult.error.message ||
-            "Gagal membaca session Supabase."
-          );
-        }
-
-        var session =
-          sessionResult &&
-          sessionResult.data
-            ? sessionResult.data.session
-            : null;
-
-        if (!session) {
-          showError(
-            "Tidak ada sesi login administrator. Silakan login terlebih dahulu."
-          );
-
-          bootFinished = true;
-          return;
-        }
-
-        if (
-          adminEmail &&
-          session.user &&
-          session.user.email
-        ) {
-          adminEmail.textContent =
-            session.user.email;
-        }
-
-        setLoading(
-          "Memeriksa akses administrator..."
-        );
-
-        /*
-         * Jangan melakukan API admin dari halaman ini.
-         * admin-providers.js yang menangani GET /api/admin/providers
-         * dan validasi akses administrator.
-         */
-
-        await loadAdminScript();
-
-        if (
-          !window.GENZ_ADMIN_PROVIDERS
-        ) {
-          throw new Error(
-            "Provider Management berhasil memuat script tetapi tidak menemukan bridge admin."
-          );
-        }
-
-        /*
-         * admin-providers.js otomatis menjalankan init().
-         * Tunggu sebentar agar ia menyelesaikan perubahan UI.
-         */
-        var started =
-          Date.now();
-
-        while (
-          Date.now() - started <
-          BOOT_TIMEOUT
-        ) {
-          if (
-            app &&
-            !app.hidden
-          ) {
-            break;
-          }
-
-          if (
-            denied &&
-            !denied.hidden
-          ) {
-            break;
-          }
-
-          await new Promise(
-            function (resolve) {
-              setTimeout(
-                resolve,
-                100
-              );
-            }
-          );
-        }
-
-        /*
-         * Jika admin script belum menampilkan apa pun,
-         * jalankan bridge secara eksplisit.
-         */
-        if (
-          app &&
-          app.hidden &&
-          denied &&
-          denied.hidden &&
-          window.GENZ_ADMIN_PROVIDERS &&
-          typeof window.GENZ_ADMIN_PROVIDERS.init ===
-            "function"
-        ) {
-          await window.GENZ_ADMIN_PROVIDERS.init();
-        }
-
-        bootFinished = true;
-      }
-
-      /*
-       * Jangan biarkan error bootstrap menjadi halaman
-       * "Memeriksa..." tanpa akhir.
-       */
-      boot()
-        .catch(function (error) {
-          console.error(
-            "[GEN-Z.AI Provider Boot]",
-            error
-          );
-
-          if (
-            error &&
-            error.message
-          ) {
-            showBootError(
-              error.message
-            );
-          } else {
-            showBootError(
-              "Terjadi kesalahan saat memuat Provider Management."
-            );
-          }
-        });
-
-      /*
-       * Watchdog hanya aktif jika bootstrap benar-benar
-       * tidak menghasilkan UI setelah batas waktu.
-       */
       setTimeout(function () {
 
-        if (bootFinished) {
+        var app =
+          document.getElementById(
+            "providerApp"
+          );
+
+        var loading =
+          document.getElementById(
+            "providerLoading"
+          );
+
+        var error =
+          document.getElementById(
+            "providerBootError"
+          );
+
+        var text =
+          document.getElementById(
+            "providerLoadingText"
+          );
+
+        if (
+          window.GENZ_ADMIN_PROVIDERS
+        ) {
           return;
         }
 
@@ -1100,24 +670,29 @@
         }
 
         if (
-          denied &&
-          !denied.hidden
+          loading &&
+          !loading.hidden
         ) {
-          return;
+
+          if (text) {
+            text.textContent =
+              "Provider Management gagal dijalankan.";
+          }
+
+          if (error) {
+
+            error.hidden = false;
+
+            error.textContent =
+              "admin-providers.js belum berhasil melakukan bootstrap dalam " +
+              timeoutMs +
+              " ms. Periksa apakah /js/admin-providers.js dapat dimuat dan apakah terjadi error JavaScript saat halaman dibuka.";
+
+          }
+
         }
 
-        if (
-          window.GENZ_ADMIN_PROVIDERS ||
-          scriptLoaded
-        ) {
-          return;
-        }
-
-        showBootError(
-          "Bootstrap Provider Management belum selesai. Periksa koneksi ke /api/config dan pemuatan Supabase."
-        );
-
-      }, 20000);
+      }, timeoutMs);
 
     })();
   </script>
