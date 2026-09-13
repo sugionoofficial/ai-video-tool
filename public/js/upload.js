@@ -7,17 +7,21 @@
 
   'use strict';
 
+
   const GENZ =
     window.GENZ ||
     (window.GENZ = {});
+
 
   GENZ.state =
     GENZ.state ||
     {};
 
+
   GENZ.upload =
     GENZ.upload ||
     {};
+
 
   GENZ.upload.imageData =
     GENZ.upload.imageData ||
@@ -35,9 +39,11 @@
         'imageFileStatus'
       );
 
+
     if (!status) {
       return;
     }
+
 
     status.textContent =
       text ||
@@ -46,6 +52,7 @@
           ? 'File berhasil dipilih'
           : 'Tidak ada File yang di pilih'
       );
+
 
     status.classList.toggle(
       'has-file',
@@ -66,21 +73,26 @@
         'button'
       );
 
+
     button.type =
       'button';
 
+
     button.className =
       'image-remove-btn';
+
 
     button.setAttribute(
       'aria-label',
       'Hapus gambar referensi'
     );
 
+
     button.setAttribute(
       'title',
       'Hapus gambar'
     );
+
 
     button.innerHTML =
       '&times;';
@@ -93,16 +105,21 @@
         event.preventDefault();
         event.stopPropagation();
 
+
         GENZ.upload.clear();
+
 
         const status =
           document.getElementById(
             'status'
           );
 
+
         if (status) {
+
           status.textContent =
             '';
+
         }
 
       }
@@ -126,6 +143,7 @@
           'image'
         );
 
+
       if (!input) {
         return false;
       }
@@ -144,7 +162,9 @@
           .uploadListenerAttached ===
         'true'
       ) {
+
         return true;
+
       }
 
 
@@ -173,10 +193,12 @@
             GENZ.state.imageData =
               null;
 
+
             updateFileStatus(
               false,
               'Tidak ada File yang di pilih'
             );
+
 
             return;
 
@@ -210,6 +232,7 @@
                 'status'
               );
 
+
             if (status) {
 
               status.textContent =
@@ -220,6 +243,7 @@
 
             input.value =
               '';
+
 
             return;
 
@@ -255,6 +279,7 @@
                 'status'
               );
 
+
             if (status) {
 
               status.textContent =
@@ -265,6 +290,7 @@
 
             input.value =
               '';
+
 
             return;
 
@@ -304,10 +330,12 @@
                 GENZ.state.imageData =
                   null;
 
+
                 updateFileStatus(
                   false,
                   'Tidak ada File yang di pilih'
                 );
+
 
                 return;
 
@@ -334,17 +362,32 @@
               if (preview) {
 
                 /*
-                 * Bersihkan preview lama
-                 * supaya tombol × tidak menumpuk.
+                 * Bersihkan preview lama.
                  */
                 preview.innerHTML =
                   '';
 
 
                 /*
-                 * Pastikan preview menjadi
-                 * container untuk gambar + tombol.
+                 * PENTING:
+                 *
+                 * providers.js dapat memberikan
+                 * inline style:
+                 *
+                 * display: none
+                 *
+                 * ketika reference image
+                 * sedang tidak tersedia.
+                 *
+                 * Saat file baru dipilih,
+                 * inline display tersebut harus
+                 * dikembalikan agar thumbnail
+                 * dapat terlihat.
                  */
+                preview.style.display =
+                  '';
+
+
                 preview.classList.remove(
                   'hidden'
                 );
@@ -355,23 +398,30 @@
                     'img'
                   );
 
+
                 image.src =
                   result;
+
 
                 image.alt =
                   'Preview gambar referensi';
 
+
                 image.style.maxWidth =
                   '100%';
+
 
                 image.style.width =
                   '100%';
 
+
                 image.style.height =
                   '100%';
 
+
                 image.style.objectFit =
                   'cover';
+
 
                 image.style.display =
                   'block';
@@ -401,6 +451,7 @@
                 document.getElementById(
                   'status'
                 );
+
 
               if (status) {
 
@@ -436,6 +487,7 @@
                 document.getElementById(
                   'status'
                 );
+
 
               if (status) {
 
@@ -482,6 +534,7 @@
       GENZ.upload.imageData =
         null;
 
+
       GENZ.state.imageData =
         null;
 
@@ -510,6 +563,7 @@
 
         preview.innerHTML =
           '';
+
 
         preview.classList.add(
           'hidden'
