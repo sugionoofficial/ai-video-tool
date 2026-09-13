@@ -1,32 +1,15 @@
 /* ============================================================
  * GEN-Z.AI
  * ADMIN PROVIDER MANAGEMENT
- * ============================================================
- *
- * Provider management:
- *
- * GET    /api/admin/providers
- * POST   /api/admin/providers
- * PUT    /api/admin/providers/:id
- * POST   /api/admin/providers/:id/toggle
- * DELETE /api/admin/providers/:id
- *
- * Tidak menggunakan /api/account/credits.
  * ============================================================ */
 
 (function () {
 
   "use strict";
 
-
-  /* ============================================================
-   * CONFIG
-   * ============================================================ */
-
   const API_TIMEOUT = 15000;
   const AUTH_TIMEOUT = 10000;
   const CONFIG_TIMEOUT = 10000;
-
 
   const state = {
     providers: [],
@@ -37,13 +20,11 @@
 
 
   /* ============================================================
-   * DOM HELPER
+   * DOM
    * ============================================================ */
 
   function $(id) {
-
     return document.getElementById(id);
-
   }
 
 
@@ -52,14 +33,12 @@
    * ============================================================ */
 
   function escapeHtml(value) {
-
     return String(value ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
-
   }
 
 
@@ -69,38 +48,25 @@
 
   function setStatus(message, type) {
 
-    const el =
-      $("providerStatus");
+    const el = $("providerStatus");
 
     if (!el) {
       return;
     }
 
-    el.textContent =
-      message || "";
-
-    el.className =
-      "admin-status-message";
+    el.textContent = message || "";
+    el.className = "admin-status-message";
 
     if (type) {
-
-      el.classList.add(
-        type
-      );
-
+      el.classList.add(type);
     }
 
   }
 
 
-  /* ============================================================
-   * LOADING MESSAGE
-   * ============================================================ */
-
   function setLoadingMessage(message) {
 
-    const loading =
-      $("providerLoading");
+    const loading = $("providerLoading");
 
     if (!loading) {
       return;
@@ -110,11 +76,9 @@
       loading.querySelector("p");
 
     if (paragraph) {
-
       paragraph.textContent =
         message ||
         "Memeriksa akses administrator...";
-
     }
 
   }
@@ -124,180 +88,169 @@
    * TIMEOUT
    * ============================================================ */
 
-  function withTimeout(
-    promise,
-    ms,
-    message
-  ) {
+  function withTimeout(promise, ms, message) {
 
     let timer;
 
     const timeout =
-      new Promise(
-        function (_, reject) {
+      new Promise(function (_, reject) {
 
-          timer =
-            setTimeout(
-              function () {
+        timer = setTimeout(function () {
 
-                const error =
-                  new Error(
-                    message
-                  );
+          const error =
+            new Error(message);
 
-                error.status =
-                  408;
+          error.status = 408;
 
-                reject(
-                  error
-                );
+          reject(error);
 
-              },
-              ms
-            );
+        }, ms);
 
-        }
-      );
+      });
 
     return Promise.race([
       promise,
       timeout
-    ]).finally(
-      function () {
+    ]).finally(function () {
 
-        clearTimeout(
-          timer
-        );
+      clearTimeout(timer);
 
-      }
-    );
+    });
 
   }
 
 
   /* ============================================================
-   * LOAD SUPABASE CLIENT
+   * SUPABASE
    * ============================================================ */
 
-  async function createFallbackSupabaseClient() {
+  async function createSupabaseClient() {
 
     if (
-      window.supabase &&
-      typeof window.supabase.createClient ===
+      !window.supabase ||
+      typeof window.supabase.createClient !==
         "function"
     ) {
 
-      setLoadingMessage(
-        "Memuat konfigurasi autentikasi..."
-      );
-
-
-      const response =
-        await withTimeout(
-          fetch(
-            "/api/config",
-            {
-              method:
-                "GET",
-
-              headers: {
-                Accept:
-                  "application/json"
-              },
-
-              cache:
-                "no-store"
-            }
-          ),
-          CONFIG_TIMEOUT,
-          "Konfigurasi autentikasi tidak merespons."
+      const error =
+        new Error(
+          "Supabase client tidak tersedia."
         );
 
+      error.status = 503;
 
-      if (!response.ok) {
-
-        const error =
-          new Error(
-            "Gagal mengambil konfigurasi autentikasi (" +
-            response.status +
-            ")."
-          );
-
-        error.status =
-          response.status;
-
-        throw error;
-
-      }
-
-
-      const config =
-        await response.json();
-
-
-      const supabaseUrl =
-        String(
-          config?.supabaseUrl ||
-          ""
-        ).trim();
-
-
-      const publishableKey =
-        String(
-          config?.supabasePublishableKey ||
-          ""
-        ).trim();
-
-
-      if (
-        !supabaseUrl ||
-        !publishableKey
-      ) {
-
-        const error =
-          new Error(
-            "Konfigurasi Supabase belum tersedia."
-          );
-
-        error.status =
-          503;
-
-        throw error;
-
-      }
-
-
-      const client =
-        window.supabase.createClient(
-          supabaseUrl,
-          publishableKey
-        );
-
-
-      if (
-        client &&
-        client.auth
-      ) {
-
-        window.GENZ_AUTH_CLIENT =
-          client;
-
-        return client;
-
-      }
+      throw error;
 
     }
 
 
-    const error =
-      new Error(
-        "Supabase client tidak tersedia."
+    setLoadingMessage(
+      "Memuat konfigurasi autentikasi..."
+    );
+
+
+    const response =
+      await withTimeout(
+        fetch("/api/config", {
+          method: "GET",
+          headers: {
+            Accept: "application/json"
+          },
+          cache: "no-store"
+        }),
+        CONFIG_TIMEOUT,
+        "Konfigurasi autentikasi tidak merespons."
       );
 
-    error.status =
-      503;
 
-    throw error;
+    if (!response.ok) {
+
+      const error =
+        new Error(
+          "Gagal mengambil konfigurasi autentikasi (" +
+          response.status +
+          ")."
+        );
+
+      error.status = response.status;
+
+      throw error;
+
+    }
+
+
+    const config =
+      await response.json();
+
+
+    const supabaseUrl =
+      String(
+        config?.supabaseUrl || ""
+      ).trim();
+
+
+    const publishableKey =
+      String(
+        config?.supabasePublishableKey || ""
+      ).trim();
+
+
+    if (
+      !supabaseUrl ||
+      !publishableKey
+    ) {
+
+      const error =
+        new Error(
+          "Konfigurasi Supabase belum tersedia."
+        );
+
+      error.status = 503;
+
+      throw error;
+
+    }
+
+
+    /*
+     * Samakan konfigurasi session dengan auth.js.
+     */
+    const client =
+      window.supabase.createClient(
+        supabaseUrl,
+        publishableKey,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage
+          }
+        }
+      );
+
+
+    if (
+      !client ||
+      !client.auth
+    ) {
+
+      const error =
+        new Error(
+          "Supabase authentication client tidak tersedia."
+        );
+
+      error.status = 503;
+
+      throw error;
+
+    }
+
+
+    window.GENZ_AUTH_CLIENT =
+      client;
+
+    return client;
 
   }
 
@@ -322,11 +275,6 @@
     ) {
 
       try {
-
-        setLoadingMessage(
-          "Memeriksa koneksi autentikasi..."
-        );
-
 
         const client =
           await withTimeout(
@@ -360,50 +308,7 @@
     }
 
 
-    /*
-     * Tunggu sebentar apabila auth.js sedang membuat client.
-     */
-
-    const started =
-      Date.now();
-
-
-    while (
-      Date.now() -
-        started <
-      AUTH_TIMEOUT
-    ) {
-
-      if (
-        window.GENZ_AUTH_CLIENT &&
-        window.GENZ_AUTH_CLIENT.auth
-      ) {
-
-        return window.GENZ_AUTH_CLIENT;
-
-      }
-
-
-      await new Promise(
-        function (resolve) {
-
-          setTimeout(
-            resolve,
-            100
-          );
-
-        }
-      );
-
-    }
-
-
-    /*
-     * Fallback terakhir:
-     * buat client langsung dari /api/config.
-     */
-
-    return createFallbackSupabaseClient();
+    return createSupabaseClient();
 
   }
 
@@ -442,14 +347,11 @@
 
 
     const session =
-      result &&
-      result.data &&
-      result.data.session;
+      result?.data?.session;
 
 
     const token =
-      session &&
-      session.access_token;
+      session?.access_token;
 
 
     if (!token) {
@@ -459,8 +361,7 @@
           "Sesi login tidak ditemukan."
         );
 
-      error.status =
-        401;
+      error.status = 401;
 
       throw error;
 
@@ -476,10 +377,7 @@
    * API
    * ============================================================ */
 
-  async function api(
-    path,
-    options
-  ) {
+  async function api(path, options) {
 
     const opts =
       options || {};
@@ -518,14 +416,11 @@
 
 
     const timer =
-      setTimeout(
-        function () {
+      setTimeout(function () {
 
-          controller.abort();
+        controller.abort();
 
-        },
-        API_TIMEOUT
-      );
+      }, API_TIMEOUT);
 
 
     try {
@@ -535,8 +430,7 @@
           path,
           {
             method:
-              opts.method ||
-              "GET",
+              opts.method || "GET",
 
             headers,
 
@@ -552,8 +446,7 @@
         );
 
 
-      let data =
-        null;
+      let data = null;
 
 
       const contentType =
@@ -575,8 +468,7 @@
 
         } catch (_) {
 
-          data =
-            null;
+          data = null;
 
         }
 
@@ -590,16 +482,14 @@
           if (text) {
 
             data = {
-              message:
-                text
+              message: text
             };
 
           }
 
         } catch (_) {
 
-          data =
-            null;
+          data = null;
 
         }
 
@@ -624,7 +514,6 @@
             )
           );
 
-
         error.status =
           response.status;
 
@@ -642,8 +531,7 @@
 
       if (
         error &&
-        error.name ===
-          "AbortError"
+        error.name === "AbortError"
       ) {
 
         const timeoutError =
@@ -651,8 +539,7 @@
             "Server terlalu lama merespons."
           );
 
-        timeoutError.status =
-          408;
+        timeoutError.status = 408;
 
         throw timeoutError;
 
@@ -662,9 +549,7 @@
 
     } finally {
 
-      clearTimeout(
-        timer
-      );
+      clearTimeout(timer);
 
     }
 
@@ -672,12 +557,10 @@
 
 
   /* ============================================================
-   * PROVIDER NORMALIZER
+   * NORMALIZER
    * ============================================================ */
 
-  function normalizeProvider(
-    provider
-  ) {
+  function normalizeProvider(provider) {
 
     const item =
       provider || {};
@@ -701,25 +584,16 @@
 
       config:
         item.config &&
-        typeof item.config ===
-          "object" &&
-        !Array.isArray(
-          item.config
-        )
+        typeof item.config === "object" &&
+        !Array.isArray(item.config)
           ? item.config
           : {},
 
       enabled:
-        item.enabled !==
-        undefined
-          ? Boolean(
-              item.enabled
-            )
-          : item.active !==
-            undefined
-            ? Boolean(
-                item.active
-              )
+        item.enabled !== undefined
+          ? Boolean(item.enabled)
+          : item.active !== undefined
+            ? Boolean(item.active)
             : true,
 
       apiKey:
@@ -747,7 +621,7 @@
 
 
   /* ============================================================
-   * SHOW APP
+   * VIEW
    * ============================================================ */
 
   function showApp() {
@@ -763,38 +637,21 @@
 
 
     if (loading) {
-
-      loading.hidden =
-        true;
-
+      loading.hidden = true;
     }
-
 
     if (denied) {
-
-      denied.hidden =
-        true;
-
+      denied.hidden = true;
     }
 
-
     if (app) {
-
-      app.hidden =
-        false;
-
+      app.hidden = false;
     }
 
   }
 
 
-  /* ============================================================
-   * SHOW DENIED
-   * ============================================================ */
-
-  function showDenied(
-    message
-  ) {
+  function showDenied(message) {
 
     const loading =
       $("providerLoading");
@@ -807,36 +664,23 @@
 
 
     if (loading) {
-
-      loading.hidden =
-        true;
-
+      loading.hidden = true;
     }
 
-
     if (app) {
-
-      app.hidden =
-        true;
-
+      app.hidden = true;
     }
 
 
     if (denied) {
 
-      denied.hidden =
-        false;
-
+      denied.hidden = false;
 
       const paragraphs =
-        denied.querySelectorAll(
-          "p"
-        );
+        denied.querySelectorAll("p");
 
 
-      if (
-        paragraphs.length
-      ) {
+      if (paragraphs.length) {
 
         paragraphs[
           paragraphs.length - 1
@@ -859,7 +703,7 @@
 
 
   /* ============================================================
-   * RENDER PROVIDERS
+   * PROVIDER LIST
    * ============================================================ */
 
   function renderProviders() {
@@ -872,9 +716,7 @@
 
 
     if (!list) {
-
       return;
-
     }
 
 
@@ -889,8 +731,7 @@
       count.textContent =
         providers.length +
         (
-          providers.length ===
-          1
+          providers.length === 1
             ? " provider"
             : " providers"
         );
@@ -898,9 +739,7 @@
     }
 
 
-    if (
-      !providers.length
-    ) {
+    if (!providers.length) {
 
       list.innerHTML =
         '<div class="admin-empty">' +
@@ -916,112 +755,100 @@
 
     list.innerHTML =
       providers
-        .map(
-          function (provider) {
+        .map(function (provider) {
 
-            const active =
-              provider.enabled;
+          const active =
+            provider.enabled;
 
 
-            return (
+          return (
+            '<div class="admin-list-item" data-provider-id="' +
+              escapeHtml(provider.id) +
+            '">' +
 
-              '<div class="admin-list-item" data-provider-id="' +
-                escapeHtml(
-                  provider.id
-                ) +
-              '">' +
+              '<div class="admin-list-main">' +
 
-                '<div class="admin-list-main">' +
+                "<h3>" +
+                  escapeHtml(
+                    provider.name ||
+                    provider.id
+                  ) +
+                "</h3>" +
 
-                  "<h3>" +
-                    escapeHtml(
-                      provider.name ||
-                      provider.id
-                    ) +
-                  "</h3>" +
+                "<p>" +
+                  "ID: " +
+                  escapeHtml(
+                    provider.id
+                  ) +
+                "</p>" +
 
-                  "<p>" +
-                    "ID: " +
-                    escapeHtml(
-                      provider.id
-                    ) +
-                  "</p>" +
+                "<p>" +
+                  "Adapter: " +
+                  escapeHtml(
+                    provider.adapter ||
+                    "-"
+                  ) +
+                "</p>" +
 
-                  "<p>" +
-                    "Adapter: " +
-                    escapeHtml(
-                      provider.adapter ||
-                      "-"
-                    ) +
-                  "</p>" +
+                "<p>" +
+                  "API Key: " +
+                  (
+                    provider.apiKeySet
+                      ? "Tersedia"
+                      : "Belum diatur"
+                  ) +
+                "</p>" +
 
-                  "<p>" +
-                    "API Key: " +
-                    (
-                      provider.apiKeySet
-                        ? "Tersedia"
-                        : "Belum diatur"
-                    ) +
-                  "</p>" +
+                '<span class="status-badge ' +
+                  (
+                    active
+                      ? "active"
+                      : "inactive"
+                  ) +
+                '">' +
 
-                  '<span class="status-badge ' +
-                    (
-                      active
-                        ? "active"
-                        : "inactive"
-                    ) +
-                  '">' +
+                  (
+                    active
+                      ? "Aktif"
+                      : "Nonaktif"
+                  ) +
 
-                    (
-                      active
-                        ? "Aktif"
-                        : "Nonaktif"
-                    ) +
+                "</span>" +
 
-                  "</span>" +
+              "</div>" +
 
-                "</div>" +
+              '<div class="admin-actions">' +
 
-                '<div class="admin-actions">' +
+                '<button type="button" data-action="edit" data-id="' +
+                  escapeHtml(provider.id) +
+                '">' +
+                  "Edit" +
+                "</button>" +
 
-                  '<button type="button" data-action="edit" data-id="' +
-                    escapeHtml(
-                      provider.id
-                    ) +
-                  '">' +
-                    "Edit" +
-                  "</button>" +
+                '<button type="button" data-action="toggle" data-id="' +
+                  escapeHtml(provider.id) +
+                '">' +
 
-                  '<button type="button" data-action="toggle" data-id="' +
-                    escapeHtml(
-                      provider.id
-                    ) +
-                  '">' +
+                  (
+                    active
+                      ? "Deactivate"
+                      : "Activate"
+                  ) +
 
-                    (
-                      active
-                        ? "Deactivate"
-                        : "Activate"
-                    ) +
+                "</button>" +
 
-                  "</button>" +
+                '<button type="button" data-action="delete" data-id="' +
+                  escapeHtml(provider.id) +
+                '">' +
+                  "Delete" +
+                "</button>" +
 
-                  '<button type="button" data-action="delete" data-id="' +
-                    escapeHtml(
-                      provider.id
-                    ) +
-                  '">' +
-                    "Delete" +
-                  "</button>" +
+              "</div>" +
 
-                "</div>" +
+            "</div>"
+          );
 
-              "</div>"
-
-            );
-
-          }
-        )
+        })
         .join("");
 
   }
@@ -1033,17 +860,12 @@
 
   async function loadProviders() {
 
-    if (
-      state.loading
-    ) {
-
+    if (state.loading) {
       return;
-
     }
 
 
-    state.loading =
-      true;
+    state.loading = true;
 
 
     const list =
@@ -1073,24 +895,19 @@
         );
 
 
-      let providers =
-        [];
+      let providers = [];
 
 
       if (
         data &&
-        Array.isArray(
-          data.providers
-        )
+        Array.isArray(data.providers)
       ) {
 
         providers =
           data.providers;
 
       } else if (
-        Array.isArray(
-          data
-        )
+        Array.isArray(data)
       ) {
 
         providers =
@@ -1098,9 +915,7 @@
 
       } else if (
         data &&
-        Array.isArray(
-          data.data
-        )
+        Array.isArray(data.data)
       ) {
 
         providers =
@@ -1136,19 +951,13 @@
       );
 
 
-      if (
-        error.status ===
-        401
-      ) {
+      if (error.status === 401) {
 
         showDenied(
           "Sesi login tidak valid atau sudah berakhir."
         );
 
-      } else if (
-        error.status ===
-        403
-      ) {
+      } else if (error.status === 403) {
 
         showDenied(
           "Akses administrator ditolak."
@@ -1186,8 +995,7 @@
 
     } finally {
 
-      state.loading =
-        false;
+      state.loading = false;
 
     }
 
@@ -1198,33 +1006,27 @@
    * FIND PROVIDER
    * ============================================================ */
 
-  function findProvider(
-    id
-  ) {
+  function findProvider(id) {
 
-    return state.providers.find(
-      function (provider) {
+    return (
+      state.providers.find(
+        function (provider) {
 
-        return String(
-          provider.id
-        ) ===
-        String(
-          id
-        );
+          return String(provider.id) ===
+            String(id);
 
-      }
-    ) || null;
+        }
+      ) || null
+    );
 
   }
 
 
   /* ============================================================
-   * RENDER EDITOR
+   * EDITOR
    * ============================================================ */
 
-  function renderEditor(
-    provider
-  ) {
+  function renderEditor(provider) {
 
     const editor =
       $("providerEditor");
@@ -1243,9 +1045,7 @@
 
 
     const editing =
-      Boolean(
-        provider
-      );
+      Boolean(provider);
 
 
     const item =
@@ -1291,15 +1091,15 @@
         '<div class="admin-form">' +
 
           '<div class="form-group">' +
-            "<label for=\"providerIdInput\">" +
+            '<label for="providerIdInput">' +
               "Provider ID" +
             "</label>" +
 
-            '<input id="providerIdInput" type="text" maxlength="64" autocomplete="off" placeholder="contoh: veo-3">' +
+            '<input id="providerIdInput" type="text" maxlength="64" autocomplete="off" placeholder="contoh: gemini">' +
           "</div>" +
 
           '<div class="form-group">' +
-            "<label for=\"providerNameInput\">" +
+            '<label for="providerNameInput">' +
               "Provider Name" +
             "</label>" +
 
@@ -1307,19 +1107,19 @@
           "</div>" +
 
           '<div class="form-group">' +
-            "<label for=\"providerAdapterInput\">" +
+            '<label for="providerAdapterInput">' +
               "Adapter" +
             "</label>" +
 
-            '<input id="providerAdapterInput" type="text" maxlength="64" autocomplete="off" placeholder="contoh: veo, minimax, luma, kling, runway, seedance">' +
+            '<input id="providerAdapterInput" type="text" maxlength="64" autocomplete="off" placeholder="contoh: gemini, openrouter, veo, minimax">' +
 
             "<small>" +
-              "Isi ID adapter secara bebas. Adapter tidak dibatasi daftar pilihan." +
+              "Isi ID adapter secara bebas." +
             "</small>" +
           "</div>" +
 
           '<div class="form-group">' +
-            "<label for=\"providerApiKeyInput\">" +
+            '<label for="providerApiKeyInput">' +
               "API Key" +
             "</label>" +
 
@@ -1327,7 +1127,7 @@
           "</div>" +
 
           '<div class="form-group">' +
-            "<label for=\"providerConfigInput\">" +
+            '<label for="providerConfigInput">' +
               "Config" +
             "</label>" +
 
@@ -1386,6 +1186,9 @@
     const cancelButton =
       $("providerCancelBtn");
 
+    const saveButton =
+      $("providerSaveBtn");
+
 
     if (idInput) {
 
@@ -1394,28 +1197,21 @@
 
 
       if (editing) {
-
-        idInput.readOnly =
-          true;
-
+        idInput.readOnly = true;
       }
 
     }
 
 
     if (nameInput) {
-
       nameInput.value =
         item.name || "";
-
     }
 
 
     if (adapterInput) {
-
       adapterInput.value =
         item.adapter || "";
-
     }
 
 
@@ -1423,9 +1219,7 @@
 
       apiKeyInput.value =
         item.apiKey &&
-        !/^•+$/.test(
-          item.apiKey
-        )
+        !/^•+$/.test(item.apiKey)
           ? item.apiKey
           : "";
 
@@ -1462,22 +1256,25 @@
     if (enabledInput) {
 
       enabledInput.checked =
-        item.enabled !==
-        false;
+        item.enabled !== false;
 
     }
 
 
-    editor.hidden =
-      false;
+    /*
+     * FIX UTAMA:
+     * Tombol dibuat secara dinamis di atas.
+     * Karena itu listener harus dipasang setelah
+     * tombol tersebut dibuat.
+     */
+    if (saveButton) {
 
+      saveButton.addEventListener(
+        "click",
+        saveProvider
+      );
 
-    editor.scrollIntoView({
-      behavior:
-        "smooth",
-      block:
-        "start"
-    });
+    }
 
 
     if (cancelButton) {
@@ -1486,12 +1283,20 @@
         "click",
         closeEditor,
         {
-          once:
-            true
+          once: true
         }
       );
 
     }
+
+
+    editor.hidden = false;
+
+
+    editor.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
 
   }
 
@@ -1508,11 +1313,8 @@
 
     if (editor) {
 
-      editor.hidden =
-        true;
-
-      editor.innerHTML =
-        "";
+      editor.hidden = true;
+      editor.innerHTML = "";
 
     }
 
@@ -1524,7 +1326,7 @@
 
 
   /* ============================================================
-   * READ CONFIG
+   * CONFIG
    * ============================================================ */
 
   function readConfig() {
@@ -1540,9 +1342,7 @@
 
 
     if (!raw) {
-
       return {};
-
     }
 
 
@@ -1552,9 +1352,7 @@
     try {
 
       parsed =
-        JSON.parse(
-          raw
-        );
+        JSON.parse(raw);
 
     } catch (_) {
 
@@ -1567,11 +1365,8 @@
 
     if (
       parsed === null ||
-      typeof parsed !==
-        "object" ||
-      Array.isArray(
-        parsed
-      )
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
     ) {
 
       throw new Error(
@@ -1634,9 +1429,7 @@
 
     const enabled =
       enabledInput
-        ? Boolean(
-            enabledInput.checked
-          )
+        ? Boolean(enabledInput.checked)
         : true;
 
 
@@ -1653,9 +1446,7 @@
 
 
     if (
-      !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(
-        id
-      )
+      !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(id)
     ) {
 
       setStatus(
@@ -1681,9 +1472,7 @@
 
 
     if (
-      !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
-        adapter
-      )
+      !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(adapter)
     ) {
 
       setStatus(
@@ -1722,9 +1511,7 @@
 
     if (button) {
 
-      button.disabled =
-        true;
-
+      button.disabled = true;
       button.textContent =
         "Menyimpan...";
 
@@ -1732,9 +1519,7 @@
 
 
     const editing =
-      Boolean(
-        state.editingId
-      );
+      Boolean(state.editingId);
 
 
     try {
@@ -1742,8 +1527,7 @@
       const body = {
 
         name:
-          name ||
-          id,
+          name || id,
 
         adapter,
 
@@ -1770,13 +1554,9 @@
             state.editingId
           ),
           {
-            method:
-              "PUT",
-
+            method: "PUT",
             body:
-              JSON.stringify(
-                body
-              )
+              JSON.stringify(body)
           }
         );
 
@@ -1798,13 +1578,9 @@
         await api(
           "/api/admin/providers",
           {
-            method:
-              "POST",
-
+            method: "POST",
             body:
-              JSON.stringify(
-                body
-              )
+              JSON.stringify(body)
           }
         );
 
@@ -1843,8 +1619,7 @@
 
       if (button) {
 
-        button.disabled =
-          false;
+        button.disabled = false;
 
         button.textContent =
           "Simpan Provider";
@@ -1857,23 +1632,17 @@
 
 
   /* ============================================================
-   * TOGGLE PROVIDER
+   * TOGGLE
    * ============================================================ */
 
-  async function toggleProvider(
-    id
-  ) {
+  async function toggleProvider(id) {
 
     const provider =
-      findProvider(
-        id
-      );
+      findProvider(id);
 
 
     if (!provider) {
-
       return;
-
     }
 
 
@@ -1885,14 +1654,10 @@
 
       await api(
         "/api/admin/providers/" +
-        encodeURIComponent(
-          id
-        ) +
+        encodeURIComponent(id) +
         "/toggle",
         {
-          method:
-            "POST",
-
+          method: "POST",
           headers: {
             "x-enable":
               enabled
@@ -1934,23 +1699,17 @@
 
 
   /* ============================================================
-   * DELETE PROVIDER
+   * DELETE
    * ============================================================ */
 
-  async function deleteProvider(
-    id
-  ) {
+  async function deleteProvider(id) {
 
     const provider =
-      findProvider(
-        id
-      );
+      findProvider(id);
 
 
     if (!provider) {
-
       return;
-
     }
 
 
@@ -1961,14 +1720,13 @@
           provider.name ||
           provider.id
         ) +
-        "\"?\n\nTindakan ini tidak dapat dibatalkan."
+        "\"?\n\n" +
+        "Tindakan ini tidak dapat dibatalkan."
       );
 
 
     if (!confirmed) {
-
       return;
-
     }
 
 
@@ -1976,12 +1734,9 @@
 
       await api(
         "/api/admin/providers/" +
-        encodeURIComponent(
-          id
-        ),
+        encodeURIComponent(id),
         {
-          method:
-            "DELETE"
+          method: "DELETE"
         }
       );
 
@@ -2046,9 +1801,7 @@
         "click",
         function () {
 
-          renderEditor(
-            null
-          );
+          renderEditor(null);
 
         }
       );
@@ -2119,9 +1872,7 @@
 
 
           if (!button) {
-
             return;
-
           }
 
 
@@ -2132,15 +1883,10 @@
             button.dataset.id;
 
 
-          if (
-            action ===
-            "edit"
-          ) {
+          if (action === "edit") {
 
             const provider =
-              findProvider(
-                id
-              );
+              findProvider(id);
 
 
             if (provider) {
@@ -2156,28 +1902,17 @@
           }
 
 
-          if (
-            action ===
-            "toggle"
-          ) {
+          if (action === "toggle") {
 
-            toggleProvider(
-              id
-            );
-
+            toggleProvider(id);
             return;
 
           }
 
 
-          if (
-            action ===
-            "delete"
-          ) {
+          if (action === "delete") {
 
-            deleteProvider(
-              id
-            );
+            deleteProvider(id);
 
           }
 
@@ -2195,12 +1930,8 @@
 
   async function init() {
 
-    if (
-      state.initialized
-    ) {
-
+    if (state.initialized) {
       return;
-
     }
 
 
@@ -2213,10 +1944,7 @@
 
 
     if (loading) {
-
-      loading.hidden =
-        false;
-
+      loading.hidden = false;
     }
 
 
@@ -2227,24 +1955,11 @@
       );
 
 
-      /*
-       * Ambil token login.
-       */
-
       await getAccessToken();
 
 
-      /*
-       * Event dipasang sebelum API admin.
-       */
-
       bindEvents();
 
-
-      /*
-       * Endpoint admin melakukan requireAdmin()
-       * di server.
-       */
 
       await loadProviders();
 
@@ -2257,19 +1972,13 @@
       );
 
 
-      if (
-        error.status ===
-        401
-      ) {
+      if (error.status === 401) {
 
         showDenied(
           "Sesi login tidak ditemukan atau sudah berakhir."
         );
 
-      } else if (
-        error.status ===
-        403
-      ) {
+      } else if (error.status === 403) {
 
         showDenied(
           "Akses administrator ditolak."
@@ -2333,11 +2042,7 @@
 
   function start() {
 
-    try {
-
-      init();
-
-    } catch (error) {
+    init().catch(function (error) {
 
       console.error(
         "[GEN-Z.AI Provider] Start error:",
@@ -2349,7 +2054,7 @@
         "Provider Management gagal dimulai."
       );
 
-    }
+    });
 
   }
 
@@ -2363,8 +2068,7 @@
       "DOMContentLoaded",
       start,
       {
-        once:
-          true
+        once: true
       }
     );
 
