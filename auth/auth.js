@@ -1,17 +1,28 @@
-import { HttpError } from "../lib/http.js";
+import {
+  HttpError
+} from "../lib/http.js";
 
-const AUTH_TIMEOUT_MS = 10000;
+const AUTH_TIMEOUT_MS =
+  10000;
+
+const MAX_TOKEN_LENGTH =
+  8192;
+
+const MAX_USER_ID_LENGTH =
+  256;
 
 function getSupabaseConfig(env) {
-  const baseUrl =
-    String(env?.SUPABASE_URL || "")
-      .trim()
-      .replace(/\/+$/, "");
+  const rawBaseUrl =
+    String(
+      env?.SUPABASE_URL || ""
+    ).trim();
 
   const serviceRoleKey =
-    String(env?.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+    String(
+      env?.SUPABASE_SERVICE_ROLE_KEY || ""
+    ).trim();
 
-  if (!baseUrl) {
+  if (!rawBaseUrl) {
     throw new HttpError(
       "Konfigurasi SUPABASE_URL belum tersedia.",
       500
@@ -25,6 +36,41 @@ function getSupabaseConfig(env) {
     );
   }
 
+  let parsedUrl;
+
+  try {
+    parsedUrl =
+      new URL(rawBaseUrl);
+  } catch {
+    throw new HttpError(
+      "Konfigurasi SUPABASE_URL tidak valid.",
+      500
+    );
+  }
+
+  if (
+    parsedUrl.protocol !==
+    "https:"
+  ) {
+    throw new HttpError(
+      "Konfigurasi SUPABASE_URL harus menggunakan HTTPS.",
+      500
+    );
+  }
+
+  const baseUrl =
+    parsedUrl.origin.replace(
+      /\/+$/,
+      ""
+    );
+
+  if (!baseUrl) {
+    throw new HttpError(
+      "Konfigurasi SUPABASE_URL tidak valid.",
+      500
+    );
+  }
+
   return {
     baseUrl,
     serviceRoleKey
@@ -34,24 +80,69 @@ function getSupabaseConfig(env) {
 function getBearerToken(request) {
   const authorization =
     String(
-      request?.headers?.get("Authorization") || ""
+      request?.headers?.get(
+        "Authorization"
+      ) || ""
     ).trim();
 
-  if (!/^Bearer\s+/i.test(authorization)) {
+  if (
+    !/^Bearer\s+/i.test(
+      authorization
+    )
+  ) {
     return null;
   }
 
   const token =
     authorization
-      .replace(/^Bearer\s+/i, "")
+      .replace(
+        /^Bearer\s+/i,
+        ""
+      )
       .trim();
 
-  return token || null;
+  if (!token) {
+    return null;
+  }
+
+  if (
+    token.length >
+    MAX_TOKEN_LENGTH
+  ) {
+    return null;
+  }
+
+  return token;
 }
 
-async function readUserResponse(response) {
-  const text =
-    await response.text();
+function isValidUserId(value) {
+  const id =
+    String(
+      value ?? ""
+    ).trim();
+
+  if (
+    !id ||
+    id.length >
+      MAX_USER_ID_LENGTH
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+async function readUserResponse(
+  response
+) {
+  let text = "";
+
+  try {
+    text =
+      await response.text();
+  } catch {
+    return null;
+  }
 
   if (!text) {
     return null;
@@ -63,7 +154,8 @@ async function readUserResponse(response) {
 
     if (
       !data ||
-      typeof data !== "object" ||
+      typeof data !==
+        "object" ||
       Array.isArray(data)
     ) {
       return null;
@@ -75,9 +167,14 @@ async function readUserResponse(response) {
   }
 }
 
-export async function currentUser(request, env) {
+export async function currentUser(
+  request,
+  env
+) {
   const token =
-    getBearerToken(request);
+    getBearerToken(
+      request
+    );
 
   if (!token) {
     return null;
@@ -86,14 +183,19 @@ export async function currentUser(request, env) {
   const {
     baseUrl,
     serviceRoleKey
-  } = getSupabaseConfig(env);
+  } =
+    getSupabaseConfig(
+      env
+    );
 
   const controller =
     new AbortController();
 
   const timeout =
     setTimeout(
-      () => controller.abort(),
+      () => {
+        controller.abort();
+      },
       AUTH_TIMEOUT_MS
     );
 
@@ -104,11 +206,15 @@ export async function currentUser(request, env) {
         {
           method: "GET",
           headers: {
-            Accept: "application/json",
-            apikey: serviceRoleKey,
-            Authorization: `Bearer ${token}`
+            Accept:
+              "application/json",
+            apikey:
+              serviceRoleKey,
+            Authorization:
+              `Bearer ${token}`
           },
-          signal: controller.signal
+          signal:
+            controller.signal
         }
       );
 
@@ -117,9 +223,16 @@ export async function currentUser(request, env) {
     }
 
     const user =
-      await readUserResponse(response);
+      await readUserResponse(
+        response
+      );
 
-    if (!user?.id) {
+    if (
+      !user ||
+      !isValidUserId(
+        user.id
+      )
+    ) {
       return null;
     }
 
@@ -127,23 +240,40 @@ export async function currentUser(request, env) {
   } catch (error) {
     console.error(
       "Supabase authentication request failed:",
-      error?.message || error
+      String(
+        error?.message ||
+        error ||
+        "unknown"
+      ).slice(
+        0,
+        300
+      )
     );
 
     return null;
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(
+      timeout
+    );
   }
 }
 
-export async function requireUser(request, env) {
+export async function requireUser(
+  request,
+  env
+) {
   const user =
     await currentUser(
       request,
       env
     );
 
-  if (!user?.id) {
+  if (
+    !user ||
+    !isValidUserId(
+      user.id
+    )
+  ) {
     throw new HttpError(
       "Unauthorized",
       401
