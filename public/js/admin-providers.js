@@ -3,7 +3,7 @@
  * ADMIN PROVIDER MANAGEMENT
  * ============================================================
  *
- * Provider management menggunakan:
+ * Provider management:
  *
  * GET    /api/admin/providers
  * POST   /api/admin/providers
@@ -11,8 +11,6 @@
  * POST   /api/admin/providers/:id/toggle
  * DELETE /api/admin/providers/:id
  *
- * Catatan:
- * Endpoint admin digunakan langsung untuk autentikasi.
  * Tidak menggunakan /api/account/credits.
  * ============================================================ */
 
@@ -27,6 +25,7 @@
 
   const API_TIMEOUT = 15000;
   const AUTH_TIMEOUT = 10000;
+  const CONFIG_TIMEOUT = 10000;
 
 
   const state = {
@@ -95,6 +94,33 @@
 
 
   /* ============================================================
+   * LOADING MESSAGE
+   * ============================================================ */
+
+  function setLoadingMessage(message) {
+
+    const loading =
+      $("providerLoading");
+
+    if (!loading) {
+      return;
+    }
+
+    const paragraph =
+      loading.querySelector("p");
+
+    if (paragraph) {
+
+      paragraph.textContent =
+        message ||
+        "Memeriksa akses administrator...";
+
+    }
+
+  }
+
+
+  /* ============================================================
    * TIMEOUT
    * ============================================================ */
 
@@ -150,8 +176,131 @@
 
 
   /* ============================================================
-   * SUPABASE CLIENT
+   * LOAD SUPABASE CLIENT
    * ============================================================ */
+
+  async function createFallbackSupabaseClient() {
+
+    if (
+      window.supabase &&
+      typeof window.supabase.createClient ===
+        "function"
+    ) {
+
+      setLoadingMessage(
+        "Memuat konfigurasi autentikasi..."
+      );
+
+
+      const response =
+        await withTimeout(
+          fetch(
+            "/api/config",
+            {
+              method:
+                "GET",
+
+              headers: {
+                Accept:
+                  "application/json"
+              },
+
+              cache:
+                "no-store"
+            }
+          ),
+          CONFIG_TIMEOUT,
+          "Konfigurasi autentikasi tidak merespons."
+        );
+
+
+      if (!response.ok) {
+
+        const error =
+          new Error(
+            "Gagal mengambil konfigurasi autentikasi (" +
+            response.status +
+            ")."
+          );
+
+        error.status =
+          response.status;
+
+        throw error;
+
+      }
+
+
+      const config =
+        await response.json();
+
+
+      const supabaseUrl =
+        String(
+          config?.supabaseUrl ||
+          ""
+        ).trim();
+
+
+      const publishableKey =
+        String(
+          config?.supabasePublishableKey ||
+          ""
+        ).trim();
+
+
+      if (
+        !supabaseUrl ||
+        !publishableKey
+      ) {
+
+        const error =
+          new Error(
+            "Konfigurasi Supabase belum tersedia."
+          );
+
+        error.status =
+          503;
+
+        throw error;
+
+      }
+
+
+      const client =
+        window.supabase.createClient(
+          supabaseUrl,
+          publishableKey
+        );
+
+
+      if (
+        client &&
+        client.auth
+      ) {
+
+        window.GENZ_AUTH_CLIENT =
+          client;
+
+        return client;
+
+      }
+
+    }
+
+
+    const error =
+      new Error(
+        "Supabase client tidak tersedia."
+      );
+
+    error.status =
+      503;
+
+    throw error;
+
+  }
+
 
   async function getSupabaseClient() {
 
@@ -174,6 +323,11 @@
 
       try {
 
+        setLoadingMessage(
+          "Memeriksa koneksi autentikasi..."
+        );
+
+
         const client =
           await withTimeout(
             window.GENZ.auth.getClient(),
@@ -181,10 +335,14 @@
             "Supabase client tidak merespons."
           );
 
+
         if (
           client &&
           client.auth
         ) {
+
+          window.GENZ_AUTH_CLIENT =
+            client;
 
           return client;
 
@@ -193,7 +351,7 @@
       } catch (error) {
 
         console.warn(
-          "[GEN-Z.AI Provider] getClient gagal:",
+          "[GEN-Z.AI Provider] Auth client gagal:",
           error
         );
 
@@ -203,12 +361,12 @@
 
 
     /*
-     * Fallback:
-     * tunggu auth.js membuat client.
+     * Tunggu sebentar apabila auth.js sedang membuat client.
      */
 
     const started =
       Date.now();
+
 
     while (
       Date.now() -
@@ -225,6 +383,7 @@
 
       }
 
+
       await new Promise(
         function (resolve) {
 
@@ -239,15 +398,12 @@
     }
 
 
-    const error =
-      new Error(
-        "Supabase client belum tersedia."
-      );
+    /*
+     * Fallback terakhir:
+     * buat client langsung dari /api/config.
+     */
 
-    error.status =
-      503;
-
-    throw error;
+    return createFallbackSupabaseClient();
 
   }
 
@@ -257,6 +413,11 @@
    * ============================================================ */
 
   async function getAccessToken() {
+
+    setLoadingMessage(
+      "Memeriksa sesi login..."
+    );
+
 
     const client =
       await getSupabaseClient();
@@ -901,15 +1062,10 @@
 
     try {
 
-      /*
-       * INI SEKALIGUS TES AUTORISASI ADMIN.
-       *
-       * Tidak lagi menggunakan:
-       * /api/account/credits
-       *
-       * Jika endpoint ini berhasil,
-       * berarti user memang admin.
-       */
+      setLoadingMessage(
+        "Mengambil daftar provider..."
+      );
+
 
       const data =
         await api(
@@ -1139,7 +1295,7 @@
               "Provider ID" +
             "</label>" +
 
-            '<input id="providerIdInput" type="text" maxlength="64" placeholder="contoh: veo-3">' +
+            '<input id="providerIdInput" type="text" maxlength="64" autocomplete="off" placeholder="contoh: veo-3">' +
           "</div>" +
 
           '<div class="form-group">' +
@@ -1147,7 +1303,7 @@
               "Provider Name" +
             "</label>" +
 
-            '<input id="providerNameInput" type="text" maxlength="100" placeholder="Nama provider">' +
+            '<input id="providerNameInput" type="text" maxlength="100" autocomplete="off" placeholder="Nama provider">' +
           "</div>" +
 
           '<div class="form-group">' +
@@ -1157,7 +1313,7 @@
 
             '<input id="providerAdapterInput" type="text" maxlength="64" autocomplete="off" placeholder="contoh: veo, minimax, luma, kling, runway, seedance">' +
 
-            '<small>' +
+            "<small>" +
               "Isi ID adapter secara bebas. Adapter tidak dibatasi daftar pilihan." +
             "</small>" +
           "</div>" +
@@ -1236,6 +1392,7 @@
       idInput.value =
         item.id || "";
 
+
       if (editing) {
 
         idInput.readOnly =
@@ -1264,11 +1421,6 @@
 
     if (apiKeyInput) {
 
-      /*
-       * API key masked dari server tidak boleh
-       * dianggap sebagai key baru.
-       */
-
       apiKeyInput.value =
         item.apiKey &&
         !/^•+$/.test(
@@ -1276,6 +1428,7 @@
         )
           ? item.apiKey
           : "";
+
 
       apiKeyInput.placeholder =
         item.apiKeySet
@@ -1371,7 +1524,7 @@
 
 
   /* ============================================================
-   * CONFIG
+   * READ CONFIG
    * ============================================================ */
 
   function readConfig() {
@@ -1499,7 +1652,11 @@
     }
 
 
-    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(id)) {
+    if (
+      !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(
+        id
+      )
+    ) {
 
       setStatus(
         "Provider ID tidak valid.",
@@ -1523,7 +1680,11 @@
     }
 
 
-    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(adapter)) {
+    if (
+      !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
+        adapter
+      )
+    ) {
 
       setStatus(
         "Adapter harus 2-64 karakter berupa huruf kecil, angka, underscore, atau tanda minus.",
@@ -1536,6 +1697,7 @@
 
 
     let config;
+
 
     try {
 
@@ -1592,11 +1754,6 @@
       };
 
 
-      /*
-       * API key hanya dikirim jika user
-       * memasukkan key baru.
-       */
-
       if (apiKey) {
 
         body.api_key =
@@ -1605,33 +1762,25 @@
       }
 
 
-      let response;
-
-
       if (editing) {
 
-        response =
-          await api(
-            "/api/admin/providers/" +
-            encodeURIComponent(
-              state.editingId
-            ),
-            {
-              method:
-                "PUT",
+        await api(
+          "/api/admin/providers/" +
+          encodeURIComponent(
+            state.editingId
+          ),
+          {
+            method:
+              "PUT",
 
-              body:
-                JSON.stringify(
-                  body
-                )
-            }
-          );
+            body:
+              JSON.stringify(
+                body
+              )
+          }
+        );
 
       } else {
-
-        /*
-         * CREATE wajib mempunyai API key.
-         */
 
         if (!apiKey) {
 
@@ -1646,19 +1795,18 @@
           id;
 
 
-        response =
-          await api(
-            "/api/admin/providers",
-            {
-              method:
-                "POST",
+        await api(
+          "/api/admin/providers",
+          {
+            method:
+              "POST",
 
-              body:
-                JSON.stringify(
-                  body
-                )
-            }
-          );
+            body:
+              JSON.stringify(
+                body
+              )
+          }
+        );
 
       }
 
@@ -1690,7 +1838,6 @@
         "Gagal menyimpan provider.",
         "error"
       );
-
 
     } finally {
 
@@ -1747,12 +1894,10 @@
             "POST",
 
           headers: {
-
             "x-enable":
               enabled
                 ? "true"
                 : "false"
-
           }
         }
       );
@@ -2077,26 +2222,28 @@
 
     try {
 
+      setLoadingMessage(
+        "Memulai Provider Management..."
+      );
+
+
       /*
-       * HANYA mengambil token.
-       *
-       * Tidak ada lagi:
-       * /api/account/credits
+       * Ambil token login.
        */
 
       await getAccessToken();
 
 
       /*
-       * bind event terlebih dahulu.
+       * Event dipasang sebelum API admin.
        */
 
       bindEvents();
 
 
       /*
-       * Endpoint ini sekaligus melakukan
-       * pengecekan requireAdmin().
+       * Endpoint admin melakukan requireAdmin()
+       * di server.
        */
 
       await loadProviders();
@@ -2186,7 +2333,23 @@
 
   function start() {
 
-    init();
+    try {
+
+      init();
+
+    } catch (error) {
+
+      console.error(
+        "[GEN-Z.AI Provider] Start error:",
+        error
+      );
+
+      showDenied(
+        error.message ||
+        "Provider Management gagal dimulai."
+      );
+
+    }
 
   }
 
