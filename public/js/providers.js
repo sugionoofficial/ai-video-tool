@@ -359,6 +359,130 @@
 
 
   /* =======================================================
+     CLEAR IMAGE REFERENCE
+  ======================================================= */
+
+  function clearImageReference() {
+
+    /*
+     * Bersihkan state utama.
+     */
+
+    if (
+      GENZ.state
+    ) {
+
+      GENZ.state.imageData =
+        null;
+
+    }
+
+
+    /*
+     * Bersihkan state upload.
+     */
+
+    if (
+      GENZ.upload
+    ) {
+
+      GENZ.upload.imageData =
+        null;
+
+    }
+
+
+    /*
+     * Bersihkan file input.
+     */
+
+    const imageInput =
+      $('image');
+
+
+    if (imageInput) {
+
+      try {
+
+        imageInput.value =
+          '';
+
+      } catch {
+
+        /* ignore */
+
+      }
+
+    }
+
+
+    /*
+     * Bersihkan preview.
+     */
+
+    const preview =
+      $('imagePreview');
+
+
+    if (preview) {
+
+      preview.innerHTML =
+        '';
+
+      preview.classList.add(
+        'hidden'
+      );
+
+      preview.style.display =
+        'none';
+
+    }
+
+
+    /*
+     * Reset status file.
+     */
+
+    const fileStatus =
+      $('imageFileStatus');
+
+
+    if (fileStatus) {
+
+      fileStatus.textContent =
+        'Tidak ada file dipilih';
+
+    }
+
+
+    /*
+     * Beberapa versi upload
+     * menggunakan object URL.
+     * Bersihkan referensi jika ada.
+     */
+
+    if (
+      GENZ.upload &&
+      typeof GENZ.upload.clear ===
+      'function'
+    ) {
+
+      try {
+
+        GENZ.upload.clear();
+
+      } catch {
+
+        /* ignore */
+
+      }
+
+    }
+
+  }
+
+
+  /* =======================================================
      MODEL RULES
   ======================================================= */
 
@@ -397,14 +521,13 @@
       );
 
 
-    if (!rules) {
-
-      return true;
-
-    }
-
+    /*
+     * Jika model mempunyai aturan eksplisit,
+     * ikuti aturan tersebut.
+     */
 
     if (
+      rules &&
       typeof rules.imageReferenceSupported ===
       'boolean'
     ) {
@@ -413,6 +536,15 @@
 
     }
 
+
+    /*
+     * Dukungan legacy:
+     *
+     * Jika model tidak mempunyai rule image,
+     * tetap gunakan perilaku lama agar
+     * provider yang belum mendefinisikan
+     * capability tidak rusak.
+     */
 
     return true;
 
@@ -439,6 +571,23 @@
     if (!rules) {
 
       return null;
+
+    }
+
+
+    /*
+     * Jika model tidak mendukung image,
+     * jangan pernah memakai mode imageToVideo.
+     */
+
+    if (
+      !rules.imageReferenceSupported
+    ) {
+
+      return (
+        rules.textToVideo ||
+        null
+      );
 
     }
 
@@ -875,10 +1024,40 @@
       );
 
 
+    /*
+     * Container utama Reference Image.
+     *
+     * Generator menggunakan:
+     * <div class="reference-group">
+     */
+
+    const imageGroup =
+      imageInput.closest(
+        '.reference-group'
+      );
+
+
+    /*
+     * Jika model belum dipilih,
+     * image tetap ditampilkan.
+     */
+
     if (!model) {
 
       imageInput.disabled =
         false;
+
+
+      if (imageGroup) {
+
+        imageGroup.classList.remove(
+          'hidden'
+        );
+
+        imageGroup.style.display =
+          '';
+
+      }
 
       return;
 
@@ -892,44 +1071,65 @@
       );
 
 
-    imageInput.disabled =
-      !supported;
-
+    /* =====================================================
+       MODEL TIDAK MENDUKUNG IMAGE
+    ===================================================== */
 
     if (!supported) {
 
-      if (
-        GENZ.state
-      ) {
+      /*
+       * Sembunyikan seluruh
+       * Reference Image group.
+       */
 
-        GENZ.state.imageData =
-          null;
+      if (imageGroup) {
 
-      }
+        imageGroup.classList.add(
+          'hidden'
+        );
 
-
-      if (
-        GENZ.upload
-      ) {
-
-        GENZ.upload.imageData =
-          null;
+        imageGroup.style.display =
+          'none';
 
       }
 
 
-      try {
+      imageInput.disabled =
+        true;
 
-        imageInput.value =
-          '';
 
-      } catch {
+      /*
+       * Bersihkan seluruh state
+       * supaya image lama tidak ikut
+       * terkirim ke backend.
+       */
 
-        /* ignore */
+      clearImageReference();
 
-      }
+
+      return;
 
     }
+
+
+    /* =====================================================
+       MODEL MENDUKUNG IMAGE
+    ===================================================== */
+
+    if (imageGroup) {
+
+      imageGroup.classList.remove(
+        'hidden'
+      );
+
+      imageGroup.style.display =
+        '';
+
+    }
+
+
+    imageInput.disabled =
+      false;
 
   }
 
@@ -962,52 +1162,24 @@
       );
 
 
-    if (
-      !imageSupported &&
-      hasImageReference()
-    ) {
+    /*
+     * Model berubah ke model
+     * yang tidak mendukung image.
+     *
+     * Bersihkan image terlebih dahulu.
+     */
 
-      if (
-        GENZ.state
-      ) {
+    if (!imageSupported) {
 
-        GENZ.state.imageData =
-          null;
-
-      }
-
-
-      if (
-        GENZ.upload
-      ) {
-
-        GENZ.upload.imageData =
-          null;
-
-      }
-
-
-      const imageInput =
-        $('image');
-
-
-      if (imageInput) {
-
-        try {
-
-          imageInput.value =
-            '';
-
-        } catch {
-
-          /* ignore */
-
-        }
-
-      }
+      clearImageReference();
 
     }
 
+
+    /*
+     * Setelah state dibersihkan,
+     * update tampilan.
+     */
 
     updateImageAvailability(
       provider
@@ -1163,9 +1335,6 @@
     }
 
 
-    /*
-     * Simpan nilai yang sedang dipilih.
-     */
     const previousModel =
       text(
         $('model')?.value
@@ -1199,6 +1368,7 @@
     /*
      * MODEL
      */
+
     setOptions(
       'model',
       getEffectiveCapabilities(
@@ -1222,8 +1392,21 @@
 
 
     /*
+     * IMAGE
+     *
+     * Harus dieksekusi segera setelah
+     * model ditentukan.
+     */
+
+    updateImageAvailability(
+      provider
+    );
+
+
+    /*
      * ASPECT / RATIO
      */
+
     const aspects =
       getEffectiveCapabilities(
         provider
@@ -1250,12 +1433,10 @@
 
 
     /*
-     * IMAGE STATE
-     *
-     * Penting:
-     * cek ulang setelah upload.js
-     * selesai memperbarui state.
+     * Ambil status image TERBARU
+     * setelah model diproses.
      */
+
     const hasImage =
       hasImageReference();
 
@@ -1263,6 +1444,7 @@
     /*
      * DURASI
      */
+
     let duration =
       applyDurationRules(
         provider,
@@ -1272,9 +1454,11 @@
 
     /*
      * Jika image baru saja dipilih,
-     * model Veo yang memakai image
-     * harus mengikuti aturan imageToVideo.
+     * pertahankan perilaku khusus
+     * provider yang memang membutuhkan
+     * duration tertentu.
      */
+
     if (
       changedField === 'image' &&
       hasImage
@@ -1289,10 +1473,6 @@
     }
 
 
-    /*
-     * Jika duration tidak valid,
-     * gunakan nilai pertama yang valid.
-     */
     if (!duration) {
 
       duration =
@@ -1306,6 +1486,7 @@
     /*
      * RESOLUTION
      */
+
     let resolution =
       applyResolutionRules(
         provider,
@@ -1313,11 +1494,6 @@
       );
 
 
-    /*
-     * Jika resolution sebelumnya
-     * tidak kompatibel dengan duration
-     * baru, pilih resolution pertama.
-     */
     if (!resolution) {
 
       resolution =
@@ -1332,6 +1508,7 @@
      * Jika user memilih resolution
      * tertentu, cari duration yang kompatibel.
      */
+
     if (
       changedField ===
       'resolution'
@@ -1390,9 +1567,10 @@
 
 
     /*
-     * Setelah duration final,
-     * hitung ulang resolution.
+     * Hitung ulang resolution
+     * setelah duration final.
      */
+
     resolution =
       applyResolutionRules(
         provider,
@@ -1403,16 +1581,18 @@
 
 
     /*
-     * IMAGE
+     * IMAGE FINAL SYNC
      */
+
     updateImageAvailability(
       provider
     );
 
 
     /*
-     * MODEL
+     * MODEL OPTIONS
      */
+
     const modelElement =
       $('model');
 
@@ -1459,6 +1639,7 @@
     /*
      * STATE
      */
+
     GENZ.state.provider =
       provider.id;
 
@@ -1517,9 +1698,6 @@
     );
 
 
-    /*
-     * Jalankan sinkronisasi penuh.
-     */
     refreshCurrentOptions(
       'provider'
     );
@@ -1926,11 +2104,6 @@
     );
 
 
-    /*
-     * Pastikan listener lain yang
-     * mungkin mengubah state provider
-     * tidak meninggalkan UI stale.
-     */
     scheduleRefresh(
       'provider'
     );
@@ -2270,11 +2443,6 @@
       'true';
 
 
-    /*
-     * Capture phase dipakai agar
-     * perubahan tetap tertangkap walaupun
-     * elemen dibuat ulang secara dinamis.
-     */
     document.addEventListener(
       'change',
       event => {
@@ -2324,11 +2492,6 @@
     );
 
 
-    /*
-     * Upload component kadang memperbarui
-     * state setelah event change selesai.
-     * Event input juga kita pantau.
-     */
     document.addEventListener(
       'input',
       event => {
@@ -2354,10 +2517,6 @@
     );
 
 
-    /*
-     * Dukungan untuk komponen upload
-     * yang mengirim custom event.
-     */
     [
       'genz-image-change',
       'genz-upload-change',
