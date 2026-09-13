@@ -41,11 +41,136 @@ GEN-Z.AI
 GENERATE ROUTER
 ============================================================ */
 
+const MIN_PROMPT_LENGTH = 3;
+const MAX_PROMPT_LENGTH = 2000;
+
+const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
+
+const DEFAULT_CREDIT_COST = 1;
+const MAX_CREDIT_COST = 1000;
+
+
+/* ============================================================
+HELPERS
+============================================================ */
+
+function normalizeAdapterId(
+  value
+) {
+  return String(
+    value || ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+
+function normalizeRequestedString(
+  value
+) {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return null;
+  }
+
+  const normalized =
+    String(
+      value
+    ).trim();
+
+  return normalized ||
+    null;
+}
+
+
+function normalizeDuration(
+  value
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const normalized =
+    Number(
+      String(
+        value
+      ).replace(
+        /s$/i,
+        ""
+      )
+    );
+
+  if (
+    !Number.isFinite(
+      normalized
+    )
+  ) {
+    throw new HttpError(
+      "Duration tidak valid.",
+      400
+    );
+  }
+
+  return normalized;
+}
+
+
+function getCreditCost(
+  env
+) {
+  const raw =
+    env?.GENERATION_CREDIT_COST;
+
+  if (
+    raw === undefined ||
+    raw === null ||
+    String(
+      raw
+    ).trim() === ""
+  ) {
+    return DEFAULT_CREDIT_COST;
+  }
+
+  const cost =
+    Number(
+      raw
+    );
+
+  if (
+    !Number.isFinite(
+      cost
+    ) ||
+    !Number.isInteger(
+      cost
+    ) ||
+    cost < 1 ||
+    cost > MAX_CREDIT_COST
+  ) {
+    throw new HttpError(
+      "Konfigurasi GENERATION_CREDIT_COST tidak valid.",
+      500
+    );
+  }
+
+  return cost;
+}
+
+
+/* ============================================================
+MAIN GENERATE HANDLER
+============================================================ */
+
 export async function handleGenerate(
   request,
   env
 ) {
-  const ct =
+  const contentType =
     String(
       request.headers.get(
         "content-type"
@@ -53,7 +178,7 @@ export async function handleGenerate(
     ).toLowerCase();
 
   if (
-    !ct.includes(
+    !contentType.includes(
       "application/json"
     )
   ) {
@@ -63,20 +188,51 @@ export async function handleGenerate(
     );
   }
 
+
+  /* ==========================================================
+  AUTH
+  ========================================================== */
+
   const user =
     await requireUser(
       request,
       env
     );
 
+
+  /* ==========================================================
+  RATE LIMIT
+  ========================================================== */
+
   checkGenerateRate(
     user.id
   );
+
+
+  /* ==========================================================
+  REQUEST BODY
+  ========================================================== */
 
   const body =
     await readJson(
       request
     );
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body)
+  ) {
+    throw new HttpError(
+      "Data generation tidak valid.",
+      400
+    );
+  }
+
+
+  /* ==========================================================
+  PROVIDER
+  ========================================================== */
 
   const id =
     canonicalProvider(
@@ -120,12 +276,9 @@ export async function handleGenerate(
   ========================================================== */
 
   const adapterId =
-    String(
-      provider?.adapter ||
-        ""
-    )
-      .trim()
-      .toLowerCase();
+    normalizeAdapterId(
+      provider?.adapter
+    );
 
   if (!adapterId) {
     throw new HttpError(
@@ -166,16 +319,17 @@ export async function handleGenerate(
 
   const prompt =
     String(
-      body?.prompt ||
-        ""
+      body?.prompt || ""
     ).trim();
 
   if (
-    prompt.length < 3 ||
-    prompt.length > 2000
+    prompt.length <
+      MIN_PROMPT_LENGTH ||
+    prompt.length >
+      MAX_PROMPT_LENGTH
   ) {
     throw new HttpError(
-      "Prompt harus 3-2000 karakter.",
+      `Prompt harus ${MIN_PROMPT_LENGTH}-${MAX_PROMPT_LENGTH} karakter.`,
       400
     );
   }
@@ -186,11 +340,9 @@ export async function handleGenerate(
   ========================================================== */
 
   const requestedModel =
-    body?.model != null
-      ? String(
-          body.model
-        ).trim()
-      : null;
+    normalizeRequestedString(
+      body?.model
+    );
 
 
   /* ==========================================================
@@ -198,26 +350,12 @@ export async function handleGenerate(
   ========================================================== */
 
   const requestedDuration =
-    body?.duration != null
-      ? Number(
-          body.duration
-        )
-      : null;
-
-  if (
-    body?.duration != null &&
-    !Number.isFinite(
-      requestedDuration
-    )
-  ) {
-    throw new HttpError(
-      "Duration tidak valid.",
-      400
+    normalizeDuration(
+      body?.duration
     );
-  }
 
   if (
-    body?.duration != null
+    requestedDuration !== null
   ) {
     const info =
       getAdapterInfo(
@@ -228,17 +366,24 @@ export async function handleGenerate(
       Array.isArray(
         info?.durations
       )
-        ? info.durations.map(
-            value =>
-              Number(
-                String(
-                  value
-                ).replace(
-                  /s$/i,
-                  ""
+        ? info.durations
+            .map(
+              value =>
+                Number(
+                  String(
+                    value
+                  ).replace(
+                    /s$/i,
+                    ""
+                  )
                 )
-              )
-          )
+            )
+            .filter(
+              value =>
+                Number.isFinite(
+                  value
+                )
+            )
         : [];
 
     if (
@@ -260,11 +405,9 @@ export async function handleGenerate(
   ========================================================== */
 
   const requestedAspectRatio =
-    body?.aspectRatio != null
-      ? String(
-          body.aspectRatio
-        ).trim()
-      : null;
+    normalizeRequestedString(
+      body?.aspectRatio
+    );
 
 
   /* ==========================================================
@@ -272,11 +415,9 @@ export async function handleGenerate(
   ========================================================== */
 
   const requestedResolution =
-    body?.resolution != null
-      ? String(
-          body.resolution
-        ).trim()
-      : null;
+    normalizeRequestedString(
+      body?.resolution
+    );
 
 
   /* ==========================================================
@@ -284,12 +425,8 @@ export async function handleGenerate(
   ========================================================== */
 
   const cost =
-    Math.max(
-      1,
-      Number(
-        env.GENERATION_CREDIT_COST ||
-          1
-      )
+    getCreditCost(
+      env
     );
 
 
@@ -306,7 +443,8 @@ export async function handleGenerate(
 
   if (
     !idem ||
-    idem.length > 128
+    idem.length >
+      MAX_IDEMPOTENCY_KEY_LENGTH
   ) {
     throw new HttpError(
       "Idempotency-Key wajib diisi (1-128 karakter).",
@@ -362,8 +500,8 @@ export async function handleGenerate(
       )
     )
       .map(
-        b =>
-          b
+        byte =>
+          byte
             .toString(16)
             .padStart(
               2,
@@ -459,28 +597,27 @@ export async function handleGenerate(
   ========================================================== */
 
   try {
-    const initialMetadata =
-      {
-        provider:
-          id,
+    const initialMetadata = {
+      provider:
+        id,
 
-        adapter:
-          adapterId,
+      adapter:
+        adapterId,
 
-        prompt,
+      prompt,
 
-        model:
-          requestedModel,
+      model:
+        requestedModel,
 
-        duration:
-          requestedDuration,
+      duration:
+        requestedDuration,
 
-        aspectRatio:
-          requestedAspectRatio,
+      aspectRatio:
+        requestedAspectRatio,
 
-        resolution:
-          requestedResolution
-      };
+      resolution:
+        requestedResolution
+    };
 
 
     /* ========================================================
@@ -547,34 +684,33 @@ export async function handleGenerate(
     FINAL METADATA
     ======================================================== */
 
-    const metadata =
-      {
-        ...initialMetadata,
+    const metadata = {
+      ...initialMetadata,
 
-        ...result,
+      ...result,
 
-        provider:
-          id,
+      provider:
+        id,
 
-        adapter:
-          adapterId,
+      adapter:
+        adapterId,
 
-        prompt,
+      prompt,
 
-        model:
-          requestedModel ||
-          result.model ||
-          null,
+      model:
+        requestedModel ||
+        result.model ||
+        null,
 
-        duration:
-          requestedDuration,
+      duration:
+        requestedDuration,
 
-        aspectRatio:
-          requestedAspectRatio,
+      aspectRatio:
+        requestedAspectRatio,
 
-        resolution:
-          requestedResolution
-      };
+      resolution:
+        requestedResolution
+    };
 
 
     /* ========================================================
