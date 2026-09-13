@@ -159,6 +159,8 @@ import * as minimax
 import * as luma
   from "./luma.js";
 
+import * as chinaapi
+  from "./chinaapi.js";
 
 /* ============================================================
 GOOGLE GEMINI / VEO
@@ -224,6 +226,18 @@ registerAdapter(
   ]
 );
 
+/* ============================================================
+CHINAAPI
+============================================================ */
+
+registerAdapter(
+  "chinaapi",
+  chinaapi,
+  [
+    "china-api",
+    "china api"
+  ]
+);
 
 /* ============================================================
 GET ADAPTER
