@@ -906,23 +906,51 @@ export async function router(
 
     // --------------------------------------------------------
     // USER-FRIENDLY ERROR
+    //
+    // ADMIN 4xx:
+    // Jangan disamarkan menjadi error provider.
+    //
+    // Contoh:
+    // "Provider masih memiliki job aktif..."
+    //
+    // harus tetap diterima frontend sebagai pesan yang benar.
+    //
+    // ADMIN 5xx:
+    // Tetap gunakan pesan aman agar error database/internal
+    // tidak bocor ke browser.
+    //
+    // ROUTE LAIN:
+    // Tetap menggunakan sistem friendly-error sebelumnya.
     // --------------------------------------------------------
 
-    const userMessage =
-      getFriendlyErrorMessage(
-        err,
-        safeStatus
+    const isAdminRoute =
+      url.pathname.startsWith(
+        "/api/admin/"
       );
+
+
+    const userMessage =
+      isAdminRoute &&
+      safeStatus >= 400 &&
+      safeStatus < 500
+        ? rawMessage
+        : getFriendlyErrorMessage(
+            err,
+            safeStatus
+          );
 
 
     // --------------------------------------------------------
     // RESPONSE KE BROWSER
     //
     // Tidak mengirim:
-    // - raw provider error
+    // - raw provider error pada error 5xx
     // - API key
     // - Authorization header
     // - request body
+    //
+    // Untuk admin 4xx, rawMessage digunakan karena berisi
+    // pesan valid dari HttpError yang memang aman ditampilkan.
     // --------------------------------------------------------
 
     return json(
