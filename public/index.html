@@ -86,6 +86,1100 @@
 
   <script src="/js/app.js"></script>
 
+
+  <!-- =========================================================
+       GEN-Z.AI GENERATION CONTROLLER
+       ========================================================= -->
+
+  <script>
+
+  (function () {
+
+    'use strict';
+
+
+    const GENERATE_TIMEOUT = 30000;
+    const STATUS_TIMEOUT = 30000;
+
+    const MAX_REQUEST_BYTES = 65536;
+    const MAX_IMAGE_BYTES = 48000;
+
+    let generating = false;
+    let pollTimer = null;
+
+
+    /* =========================================================
+       HELPERS
+       ========================================================= */
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+
+    function setStatus(
+      text,
+      type
+    ) {
+
+      const status =
+        $('status');
+
+      if (!status) {
+        return;
+      }
+
+      status.textContent =
+        String(
+          text || ''
+        );
+
+      status.dataset.type =
+        type || 'info';
+
+    }
+
+
+    function setButtonLoading(
+      loading
+    ) {
+
+      const button =
+        $('generateVideo');
+
+      if (!button) {
+        return;
+      }
+
+      button.disabled =
+        Boolean(
+          loading
+        );
+
+      button.setAttribute(
+        'aria-busy',
+        loading
+          ? 'true'
+          : 'false'
+      );
+
+      if (loading) {
+
+        button.dataset.originalText =
+          button.textContent;
+
+        button.textContent =
+          'Generating...';
+
+      } else {
+
+        button.textContent =
+          button.dataset.originalText ||
+          'Generate Video';
+
+      }
+
+    }
+
+
+    function getValue(
+      id
+    ) {
+
+      const element =
+        $(id);
+
+      if (!element) {
+        return '';
+      }
+
+      return String(
+        element.value ??
+        ''
+      ).trim();
+
+    }
+
+
+    function getImageData() {
+
+      if (
+        window.GENZ &&
+        window.GENZ.upload &&
+        window.GENZ.upload.imageData
+      ) {
+        return String(
+          window.GENZ.upload.imageData
+        );
+      }
+
+      if (
+        window.GENZ &&
+        window.GENZ.state &&
+        window.GENZ.state.imageData
+      ) {
+        return String(
+          window.GENZ.state.imageData
+        );
+      }
+
+      return '';
+
+    }
+
+
+    async function getAccessToken() {
+
+      try {
+
+        if (
+          window.GENZ_AUTH_CLIENT &&
+          window.GENZ_AUTH_CLIENT.auth &&
+          typeof
+            window.GENZ_AUTH_CLIENT.auth.getSession ===
+            'function'
+        ) {
+
+          const result =
+            await window.GENZ_AUTH_CLIENT.auth.getSession();
+
+          return (
+            result?.data?.session?.access_token ||
+            null
+          );
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          '[GEN-Z GENERATOR] Session error:',
+          error
+        );
+
+      }
+
+
+      try {
+
+        if (
+          window.GENZ &&
+          window.GENZ.auth &&
+          typeof
+            window.GENZ.auth.token ===
+            'function'
+        ) {
+
+          return await
+            window.GENZ.auth.token();
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          '[GEN-Z GENERATOR] Token error:',
+          error
+        );
+
+      }
+
+
+      return null;
+
+    }
+
+
+    async function fetchJson(
+      url,
+      options,
+      timeout
+    ) {
+
+      const controller =
+        new AbortController();
+
+      const timer =
+        setTimeout(
+          function () {
+            controller.abort();
+          },
+          timeout
+        );
+
+      try {
+
+        const response =
+          await fetch(
+            url,
+            {
+              ...options,
+              signal:
+                controller.signal
+            }
+          );
+
+        let data =
+          null;
+
+        const contentType =
+          String(
+            response.headers.get(
+              'content-type'
+            ) || ''
+          ).toLowerCase();
+
+        if (
+          contentType.includes(
+            'application/json'
+          )
+        ) {
+
+          data =
+            await response.json();
+
+        } else {
+
+          const text =
+            await response.text();
+
+          data = {
+            success:
+              false,
+
+            error:
+              text ||
+              `HTTP ${response.status}`
+          };
+
+        }
+
+
+        if (!response.ok) {
+
+          const error =
+            new Error(
+              data?.error ||
+              data?.message ||
+              `Request gagal (${response.status}).`
+            );
+
+          error.status =
+            response.status;
+
+          error.data =
+            data;
+
+          throw error;
+
+        }
+
+
+        return data;
+
+      } finally {
+
+        clearTimeout(
+          timer
+        );
+
+      }
+
+    }
+
+
+    function createIdempotencyKey() {
+
+      try {
+
+        if (
+          crypto &&
+          typeof crypto.randomUUID ===
+            'function'
+        ) {
+
+          return crypto.randomUUID();
+
+        }
+
+      } catch (_) {}
+
+      return (
+        'gen-' +
+        Date.now() +
+        '-' +
+        Math.random()
+          .toString(36)
+          .slice(2)
+      );
+
+    }
+
+
+    /* =========================================================
+       IMAGE COMPRESSION
+       Backend membatasi request generation 64 KB.
+       Data URL gambar asli sering jauh lebih besar.
+       ========================================================= */
+
+    function estimateBytes(
+      value
+    ) {
+
+      if (!value) {
+        return 0;
+      }
+
+      return Math.ceil(
+        String(value).length *
+        0.75
+      );
+
+    }
+
+
+    async function compressImageData(
+      imageData
+    ) {
+
+      if (!imageData) {
+        return '';
+      }
+
+
+      if (
+        estimateBytes(
+          imageData
+        ) <= MAX_IMAGE_BYTES
+      ) {
+
+        return imageData;
+
+      }
+
+
+      if (
+        !String(
+          imageData
+        ).startsWith(
+          'data:image/'
+        )
+      ) {
+
+        throw new Error(
+          'Ukuran gambar terlalu besar untuk dikirim ke server.'
+        );
+
+      }
+
+
+      return new Promise(
+        function (
+          resolve,
+          reject
+        ) {
+
+          const image =
+            new Image();
+
+          image.onload =
+            function () {
+
+              try {
+
+                const canvas =
+                  document.createElement(
+                    'canvas'
+                  );
+
+                const maxDimension =
+                  768;
+
+                const scale =
+                  Math.min(
+                    1,
+                    maxDimension /
+                    Math.max(
+                      image.naturalWidth ||
+                        image.width,
+                      image.naturalHeight ||
+                        image.height
+                    )
+                  );
+
+                canvas.width =
+                  Math.max(
+                    1,
+                    Math.round(
+                      (
+                        image.naturalWidth ||
+                        image.width
+                      ) *
+                      scale
+                    )
+                  );
+
+                canvas.height =
+                  Math.max(
+                    1,
+                    Math.round(
+                      (
+                        image.naturalHeight ||
+                        image.height
+                      ) *
+                      scale
+                    )
+                  );
+
+
+                const context =
+                  canvas.getContext(
+                    '2d'
+                  );
+
+                if (!context) {
+
+                  reject(
+                    new Error(
+                      'Browser tidak mendukung pemrosesan gambar.'
+                    )
+                  );
+
+                  return;
+
+                }
+
+
+                context.drawImage(
+                  image,
+                  0,
+                  0,
+                  canvas.width,
+                  canvas.height
+                );
+
+
+                const qualities =
+                  [
+                    0.72,
+                    0.62,
+                    0.52,
+                    0.42,
+                    0.32
+                  ];
+
+
+                for (
+                  const quality
+                  of qualities
+                ) {
+
+                  const result =
+                    canvas.toDataURL(
+                      'image/jpeg',
+                      quality
+                    );
+
+                  if (
+                    estimateBytes(
+                      result
+                    ) <= MAX_IMAGE_BYTES
+                  ) {
+
+                    resolve(
+                      result
+                    );
+
+                    return;
+
+                  }
+
+                }
+
+
+                reject(
+                  new Error(
+                    'Ukuran gambar masih terlalu besar. Gunakan gambar yang lebih kecil.'
+                  )
+                );
+
+              } catch (error) {
+
+                reject(
+                  error
+                );
+
+              }
+
+            };
+
+
+          image.onerror =
+            function () {
+
+              reject(
+                new Error(
+                  'Gambar tidak dapat diproses.'
+                )
+              );
+
+            };
+
+
+          image.src =
+            imageData;
+
+        }
+      );
+
+    }
+
+
+    /* =========================================================
+       REQUEST GENERATION
+       ========================================================= */
+
+    async function startGeneration() {
+
+      if (generating) {
+        return;
+      }
+
+
+      const provider =
+        getValue(
+          'provider'
+        );
+
+      const model =
+        getValue(
+          'model'
+        );
+
+      const prompt =
+        getValue(
+          'prompt'
+        );
+
+      const aspectRatio =
+        getValue(
+          'ratio'
+        );
+
+      const duration =
+        getValue(
+          'duration'
+        );
+
+      const resolution =
+        getValue(
+          'resolution'
+        );
+
+
+      if (!provider) {
+
+        setStatus(
+          'Pilih provider terlebih dahulu.',
+          'error'
+        );
+
+        return;
+
+      }
+
+
+      if (!prompt) {
+
+        setStatus(
+          'Prompt wajib diisi.',
+          'error'
+        );
+
+        $('prompt')?.focus();
+
+        return;
+
+      }
+
+
+      if (
+        prompt.length <
+        3
+      ) {
+
+        setStatus(
+          'Prompt minimal 3 karakter.',
+          'error'
+        );
+
+        $('prompt')?.focus();
+
+        return;
+
+      }
+
+
+      generating =
+        true;
+
+      setButtonLoading(
+        true
+      );
+
+      setStatus(
+        'Menyiapkan generation...',
+        'info'
+      );
+
+
+      try {
+
+        const token =
+          await getAccessToken();
+
+        if (!token) {
+
+          throw new Error(
+            'Session login tidak ditemukan. Silakan login kembali.'
+          );
+
+        }
+
+
+        let imageData =
+          getImageData();
+
+
+        if (imageData) {
+
+          setStatus(
+            'Menyiapkan gambar...',
+            'info'
+          );
+
+          imageData =
+            await compressImageData(
+              imageData
+            );
+
+        }
+
+
+        const payload = {
+
+          provider:
+            provider,
+
+          model:
+            model || null,
+
+          duration:
+            duration || null,
+
+          aspectRatio:
+            aspectRatio || null,
+
+          resolution:
+            resolution || null,
+
+          prompt:
+            prompt,
+
+          imageData:
+            imageData || null
+
+        };
+
+
+        const body =
+          JSON.stringify(
+            payload
+          );
+
+
+        if (
+          estimateBytes(
+            body
+          ) >=
+          MAX_REQUEST_BYTES
+        ) {
+
+          throw new Error(
+            'Data generation terlalu besar. Kurangi ukuran gambar.'
+          );
+
+        }
+
+
+        setStatus(
+          'Mengirim permintaan generation...',
+          'info'
+        );
+
+
+        const result =
+          await fetchJson(
+            '/api/generate',
+            {
+              method:
+                'POST',
+
+              headers: {
+
+                'Accept':
+                  'application/json',
+
+                'Content-Type':
+                  'application/json',
+
+                'Authorization':
+                  `Bearer ${token}`,
+
+                'Idempotency-Key':
+                  createIdempotencyKey()
+
+              },
+
+              body:
+                body
+
+            },
+            GENERATE_TIMEOUT
+          );
+
+
+        if (
+          !result ||
+          result.success === false
+        ) {
+
+          throw new Error(
+            result?.error ||
+            'Generation gagal dimulai.'
+          );
+
+        }
+
+
+        const jobId =
+          result.jobId ||
+          result.id ||
+          result.operationName ||
+          result.taskId ||
+          result.externalId;
+
+
+        if (!jobId) {
+
+          throw new Error(
+            'Server tidak mengembalikan ID generation.'
+          );
+
+        }
+
+
+        setStatus(
+          'Generation dimulai. Memproses video...',
+          'info'
+        );
+
+
+        await pollStatus(
+          provider,
+          jobId,
+          token
+        );
+
+      } catch (error) {
+
+        console.error(
+          '[GEN-Z GENERATOR] Generation error:',
+          error
+        );
+
+        setStatus(
+          error?.message ||
+          'Generation gagal.',
+          'error'
+        );
+
+      } finally {
+
+        generating =
+          false;
+
+        setButtonLoading(
+          false
+        );
+
+      }
+
+    }
+
+
+    /* =========================================================
+       STATUS POLLING
+       ========================================================= */
+
+    async function pollStatus(
+      provider,
+      externalId,
+      token
+    ) {
+
+      let attempts =
+        0;
+
+      const maxAttempts =
+        120;
+
+
+      if (pollTimer) {
+
+        clearTimeout(
+          pollTimer
+        );
+
+        pollTimer =
+          null;
+
+      }
+
+
+      while (
+        attempts <
+        maxAttempts
+      ) {
+
+        attempts++;
+
+
+        const result =
+          await fetchJson(
+            '/api/generate/status',
+            {
+              method:
+                'POST',
+
+              headers: {
+
+                'Accept':
+                  'application/json',
+
+                'Content-Type':
+                  'application/json',
+
+                'Authorization':
+                  `Bearer ${token}`
+
+              },
+
+              body:
+                JSON.stringify({
+
+                  provider:
+                    provider,
+
+                  operationName:
+                    externalId
+
+                })
+
+            },
+            STATUS_TIMEOUT
+          );
+
+
+        const status =
+          String(
+            result?.status ||
+            result?.providerStatus ||
+            'processing'
+          )
+            .trim()
+            .toLowerCase();
+
+
+        if (
+          status ===
+          'completed'
+        ) {
+
+          const videoUrl =
+            result.videoUrl ||
+            result.video_url ||
+            `/api/video?provider=${encodeURIComponent(provider)}&jobId=${encodeURIComponent(result.jobId || externalId)}`;
+
+
+          showGeneratedVideo(
+            videoUrl
+          );
+
+          setStatus(
+            'Video berhasil dibuat.',
+            'success'
+          );
+
+          return;
+
+        }
+
+
+        if (
+          status ===
+          'failed'
+        ) {
+
+          throw new Error(
+            result?.error ||
+            'Provider gagal membuat video.'
+          );
+
+        }
+
+
+        setStatus(
+          `Generation berjalan... (${attempts}/120)`,
+          'info'
+        );
+
+
+        await new Promise(
+          function (
+            resolve
+          ) {
+
+            pollTimer =
+              setTimeout(
+                resolve,
+                5000
+              );
+
+          }
+        );
+
+      }
+
+
+      throw new Error(
+        'Generation terlalu lama. Periksa status job kembali nanti.'
+      );
+
+    }
+
+
+    /* =========================================================
+       VIDEO RESULT
+       ========================================================= */
+
+    function showGeneratedVideo(
+      videoUrl
+    ) {
+
+      const video =
+        $('video');
+
+      const download =
+        $('downloadVideo');
+
+
+      if (video) {
+
+        video.src =
+          videoUrl;
+
+        video.style.display =
+          'block';
+
+        video.load();
+
+      }
+
+
+      if (download) {
+
+        download.href =
+          videoUrl;
+
+        download.style.display =
+          'inline-flex';
+
+        download.setAttribute(
+          'download',
+          ''
+        );
+
+      }
+
+    }
+
+
+    /* =========================================================
+       EVENT DELEGATION
+       generator.html dimuat secara dinamis oleh app.js,
+       sehingga listener langsung ke tombol saat page load
+       tidak aman.
+       ========================================================= */
+
+    document.addEventListener(
+      'click',
+      function (
+        event
+      ) {
+
+        const button =
+          event.target?.closest?.(
+            '#generateVideo'
+          );
+
+        if (!button) {
+          return;
+        }
+
+
+        event.preventDefault();
+        event.stopPropagation();
+
+
+        startGeneration();
+
+      },
+      true
+    );
+
+
+    /* =========================================================
+       CLEANUP
+       ========================================================= */
+
+    window.addEventListener(
+      'beforeunload',
+      function () {
+
+        if (pollTimer) {
+
+          clearTimeout(
+            pollTimer
+          );
+
+          pollTimer =
+            null;
+
+        }
+
+      }
+    );
+
+
+    console.log(
+      '[GEN-Z GENERATOR] Frontend generation controller loaded.'
+    );
+
+  })();
+
+  </script>
+
 </body>
 
 </html>
