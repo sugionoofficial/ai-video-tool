@@ -170,23 +170,9 @@ const CAPABILITIES = {
   models: Object.keys(MODEL_RULES),
 
   durations: [
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    20,
-    25,
-    30
+    2, 3, 4, 5, 6, 7, 8, 9,
+    10, 11, 12, 13, 14, 15,
+    20, 25, 30
   ],
 
   aspects: [
@@ -214,16 +200,9 @@ const CAPABILITIES = {
  * ============================================================
  */
 
-function providerError(
-  message,
-  status = 400
-) {
-  const error = new Error(
-    message
-  );
-
+function providerError(message, status = 400) {
+  const error = new Error(message);
   error.status = status;
-
   return error;
 }
 
@@ -234,11 +213,8 @@ function providerError(
  * ============================================================
  */
 
-async function safeJson(
-  response
-) {
-  const text =
-    await response.text();
+async function safeJson(response) {
+  const text = await response.text();
 
   if (!text) {
     return {};
@@ -256,66 +232,58 @@ async function safeJson(
 
 /*
  * ============================================================
- * ERROR MESSAGE
+ * EXTRACT ERROR
  * ============================================================
  */
 
-function apiError(
-  data,
-  fallback
-) {
-  if (
-    typeof data?.error ===
-    "string"
-  ) {
-    return data.error;
-  }
+function apiError(data, fallback) {
+  const candidates = [
+    data?.error?.message,
+    data?.data?.error?.message,
+    data?.error,
+    data?.message,
+    data?.data?.message,
+    data?.fail_reason,
+    data?.data?.fail_reason,
+    data?.reason,
+    data?.data?.reason,
+    data?.raw
+  ];
 
-  if (
-    typeof data?.error?.message ===
-    "string"
-  ) {
-    return data.error.message;
-  }
-
-  if (
-    typeof data?.message ===
-    "string"
-  ) {
-    return data.message;
-  }
-
-  if (
-    typeof data?.fail_reason ===
-      "string" &&
-    data.fail_reason.trim()
-  ) {
-    return data.fail_reason;
-  }
-
-  if (
-    typeof data?.data?.fail_reason ===
-      "string" &&
-    data.data.fail_reason.trim()
-  ) {
-    return data.data.fail_reason;
-  }
-
-  if (
-    typeof data?.data?.error?.message ===
-    "string"
-  ) {
-    return data.data.error.message;
-  }
-
-  if (
-    typeof data?.raw ===
-    "string"
-  ) {
-    return data.raw;
+  for (const value of candidates) {
+    if (
+      typeof value === "string" &&
+      value.trim()
+    ) {
+      return value.trim();
+    }
   }
 
   return fallback;
+}
+
+
+function apiErrorCode(data) {
+  const candidates = [
+    data?.error?.code,
+    data?.data?.error?.code,
+    data?.code,
+    data?.data?.code,
+    data?.error_code,
+    data?.data?.error_code
+  ];
+
+  for (const value of candidates) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      String(value).trim()
+    ) {
+      return String(value).trim();
+    }
+  }
+
+  return "provider_failed";
 }
 
 
@@ -325,28 +293,21 @@ function apiError(
  * ============================================================
  */
 
-function normalizeStatus(
-  value
-) {
-  return String(
-    value || ""
-  )
+function normalizeStatus(value) {
+  return String(value || "")
     .trim()
     .toLowerCase();
 }
 
 
-function normalizeAspect(
-  value
-) {
+function normalizeAspect(value) {
   const aspect =
-    String(
-      value || "16:9"
-    ).trim();
+    String(value || "16:9").trim();
 
   if (
-    ["16:9", "9:16", "1:1"]
-      .includes(aspect)
+    ["16:9", "9:16", "1:1"].includes(
+      aspect
+    )
   ) {
     return aspect;
   }
@@ -355,20 +316,11 @@ function normalizeAspect(
 }
 
 
-function normalizeDuration(
-  value,
-  allowed
-) {
+function normalizeDuration(value, allowed) {
   const duration =
-    Number(
-      value ?? 5
-    );
+    Number(value ?? 5);
 
-  if (
-    !Number.isInteger(
-      duration
-    )
-  ) {
+  if (!Number.isInteger(duration)) {
     throw providerError(
       "Duration ChinaAPI harus berupa bilangan bulat.",
       400
@@ -378,9 +330,7 @@ function normalizeDuration(
   if (
     Array.isArray(allowed) &&
     allowed.length &&
-    !allowed.includes(
-      duration
-    )
+    !allowed.includes(duration)
   ) {
     throw providerError(
       `Duration ${duration}s tidak didukung model ChinaAPI ini.`,
@@ -403,22 +353,16 @@ function aspectToWanSize(
   resolution
 ) {
   const is1080 =
-    String(
-      resolution || ""
-    ).toLowerCase() ===
-    "1080p";
+    String(resolution || "")
+      .toLowerCase() === "1080p";
 
-  if (
-    aspect === "9:16"
-  ) {
+  if (aspect === "9:16") {
     return is1080
       ? "1080*1920"
       : "720*1280";
   }
 
-  if (
-    aspect === "1:1"
-  ) {
+  if (aspect === "1:1") {
     return is1080
       ? "1440*1440"
       : "720*720";
@@ -435,22 +379,16 @@ function aspectToKlingSize(
   resolution
 ) {
   const high =
-    String(
-      resolution || ""
-    ).toLowerCase() ===
-    "1080p";
+    String(resolution || "")
+      .toLowerCase() === "1080p";
 
-  if (
-    aspect === "9:16"
-  ) {
+  if (aspect === "9:16") {
     return high
       ? "1080x1920"
       : "720x1280";
   }
 
-  if (
-    aspect === "1:1"
-  ) {
+  if (aspect === "1:1") {
     return high
       ? "1024x1024"
       : "512x512";
@@ -468,9 +406,7 @@ function aspectToKlingSize(
  * ============================================================
  */
 
-function getImageUrl(
-  body
-) {
+function getImageUrl(body) {
   const value =
     body?.imageData ||
     body?.image ||
@@ -485,9 +421,7 @@ function getImageUrl(
     String(value).trim();
 
   if (
-    !/^https?:\/\//i.test(
-      url
-    )
+    !/^https?:\/\//i.test(url)
   ) {
     throw providerError(
       "ChinaAPI membutuhkan URL gambar yang dapat diakses publik.",
@@ -499,34 +433,27 @@ function getImageUrl(
 }
 
 
-function getImages(
-  body
-) {
-  if (
-    !Array.isArray(
-      body?.images
-    )
-  ) {
+function getImages(body) {
+  if (!Array.isArray(body?.images)) {
     return [];
   }
 
   return body.images
-    .map(
-      item =>
-        typeof item ===
-          "string"
-          ? item
-          : item?.url ||
-            item?.image_url ||
-            null
-    )
+    .map(item => {
+      if (typeof item === "string") {
+        return item;
+      }
+
+      return (
+        item?.url ||
+        item?.image_url ||
+        null
+      );
+    })
     .filter(
       item =>
-        typeof item ===
-          "string" &&
-        /^https?:\/\//i.test(
-          item
-        )
+        typeof item === "string" &&
+        /^https?:\/\//i.test(item)
     );
 }
 
@@ -537,19 +464,15 @@ function getImages(
  * ============================================================
  */
 
-function buildPayload(
-  body
-) {
+function buildPayload(body) {
   const model =
     String(
       body?.model ||
-        "wan2.7-t2v"
+      "wan2.7-t2v"
     ).trim();
 
   const rule =
-    MODEL_RULES[
-      model
-    ];
+    MODEL_RULES[model];
 
   if (!rule) {
     throw providerError(
@@ -576,19 +499,15 @@ function buildPayload(
     );
 
   const imageUrl =
-    getImageUrl(
-      body
-    );
+    getImageUrl(body);
 
   const images =
-    getImages(
-      body
-    );
+    getImages(body);
 
   const resolution =
     String(
       body?.resolution ||
-        "720p"
+      "720p"
     ).trim();
 
   const duration =
@@ -609,14 +528,9 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.family ===
-    "wan"
-  ) {
-    if (
-      rule.type ===
-      "t2v"
-    ) {
+  if (rule.family === "wan") {
+
+    if (rule.type === "t2v") {
       payload.size =
         body?.size ||
         aspectToWanSize(
@@ -631,10 +545,7 @@ function buildPayload(
     }
 
 
-    if (
-      rule.type ===
-      "i2v"
-    ) {
+    if (rule.type === "i2v") {
       if (!imageUrl) {
         throw providerError(
           "Wan I2V membutuhkan gambar referensi.",
@@ -658,10 +569,7 @@ function buildPayload(
     }
 
 
-    if (
-      rule.type ===
-      "r2v"
-    ) {
+    if (rule.type === "r2v") {
       if (
         imageUrl &&
         images.length
@@ -672,9 +580,7 @@ function buildPayload(
         );
       }
 
-      if (
-        images.length > 5
-      ) {
+      if (images.length > 5) {
         throw providerError(
           "Wan R2V maksimal 5 referensi.",
           400
@@ -688,15 +594,10 @@ function buildPayload(
 
       if (images.length) {
         payload.images =
-          images.slice(
-            0,
-            5
-          );
+          images.slice(0, 5);
       }
 
-      if (
-        body?.videoUrl
-      ) {
+      if (body?.videoUrl) {
         payload.video_url =
           String(
             body.videoUrl
@@ -716,13 +617,8 @@ function buildPayload(
     }
 
 
-    if (
-      rule.type ===
-      "videoedit"
-    ) {
-      if (
-        !body?.videoUrl
-      ) {
+    if (rule.type === "videoedit") {
+      if (!body?.videoUrl) {
         throw providerError(
           "Wan VideoEdit membutuhkan videoUrl.",
           400
@@ -751,27 +647,18 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.family ===
-    "seedance"
-  ) {
-    if (
-      images.length
-    ) {
+  if (rule.family === "seedance") {
+    if (images.length) {
       payload.images =
         images;
     }
 
-    if (
-      imageUrl
-    ) {
+    if (imageUrl) {
       payload.input_reference =
         imageUrl;
     }
 
-    if (
-      body?.videoUrl
-    ) {
+    if (body?.videoUrl) {
       payload.video_url =
         String(
           body.videoUrl
@@ -783,11 +670,10 @@ function buildPayload(
 
     payload.metadata = {
       ...(body?.metadata || {}),
+
       resolution:
         rule.resolutions.includes(
-          String(
-            resolution
-          ).toLowerCase()
+          String(resolution).toLowerCase()
         )
           ? String(
               resolution
@@ -805,13 +691,8 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.type ===
-    "kling3"
-  ) {
-    if (
-      imageUrl
-    ) {
+  if (rule.type === "kling3") {
+    if (imageUrl) {
       payload.image =
         imageUrl;
     }
@@ -831,8 +712,10 @@ function buildPayload(
 
     payload.metadata = {
       ...(body?.metadata || {}),
+
       aspect_ratio:
         aspect,
+
       sound:
         body?.sound ||
         "off"
@@ -848,13 +731,8 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.type ===
-    "klingTurbo"
-  ) {
-    if (
-      imageUrl
-    ) {
+  if (rule.type === "klingTurbo") {
+    if (imageUrl) {
       payload.image =
         imageUrl;
     }
@@ -866,8 +744,7 @@ function buildPayload(
         ...(body?.metadata?.settings || {}),
 
         resolution:
-          resolution ===
-            "1080p"
+          resolution === "1080p"
             ? "1080p"
             : "720p",
 
@@ -888,10 +765,7 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.type ===
-    "klingOmni"
-  ) {
+  if (rule.type === "klingOmni") {
     const refs =
       images.length
         ? images
@@ -899,19 +773,14 @@ function buildPayload(
           ? [imageUrl]
           : [];
 
-    if (
-      refs.length >
-      5
-    ) {
+    if (refs.length > 5) {
       throw providerError(
         "Kling Omni maksimal 5 gambar referensi.",
         400
       );
     }
 
-    if (
-      !refs.length
-    ) {
+    if (!refs.length) {
       throw providerError(
         "Kling Omni membutuhkan minimal satu gambar referensi.",
         400
@@ -922,12 +791,10 @@ function buildPayload(
       ...(body?.metadata || {}),
 
       image_list:
-        refs.map(
-          url => ({
-            image_url:
-              url
-          })
-        ),
+        refs.map(url => ({
+          image_url:
+            url
+        })),
 
       mode:
         rule.modes.includes(
@@ -937,9 +804,7 @@ function buildPayload(
           : "std",
 
       duration:
-        String(
-          duration
-        ),
+        String(duration),
 
       aspect_ratio:
         aspect,
@@ -959,27 +824,18 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.type ===
-    "h3"
-  ) {
-    if (
-      imageUrl
-    ) {
+  if (rule.type === "h3") {
+    if (imageUrl) {
       payload.image =
         imageUrl;
     }
 
-    if (
-      images.length
-    ) {
+    if (images.length) {
       payload.images =
         images;
     }
 
-    if (
-      body?.videoUrl
-    ) {
+    if (body?.videoUrl) {
       payload.video_url =
         String(
           body.videoUrl
@@ -1023,10 +879,7 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.family ===
-    "hailuo"
-  ) {
+  if (rule.family === "hailuo") {
     payload.duration =
       duration;
 
@@ -1041,17 +894,13 @@ function buildPayload(
       ...(body?.metadata || {})
     };
 
-    if (
-      imageUrl
-    ) {
+    if (imageUrl) {
       payload.metadata
         .first_frame_image =
         imageUrl;
     }
 
-    if (
-      body?.lastFrameImage
-    ) {
+    if (body?.lastFrameImage) {
       payload.metadata
         .last_frame_image =
         String(
@@ -1059,9 +908,7 @@ function buildPayload(
         ).trim();
     }
 
-    if (
-      body?.subjectReference
-    ) {
+    if (body?.subjectReference) {
       payload.metadata
         .subject_reference =
         String(
@@ -1079,10 +926,7 @@ function buildPayload(
    * ==========================================================
    */
 
-  if (
-    rule.family ===
-    "happyhorse"
-  ) {
+  if (rule.family === "happyhorse") {
     payload.size =
       body?.size ||
       aspectToWanSize(
@@ -1093,10 +937,7 @@ function buildPayload(
     payload.duration =
       duration;
 
-    if (
-      rule.type ===
-      "i2v"
-    ) {
+    if (rule.type === "i2v") {
       if (!imageUrl) {
         throw providerError(
           "HappyHorse I2V membutuhkan gambar referensi.",
@@ -1108,10 +949,7 @@ function buildPayload(
         imageUrl;
     }
 
-    if (
-      rule.type ===
-      "r2v"
-    ) {
+    if (rule.type === "r2v") {
       payload.metadata = {
         ...(body?.metadata || {}),
 
@@ -1143,7 +981,8 @@ export function info() {
   return {
     id: ID,
     name: NAME,
-    capabilities: CAPABILITIES
+    capabilities:
+      CAPABILITIES
   };
 }
 
@@ -1171,10 +1010,12 @@ export async function generate(
   }
 
   const payload =
-    buildPayload(
-      body
-    );
+    buildPayload(body);
 
+  /*
+   * ChinaAPI supports the OpenAI-compatible
+   * /v1/videos endpoint.
+   */
   const response =
     await fetch(
       `${BASE_URL}/videos`,
@@ -1204,14 +1045,18 @@ export async function generate(
       response
     );
 
-  if (
-    !response.ok
-  ) {
-    throw providerError(
+  if (!response.ok) {
+    const message =
       apiError(
         data,
         `ChinaAPI error (${response.status}).`
-      ),
+      );
+
+    const code =
+      apiErrorCode(data);
+
+    throw providerError(
+      `ChinaAPI [${code}]: ${message}`,
       response.status
     );
   }
@@ -1220,11 +1065,14 @@ export async function generate(
     data?.task_id ||
     data?.id ||
     data?.data?.task_id ||
-    data?.data?.id;
+    data?.data?.id ||
+    data?.data?.video_id;
 
   if (!taskId) {
     throw providerError(
-      "ChinaAPI tidak mengembalikan task ID.",
+      `ChinaAPI tidak mengembalikan task ID. Response: ${JSON.stringify(
+        data
+      )}`,
       502
     );
   }
@@ -1307,23 +1155,55 @@ export async function status(
       response
     );
 
-  if (
-    !response.ok
-  ) {
-    throw providerError(
+  if (!response.ok) {
+    const message =
       apiError(
         data,
         `ChinaAPI status error (${response.status}).`
-      ),
+      );
+
+    const code =
+      apiErrorCode(data);
+
+    throw providerError(
+      `ChinaAPI [${code}]: ${message}`,
       response.status
     );
   }
 
+  /*
+   * ChinaAPI may return:
+   *
+   * {
+   *   "status": "SUCCESS",
+   *   "metadata": {
+   *      "url": "https://..."
+   *   }
+   * }
+   *
+   * or:
+   *
+   * {
+   *   "code": "success",
+   *   "data": {
+   *      "status": "SUCCESS",
+   *      "result_url": "https://..."
+   *   }
+   * }
+   */
+
   const state =
     normalizeStatus(
       data?.status ||
-      data?.data?.status
+      data?.data?.status ||
+      data?.code ||
+      data?.data?.code
     );
+
+
+  /*
+   * FAILED
+   */
 
   if (
     [
@@ -1332,64 +1212,102 @@ export async function status(
       "error",
       "cancelled",
       "canceled"
-    ].includes(
-      state
-    )
+    ].includes(state)
   ) {
+    const code =
+      apiErrorCode(data);
+
+    const message =
+      apiError(
+        data,
+        "ChinaAPI generation gagal."
+      );
+
     return {
       success: true,
-      status: "failed",
-      provider: ID,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
+      errorCode:
+        code,
 
       error:
-        apiError(
-          data,
-          "ChinaAPI generation gagal."
-        )
+        `ChinaAPI [${code}]: ${message}`
     };
   }
 
+
+  /*
+   * SUCCESS
+   */
+
   if (
     [
-      "completed",
       "success",
       "succeeded",
+      "completed",
       "finished"
-    ].includes(
-      state
-    )
+    ].includes(state)
   ) {
     const videoUrl =
       data?.metadata?.url ||
       data?.data?.metadata?.url ||
       data?.result_url ||
-      data?.data?.result_url;
+      data?.data?.result_url ||
+      data?.video_url ||
+      data?.data?.video_url ||
+      data?.url ||
+      data?.data?.url;
 
-    if (
-      videoUrl
-    ) {
+    if (videoUrl) {
       return {
         success: true,
-        status: "completed",
-        provider: ID,
-        videoUrl
+
+        status:
+          "completed",
+
+        provider:
+          ID,
+
+        videoUrl:
+          String(videoUrl)
       };
     }
 
     return {
       success: true,
-      status: "failed",
-      provider: ID,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
+      errorCode:
+        "missing_video_url",
 
       error:
         "ChinaAPI menyatakan video selesai tetapi URL video tidak ditemukan."
     };
   }
 
+
+  /*
+   * PROCESSING
+   */
+
   return {
     success: true,
-    status: "processing",
-    provider: ID
+
+    status:
+      "processing",
+
+    provider:
+      ID
   };
 }
 
@@ -1442,9 +1360,7 @@ export async function fetchVideo(
       parsed.toString()
     );
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
     throw providerError(
       `Gagal mengambil video ChinaAPI (${response.status}).`,
       response.status
