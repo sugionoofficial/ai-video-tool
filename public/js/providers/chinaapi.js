@@ -13,6 +13,7 @@ const MODEL_RULES = {
   "wan2.7-t2v": {
     family: "wan",
     type: "t2v",
+    imageReferenceSupported: false,
     sizes: ["1280*720", "1920*1080"],
     durations: [2, 3, 4, 5, 6, 8, 10, 12, 15]
   },
@@ -20,6 +21,7 @@ const MODEL_RULES = {
   "wan2.7-i2v": {
     family: "wan",
     type: "i2v",
+    imageReferenceSupported: true,
     sizes: ["1280*720", "1920*1080"],
     durations: [2, 3, 4, 5, 6, 8, 10, 12, 15],
     requiresImage: true
@@ -28,6 +30,7 @@ const MODEL_RULES = {
   "wan2.7-r2v": {
     family: "wan",
     type: "r2v",
+    imageReferenceSupported: true,
     sizes: ["1280*720", "1920*1080"],
     durations: [2, 3, 4, 5, 6, 8, 10, 12, 15]
   },
@@ -35,6 +38,7 @@ const MODEL_RULES = {
   "wan2.7-videoedit": {
     family: "wan",
     type: "videoedit",
+    imageReferenceSupported: false,
     sizes: ["1280*720", "1920*1080"],
     durations: [2, 3, 4, 5, 6, 8, 10]
   },
@@ -42,6 +46,7 @@ const MODEL_RULES = {
   "doubao-seedance-2-5-260628": {
     family: "seedance",
     type: "seedance25",
+    imageReferenceSupported: true,
     resolutions: ["480p", "720p"],
     durations: [5, 10, 15, 20, 25, 30]
   },
@@ -49,6 +54,7 @@ const MODEL_RULES = {
   "doubao-seedance-2-0-260128": {
     family: "seedance",
     type: "seedance20",
+    imageReferenceSupported: true,
     resolutions: ["480p", "720p"],
     durations: [5, 10, 15]
   },
@@ -56,6 +62,7 @@ const MODEL_RULES = {
   "doubao-seedance-2-0-fast-260128": {
     family: "seedance",
     type: "seedance20",
+    imageReferenceSupported: true,
     resolutions: ["480p", "720p"],
     durations: [5, 10, 15]
   },
@@ -63,6 +70,7 @@ const MODEL_RULES = {
   "doubao-seedance-2-0-mini-260615": {
     family: "seedance",
     type: "seedance20",
+    imageReferenceSupported: true,
     resolutions: ["480p", "720p"],
     durations: [5, 10, 15]
   },
@@ -70,6 +78,7 @@ const MODEL_RULES = {
   "kling-v3": {
     family: "kling",
     type: "kling3",
+    imageReferenceSupported: true,
     durations: [5, 10, 15],
     aspects: ["16:9", "9:16", "1:1"],
     resolutions: ["720p", "1080p"]
@@ -78,6 +87,7 @@ const MODEL_RULES = {
   "kling-3.0-turbo": {
     family: "kling",
     type: "klingTurbo",
+    imageReferenceSupported: true,
     durations: [3, 5, 8, 10, 15],
     aspects: ["16:9", "9:16", "1:1"],
     resolutions: ["720p", "1080p"]
@@ -86,6 +96,7 @@ const MODEL_RULES = {
   "kling-v3-omni": {
     family: "kling",
     type: "klingOmni",
+    imageReferenceSupported: true,
     durations: [5, 10, 15],
     aspects: ["16:9", "9:16", "1:1"],
     modes: ["std", "pro", "4k"]
@@ -94,6 +105,7 @@ const MODEL_RULES = {
   "MiniMax-H3": {
     family: "minimax",
     type: "h3",
+    imageReferenceSupported: true,
     durations: [
       4, 5, 6, 7, 8,
       9, 10, 11, 12,
@@ -106,6 +118,7 @@ const MODEL_RULES = {
   "MiniMax-Hailuo-2.3": {
     family: "hailuo",
     type: "hailuo",
+    imageReferenceSupported: true,
     durations: [6, 10],
     resolutions: ["768P", "1080P"]
   },
@@ -113,6 +126,7 @@ const MODEL_RULES = {
   "MiniMax-Hailuo-2.3-Fast": {
     family: "hailuo",
     type: "hailuo",
+    imageReferenceSupported: true,
     durations: [6, 10],
     resolutions: ["768P", "1080P"]
   },
@@ -120,6 +134,7 @@ const MODEL_RULES = {
   "MiniMax-Hailuo-02": {
     family: "hailuo",
     type: "hailuo",
+    imageReferenceSupported: true,
     durations: [6, 10],
     resolutions: ["768P", "1080P"]
   },
@@ -127,6 +142,7 @@ const MODEL_RULES = {
   "happyhorse-1.1-t2v": {
     family: "happyhorse",
     type: "t2v",
+    imageReferenceSupported: false,
     sizes: [
       "832*480",
       "1280*720",
@@ -138,6 +154,7 @@ const MODEL_RULES = {
   "happyhorse-1.1-i2v": {
     family: "happyhorse",
     type: "i2v",
+    imageReferenceSupported: true,
     sizes: [
       "832*480",
       "1280*720",
@@ -150,6 +167,7 @@ const MODEL_RULES = {
   "happyhorse-1.1-r2v": {
     family: "happyhorse",
     type: "r2v",
+    imageReferenceSupported: true,
     sizes: [
       "832*480",
       "1280*720",
@@ -689,7 +707,7 @@ function buildPayload(body) {
    * ==========================================================
    * KLING V3
    * ==========================================================
-   */
+ */
 
   if (rule.type === "kling3") {
     if (imageUrl) {
@@ -1012,10 +1030,6 @@ export async function generate(
   const payload =
     buildPayload(body);
 
-  /*
-   * ChinaAPI supports the OpenAI-compatible
-   * /v1/videos endpoint.
-   */
   const response =
     await fetch(
       `${BASE_URL}/videos`,
@@ -1171,27 +1185,6 @@ export async function status(
     );
   }
 
-  /*
-   * ChinaAPI may return:
-   *
-   * {
-   *   "status": "SUCCESS",
-   *   "metadata": {
-   *      "url": "https://..."
-   *   }
-   * }
-   *
-   * or:
-   *
-   * {
-   *   "code": "success",
-   *   "data": {
-   *      "status": "SUCCESS",
-   *      "result_url": "https://..."
-   *   }
-   * }
-   */
-
   const state =
     normalizeStatus(
       data?.status ||
@@ -1199,11 +1192,6 @@ export async function status(
       data?.code ||
       data?.data?.code
     );
-
-
-  /*
-   * FAILED
-   */
 
   if (
     [
@@ -1225,25 +1213,13 @@ export async function status(
 
     return {
       success: true,
-
-      status:
-        "failed",
-
-      provider:
-        ID,
-
-      errorCode:
-        code,
-
+      status: "failed",
+      provider: ID,
+      errorCode: code,
       error:
         `ChinaAPI [${code}]: ${message}`
     };
   }
-
-
-  /*
-   * SUCCESS
-   */
 
   if (
     [
@@ -1266,13 +1242,8 @@ export async function status(
     if (videoUrl) {
       return {
         success: true,
-
-        status:
-          "completed",
-
-        provider:
-          ID,
-
+        status: "completed",
+        provider: ID,
         videoUrl:
           String(videoUrl)
       };
@@ -1280,34 +1251,19 @@ export async function status(
 
     return {
       success: true,
-
-      status:
-        "failed",
-
-      provider:
-        ID,
-
+      status: "failed",
+      provider: ID,
       errorCode:
         "missing_video_url",
-
       error:
         "ChinaAPI menyatakan video selesai tetapi URL video tidak ditemukan."
     };
   }
 
-
-  /*
-   * PROCESSING
-   */
-
   return {
     success: true,
-
-    status:
-      "processing",
-
-    provider:
-      ID
+    status: "processing",
+    provider: ID
   };
 }
 
