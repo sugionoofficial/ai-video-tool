@@ -6,6 +6,16 @@
 const ID = "luma";
 const NAME = "Luma";
 
+const MODEL_RULES = {
+  "ray-2": {
+    imageReferenceSupported: false
+  },
+
+  "ray-flash-2": {
+    imageReferenceSupported: false
+  }
+};
+
 const CAPABILITIES = {
   models: [
     "ray-2",
@@ -31,7 +41,9 @@ const CAPABILITIES = {
     "720p",
     "1080p",
     "4k"
-  ]
+  ],
+
+  constraints: MODEL_RULES
 };
 
 // ------------------------------------------------------------
@@ -150,6 +162,38 @@ export async function generate(body, provider) {
   }
 
   // ----------------------------------------------------------
+  // MODEL RULE
+  // ----------------------------------------------------------
+
+  const modelRule =
+    MODEL_RULES[model] || null;
+
+  if (!modelRule) {
+    throw providerError(
+      "Konfigurasi model Luma tidak ditemukan.",
+      400
+    );
+  }
+
+  // ----------------------------------------------------------
+  // IMAGE REFERENCE
+  //
+  // Kedua model Luma saat ini secara eksplisit
+  // tidak menerima image reference dari konfigurasi
+  // GEN-Z.AI ini.
+  // ----------------------------------------------------------
+
+  if (
+    body?.imageData &&
+    modelRule.imageReferenceSupported !== true
+  ) {
+    throw providerError(
+      "Model Luma yang dipilih tidak mendukung image reference.",
+      400
+    );
+  }
+
+  // ----------------------------------------------------------
   // ASPECT RATIO
   // ----------------------------------------------------------
 
@@ -182,10 +226,10 @@ export async function generate(body, provider) {
   // ----------------------------------------------------------
   // RESOLUTION
   //
-  // Luma API configuration saat ini tidak menggunakan field
+  // Luma API configuration saat ini tidak menggunakan
   // resolution secara langsung dalam payload.
-  // Namun nilai tetap divalidasi agar frontend/backend tidak
-  // menerima capability yang tidak dikenal.
+  // Nilai tetap divalidasi untuk menjaga konsistensi
+  // capability frontend/backend.
   // ----------------------------------------------------------
 
   const resolution = String(
@@ -217,9 +261,8 @@ export async function generate(body, provider) {
   // ----------------------------------------------------------
   // IMAGE REFERENCE
   //
-  // Adapter ini hanya menerima prompt untuk konfigurasi
-  // yang digunakan GEN-Z.AI. Jangan mengirim base64 mentah
-  // ke endpoint Luma.
+  // Luma tidak menerima base64 mentah dari upload
+  // GEN-Z.AI pada adapter ini.
   // ----------------------------------------------------------
 
   if (body?.imageData) {
@@ -276,7 +319,8 @@ export async function generate(body, provider) {
         data,
         `Luma error (${response.status}).`
       ),
-      response.status >= 400 && response.status < 600
+      response.status >= 400 &&
+      response.status < 600
         ? response.status
         : 502
     );
@@ -363,7 +407,8 @@ export async function status(
         data,
         `Luma status error (${response.status}).`
       ),
-      response.status >= 400 && response.status < 600
+      response.status >= 400 &&
+      response.status < 600
         ? response.status
         : 502
     );
@@ -423,9 +468,6 @@ export async function status(
 
   // ----------------------------------------------------------
   // EXPLICIT SUCCESS TANPA VIDEO
-  //
-  // Jangan menganggap task completed jika Luma belum
-  // memberikan asset video.
   // ----------------------------------------------------------
 
   if (
