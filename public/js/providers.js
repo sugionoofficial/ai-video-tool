@@ -6,14 +6,20 @@
    public/js/providers.js
 
    Arsitektur:
-   - Provider berasal dari backend/database
-   - Adapter ditentukan oleh backend
-   - Capability berasal dari adapter
-   - Tidak ada daftar provider hard-coded
-   - Tidak ada API key di browser
-   - Tidak ada aturan khusus Veo/MiniMax/Luma di UI
-   - Provider baru cukup memiliki adapter + capability
-   - UI otomatis mengikuti capability provider
+   Provider
+      ↓
+   Model
+      ↓
+   Reference Image
+      ↓
+   Duration
+      ↕
+   Resolution
+
+   Semua aturan kombinasi berasal dari:
+   provider.capabilities.constraints
+
+   Tidak ada aturan provider-specific di UI.
    ========================================================= */
 
 (function () {
@@ -28,18 +34,14 @@
   window.GENZ =
     window.GENZ || {};
 
-
   const GENZ =
     window.GENZ;
-
 
   GENZ.state =
     GENZ.state || {};
 
-
   GENZ.providers =
     GENZ.providers || {};
-
 
   GENZ.videoProviders =
     GENZ.videoProviders || {};
@@ -60,8 +62,7 @@
 
     return String(
       value ?? ''
-    )
-      .trim();
+    ).trim();
 
   }
 
@@ -91,20 +92,20 @@
   }
 
 
+  function uniqueArray(value) {
+
+    return [
+      ...new Set(
+        cloneArray(value)
+          .map(item => String(item))
+      )
+    ];
+
+  }
+
+
   /* =======================================================
      CAPABILITY SOURCE
-  =======================================================
-
-     Capability TIDAK lagi disimpan di frontend.
-
-     Sumber utama:
-
-       provider.capabilities
-
-     Fallback hanya membaca property provider langsung
-     jika backend mengirim format tersebut.
-
-     Tidak ada fallback provider-specific.
   ======================================================= */
 
   function normalizeCapabilities(provider) {
@@ -115,7 +116,8 @@
         models: [],
         durations: [],
         aspects: [],
-        resolutions: []
+        resolutions: [],
+        constraints: {}
       };
 
     }
@@ -177,6 +179,23 @@
           );
 
 
+    /*
+     * PENTING:
+     *
+     * constraints sebelumnya hilang di sini.
+     *
+     * Sekarang constraints diteruskan utuh.
+     */
+
+    const constraints =
+      source.constraints &&
+      typeof source.constraints === 'object'
+
+        ? source.constraints
+
+        : {};
+
+
     return {
 
       models:
@@ -189,7 +208,9 @@
         cloneArray(aspects),
 
       resolutions:
-        cloneArray(resolutions)
+        cloneArray(resolutions),
+
+      constraints
 
     };
 
@@ -244,20 +265,6 @@
 
   /* =======================================================
      EFFECTIVE CAPABILITIES
-  =======================================================
-
-     Semua aturan kombinasi provider sekarang harus
-     berasal dari adapter/backend.
-
-     UI hanya menggunakan capability yang diberikan.
-
-     Tidak ada:
-       - if veo
-       - if minimax
-       - if luma
-       - model khusus
-       - resolution khusus
-       - duration khusus
   ======================================================= */
 
   function getEffectiveCapabilities(provider) {
@@ -270,187 +277,374 @@
 
 
   /* =======================================================
-     NORMALIZE PROVIDER LIST
+     MODEL RULES
   ======================================================= */
 
-  function normalizeProviderList(list) {
+  function getModelRules(
+    provider,
+    model
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const constraints =
+      capabilities.constraints || {};
+
+
+    return (
+      constraints[model] ||
+      null
+    );
+
+  }
+
+
+  /* =======================================================
+     MODEL IMAGE SUPPORT
+  ======================================================= */
+
+  function modelSupportsImage(
+    provider,
+    model
+  ) {
+
+    const rules =
+      getModelRules(
+        provider,
+        model
+      );
+
+
+    if (!rules) {
+
+      return true;
+
+    }
+
 
     if (
-      !Array.isArray(list)
+      typeof rules.imageReferenceSupported ===
+      'boolean'
     ) {
+
+      return rules.imageReferenceSupported;
+
+    }
+
+
+    return true;
+
+  }
+
+
+  /* =======================================================
+     MODE RULES
+  ======================================================= */
+
+  function getModeRules(
+    provider,
+    model,
+    hasImage
+  ) {
+
+    const rules =
+      getModelRules(
+        provider,
+        model
+      );
+
+
+    if (!rules) {
+
+      return null;
+
+    }
+
+
+    if (hasImage) {
+
+      return (
+        rules.imageToVideo ||
+        null
+      );
+
+    }
+
+
+    return (
+      rules.textToVideo ||
+      null
+    );
+
+  }
+
+
+  /* =======================================================
+     ALLOWED DURATIONS
+  ======================================================= */
+
+  function getAllowedDurations(
+    provider,
+    model,
+    hasImage
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const modeRules =
+      getModeRules(
+        provider,
+        model,
+        hasImage
+      );
+
+
+    if (!modeRules) {
+
+      return cloneArray(
+        capabilities.durations
+      );
+
+    }
+
+
+    const values =
+      Object.keys(
+        modeRules
+      )
+        .map(value => Number(value))
+        .filter(
+          value =>
+            Number.isFinite(value)
+        );
+
+
+    return uniqueArray(
+      values
+    );
+
+  }
+
+
+  /* =======================================================
+     ALLOWED RESOLUTIONS
+  ======================================================= */
+
+  function getAllowedResolutions(
+    provider,
+    model,
+    duration,
+    hasImage
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const modeRules =
+      getModeRules(
+        provider,
+        model,
+        hasImage
+      );
+
+
+    if (!modeRules) {
+
+      return cloneArray(
+        capabilities.resolutions
+      );
+
+    }
+
+
+    const key =
+      String(
+        Number(duration)
+      );
+
+
+    const allowed =
+      modeRules[key];
+
+
+    if (!Array.isArray(allowed)) {
 
       return [];
 
     }
 
 
-    return list
-
-      .filter(
-        provider => {
-
-          if (!provider) {
-
-            return false;
-
-          }
-
-
-          if (
-            provider.enabled === false
-          ) {
-
-            return false;
-
-          }
-
-
-          return Boolean(
-            provider.id ||
-            provider.name
-          );
-
-        }
-      )
-
-      .map(
-        provider => {
-
-          const id =
-            text(
-              provider.id ||
-              provider.name
-            );
-
-
-          const name =
-            text(
-              provider.name ||
-              id
-            );
-
-
-          const capabilities =
-            normalizeCapabilities(
-              provider
-            );
-
-
-          return {
-
-            ...provider,
-
-            id,
-
-            name,
-
-            capabilities
-
-          };
-
-        }
-      );
+    return uniqueArray(
+      allowed
+    );
 
   }
 
 
   /* =======================================================
-     PROVIDER DROPDOWN
+     VALID MODEL
   ======================================================= */
 
-  function renderProviderSelect(providers) {
+  function ensureValidModel(
+    provider
+  ) {
 
-    const element =
-      $('provider');
+    const model =
+      $('model');
 
 
-    if (!element) {
+    if (!model) {
 
-      return;
+      return '';
 
     }
 
 
-    const previous =
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const allowed =
+      capabilities.models.map(
+        value =>
+          String(value)
+      );
+
+
+    if (!allowed.length) {
+
+      model.value =
+        '';
+
+      return '';
+
+    }
+
+
+    const current =
       text(
-        element.value
+        model.value
       );
 
 
-    element.innerHTML =
-      '';
+    if (
+      allowed.includes(
+        current
+      )
+    ) {
+
+      return current;
+
+    }
 
 
-    const placeholder =
-      document.createElement(
-        'option'
+    model.value =
+      allowed[0];
+
+
+    return allowed[0];
+
+  }
+
+
+  /* =======================================================
+     VALID ASPECT
+  ======================================================= */
+
+  function ensureValidAspect(
+    provider
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
       );
 
 
-    placeholder.value =
-      '';
+    const allowed =
+      capabilities.aspects.map(
+        value =>
+          String(value)
+      );
 
 
-    placeholder.textContent =
-      providers.length
-        ? 'Pilih AI Engine'
-        : 'Tidak ada AI Engine';
+    const fields = [
+
+      $('ratio'),
+
+      $('aspect')
+
+    ];
 
 
-    element.appendChild(
-      placeholder
-    );
+    fields.forEach(
+      element => {
+
+        if (!element) {
+
+          return;
+
+        }
 
 
-    providers.forEach(
-      provider => {
+        if (!allowed.length) {
 
-        const option =
-          document.createElement(
-            'option'
+          element.value =
+            '';
+
+          return;
+
+        }
+
+
+        const current =
+          text(
+            element.value
           );
 
 
-        option.value =
-          provider.id;
+        if (
+          allowed.includes(
+            current
+          )
+        ) {
+
+          return;
+
+        }
 
 
-        option.textContent =
-          provider.name ||
-          provider.id;
-
-
-        element.appendChild(
-          option
-        );
+        element.value =
+          allowed[0];
 
       }
     );
 
-
-    if (
-      previous &&
-      providers.some(
-        provider =>
-          String(
-            provider.id
-          ) === previous
-      )
-    ) {
-
-      element.value =
-        previous;
-
-    }
-
   }
 
 
   /* =======================================================
-     OPTION HELPERS
+     SET OPTIONS
   ======================================================= */
 
-  function setOptions(id, values) {
+  function setOptions(
+    id,
+    values,
+    preferredValue = ''
+  ) {
 
     const element =
       $(id);
@@ -458,19 +652,20 @@
 
     if (!element) {
 
-      return;
+      return '';
 
     }
 
 
     const list =
-      Array.isArray(values)
-        ? values
-        : [];
+      uniqueArray(
+        values
+      );
 
 
     const previous =
       text(
+        preferredValue ||
         element.value
       );
 
@@ -479,9 +674,7 @@
       '';
 
 
-    if (
-      !list.length
-    ) {
+    if (!list.length) {
 
       const option =
         document.createElement(
@@ -492,7 +685,6 @@
       option.value =
         '';
 
-
       option.textContent =
         'Tidak tersedia';
 
@@ -502,7 +694,7 @@
       );
 
 
-      return;
+      return '';
 
     }
 
@@ -532,29 +724,37 @@
     );
 
 
-    const normalizedPrevious =
-      String(previous);
-
-
-    const exists =
-      list.some(
-        value =>
-          String(value) ===
-          normalizedPrevious
-      );
-
-
-    if (exists) {
+    if (
+      list.includes(
+        previous
+      )
+    ) {
 
       element.value =
-        normalizedPrevious;
+        previous;
+
+      return previous;
 
     }
+
+
+    element.value =
+      list[0];
+
+
+    return list[0];
 
   }
 
 
-  function setValue(id, value) {
+  /* =======================================================
+     SET VALUE
+  ======================================================= */
+
+  function setValue(
+    id,
+    value
+  ) {
 
     const element =
       $(id);
@@ -576,257 +776,89 @@
 
 
   /* =======================================================
-     SAFE DURATION SELECTION
+     UPDATE IMAGE AVAILABILITY
   ======================================================= */
 
-  function ensureValidDuration(provider) {
+  function updateImageAvailability(
+    provider
+  ) {
 
-    const duration =
-      $('duration');
-
-
-    if (!duration) {
-
-      return;
-
-    }
+    const imageInput =
+      $('image');
 
 
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const allowed =
-      capabilities.durations.map(
-        value =>
-          String(value)
-      );
-
-
-    if (
-      !allowed.length
-    ) {
-
-      duration.value =
-        '';
+    if (!imageInput) {
 
       return;
 
     }
 
-
-    const current =
-      String(
-        duration.value || ''
-      );
-
-
-    if (
-      !allowed.includes(
-        current
-      )
-    ) {
-
-      duration.value =
-        allowed[0];
-
-    }
-
-  }
-
-
-  /* =======================================================
-     SAFE RESOLUTION SELECTION
-  ======================================================= */
-
-  function ensureValidResolution(provider) {
-
-    const resolution =
-      $('resolution');
-
-
-    if (!resolution) {
-
-      return;
-
-    }
-
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const allowed =
-      capabilities.resolutions.map(
-        value =>
-          String(value)
-      );
-
-
-    if (
-      !allowed.length
-    ) {
-
-      resolution.value =
-        '';
-
-      return;
-
-    }
-
-
-    const current =
-      String(
-        resolution.value || ''
-      );
-
-
-    if (
-      !allowed.includes(
-        current
-      )
-    ) {
-
-      resolution.value =
-        allowed[0];
-
-    }
-
-  }
-
-
-  /* =======================================================
-     SAFE MODEL SELECTION
-  ======================================================= */
-
-  function ensureValidModel(provider) {
 
     const model =
-      $('model');
+      text(
+        $('model')?.value
+      );
 
 
     if (!model) {
 
-      return;
-
-    }
-
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const allowed =
-      capabilities.models.map(
-        value =>
-          String(value)
-      );
-
-
-    if (
-      !allowed.length
-    ) {
-
-      model.value =
-        '';
+      imageInput.disabled =
+        false;
 
       return;
 
     }
 
 
-    const current =
-      String(
-        model.value || ''
+    const supported =
+      modelSupportsImage(
+        provider,
+        model
       );
 
 
-    if (
-      !allowed.includes(
-        current
-      )
-    ) {
-
-      model.value =
-        allowed[0];
-
-    }
-
-  }
+    imageInput.disabled =
+      !supported;
 
 
-  /* =======================================================
-     SAFE ASPECT SELECTION
-  ======================================================= */
+    if (!supported) {
 
-  function ensureValidAspect(provider) {
+      /*
+       * Model yang tidak mendukung
+       * reference image tidak boleh
+       * membawa image lama.
+       */
 
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
+      if (
+        GENZ.state
+      ) {
 
-
-    const allowed =
-      capabilities.aspects.map(
-        value =>
-          String(value)
-      );
-
-
-    const fields = [
-      $('ratio'),
-      $('aspect')
-    ];
-
-
-    fields.forEach(
-      element => {
-
-        if (!element) {
-
-          return;
-
-        }
-
-
-        if (
-          !allowed.length
-        ) {
-
-          element.value =
-            '';
-
-          return;
-
-        }
-
-
-        const current =
-          String(
-            element.value || ''
-          );
-
-
-        if (
-          !allowed.includes(
-            current
-          )
-        ) {
-
-          element.value =
-            allowed[0];
-
-        }
+        GENZ.state.imageData =
+          null;
 
       }
-    );
+
+
+      if (
+        GENZ.upload
+      ) {
+
+        GENZ.upload.imageData =
+          null;
+
+      }
+
+
+      try {
+
+        imageInput.value =
+          '';
+
+      } catch {
+        /* ignore */
+      }
+
+    }
 
   }
 
@@ -835,7 +867,9 @@
      UPDATE GENERATE BUTTON
   ======================================================= */
 
-  function updateGenerateButton(provider) {
+  function updateGenerateButton(
+    provider
+  ) {
 
     const button =
       $('generateVideo') ||
@@ -854,24 +888,20 @@
       button.textContent =
         'Generate Video';
 
-
       button.disabled =
         true;
-
 
       return;
 
     }
 
 
-    const name =
-      provider.name ||
-      provider.id ||
-      'Provider';
-
-
     button.textContent =
-      `Generate Video • ${name}`;
+      `Generate Video • ${
+        provider.name ||
+        provider.id ||
+        'Provider'
+      }`;
 
 
     button.disabled =
@@ -881,41 +911,12 @@
 
 
   /* =======================================================
-     UPDATE IMAGE AVAILABILITY
-  ======================================================= */
-
-  function updateImageAvailability() {
-
-    const imageInput =
-      $('image');
-
-
-    if (!imageInput) {
-
-      return;
-
-    }
-
-
-    /*
-     * Provider menentukan sendiri apakah image reference
-     * didukung melalui adapter.
-     *
-     * UI tidak lagi memblokir image input berdasarkan
-     * nama provider.
-     */
-
-    imageInput.disabled =
-      false;
-
-  }
-
-
-  /* =======================================================
      ACTIVE BUTTON
   ======================================================= */
 
-  function updateActiveButton(providerId) {
+  function updateActiveButton(
+    providerId
+  ) {
 
     document
       .querySelectorAll(
@@ -944,18 +945,11 @@
 
   /* =======================================================
      MODEL COMPATIBILITY
-  =======================================================
-
-     Tidak ada lagi hard-coded model compatibility.
-
-     Adapter/backend bertanggung jawab terhadap validasi
-     kombinasi model, image, duration, resolution, dll.
-
-     Browser hanya memastikan pilihan masih berada dalam
-     capability yang diterima.
   ======================================================= */
 
-  function updateModelCompatibility(provider) {
+  function updateModelCompatibility(
+    provider
+  ) {
 
     const model =
       $('model');
@@ -997,17 +991,494 @@
         option.disabled =
           !available;
 
-
-        option.title =
-          available
-            ? ''
-            : 'Model tidak tersedia untuk provider ini.';
-
       }
     );
 
+  }
 
-    ensureValidModel(
+
+  /* =======================================================
+     APPLY MODEL RULES
+  ======================================================= */
+
+  function applyModelRules(
+    provider
+  ) {
+
+    const model =
+      ensureValidModel(
+        provider
+      );
+
+
+    if (!model) {
+
+      return '';
+
+    }
+
+
+    const imageSupported =
+      modelSupportsImage(
+        provider,
+        model
+      );
+
+
+    /*
+     * Jika model tidak mendukung
+     * reference image, bersihkan
+     * image reference aktif.
+     */
+
+    if (
+      !imageSupported &&
+      hasImageReference()
+    ) {
+
+      if (
+        GENZ.state
+      ) {
+
+        GENZ.state.imageData =
+          null;
+
+      }
+
+
+      if (
+        GENZ.upload
+      ) {
+
+        GENZ.upload.imageData =
+          null;
+
+      }
+
+
+      const imageInput =
+        $('image');
+
+
+      if (imageInput) {
+
+        try {
+
+          imageInput.value =
+            '';
+
+        } catch {
+          /* ignore */
+        }
+
+      }
+
+    }
+
+
+    updateImageAvailability(
+      provider
+    );
+
+
+    return model;
+
+  }
+
+
+  /* =======================================================
+     APPLY DURATION RULES
+  ======================================================= */
+
+  function applyDurationRules(
+    provider,
+    preferredDuration
+  ) {
+
+    const model =
+      text(
+        $('model')?.value
+      );
+
+
+    if (!model) {
+
+      return '';
+
+    }
+
+
+    const image =
+      hasImageReference();
+
+
+    const allowed =
+      getAllowedDurations(
+        provider,
+        model,
+        image
+      );
+
+
+    if (!allowed.length) {
+
+      setOptions(
+        'duration',
+        []
+      );
+
+      return '';
+
+    }
+
+
+    const preferred =
+      text(
+        preferredDuration
+      );
+
+
+    /*
+     * Jika reference image aktif
+     * dan model hanya mengizinkan 8s,
+     * otomatis memilih 8s.
+     */
+
+    if (
+      preferred &&
+      allowed.some(
+        value =>
+          String(value) ===
+          preferred
+      )
+    ) {
+
+      return setOptions(
+        'duration',
+        allowed,
+        preferred
+      );
+
+    }
+
+
+    return setOptions(
+      'duration',
+      allowed
+    );
+
+  }
+
+
+  /* =======================================================
+     APPLY RESOLUTION RULES
+  ======================================================= */
+
+  function applyResolutionRules(
+    provider,
+    preferredResolution
+  ) {
+
+    const model =
+      text(
+        $('model')?.value
+      );
+
+
+    if (!model) {
+
+      return '';
+
+    }
+
+
+    const duration =
+      Number(
+        $('duration')?.value
+      );
+
+
+    if (
+      !Number.isFinite(
+        duration
+      )
+    ) {
+
+      return '';
+
+    }
+
+
+    const image =
+      hasImageReference();
+
+
+    const allowed =
+      getAllowedResolutions(
+        provider,
+        model,
+        duration,
+        image
+      );
+
+
+    if (!allowed.length) {
+
+      setOptions(
+        'resolution',
+        []
+      );
+
+      return '';
+
+    }
+
+
+    const preferred =
+      text(
+        preferredResolution
+      );
+
+
+    if (
+      preferred &&
+      allowed.includes(
+        preferred
+      )
+    ) {
+
+      return setOptions(
+        'resolution',
+        allowed,
+        preferred
+      );
+
+    }
+
+
+    return setOptions(
+      'resolution',
+      allowed
+    );
+
+  }
+
+
+  /* =======================================================
+     REFRESH RULES
+  ======================================================= */
+
+  function refreshCurrentOptions(
+    changedField = ''
+  ) {
+
+    const provider =
+      GENZ.providers.currentProvider;
+
+
+    if (!provider) {
+
+      return;
+
+    }
+
+
+    const currentModel =
+      text(
+        $('model')?.value
+      );
+
+
+    const currentDuration =
+      text(
+        $('duration')?.value
+      );
+
+
+    const currentResolution =
+      text(
+        $('resolution')?.value
+      );
+
+
+    const currentAspect =
+      text(
+        $('aspect')?.value ||
+        $('ratio')?.value
+      );
+
+
+    /*
+     * MODEL
+     */
+
+    setOptions(
+      'model',
+      getEffectiveCapabilities(
+        provider
+      ).models,
+      currentModel
+    );
+
+
+    const model =
+      applyModelRules(
+        provider
+      );
+
+
+    /*
+     * ASPECT
+     */
+
+    setOptions(
+      'ratio',
+      getEffectiveCapabilities(
+        provider
+      ).aspects,
+      currentAspect
+    );
+
+
+    setOptions(
+      'aspect',
+      getEffectiveCapabilities(
+        provider
+      ).aspects,
+      currentAspect
+    );
+
+
+    ensureValidAspect(
+      provider
+    );
+
+
+    /*
+     * DURASI
+     *
+     * Reference image diproses
+     * sebelum menentukan resolution.
+     */
+
+    const duration =
+      applyDurationRules(
+        provider,
+        currentDuration
+      );
+
+
+    /*
+     * RESOLUTION
+     *
+     * Resolution sekarang dihitung
+     * berdasarkan:
+     *
+     * model
+     * + image
+     * + duration
+     */
+
+    applyResolutionRules(
+      provider,
+      currentResolution
+    );
+
+
+    /*
+     * Jika perubahan resolution
+     * memaksa duration menjadi 8s,
+     * ulangi sinkronisasi duration.
+     */
+
+    if (
+      changedField ===
+      'resolution'
+    ) {
+
+      const resolution =
+        text(
+          $('resolution')?.value
+        );
+
+
+      const allowedDurations =
+        getAllowedDurations(
+          provider,
+          model,
+          hasImageReference()
+        );
+
+
+      /*
+       * Jika resolution hanya tersedia
+       * pada durasi tertentu, cari durasi
+       * yang kompatibel.
+       */
+
+      if (
+        resolution &&
+        allowedDurations.length
+      ) {
+
+        const compatibleDuration =
+          allowedDurations.find(
+            value => {
+
+              const resolutions =
+                getAllowedResolutions(
+                  provider,
+                  model,
+                  value,
+                  hasImageReference()
+                );
+
+
+              return resolutions.includes(
+                resolution
+              );
+
+            }
+          );
+
+
+        if (
+          compatibleDuration !==
+          undefined
+        ) {
+
+          setOptions(
+            'duration',
+            allowedDurations,
+            compatibleDuration
+          );
+
+        }
+
+      }
+
+    }
+
+
+    /*
+     * Setelah duration final,
+     * hitung ulang resolution.
+     */
+
+    applyResolutionRules(
+      provider,
+      text(
+        $('resolution')?.value
+      )
+    );
+
+
+    updateImageAvailability(
+      provider
+    );
+
+
+    updateModelCompatibility(
       provider
     );
 
@@ -1018,7 +1489,9 @@
      UPDATE PROVIDER UI
   ======================================================= */
 
-  function updateProviderUI(provider) {
+  function updateProviderUI(
+    provider
+  ) {
 
     if (!provider) {
 
@@ -1046,12 +1519,6 @@
 
 
     setOptions(
-      'duration',
-      capabilities.durations
-    );
-
-
-    setOptions(
       'ratio',
       capabilities.aspects
     );
@@ -1060,12 +1527,6 @@
     setOptions(
       'aspect',
       capabilities.aspects
-    );
-
-
-    setOptions(
-      'resolution',
-      capabilities.resolutions
     );
 
 
@@ -1081,7 +1542,29 @@
       provider;
 
 
-    ensureValidModel(
+    /*
+     * Terapkan model terlebih dahulu.
+     */
+
+    applyModelRules(
+      provider
+    );
+
+
+    /*
+     * Baru duration.
+     */
+
+    applyDurationRules(
+      provider
+    );
+
+
+    /*
+     * Baru resolution.
+     */
+
+    applyResolutionRules(
       provider
     );
 
@@ -1091,12 +1574,7 @@
     );
 
 
-    ensureValidResolution(
-      provider
-    );
-
-
-    ensureValidDuration(
+    updateImageAvailability(
       provider
     );
 
@@ -1104,9 +1582,6 @@
     updateGenerateButton(
       provider
     );
-
-
-    updateImageAvailability();
 
 
     updateActiveButton(
@@ -1119,9 +1594,12 @@
     );
 
 
-    dispatchProviderChange(
-      provider
-    );
+    /*
+     * Jalankan satu kali lagi untuk
+     * memastikan semua field sinkron.
+     */
+
+    refreshCurrentOptions();
 
   }
 
@@ -1130,7 +1608,9 @@
      DISPATCH PROVIDER EVENT
   ======================================================= */
 
-  function dispatchProviderChange(provider) {
+  function dispatchProviderChange(
+    provider
+  ) {
 
     const capabilities =
       getEffectiveCapabilities(
@@ -1169,192 +1649,12 @@
 
 
   /* =======================================================
-     REFRESH CURRENT OPTIONS
-  ======================================================= */
-
-  function refreshCurrentOptions() {
-
-    const provider =
-      GENZ.providers.currentProvider;
-
-
-    if (!provider) {
-
-      return;
-
-    }
-
-
-    /*
-     * Jangan menerapkan aturan provider-specific
-     * di browser.
-     *
-     * Capability sudah berasal dari adapter.
-     */
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-
-    const currentModel =
-      text(
-        $('model')?.value
-      );
-
-
-    const currentDuration =
-      text(
-        $('duration')?.value
-      );
-
-
-    const currentResolution =
-      text(
-        $('resolution')?.value
-      );
-
-
-    const currentAspect =
-      text(
-        $('aspect')?.value ||
-        $('ratio')?.value
-      );
-
-
-    setOptions(
-      'model',
-      capabilities.models
-    );
-
-
-    setOptions(
-      'duration',
-      capabilities.durations
-    );
-
-
-    setOptions(
-      'resolution',
-      capabilities.resolutions
-    );
-
-
-    setOptions(
-      'ratio',
-      capabilities.aspects
-    );
-
-
-    setOptions(
-      'aspect',
-      capabilities.aspects
-    );
-
-
-    if (
-      capabilities.models.some(
-        value =>
-          String(value) ===
-          currentModel
-      )
-    ) {
-
-      setValue(
-        'model',
-        currentModel
-      );
-
-    }
-
-
-    if (
-      capabilities.durations.some(
-        value =>
-          String(value) ===
-          currentDuration
-      )
-    ) {
-
-      setValue(
-        'duration',
-        currentDuration
-      );
-
-    }
-
-
-    if (
-      capabilities.resolutions.some(
-        value =>
-          String(value) ===
-          currentResolution
-      )
-    ) {
-
-      setValue(
-        'resolution',
-        currentResolution
-      );
-
-    }
-
-
-    if (
-      capabilities.aspects.some(
-        value =>
-          String(value) ===
-          currentAspect
-      )
-    ) {
-
-      setValue(
-        'aspect',
-        currentAspect
-      );
-
-
-      setValue(
-        'ratio',
-        currentAspect
-      );
-
-    }
-
-
-    ensureValidModel(
-      provider
-    );
-
-
-    ensureValidAspect(
-      provider
-    );
-
-
-    ensureValidResolution(
-      provider
-    );
-
-
-    ensureValidDuration(
-      provider
-    );
-
-
-    updateModelCompatibility(
-      provider
-    );
-
-  }
-
-
-  /* =======================================================
      PROVIDER BUTTONS
   ======================================================= */
 
-  function renderButtons(providers) {
+  function renderButtons(
+    providers
+  ) {
 
     const container =
       document.querySelector(
@@ -1451,10 +1751,190 @@
 
 
   /* =======================================================
+     PROVIDER DROPDOWN
+  ======================================================= */
+
+  function renderProviderSelect(
+    providers
+  ) {
+
+    const element =
+      $('provider');
+
+
+    if (!element) {
+
+      return;
+
+    }
+
+
+    const previous =
+      text(
+        element.value
+      );
+
+
+    element.innerHTML =
+      '';
+
+
+    const placeholder =
+      document.createElement(
+        'option'
+      );
+
+
+    placeholder.value =
+      '';
+
+
+    placeholder.textContent =
+      providers.length
+        ? 'Pilih AI Engine'
+        : 'Tidak ada AI Engine';
+
+
+    element.appendChild(
+      placeholder
+    );
+
+
+    providers.forEach(
+      provider => {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+
+        option.value =
+          provider.id;
+
+
+        option.textContent =
+          provider.name ||
+          provider.id;
+
+
+        element.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    if (
+      previous &&
+      providers.some(
+        provider =>
+          String(
+            provider.id
+          ) === previous
+      )
+    ) {
+
+      element.value =
+        previous;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     NORMALIZE PROVIDER LIST
+  ======================================================= */
+
+  function normalizeProviderList(
+    list
+  ) {
+
+    if (
+      !Array.isArray(list)
+    ) {
+
+      return [];
+
+    }
+
+
+    return list
+
+      .filter(
+        provider => {
+
+          if (!provider) {
+
+            return false;
+
+          }
+
+
+          if (
+            provider.enabled === false
+          ) {
+
+            return false;
+
+          }
+
+
+          return Boolean(
+            provider.id ||
+            provider.name
+          );
+
+        }
+      )
+
+      .map(
+        provider => {
+
+          const id =
+            text(
+              provider.id ||
+              provider.name
+            );
+
+
+          const name =
+            text(
+              provider.name ||
+              id
+            );
+
+
+          return {
+
+            ...provider,
+
+            id,
+
+            name,
+
+            capabilities:
+              normalizeCapabilities(
+                provider
+              )
+
+          };
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
      FIND PROVIDER
   ======================================================= */
 
-  function findProvider(providerId) {
+  function findProvider(
+    providerId
+  ) {
 
     const providers =
       GENZ.providers.list ||
@@ -1469,16 +1949,10 @@
 
     return (
       providers.find(
-        provider => {
-
-          return (
-            normalizeId(
-              provider.id
-            ) ===
-            normalized
-          );
-
-        }
+        provider =>
+          normalizeId(
+            provider.id
+          ) === normalized
       ) ||
       null
     );
@@ -1490,7 +1964,9 @@
      SELECT PROVIDER
   ======================================================= */
 
-  function selectProvider(providerId) {
+  function selectProvider(
+    providerId
+  ) {
 
     const provider =
       findProvider(
@@ -1516,13 +1992,18 @@
     );
 
 
+    dispatchProviderChange(
+      provider
+    );
+
+
     return provider;
 
   }
 
 
   /* =======================================================
-     LOAD PROVIDER DATA
+     FETCH PROVIDERS
   ======================================================= */
 
   async function fetchProviderData() {
@@ -1640,8 +2121,7 @@
         provider =>
           String(
             provider.id
-          ) ===
-          requested
+          ) === requested
       );
 
 
@@ -1657,6 +2137,11 @@
     if (selected) {
 
       updateProviderUI(
+        selected
+      );
+
+
+      dispatchProviderChange(
         selected
       );
 
@@ -1824,7 +2309,7 @@
 
 
   /* =======================================================
-     FIELD CHANGE LISTENERS
+     CAPABILITY LISTENERS
   ======================================================= */
 
   function bindCapabilityListeners() {
@@ -1862,16 +2347,32 @@
         }
 
 
+        const supportedFields = [
+
+          'model',
+
+          'duration',
+
+          'resolution',
+
+          'ratio',
+
+          'aspect',
+
+          'image'
+
+        ];
+
+
         if (
-          target.id === 'resolution' ||
-          target.id === 'model' ||
-          target.id === 'duration' ||
-          target.id === 'ratio' ||
-          target.id === 'aspect' ||
-          target.id === 'image'
+          supportedFields.includes(
+            target.id
+          )
         ) {
 
-          refreshCurrentOptions();
+          refreshCurrentOptions(
+            target.id
+          );
 
         }
 
@@ -1917,6 +2418,10 @@
       );
 
     };
+
+
+  GENZ.providers.refresh =
+    refreshCurrentOptions;
 
 
   GENZ.videoProviders.load =
@@ -1981,6 +2486,10 @@
           if (current) {
 
             updateProviderUI(
+              current
+            );
+
+            dispatchProviderChange(
               current
             );
 
