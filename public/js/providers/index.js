@@ -1,492 +1,273 @@
-/* =========================================================
-   GEN-Z.AI
-   PROVIDER REGISTRY
+/*
 
-   Fungsi:
-   - Menyimpan daftar adapter provider
-   - Mendeteksi adapter berdasarkan ID / nama
-   - Mendukung custom provider ID
-   - Alias Gemini -> Veo
-   - Tidak menyimpan API key
+* GEN-Z.AI
+* Provider Adapter Registry
+* 
+* Arsitektur:
+* public/js/providers/
+* index.js
+* veo.js
+* minimax.js
+* luma.js
+* provider-baru.js
+* 
+* Setiap provider memiliki implementasi sendiri.
+* Registry ini hanya bertugas mendaftarkan dan mencari adapter.
+  */
 
-   Adapter sebenarnya:
-   /public/js/providers/veo.js
-   /public/js/providers/minimax.js
-   /public/js/providers/luma.js
-========================================================= */
+import * as veo from "./veo.js";
+import * as minimax from "./minimax.js";
+import * as luma from "./luma.js";
 
-import veo from "./veo.js";
-import minimax from "./minimax.js";
-import luma from "./luma.js";
+/**
 
+* Adapter registry.
+* 
+* Gunakan nama adapter sebagai key.
+* Nama akan dinormalisasi sehingga:
+* 
+* "Veo"
+* "VEO"
+* " veo "
+* 
+* semuanya mengarah ke adapter "veo".
+  */
+  const PROVIDERS = Object.create(null);
 
-/* =========================================================
-   ADAPTER REGISTRY
-========================================================= */
+/**
 
-const PROVIDERS = {
+* Normalisasi nama adapter.
+  */
+  function normalizeProviderId(value) {
+  if (value === null || value === undefined) {
+  return "";
+  }
+
+return String(value)
+.trim()
+.toLowerCase()
+.replace(/[_\s]+/g, "-");
+}
+
+/**
+
+* Daftarkan adapter baru.
+* 
+* Contoh:
+* 
+* registerAdapter("kling", kling);
+* registerAdapter("runway", runway);
+* registerAdapter("seedance", seedance);
+  */
+  function registerAdapter(id, adapter, aliases) {
+  const normalizedId = normalizeProviderId(id);
+
+if (!normalizedId) {
+throw new Error(
+"Adapter ID tidak boleh kosong."
+);
+}
+
+if (!adapter || typeof adapter !== "object") {
+throw new Error(
+'Implementasi adapter "' +
+normalizedId +
+'" tidak valid.'
+);
+}
+
+PROVIDERS[normalizedId] = adapter;
+
+if (Array.isArray(aliases)) {
+aliases.forEach(function (alias) {
+const normalizedAlias =
+normalizeProviderId(alias);
+
+  if (normalizedAlias) {
+    PROVIDERS[normalizedAlias] = adapter;
+  }
+});
+
+}
+
+return adapter;
+}
+
+/**
+
+* Registrasi adapter bawaan GEN-Z.AI.
+  */
+  registerAdapter(
+  "veo",
   veo,
-  minimax,
-  luma
+  [
+  "gemini",
+  "google-veo",
+  "google veo",
+  "gemini-veo",
+  "gemini/veo"
+  ]
+  );
+
+registerAdapter(
+"minimax",
+minimax,
+[
+"mini max",
+"mini-max",
+"minimax-ai",
+"minimax ai"
+]
+);
+
+registerAdapter(
+"luma",
+luma,
+[
+"luma-ai",
+"luma ai",
+"dream-machine"
+]
+);
+
+/**
+
+* Mengambil adapter berdasarkan ID.
+* 
+* Return:
+* adapter object
+* atau
+* null jika belum tersedia.
+  */
+  function getAdapter(providerId) {
+  const id = normalizeProviderId(providerId);
+
+if (!id) {
+return null;
+}
+
+return PROVIDERS[id] || null;
+}
+
+/**
+
+* Mendapatkan informasi adapter.
+  */
+  function getAdapterInfo(providerId) {
+  const id = normalizeProviderId(providerId);
+  const adapter = getAdapter(id);
+
+if (!adapter) {
+return {
+id: id,
+supported: false,
+adapter: null
 };
+}
 
-
-/* =========================================================
-   EXACT ALIASES
-========================================================= */
-
-const NAME_ALIASES = {
-
-  gemini: "veo",
-
-  "gemini / veo": "veo",
-
-  "gemini/veo": "veo",
-
-  veo: "veo",
-
-  minimax: "minimax",
-
-  "mini max": "minimax",
-
-  luma: "luma",
-
-  "luma ai": "luma"
-
+return {
+id: id,
+supported: true,
+adapter: adapter
 };
-
-
-/* =========================================================
-   NORMALIZE TEXT
-========================================================= */
-
-function normalizeText(value) {
-
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-
 }
 
+/**
 
-/* =========================================================
-   NORMALIZE PROVIDER ID
-========================================================= */
+* Memeriksa apakah adapter tersedia.
+  */
+  function adapterSupported(providerId) {
+  const id = normalizeProviderId(providerId);
 
-export function normalizeProviderId(value) {
-
-  const raw =
-    normalizeText(value);
-
-  if (!raw) {
-    return "";
-  }
-
-  if (
-    NAME_ALIASES[raw]
-  ) {
-    return NAME_ALIASES[raw];
-  }
-
-  return raw;
-
+return !!(
+id &&
+PROVIDERS[id]
+);
 }
 
+/**
 
-/* =========================================================
-   DETECT ADAPTER FROM TEXT
-========================================================= */
-
-function detectAdapterFromText(
-  value
-) {
-
-  const text =
-    normalizeText(value);
-
-  if (!text) {
-    return null;
+* Mendapatkan seluruh adapter yang sudah terdaftar.
+* 
+* Hanya ID utama yang dikembalikan.
+* Alias tidak ditampilkan sebagai provider terpisah.
+  */
+  function listAdapters() {
+  return [
+  "veo",
+  "minimax",
+  "luma"
+  ];
   }
 
+/**
 
-  /* -------------------------------------------------------
-     GEMINI / VEO
-  ------------------------------------------------------- */
+* Resolve adapter.
+* 
+* Fungsi ini digunakan oleh engine video
+* ketika mendapatkan nama adapter dari database.
+  */
+  function resolveAdapter(providerId) {
+  const id = normalizeProviderId(providerId);
+  const adapter = getAdapter(id);
 
-  if (
-    text === "gemini" ||
-    text === "veo" ||
-    text.includes("gemini") ||
-    text.includes("veo")
-  ) {
-
-    return "veo";
-
-  }
-
-
-  /* -------------------------------------------------------
-     MINIMAX
-  ------------------------------------------------------- */
-
-  if (
-    text === "minimax" ||
-    text === "mini max" ||
-    text.includes("minimax") ||
-    text.includes("mini max")
-  ) {
-
-    return "minimax";
-
-  }
-
-
-  /* -------------------------------------------------------
-     LUMA
-  ------------------------------------------------------- */
-
-  if (
-    text === "luma" ||
-    text === "luma ai" ||
-    text.includes("luma")
-  ) {
-
-    return "luma";
-
-  }
-
-
-  return null;
-
+if (!adapter) {
+throw new Error(
+'Adapter "' +
+String(providerId || "") +
+'" belum tersedia.'
+);
 }
 
-
-/* =========================================================
-   GET ADAPTER
-========================================================= */
-
-export function getAdapter(
-  adapter
-) {
-
-  const raw =
-    normalizeText(adapter);
-
-  if (!raw) {
-    return null;
-  }
-
-
-  /* -------------------------------------------------------
-     Exact adapter / alias
-  ------------------------------------------------------- */
-
-  const normalized =
-    normalizeProviderId(raw);
-
-
-  if (
-    PROVIDERS[normalized]
-  ) {
-
-    return PROVIDERS[
-      normalized
-    ];
-
-  }
-
-
-  /* -------------------------------------------------------
-     Flexible name detection
-  ------------------------------------------------------- */
-
-  const detected =
-    detectAdapterFromText(raw);
-
-
-  if (
-    detected &&
-    PROVIDERS[detected]
-  ) {
-
-    return PROVIDERS[
-      detected
-    ];
-
-  }
-
-
-  return null;
-
+return adapter;
 }
 
+/**
 
-/* =========================================================
-   GET ADAPTER INFO
-========================================================= */
-
-export function getAdapterInfo(
-  adapter
-) {
-
-  const provider =
-    getAdapter(adapter);
-
-
-  if (!provider) {
-    return null;
+* Mendapatkan seluruh registry.
+* 
+* Digunakan untuk debugging atau pemeriksaan internal.
+  */
+  function getRegistry() {
+  return Object.freeze({
+  ...PROVIDERS
+  });
   }
 
+/**
 
-  if (
-    typeof provider.info ===
-    "function"
-  ) {
-
-    return provider.info();
-
-  }
-
-
-  return {
-
-    id:
-      provider.id,
-
-    name:
-      provider.name,
-
-    capabilities:
-      provider.capabilities ||
-      {}
-
+* API publik registry.
+  */
+  export {
+  PROVIDERS,
+  registerAdapter,
+  getAdapter,
+  getAdapterInfo,
+  listAdapters,
+  resolveAdapter,
+  adapterSupported,
+  normalizeProviderId,
+  getRegistry
   };
 
-}
-
-
-/* =========================================================
-   LIST ALL ADAPTERS
-========================================================= */
-
-export function listAdapters() {
-
-  return Object.values(
-    PROVIDERS
-  ).map(
-
-    provider => {
-
-      if (
-        typeof provider.info ===
-        "function"
-      ) {
-
-        return provider.info();
-
-      }
-
-
-      return {
-
-        id:
-          provider.id,
-
-        name:
-          provider.name,
-
-        capabilities:
-          provider.capabilities ||
-          {}
-
-      };
-
-    }
-
-  );
-
-}
-
-
-/* =========================================================
-   RESOLVE PROVIDER ADAPTER
-=========================================================
-
-   Provider database dapat berupa:
-
-   {
-     id: "gemini-production",
-     name: "Gemini Production",
-     adapter: "veo"
-   }
-
-   atau:
-
-   {
-     id: "gemini-production",
-     name: "Gemini Production"
-   }
-
-   atau:
-
-   {
-     id: "gemini-production",
-     name: "Gemini Production",
-     adapter: "Gemini"
-   }
-
-   Semua harus tetap menghasilkan adapter Veo.
-========================================================= */
-
-export function resolveAdapter(
-  provider
-) {
-
-  if (!provider) {
-    return null;
-  }
-
-
-  /* -------------------------------------------------------
-     1. Adapter eksplisit
-  ------------------------------------------------------- */
-
-  if (
-    provider.adapter
-  ) {
-
-    const explicit =
-      getAdapter(
-        provider.adapter
-      );
-
-
-    if (explicit) {
-      return explicit;
-    }
-
-  }
-
-
-  /* -------------------------------------------------------
-     2. Provider ID
-  ------------------------------------------------------- */
-
-  if (
-    provider.id
-  ) {
-
-    const byId =
-      getAdapter(
-        provider.id
-      );
-
-
-    if (byId) {
-      return byId;
-    }
-
-  }
-
-
-  /* -------------------------------------------------------
-     3. Provider name
-  ------------------------------------------------------- */
-
-  if (
-    provider.name
-  ) {
-
-    const byName =
-      getAdapter(
-        provider.name
-      );
-
-
-    if (byName) {
-      return byName;
-    }
-
-  }
-
-
-  return null;
-
-}
-
-
-/* =========================================================
-   CHECK SUPPORT
-========================================================= */
-
-export function adapterSupported(
-  provider
-) {
-
-  return Boolean(
-    resolveAdapter(provider)
-  );
-
-}
-
-
-/* =========================================================
-   FIND ADAPTER ID
-========================================================= */
-
-export function resolveAdapterId(
-  provider
-) {
-
-  const adapter =
-    resolveAdapter(provider);
-
-
-  if (!adapter) {
-    return null;
-  }
-
-
-  if (
-    typeof adapter.info ===
-    "function"
-  ) {
-
-    return (
-      adapter.info()?.id ||
-      null
-    );
-
-  }
-
-
-  return (
-    adapter.id ||
-    null
-  );
-
-}
-
-
-/* =========================================================
-   EXPORT
-========================================================= */
-
-export default {
-
+/**
+
+* Compatibility bridge.
+* 
+* Beberapa bagian GEN-Z.AI mungkin mengakses
+* registry melalui window.GENZ_PROVIDERS.
+* 
+* Tidak mengganggu module import.
+  */
+  if (typeof window !== "undefined") {
+  window.GENZ_PROVIDERS = {
   getAdapter,
-
   getAdapterInfo,
-
   listAdapters,
-
   resolveAdapter,
-
-  resolveAdapterId,
-
   adapterSupported,
-
-  normalizeProviderId
-
-};
+  normalizeProviderId,
+  registerAdapter,
+  getRegistry
+  };
+  }
