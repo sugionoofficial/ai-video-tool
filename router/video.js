@@ -25,7 +25,29 @@ import {
 
 /*
  * ============================================================
- * VIDEO PROXY
+ * GEN-Z.AI
+ * GENERIC VIDEO PROXY
+ * ============================================================
+ *
+ * Router ini tidak mengetahui detail provider.
+ *
+ * Alur:
+ *
+ *   provider
+ *      ↓
+ *   provider.adapter
+ *      ↓
+ *   adapter.fetchVideo()
+ *
+ * Semua logika khusus provider berada di adapter masing-masing.
+ *
+ * Contoh:
+ *
+ *   /public/js/providers/veo.js
+ *   /public/js/providers/minimax.js
+ *   /public/js/providers/luma.js
+ *
+ * Provider baru tidak membutuhkan perubahan pada router ini.
  * ============================================================
  */
 
@@ -83,9 +105,7 @@ export async function handleVideo(
       env
     );
 
-  if (
-    !jobRows.ok
-  ) {
+  if (!jobRows.ok) {
     throw new HttpError(
       "Gagal memeriksa job video.",
       500
@@ -131,59 +151,120 @@ export async function handleVideo(
       true
     );
 
-  const adapter =
-    resolveAdapter(
-      provider
-    );
-
-  if (!adapter) {
+  if (!provider) {
     throw new HttpError(
-      `Adapter provider ${id} belum didukung Worker.`,
+      `Provider ${id} tidak ditemukan.`,
+      404
+    );
+  }
+
+  const adapterId =
+    String(
+      provider?.adapter ||
+        ""
+    ).trim().toLowerCase();
+
+  if (!adapterId) {
+    throw new HttpError(
+      `Provider ${id} belum memiliki adapter.`,
       400
     );
   }
 
-  let target;
+  let adapter;
+
+  try {
+    adapter =
+      resolveAdapter(
+        adapterId
+      );
+  } catch {
+    throw new HttpError(
+      `Adapter "${adapterId}" belum tersedia di Worker.`,
+      400
+    );
+  }
+
+  if (!adapter) {
+    throw new HttpError(
+      `Adapter "${adapterId}" belum tersedia di Worker.`,
+      400
+    );
+  }
 
   if (
-    String(
-      provider.adapter ||
-        ""
-    ).toLowerCase() ===
-    "minimax"
+    typeof adapter.fetchVideo !==
+    "function"
   ) {
-    target =
-      String(
-        job?.metadata
-          ?.provider_file_id ||
-          ""
-      ).trim();
-
-    if (!target) {
-      throw new HttpError(
-        "File video MiniMax tidak tersedia.",
-        404
-      );
-    }
-  } else {
-    target =
-      String(
-        job.video_url ||
-          ""
-      ).trim();
-
-    if (
-      !target ||
-      target.startsWith(
-        "/api/video"
-      )
-    ) {
-      throw new HttpError(
-        "URL video provider tidak tersedia.",
-        404
-      );
-    }
+    throw new HttpError(
+      `Adapter "${adapterId}" tidak memiliki fungsi fetchVideo().`,
+      501
+    );
   }
+
+  /*
+   * ==========================================================
+   * TARGET VIDEO
+   * ==========================================================
+   *
+   * Router tidak membedakan provider.
+   *
+   * Adapter menentukan sendiri bagaimana target digunakan.
+   *
+   * Prioritas:
+   *
+   * 1. provider_file_id
+   * 2. video_url
+   *
+   * MiniMax dapat menggunakan file ID.
+   * Veo / Luma dapat menggunakan URL.
+   * Provider baru bebas menentukan format targetnya sendiri.
+   * ==========================================================
+   */
+
+  const providerFileId =
+    String(
+      job?.metadata
+        ?.provider_file_id ||
+        ""
+    ).trim();
+
+  const videoUrl =
+    String(
+      job?.video_url ||
+        ""
+    ).trim();
+
+  const target =
+    providerFileId ||
+    videoUrl;
+
+  if (!target) {
+    throw new HttpError(
+      "Target video provider tidak tersedia.",
+      404
+    );
+  }
+
+  /*
+   * Jangan izinkan proxy memanggil dirinya sendiri.
+   */
+  if (
+    target.startsWith(
+      "/api/video"
+    )
+  ) {
+    throw new HttpError(
+      "Target video provider tidak valid.",
+      404
+    );
+  }
+
+  /*
+   * ==========================================================
+   * ADAPTER EXECUTION
+   * ==========================================================
+   */
 
   const response =
     await adapter.fetchVideo(
@@ -208,11 +289,16 @@ export async function handleVideo(
     );
   }
 
+  /*
+   * ==========================================================
+   * RETURN VIDEO
+   * ==========================================================
+   */
+
   return new Response(
     response.body,
     {
-      status:
-        200,
+      status: 200,
 
       headers: {
         ...corsHeaders(
