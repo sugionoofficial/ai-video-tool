@@ -343,9 +343,6 @@ export async function adminApi(
 
     /*
      * Adapter wajib memiliki ID.
-     *
-     * Tidak membatasi daftar adapter
-     * yang sudah terdaftar di registry.
      */
 
     if (
@@ -359,14 +356,6 @@ export async function adminApi(
 
     /*
      * Validasi format adapter.
-     *
-     * Contoh:
-     * veo
-     * minimax
-     * luma
-     * kling
-     * runway
-     * seedance
      */
 
     if (
@@ -497,10 +486,6 @@ export async function adminApi(
    * ---
    * PROVIDER BY ID
    * ---
-   *
-   * FIX:
-   * Regex harus menggunakan
-   * escaped slash.
    */
 
   const m =
@@ -713,15 +698,72 @@ export async function adminApi(
         )
       );
 
-    const active =
-      await rows(
+    /*
+     * Periksa apakah provider masih
+     * memiliki job aktif.
+     *
+     * Jangan menggunakan helper rows()
+     * di sini karena helper tersebut
+     * menyembunyikan error Supabase.
+     */
+
+    const activeResponse =
+      await sb(
         `/rest/v1/video_jobs?provider=eq.${encodeURIComponent(
           id
         )}&status=in.(reserved,processing)&select=id&limit=1`,
+        {
+          headers: {
+            Accept:
+              "application/json"
+          }
+        },
         env
       );
 
     if (
+      !activeResponse.ok
+    ) {
+      const errorData =
+        await safeJson(
+          activeResponse
+        );
+
+      console.error(
+        "admin provider active job check failed",
+        {
+          provider:
+            id,
+
+          status:
+            activeResponse.status,
+
+          error:
+            errorData
+        }
+      );
+
+      throw new HttpError(
+        apiError(
+          errorData,
+          "Gagal memeriksa job aktif provider."
+        ),
+        activeResponse.status >=
+          400 &&
+        activeResponse.status <
+          600
+          ? activeResponse.status
+          : 502
+      );
+    }
+
+    const active =
+      await activeResponse.json();
+
+    if (
+      Array.isArray(
+        active
+      ) &&
       active.length
     ) {
       throw new HttpError(
@@ -730,6 +772,10 @@ export async function adminApi(
       );
     }
 
+    /*
+     * Hapus provider.
+     */
+
     const res =
       await sb(
         `/rest/v1/providers?id=eq.${encodeURIComponent(
@@ -737,7 +783,12 @@ export async function adminApi(
         )}`,
         {
           method:
-            "DELETE"
+            "DELETE",
+
+          headers: {
+            Prefer:
+              "return=minimal"
+          }
         },
         env
       );
@@ -745,11 +796,28 @@ export async function adminApi(
     if (
       !res.ok
     ) {
+      const errorData =
+        await safeJson(
+          res
+        );
+
+      console.error(
+        "admin provider delete failed",
+        {
+          provider:
+            id,
+
+          status:
+            res.status,
+
+          error:
+            errorData
+        }
+      );
+
       throw new HttpError(
         apiError(
-          await safeJson(
-            res
-          ),
+          errorData,
           "Gagal menghapus provider."
         ),
         res.status
@@ -759,7 +827,10 @@ export async function adminApi(
     return json(
       {
         success:
-          true
+          true,
+
+        message:
+          "Provider berhasil dihapus."
       },
       200,
       env
@@ -1839,15 +1910,8 @@ async function listUsers(
     page <= 20
   ) {
     /*
-     * FIX:
-     * Gunakan template literal.
-     *
-     * Sebelumnya menggunakan:
-     *
-     * "${env.SUPABASE_URL}..."
-     *
-     * sehingga env tidak pernah
-     * di-interpolasi.
+     * Gunakan template literal
+     * agar env di-interpolasi dengan benar.
      */
 
     const r =
