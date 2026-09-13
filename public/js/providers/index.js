@@ -1,52 +1,50 @@
 /* ============================================================
 
-* GEN-Z.AI
-* PROVIDER ADAPTER REGISTRY
-* 
-* Setiap provider memiliki file adapter sendiri.
-* 
-* Contoh:
-* public/js/providers/veo.js
-* public/js/providers/minimax.js
-* public/js/providers/luma.js
-* public/js/providers/kling.js
-* public/js/providers/runway.js
-* public/js/providers/seedance.js
-* 
-* Registry ini bertugas:
-* 1. Mendaftarkan adapter
-* 2. Mencari adapter
-* 3. Membaca metadata adapter
-* 4. Membaca capabilities adapter
-* 5. Menyediakan daftar adapter utama
-* 
-* API key TIDAK disimpan di sini.
-* ============================================================ */
+GEN-Z.AI
+PROVIDER ADAPTER REGISTRY
+
+Setiap provider memiliki file adapter sendiri.
+
+Contoh:
+public/js/providers/veo.js
+public/js/providers/minimax.js
+public/js/providers/luma.js
+public/js/providers/kling.js
+public/js/providers/runway.js
+public/js/providers/seedance.js
+
+Registry ini bertugas:
+
+1. Mendaftarkan adapter
+2. Mencari adapter
+3. Membaca metadata adapter
+4. Membaca capabilities adapter
+5. Menyediakan daftar adapter utama
+
+API key TIDAK disimpan di sini.
+============================================================ */
 
 import * as veo from "./veo.js";
 import * as minimax from "./minimax.js";
 import * as luma from "./luma.js";
 
 /* ============================================================
-
-* REGISTRY
-* ============================================================ */
+REGISTRY
+============================================================ */
 
 const PROVIDERS = Object.create(null);
 
 /*
+Menyimpan hanya adapter utama.
 
-* Menyimpan hanya adapter utama.
-* 
-* Alias tidak masuk ke sini sehingga listAdapters()
-* tidak menampilkan provider yang sama berkali-kali.
-  */
-  const PRIMARY_ADAPTERS = Object.create(null);
+Alias tidak masuk ke sini sehingga listAdapters()
+tidak menampilkan provider yang sama berkali-kali.
+*/
+const PRIMARY_ADAPTERS = Object.create(null);
 
 /* ============================================================
-
-* NORMALIZE ADAPTER ID
-* ============================================================ */
+NORMALIZE ADAPTER ID
+============================================================ */
 
 function normalizeProviderId(value) {
 if (
@@ -64,9 +62,8 @@ return String(value)
 }
 
 /* ============================================================
-
-* REGISTER ADAPTER
-* ============================================================ */
+REGISTER ADAPTER
+============================================================ */
 
 function registerAdapter(
 id,
@@ -92,40 +89,38 @@ throw new Error(
 }
 
 /*
-
-* Register sebagai adapter utama.
-  */
-  PROVIDERS[normalizedId] = adapter;
-  PRIMARY_ADAPTERS[normalizedId] = adapter;
+Register sebagai adapter utama.
+*/
+PROVIDERS[normalizedId] = adapter;
+PRIMARY_ADAPTERS[normalizedId] = adapter;
 
 /*
+Register alias.
+*/
+if (Array.isArray(aliases)) {
+aliases.forEach(
+(alias) => {
+const normalizedAlias =
+normalizeProviderId(alias);
 
-* Register alias.
-  */
-  if (Array.isArray(aliases)) {
-  aliases.forEach(
-  (alias) => {
-  const normalizedAlias =
-  normalizeProviderId(alias);
-  
-  if (
-  normalizedAlias &&
-  normalizedAlias !== normalizedId
-  ) {
-  PROVIDERS[normalizedAlias] =
-  adapter;
+    if (
+      normalizedAlias &&
+      normalizedAlias !== normalizedId
+    ) {
+      PROVIDERS[normalizedAlias] =
+        adapter;
+    }
   }
-  }
-  );
-  }
+);
+
+}
 
 return adapter;
 }
 
 /* ============================================================
-
-* BUILT-IN ADAPTERS
-* ============================================================ */
+BUILT-IN ADAPTERS
+============================================================ */
 
 registerAdapter(
 "veo",
@@ -161,9 +156,8 @@ luma,
 );
 
 /* ============================================================
-
-* GET ADAPTER
-* ============================================================ */
+GET ADAPTER
+============================================================ */
 
 function getAdapter(providerId) {
 const id =
@@ -177,9 +171,8 @@ return PROVIDERS[id] || null;
 }
 
 /* ============================================================
-
-* READ ADAPTER METADATA
-* ============================================================ */
+READ ADAPTER METADATA
+============================================================ */
 
 function readAdapterMetadata(
 id,
@@ -188,29 +181,27 @@ adapter
 let metadata = {};
 
 /*
-
-* Prioritaskan info() jika adapter menyediakan.
-  */
-  try {
-  if (
-  typeof adapter?.info ===
-  "function"
-  ) {
-  metadata =
-  adapter.info() || {};
-  }
-  } catch {
-  metadata = {};
-  }
+Prioritaskan info() jika adapter menyediakan.
+*/
+try {
+if (
+typeof adapter?.info ===
+"function"
+) {
+metadata =
+adapter.info() || {};
+}
+} catch {
+metadata = {};
+}
 
 /*
-
-* Fallback ke property adapter.
-  */
-  const capabilities =
-  metadata.capabilities ||
-  adapter?.capabilities ||
-  {};
+Fallback ke property adapter.
+*/
+const capabilities =
+metadata.capabilities ||
+adapter?.capabilities ||
+{};
 
 return {
 id:
@@ -257,9 +248,8 @@ resolutions:
 }
 
 /* ============================================================
-
-* GET ADAPTER INFO
-* ============================================================ */
+GET ADAPTER INFO
+============================================================ */
 
 function getAdapterInfo(providerId) {
 const id =
@@ -269,26 +259,25 @@ const adapter =
 getAdapter(id);
 
 /*
+Adapter belum memiliki implementasi.
 
-* Adapter belum memiliki implementasi.
-* 
-* Tetap dikembalikan sebagai unsupported.
-* Ini memungkinkan provider baru disimpan
-* di database tanpa membuat sistem crash.
-  */
-  if (!adapter) {
-  return {
-  id,
-  name: id,
-  supported: false,
-  adapter: null,
-  capabilities: {},
-  models: [],
-  durations: [],
-  aspects: [],
-  resolutions: []
-  };
-  }
+Tetap dikembalikan sebagai unsupported.
+Ini memungkinkan provider baru disimpan
+di database tanpa membuat sistem crash.
+*/
+if (!adapter) {
+return {
+id,
+name: id,
+supported: false,
+adapter: null,
+capabilities: {},
+models: [],
+durations: [],
+aspects: [],
+resolutions: []
+};
+}
 
 const metadata =
 readAdapterMetadata(
@@ -326,9 +315,8 @@ resolutions:
 }
 
 /* ============================================================
-
-* CHECK ADAPTER SUPPORT
-* ============================================================ */
+CHECK ADAPTER SUPPORT
+============================================================ */
 
 function adapterSupported(
 providerId
@@ -343,29 +331,26 @@ PROVIDERS[id]
 }
 
 /* ============================================================
-
-* LIST PRIMARY ADAPTERS
-* ============================================================ */
+LIST PRIMARY ADAPTERS
+============================================================ */
 
 function listAdapters() {
 /*
+Tidak lagi hard-coded:
 
-* Tidak lagi hard-coded:
-* 
-* return ["veo", "minimax", "luma"];
-* 
-* Sekarang otomatis mengambil adapter
-* yang benar-benar sudah diregistrasikan.
-  */
-  return Object.keys(
-  PRIMARY_ADAPTERS
-  );
-  }
+return ["veo", "minimax", "luma"];
+
+Sekarang otomatis mengambil adapter
+yang benar-benar sudah diregistrasikan.
+*/
+return Object.keys(
+PRIMARY_ADAPTERS
+);
+}
 
 /* ============================================================
-
-* RESOLVE ADAPTER
-* ============================================================ */
+RESOLVE ADAPTER
+============================================================ */
 
 function resolveAdapter(
 providerId
@@ -378,7 +363,7 @@ getAdapter(id);
 
 if (!adapter) {
 throw new Error(
-"Adapter "${String( providerId || "" )}" belum tersedia."
+"Adapter "${String(providerId || "")}" belum tersedia."
 );
 }
 
@@ -386,9 +371,8 @@ return adapter;
 }
 
 /* ============================================================
-
-* GET REGISTRY
-* ============================================================ */
+GET REGISTRY
+============================================================ */
 
 function getRegistry() {
 return Object.freeze({
@@ -397,9 +381,8 @@ return Object.freeze({
 }
 
 /* ============================================================
-
-* PUBLIC EXPORTS
-* ============================================================ */
+PUBLIC EXPORTS
+============================================================ */
 
 export {
 PROVIDERS,
@@ -414,9 +397,8 @@ getRegistry
 };
 
 /* ============================================================
-
-* BROWSER COMPATIBILITY BRIDGE
-* ============================================================ */
+BROWSER COMPATIBILITY BRIDGE
+============================================================ */
 
 if (
 typeof window !== "undefined"
