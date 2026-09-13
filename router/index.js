@@ -1,3 +1,8 @@
+// ============================================================
+// GEN-Z.AI
+// MAIN ROUTER
+// ============================================================
+
 import {
   HttpError,
   corsHeaders,
@@ -49,11 +54,63 @@ import {
 } from "../providers/provider-service.js";
 
 
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const MAX_GENERATE_REQUEST_BYTES = 65536;
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function normalizedAdapter(value) {
+  return String(
+    value || ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+
+function hasApiKey(provider) {
+  return Boolean(
+    String(
+      provider?.api_key || ""
+    ).trim()
+  );
+}
+
+
+function isSupportedAdapter(adapter) {
+  const id = normalizedAdapter(
+    adapter
+  );
+
+  if (!id) {
+    return false;
+  }
+
+  return Boolean(
+    adapterInfo(id)
+  );
+}
+
+
+// ============================================================
+// ROUTER
+// ============================================================
+
 export async function router(
   request,
   env,
   ctx
 ) {
+
+  // ----------------------------------------------------------
+  // CORS PREFLIGHT
+  // ----------------------------------------------------------
 
   if (
     request.method ===
@@ -62,8 +119,7 @@ export async function router(
     return new Response(
       null,
       {
-        status:
-          204,
+        status: 204,
 
         headers:
           corsHeaders(
@@ -82,9 +138,9 @@ export async function router(
 
   try {
 
-    /* ========================================================
-     * CONFIG
-     * ======================================================== */
+    // ========================================================
+    // CONFIG
+    // ========================================================
 
     if (
       url.pathname ===
@@ -95,8 +151,7 @@ export async function router(
 
       return json(
         {
-          success:
-            true,
+          success: true,
 
           supabaseUrl:
             env.SUPABASE_URL ||
@@ -112,12 +167,14 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * DIAGNOSTIC
-     *
-     * PENTING:
-     * Jangan pernah mengirim api_key mentah ke client.
-     * ======================================================== */
+    // ========================================================
+    // DIAGNOSTIC
+    //
+    // Diagnostic boleh melihat provider yang tersimpan,
+    // termasuk provider dengan adapter yang belum tersedia.
+    //
+    // API key mentah TIDAK PERNAH dikirim ke client.
+    // ========================================================
 
     if (
       url.pathname ===
@@ -129,21 +186,31 @@ export async function router(
       const res =
         await sb(
           "/rest/v1/providers?select=id,name,adapter,enabled,api_key",
-          {},
+          {
+            headers: {
+              Accept:
+                "application/json"
+            }
+          },
           env
         );
 
 
+      if (!res.ok) {
+        throw new HttpError(
+          "Gagal membaca konfigurasi provider.",
+          502
+        );
+      }
+
+
       const providers =
-        res.ok
-          ? await res.json()
-          : [];
+        await res.json();
 
 
       return json(
         {
-          success:
-            true,
+          success: true,
 
           worker:
             "GEN-Z.AI",
@@ -155,50 +222,48 @@ export async function router(
             ),
 
           providers:
-            providers.map(
-              provider => {
+            Array.isArray(
+              providers
+            )
+              ? providers.map(
+                  provider => {
 
-                const supported =
-                  Boolean(
-                    adapterInfo(
-                      provider.adapter
-                    )
-                  );
+                    const adapter =
+                      normalizedAdapter(
+                        provider.adapter
+                      );
 
+                    const supported =
+                      isSupportedAdapter(
+                        adapter
+                      );
 
-                return {
-                  id:
-                    provider.id,
+                    return {
+                      id:
+                        provider.id,
 
-                  name:
-                    provider.name,
+                      name:
+                        provider.name,
 
-                  adapter:
-                    provider.adapter,
+                      adapter:
+                        adapter,
 
-                  enabled:
-                    Boolean(
-                      provider.enabled
-                    ),
+                      enabled:
+                        Boolean(
+                          provider.enabled
+                        ),
 
-                  /*
-                   * Hanya status boolean.
-                   * API key TIDAK pernah dikirim.
-                   */
+                      configured:
+                        hasApiKey(
+                          provider
+                        ),
 
-                  configured:
-                    Boolean(
-                      String(
-                        provider.api_key ||
-                        ""
-                      ).trim()
-                    ),
-
-                  adapterSupported:
-                    supported
-                };
-              }
-            ),
+                      adapterSupported:
+                        supported
+                    };
+                  }
+                )
+              : [],
 
           timestamp:
             new Date()
@@ -210,9 +275,18 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * PUBLIC PROVIDERS
-     * ======================================================== */
+    // ========================================================
+    // PUBLIC PROVIDERS
+    //
+    // Hanya provider yang:
+    // 1. enabled
+    // 2. mempunyai API key
+    // 3. mempunyai adapter yang sudah terdaftar
+    //
+    // Provider baru boleh disimpan di database sebelum
+    // adapter-nya di-deploy. Provider tersebut tidak muncul
+    // di generator sampai adapter tersedia.
+    // ========================================================
 
     if (
       url.pathname ===
@@ -224,17 +298,20 @@ export async function router(
       const res =
         await sb(
           "/rest/v1/providers?enabled=eq.true&select=id,name,adapter,enabled,api_key&order=name.asc",
-          {},
+          {
+            headers: {
+              Accept:
+                "application/json"
+            }
+          },
           env
         );
 
 
-      if (
-        !res.ok
-      ) {
+      if (!res.ok) {
         throw new HttpError(
           "Gagal mengambil daftar provider.",
-          500
+          502
         );
       }
 
@@ -243,51 +320,43 @@ export async function router(
         await res.json();
 
 
-      /*
-       * Provider hanya ditampilkan ke generator
-       * jika:
-       *
-       * 1. aktif
-       * 2. API key tersedia
-       * 3. adapter sudah terdaftar
-       *
-       * Provider dengan adapter baru yang belum
-       * di-deploy tetap aman tersimpan di database,
-       * tetapi tidak akan muncul sebagai pilihan
-       * generator sampai adapter tersebut tersedia.
-       */
-
       const availableProviders =
-        providers
-          .filter(
-            provider => {
+        Array.isArray(
+          providers
+        )
+          ? providers
+              .filter(
+                provider => {
 
-              const hasApiKey =
-                Boolean(
-                  String(
-                    provider.api_key ||
-                    ""
-                  ).trim()
-                );
+                  if (
+                    !provider ||
+                    provider.enabled === false
+                  ) {
+                    return false;
+                  }
 
 
-              const hasAdapter =
-                Boolean(
-                  adapterInfo(
+                  if (
+                    !hasApiKey(
+                      provider
+                    )
+                  ) {
+                    return false;
+                  }
+
+
+                  return isSupportedAdapter(
                     provider.adapter
-                  )
-                );
-
-
-              return (
-                hasApiKey &&
-                hasAdapter
-              );
-            }
-          )
-          .map(
-            publicProvider
-          );
+                  );
+                }
+              )
+              .map(
+                publicProvider
+              )
+              .filter(
+                Boolean
+              )
+          : [];
 
 
       return json(
@@ -304,9 +373,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * ADMIN
-     * ======================================================== */
+    // ========================================================
+    // ADMIN
+    // ========================================================
 
     if (
       url.pathname.startsWith(
@@ -321,9 +390,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * DASHBOARD REFERENCES
-     * ======================================================== */
+    // ========================================================
+    // DASHBOARD REFERENCES
+    // ========================================================
 
     if (
       url.pathname ===
@@ -339,9 +408,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * ACCOUNT
-     * ======================================================== */
+    // ========================================================
+    // ACCOUNT
+    // ========================================================
 
     if (
       url.pathname ===
@@ -357,9 +426,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * TRANSACTIONS
-     * ======================================================== */
+    // ========================================================
+    // TRANSACTIONS
+    // ========================================================
 
     if (
       url.pathname ===
@@ -375,9 +444,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * TOPUP
-     * ======================================================== */
+    // ========================================================
+    // TOPUP
+    // ========================================================
 
     if (
       url.pathname ===
@@ -391,9 +460,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * GENERATE
-     * ======================================================== */
+    // ========================================================
+    // GENERATE
+    // ========================================================
 
     if (
       url.pathname ===
@@ -402,25 +471,39 @@ export async function router(
         "POST"
     ) {
 
+      const contentLengthHeader =
+        request.headers.get(
+          "content-length"
+        );
+
       const contentLength =
         Number(
-          request.headers.get(
-            "content-length"
-          ) || 0
+          contentLengthHeader || 0
         );
 
 
       if (
+        Number.isFinite(
+          contentLength
+        ) &&
         contentLength >
-        65536
+          MAX_GENERATE_REQUEST_BYTES
       ) {
-
         throw new HttpError(
           "Request generation terlalu besar.",
           413
         );
       }
 
+
+      /*
+       * Jika Content-Length tidak tersedia, lakukan
+       * pre-check terhadap Content-Type dan delegasikan
+       * validasi body ke handler generate.
+       *
+       * Handler generate tetap menjadi lapisan utama
+       * validasi payload.
+       */
 
       return await handleGenerate(
         request,
@@ -429,9 +512,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * GENERATE STATUS
-     * ======================================================== */
+    // ========================================================
+    // GENERATE STATUS
+    // ========================================================
 
     if (
       url.pathname ===
@@ -447,9 +530,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * VIDEO
-     * ======================================================== */
+    // ========================================================
+    // VIDEO
+    // ========================================================
 
     if (
       url.pathname ===
@@ -465,9 +548,9 @@ export async function router(
     }
 
 
-    /* ========================================================
-     * STATIC ASSETS
-     * ======================================================== */
+    // ========================================================
+    // STATIC ASSETS
+    // ========================================================
 
     if (
       env.ASSETS
@@ -479,6 +562,10 @@ export async function router(
     }
 
 
+    // ========================================================
+    // 404
+    // ========================================================
+
     throw new HttpError(
       "Route tidak ditemukan.",
       404
@@ -487,6 +574,13 @@ export async function router(
   } catch (
     err
   ) {
+
+    // --------------------------------------------------------
+    // SERVER LOG
+    //
+    // Jangan log API key, authorization header, request body,
+    // atau credential provider.
+    // --------------------------------------------------------
 
     console.error(
       "request failed",
@@ -511,8 +605,15 @@ export async function router(
       );
 
 
+    const safeStatus =
+      status >= 400 &&
+      status <= 599
+        ? status
+        : 500;
+
+
     const message =
-      status >= 500
+      safeStatus >= 500
         ? "Internal Worker error."
         : (
             err?.message ||
@@ -528,7 +629,7 @@ export async function router(
         error:
           message
       },
-      status,
+      safeStatus,
       env
     );
   }
