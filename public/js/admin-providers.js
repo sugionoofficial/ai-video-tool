@@ -11,6 +11,19 @@
   const AUTH_TIMEOUT = 10000;
   const CONFIG_TIMEOUT = 10000;
 
+  const CHINAAPI_MODELS = [
+    {
+      id: "agnes-video-2.5-flash",
+      name: "Agnes Video 2.5 Flash",
+      defaultCredit: 1
+    },
+    {
+      id: "doubao-seedance-2-0-mini-260615",
+      name: "Doubao Seedance 2.0 Mini",
+      defaultCredit: 2
+    }
+  ];
+
   const state = {
     providers: [],
     editingId: null,
@@ -43,22 +56,211 @@
 
 
   /* ============================================================
+   * NUMBER HELPERS
+   * ============================================================ */
+
+  function normalizeInteger(value, fallback, min, max) {
+
+    const number =
+      Number.parseInt(
+        value,
+        10
+      );
+
+    if (!Number.isFinite(number)) {
+      return fallback;
+    }
+
+    return Math.min(
+      max,
+      Math.max(
+        min,
+        number
+      )
+    );
+  }
+
+
+  function normalizeDiscount(value) {
+
+    const number =
+      Number.parseInt(
+        value,
+        10
+      );
+
+    if (!Number.isFinite(number)) {
+      return 0;
+    }
+
+    return Math.min(
+      100,
+      Math.max(
+        0,
+        number
+      )
+    );
+  }
+
+
+  function getModelConfigValue(
+    object,
+    modelId,
+    fallback
+  ) {
+
+    if (
+      !object ||
+      typeof object !== "object" ||
+      Array.isArray(object)
+    ) {
+      return fallback;
+    }
+
+    if (
+      object[modelId] === undefined ||
+      object[modelId] === null
+    ) {
+      return fallback;
+    }
+
+    return object[modelId];
+  }
+
+
+  function getChinaApiModelSettings(config, model) {
+
+    const safeConfig =
+      config &&
+      typeof config === "object" &&
+      !Array.isArray(config)
+        ? config
+        : {};
+
+    const modelEnabled =
+      getModelConfigValue(
+        safeConfig.modelEnabled,
+        model.id,
+        true
+      );
+
+    const modelCredits =
+      getModelConfigValue(
+        safeConfig.modelCredits,
+        model.id,
+        model.defaultCredit
+      );
+
+    const modelDiscounts =
+      getModelConfigValue(
+        safeConfig.modelDiscounts,
+        model.id,
+        0
+      );
+
+    return {
+      enabled:
+        Boolean(
+          modelEnabled
+        ),
+
+      credit:
+        normalizeInteger(
+          modelCredits,
+          model.defaultCredit,
+          1,
+          1000
+        ),
+
+      discount:
+        normalizeDiscount(
+          modelDiscounts
+        )
+    };
+  }
+
+
+  function getEffectiveCredit(
+    credit,
+    discount
+  ) {
+
+    const base =
+      normalizeInteger(
+        credit,
+        1,
+        1,
+        1000
+      );
+
+    const percentage =
+      normalizeDiscount(
+        discount
+      );
+
+    if (
+      percentage <= 0
+    ) {
+      return base;
+    }
+
+    const calculated =
+      Math.round(
+        base *
+        (
+          1 -
+          (
+            percentage /
+            100
+          )
+        )
+      );
+
+    return Math.max(
+      1,
+      Math.min(
+        1000,
+        calculated
+      )
+    );
+  }
+
+
+  function safeModelKey(modelId) {
+
+    return String(
+      modelId || ""
+    )
+      .replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_"
+      );
+  }
+
+
+  /* ============================================================
    * STATUS
    * ============================================================ */
 
   function setStatus(message, type) {
 
-    const el = $("providerStatus");
+    const el =
+      $("providerStatus");
 
     if (!el) {
       return;
     }
 
-    el.textContent = message || "";
-    el.className = "admin-status-message";
+    el.textContent =
+      message || "";
+
+    el.className =
+      "admin-status-message";
 
     if (type) {
-      el.classList.add(type);
+      el.classList.add(
+        type
+      );
     }
 
   }
@@ -66,14 +268,17 @@
 
   function setLoadingMessage(message) {
 
-    const loading = $("providerLoading");
+    const loading =
+      $("providerLoading");
 
     if (!loading) {
       return;
     }
 
     const paragraph =
-      loading.querySelector("p");
+      loading.querySelector(
+        "p"
+      );
 
     if (paragraph) {
       paragraph.textContent =
@@ -88,32 +293,53 @@
    * TIMEOUT
    * ============================================================ */
 
-  function withTimeout(promise, ms, message) {
+  function withTimeout(
+    promise,
+    ms,
+    message
+  ) {
 
     let timer;
 
     const timeout =
-      new Promise(function (_, reject) {
+      new Promise(
+        function (_, reject) {
 
-        timer = setTimeout(function () {
+          timer =
+            setTimeout(
+              function () {
 
-          const error =
-            new Error(message);
+                const error =
+                  new Error(
+                    message
+                  );
 
-          error.status = 408;
+                error.status =
+                  408;
 
-          reject(error);
+                reject(
+                  error
+                );
 
-        }, ms);
+              },
+              ms
+            );
 
-      });
+        }
+      );
 
     return Promise.race([
       promise,
       timeout
-    ]).finally(function () {
-      clearTimeout(timer);
-    });
+    ]).finally(
+      function () {
+
+        clearTimeout(
+          timer
+        );
+
+      }
+    );
 
   }
 
@@ -135,7 +361,8 @@
           "Supabase client tidak tersedia."
         );
 
-      error.status = 503;
+      error.status =
+        503;
 
       throw error;
     }
@@ -148,17 +375,21 @@
 
     const response =
       await withTimeout(
-        fetch("/api/config", {
-          method: "GET",
+        fetch(
+          "/api/config",
+          {
+            method:
+              "GET",
 
-          headers: {
-            "Accept":
-              "application/json"
-          },
+            headers: {
+              "Accept":
+                "application/json"
+            },
 
-          cache:
-            "no-store"
-        }),
+            cache:
+              "no-store"
+          }
+        ),
 
         CONFIG_TIMEOUT,
 
@@ -188,13 +419,15 @@
 
     const supabaseUrl =
       String(
-        config?.supabaseUrl || ""
+        config?.supabaseUrl ||
+        ""
       ).trim();
 
 
     const publishableKey =
       String(
-        config?.supabasePublishableKey || ""
+        config?.supabasePublishableKey ||
+        ""
       ).trim();
 
 
@@ -208,7 +441,8 @@
           "Konfigurasi Supabase belum tersedia."
         );
 
-      error.status = 503;
+      error.status =
+        503;
 
       throw error;
     }
@@ -246,7 +480,8 @@
           "Supabase authentication client tidak tersedia."
         );
 
-      error.status = 503;
+      error.status =
+        503;
 
       throw error;
     }
@@ -352,7 +587,8 @@
           "Sesi login tidak ditemukan."
         );
 
-      error.status = 401;
+      error.status =
+        401;
 
       throw error;
     }
@@ -364,13 +600,12 @@
 
   /* ============================================================
    * API REQUEST
-   *
-   * FIX:
-   * Selalu kirim Content-Type JSON untuk
-   * request yang memiliki body.
    * ============================================================ */
 
-  async function api(path, options) {
+  async function api(
+    path,
+    options
+  ) {
 
     const opts =
       options || {};
@@ -392,13 +627,11 @@
 
     headers.set(
       "Authorization",
-      "Bearer " + token
+      "Bearer " +
+      token
     );
 
 
-    /*
-     * Body provider selalu JSON.
-     */
     if (
       opts.body !== undefined &&
       opts.body !== null
@@ -411,31 +644,27 @@
     }
 
 
-    /*
-     * Header tambahan.
-     *
-     * Jangan izinkan header Content-Type
-     * lama menimpa application/json.
-     */
     if (opts.headers) {
 
       Object.keys(
         opts.headers
-      ).forEach(function (key) {
+      ).forEach(
+        function (key) {
 
-        if (
-          key.toLowerCase() ===
-          "content-type"
-        ) {
-          return;
+          if (
+            key.toLowerCase() ===
+            "content-type"
+          ) {
+            return;
+          }
+
+          headers.set(
+            key,
+            opts.headers[key]
+          );
+
         }
-
-        headers.set(
-          key,
-          opts.headers[key]
-        );
-
-      });
+      );
     }
 
 
@@ -444,11 +673,14 @@
 
 
     const timer =
-      setTimeout(function () {
+      setTimeout(
+        function () {
 
-        controller.abort();
+          controller.abort();
 
-      }, API_TIMEOUT);
+        },
+        API_TIMEOUT
+      );
 
 
     try {
@@ -476,7 +708,8 @@
         );
 
 
-      let data = null;
+      let data =
+        null;
 
 
       const contentType =
@@ -498,7 +731,8 @@
 
         } catch (_) {
 
-          data = null;
+          data =
+            null;
         }
 
       } else {
@@ -518,7 +752,8 @@
 
         } catch (_) {
 
-          data = null;
+          data =
+            null;
         }
       }
 
@@ -580,7 +815,9 @@
 
     } finally {
 
-      clearTimeout(timer);
+      clearTimeout(
+        timer
+      );
     }
   }
 
@@ -589,7 +826,9 @@
    * NORMALIZER
    * ============================================================ */
 
-  function normalizeProvider(provider) {
+  function normalizeProvider(
+    provider
+  ) {
 
     const item =
       provider || {};
@@ -671,20 +910,25 @@
 
 
     if (loading) {
-      loading.hidden = true;
+      loading.hidden =
+        true;
     }
 
     if (denied) {
-      denied.hidden = true;
+      denied.hidden =
+        true;
     }
 
     if (app) {
-      app.hidden = false;
+      app.hidden =
+        false;
     }
   }
 
 
-  function showDenied(message) {
+  function showDenied(
+    message
+  ) {
 
     const loading =
       $("providerLoading");
@@ -697,17 +941,20 @@
 
 
     if (loading) {
-      loading.hidden = true;
+      loading.hidden =
+        true;
     }
 
     if (app) {
-      app.hidden = true;
+      app.hidden =
+        true;
     }
 
 
     if (denied) {
 
-      denied.hidden = false;
+      denied.hidden =
+        false;
 
 
       const paragraphs =
@@ -788,112 +1035,115 @@
 
     list.innerHTML =
       providers
-        .map(function (provider) {
+        .map(
+          function (provider) {
 
-          const active =
-            provider.enabled;
+            const active =
+              provider.enabled;
 
 
-          return (
+            return (
 
-            '<div class="admin-list-item" ' +
-              'data-provider-id="' +
-              escapeHtml(
-                provider.id
-              ) +
-            '">' +
+              '<div class="admin-list-item" ' +
+                'data-provider-id="' +
+                escapeHtml(
+                  provider.id
+                ) +
+              '">' +
 
-              '<div class="admin-list-main">' +
+                '<div class="admin-list-main">' +
 
-                "<h3>" +
-                  escapeHtml(
-                    provider.name ||
-                    provider.id
-                  ) +
-                "</h3>" +
+                  "<h3>" +
+                    escapeHtml(
+                      provider.name ||
+                      provider.id
+                    ) +
+                  "</h3>" +
 
-                "<p>" +
-                  "ID: " +
-                  escapeHtml(
-                    provider.id
-                  ) +
-                "</p>" +
-
-                "<p>" +
-                  "Adapter: " +
-                  escapeHtml(
-                    provider.adapter ||
-                    "-"
-                  ) +
-                "</p>" +
-
-                "<p>" +
-                  "API Key: " +
-                  (
-                    provider.apiKeySet
-                      ? "Tersedia"
-                      : "Belum diatur"
-                  ) +
-                "</p>" +
-
-                '<span class="status-badge ' +
-                  (
-                    active
-                      ? "active"
-                      : "inactive"
-                  ) +
-                '">' +
-                  (
-                    active
-                      ? "Aktif"
-                      : "Nonaktif"
-                  ) +
-                "</span>" +
-
-              "</div>" +
-
-              '<div class="admin-actions">' +
-
-                '<button type="button" ' +
-                  'data-action="edit" ' +
-                  'data-id="' +
+                  "<p>" +
+                    "ID: " +
                     escapeHtml(
                       provider.id
                     ) +
-                  '">' +
-                  "Edit" +
-                "</button>" +
+                  "</p>" +
 
-                '<button type="button" ' +
-                  'data-action="toggle" ' +
-                  'data-id="' +
+                  "<p>" +
+                    "Adapter: " +
                     escapeHtml(
-                      provider.id
+                      provider.adapter ||
+                      "-"
+                    ) +
+                  "</p>" +
+
+                  "<p>" +
+                    "API Key: " +
+                    (
+                      provider.apiKeySet
+                        ? "Tersedia"
+                        : "Belum diatur"
+                    ) +
+                  "</p>" +
+
+                  '<span class="status-badge ' +
+                    (
+                      active
+                        ? "active"
+                        : "inactive"
                     ) +
                   '">' +
-                  (
-                    active
-                      ? "Deactivate"
-                      : "Activate"
-                  ) +
-                "</button>" +
-
-                '<button type="button" ' +
-                  'data-action="delete" ' +
-                  'data-id="' +
-                    escapeHtml(
-                      provider.id
+                    (
+                      active
+                        ? "Aktif"
+                        : "Nonaktif"
                     ) +
-                  '">' +
-                  "Delete" +
-                "</button>" +
+                  "</span>" +
 
-              "</div>" +
+                "</div>" +
 
-            "</div>"
-          );
+                '<div class="admin-actions">' +
 
-        })
+                  '<button type="button" ' +
+                    'data-action="edit" ' +
+                    'data-id="' +
+                      escapeHtml(
+                        provider.id
+                      ) +
+                    '">' +
+                    "Edit" +
+                  "</button>" +
+
+                  '<button type="button" ' +
+                    'data-action="toggle" ' +
+                    'data-id="' +
+                      escapeHtml(
+                        provider.id
+                      ) +
+                    '">' +
+                    (
+                      active
+                        ? "Deactivate"
+                        : "Activate"
+                    ) +
+                  "</button>" +
+
+                  '<button type="button" ' +
+                    'data-action="delete" ' +
+                    'data-id="' +
+                      escapeHtml(
+                        provider.id
+                      ) +
+                    '">' +
+                    "Delete" +
+                  "</button>" +
+
+                "</div>" +
+
+              "</div>"
+
+            );
+
+          }
+        )
         .join("");
   }
 
@@ -909,7 +1159,8 @@
     }
 
 
-    state.loading = true;
+    state.loading =
+      true;
 
 
     const list =
@@ -1024,10 +1275,506 @@
 
 
   /* ============================================================
+   * CHINAAPI MODEL SETTINGS HTML
+   * ============================================================ */
+
+  function renderChinaApiModelSettings(
+    config
+  ) {
+
+    const models =
+      CHINAAPI_MODELS;
+
+
+    let html =
+      "";
+
+
+    html +=
+      '<div class="chinaapi-model-settings" ' +
+        'style="' +
+          "margin-top:18px;" +
+          "padding:16px;" +
+          "border:1px solid rgba(127,127,127,.22);" +
+          "border-radius:12px;" +
+          "background:rgba(127,127,127,.05);" +
+        '">' +
+
+        "<h4 " +
+          'style="' +
+            "margin:0 0 6px;" +
+            "font-size:16px;" +
+          '">' +
+          "Model ChinaAPI" +
+        "</h4>" +
+
+        "<p " +
+          'style="' +
+            "margin:0 0 14px;" +
+            "opacity:.72;" +
+            "font-size:13px;" +
+          '">' +
+          "Atur status model, credit dasar, dan diskon masing-masing model." +
+        "</p>" +
+
+        '<div ' +
+          'style="' +
+            "display:grid;" +
+            "gap:12px;" +
+          '">';
+
+
+    models.forEach(
+      function (model) {
+
+        const settings =
+          getChinaApiModelSettings(
+            config,
+            model
+          );
+
+        const key =
+          safeModelKey(
+            model.id
+          );
+
+        const effectiveCredit =
+          getEffectiveCredit(
+            settings.credit,
+            settings.discount
+          );
+
+
+        html +=
+
+          '<div ' +
+            'class="chinaapi-model-row" ' +
+            'style="' +
+              "padding:14px;" +
+              "border:1px solid rgba(127,127,127,.18);" +
+              "border-radius:10px;" +
+              "background:rgba(0,0,0,.02);" +
+            '">' +
+
+            '<div ' +
+              'style="' +
+                "display:flex;" +
+                "justify-content:space-between;" +
+                "gap:12px;" +
+                "align-items:flex-start;" +
+                "flex-wrap:wrap;" +
+              '">' +
+
+              "<div>" +
+
+                '<strong ' +
+                  'style="display:block;margin-bottom:4px;">' +
+                  escapeHtml(
+                    model.name
+                  ) +
+                "</strong>" +
+
+                '<small ' +
+                  'style="opacity:.65;">' +
+                  escapeHtml(
+                    model.id
+                  ) +
+                "</small>" +
+
+              "</div>" +
+
+              '<label ' +
+                'style="' +
+                  "display:flex;" +
+                  "align-items:center;" +
+                  "gap:8px;" +
+                  "cursor:pointer;" +
+                '">' +
+
+                '<input ' +
+                  'type="checkbox" ' +
+                  'class="chinaapi-model-enabled" ' +
+                  'data-model-id="' +
+                    escapeHtml(
+                      model.id
+                    ) +
+                  '" ' +
+                  (
+                    settings.enabled
+                      ? "checked"
+                      : ""
+                  ) +
+                ">" +
+
+                "<span>" +
+                  "Model aktif" +
+                "</span>" +
+
+              "</label>" +
+
+            "</div>" +
+
+            '<div ' +
+              'style="' +
+                "display:grid;" +
+                "grid-template-columns:repeat(auto-fit,minmax(150px,1fr));" +
+                "gap:10px;" +
+                "margin-top:12px;" +
+              '">' +
+
+              '<div>' +
+
+                '<label ' +
+                  'for="chinaapi-credit-' +
+                    key +
+                  '">' +
+                  "Credit" +
+                "</label>" +
+
+                '<input ' +
+                  'type="number" ' +
+                  'id="chinaapi-credit-' +
+                    key +
+                  '" ' +
+                  'class="chinaapi-model-credit" ' +
+                  'data-model-id="' +
+                    escapeHtml(
+                      model.id
+                    ) +
+                  '" ' +
+                  'min="1" ' +
+                  'max="1000" ' +
+                  'step="1" ' +
+                  'value="' +
+                    escapeHtml(
+                      settings.credit
+                    ) +
+                  '">' +
+
+              "</div>" +
+
+              '<div>' +
+
+                '<label ' +
+                  'for="chinaapi-discount-' +
+                    key +
+                  '">' +
+                  "Diskon (%)" +
+                "</label>" +
+
+                '<input ' +
+                  'type="number" ' +
+                  'id="chinaapi-discount-' +
+                    key +
+                  '" ' +
+                  'class="chinaapi-model-discount" ' +
+                  'data-model-id="' +
+                    escapeHtml(
+                      model.id
+                    ) +
+                  '" ' +
+                  'min="0" ' +
+                  'max="100" ' +
+                  'step="1" ' +
+                  'value="' +
+                    escapeHtml(
+                      settings.discount
+                    ) +
+                  '">' +
+
+              "</div>" +
+
+              '<div ' +
+                'style="' +
+                  "display:flex;" +
+                  "align-items:end;" +
+                '">' +
+
+                '<div ' +
+                  'class="chinaapi-effective-credit" ' +
+                  'data-model-id="' +
+                    escapeHtml(
+                      model.id
+                    ) +
+                  '" ' +
+                  'style="' +
+                    "padding:10px 12px;" +
+                    "border-radius:8px;" +
+                    "background:rgba(127,127,127,.08);" +
+                    "width:100%;" +
+                  '">' +
+
+                  "<small " +
+                    'style="display:block;opacity:.65;">' +
+                    "Credit efektif" +
+                  "</small>" +
+
+                  '<strong ' +
+                    'style="font-size:18px;">' +
+                    escapeHtml(
+                      effectiveCredit
+                    ) +
+                  "</strong>" +
+
+                "</div>" +
+
+              "</div>" +
+
+            "</div>" +
+
+          "</div>";
+
+      });
+
+
+    html +=
+        "</div>" +
+      "</div>";
+
+
+    return html;
+  }
+
+
+  function bindChinaApiModelSettings() {
+
+    const editor =
+      $("providerEditor");
+
+    if (!editor) {
+      return;
+    }
+
+
+    const updateEffectiveCredit =
+      function (modelId) {
+
+        const creditInput =
+          editor.querySelector(
+            '.chinaapi-model-credit[data-model-id="' +
+            CSS.escape(
+              modelId
+            ) +
+            '"]'
+          );
+
+        const discountInput =
+          editor.querySelector(
+            '.chinaapi-model-discount[data-model-id="' +
+            CSS.escape(
+              modelId
+            ) +
+            '"]'
+          );
+
+        const output =
+          editor.querySelector(
+            '.chinaapi-effective-credit[data-model-id="' +
+            CSS.escape(
+              modelId
+            ) +
+            '"] strong'
+          );
+
+
+        if (
+          !creditInput ||
+          !discountInput ||
+          !output
+        ) {
+          return;
+        }
+
+
+        const credit =
+          normalizeInteger(
+            creditInput.value,
+            1,
+            1,
+            1000
+          );
+
+        const discount =
+          normalizeDiscount(
+            discountInput.value
+          );
+
+        const effective =
+          getEffectiveCredit(
+            credit,
+            discount
+          );
+
+
+        output.textContent =
+          String(
+            effective
+          );
+      };
+
+
+    editor
+      .querySelectorAll(
+        ".chinaapi-model-credit, .chinaapi-model-discount"
+      )
+      .forEach(
+        function (input) {
+
+          input.addEventListener(
+            "input",
+            function () {
+
+              updateEffectiveCredit(
+                input.dataset.modelId
+              );
+
+            }
+          );
+
+        }
+      );
+  }
+
+
+  function collectChinaApiModelSettings(
+    config
+  ) {
+
+    const safeConfig =
+      config &&
+      typeof config === "object" &&
+      !Array.isArray(config)
+        ? config
+        : {};
+
+
+    const modelEnabled =
+      safeConfig.modelEnabled &&
+      typeof safeConfig.modelEnabled === "object" &&
+      !Array.isArray(
+        safeConfig.modelEnabled
+      )
+        ? {
+            ...safeConfig.modelEnabled
+          }
+        : {};
+
+
+    const modelCredits =
+      safeConfig.modelCredits &&
+      typeof safeConfig.modelCredits === "object" &&
+      !Array.isArray(
+        safeConfig.modelCredits
+      )
+        ? {
+            ...safeConfig.modelCredits
+          }
+        : {};
+
+
+    const modelDiscounts =
+      safeConfig.modelDiscounts &&
+      typeof safeConfig.modelDiscounts === "object" &&
+      !Array.isArray(
+        safeConfig.modelDiscounts
+      )
+        ? {
+            ...safeConfig.modelDiscounts
+          }
+        : {};
+
+
+    document
+      .querySelectorAll(
+        "#providerEditor .chinaapi-model-enabled"
+      )
+      .forEach(
+        function (input) {
+
+          const modelId =
+            input.dataset.modelId;
+
+          if (!modelId) {
+            return;
+          }
+
+          modelEnabled[modelId] =
+            Boolean(
+              input.checked
+            );
+
+        }
+      );
+
+
+    document
+      .querySelectorAll(
+        "#providerEditor .chinaapi-model-credit"
+      )
+      .forEach(
+        function (input) {
+
+          const modelId =
+            input.dataset.modelId;
+
+          if (!modelId) {
+            return;
+          }
+
+          modelCredits[modelId] =
+            normalizeInteger(
+              input.value,
+              1,
+              1,
+              1000
+            );
+
+        }
+      );
+
+
+    document
+      .querySelectorAll(
+        "#providerEditor .chinaapi-model-discount"
+      )
+      .forEach(
+        function (input) {
+
+          const modelId =
+            input.dataset.modelId;
+
+          if (!modelId) {
+            return;
+          }
+
+          modelDiscounts[modelId] =
+            normalizeDiscount(
+              input.value
+            );
+
+        }
+      );
+
+
+    return {
+      ...safeConfig,
+
+      modelEnabled,
+
+      modelCredits,
+
+      modelDiscounts
+    };
+  }
+
+
+  /* ============================================================
    * EDITOR
    * ============================================================ */
 
-  function renderEditor(provider) {
+  function renderEditor(
+    provider
+  ) {
 
     const editor =
       $("providerEditor");
@@ -1053,17 +1800,44 @@
 
 
     const isEdit =
-      Boolean(item);
+      Boolean(
+        item
+      );
+
+
+    const config =
+      item?.config &&
+      typeof item.config ===
+        "object" &&
+      !Array.isArray(
+        item.config
+      )
+        ? item.config
+        : {};
 
 
     const configText =
-      item
-        ? JSON.stringify(
-            item.config || {},
-            null,
-            2
+      JSON.stringify(
+        config,
+        null,
+        2
+      );
+
+
+    const isChinaApi =
+      String(
+        item?.adapter ||
+        ""
+      ).trim().toLowerCase() ===
+      "chinaapi";
+
+
+    const chinaApiModelSettings =
+      isChinaApi
+        ? renderChinaApiModelSettings(
+            config
           )
-        : "{}";
+        : "";
 
 
     editor.hidden =
@@ -1126,7 +1900,8 @@
             'maxlength="100" ' +
             'value="' +
               escapeHtml(
-                item?.name || ""
+                item?.name ||
+                ""
               ) +
             '"' +
           ">" +
@@ -1141,15 +1916,16 @@
             'name="providerAdapter" ' +
             'required ' +
             'maxlength="64" ' +
-            'placeholder="contoh: veo, minimax, luma, openrouter"' +
+            'placeholder="contoh: veo, minimax, luma, chinaapi"' +
             'value="' +
               escapeHtml(
-                item?.adapter || ""
+                item?.adapter ||
+                ""
               ) +
             '"' +
           ">" +
 
-          '<small>' +
+          "<small>" +
             "Isi ID adapter secara bebas." +
           "</small>" +
 
@@ -1169,6 +1945,12 @@
             ) +
           ">" +
 
+          (
+            isChinaApi
+              ? chinaApiModelSettings
+              : ""
+          ) +
+
           '<label for="providerConfig">' +
             "Config" +
           "</label>" +
@@ -1183,6 +1965,15 @@
               configText
             ) +
           "</textarea>" +
+
+          '<small ' +
+            'style="display:block;margin-top:4px;opacity:.7;">' +
+            (
+              isChinaApi
+                ? "Pengaturan model di atas akan disimpan otomatis ke Config. Field Config tetap tersedia untuk pengaturan lanjutan."
+                : "JSON konfigurasi provider."
+            ) +
+          "</small>" +
 
           '<label class="provider-checkbox">' +
 
@@ -1229,6 +2020,9 @@
       "</form>";
 
 
+    bindChinaApiModelSettings();
+
+
     const form =
       $("providerForm");
 
@@ -1265,11 +2059,6 @@
     }
 
 
-    /*
-     * Fallback click handler.
-     * Tetap bekerja walaupun browser
-     * tidak memproses submit form.
-     */
     const saveButton =
       $("providerSaveBtn");
 
@@ -1298,7 +2087,9 @@
   }
 
 
-  function openEditEditor(id) {
+  function openEditEditor(
+    id
+  ) {
 
     const provider =
       state.providers.find(
@@ -1309,7 +2100,9 @@
               item
             ).id
           ) ===
-          String(id);
+          String(
+            id
+          );
 
         }
       );
@@ -1440,7 +2233,11 @@
     }
 
 
-    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(id)) {
+    if (
+      !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(
+        id
+      )
+    ) {
 
       setStatus(
         "Provider ID tidak valid.",
@@ -1496,7 +2293,8 @@
     }
 
 
-    let config = {};
+    let config =
+      {};
 
 
     const configText =
@@ -1533,7 +2331,9 @@
       !config ||
       typeof config !==
         "object" ||
-      Array.isArray(config)
+      Array.isArray(
+        config
+      )
     ) {
 
       setStatus(
@@ -1547,16 +2347,30 @@
     }
 
 
+    /*
+     * Untuk ChinaAPI:
+     * nilai modelEnabled, modelCredits,
+     * dan modelDiscounts dari UI model
+     * menjadi sumber konfigurasi provider.
+     */
+    if (
+      adapter ===
+      "chinaapi"
+    ) {
+
+      config =
+        collectChinaApiModelSettings(
+          config
+        );
+    }
+
+
     const isEdit =
       Boolean(
         state.editingId
       );
 
 
-    /*
-     * Saat membuat provider baru,
-     * API key wajib ada.
-     */
     if (
       !isEdit &&
       !apiKey
@@ -1587,14 +2401,7 @@
     };
 
 
-    /*
-     * Saat edit:
-     * hanya kirim API key jika user
-     * benar-benar memasukkan key baru.
-     */
-    if (
-      apiKey
-    ) {
+    if (apiKey) {
 
       payload.api_key =
         apiKey;
@@ -1634,14 +2441,6 @@
 
     try {
 
-      /*
-       * PENTING:
-       * JSON.stringify dilakukan di sini.
-       * api() kemudian memaksa:
-       *
-       * Content-Type:
-       * application/json; charset=utf-8
-       */
       const body =
         JSON.stringify(
           payload
@@ -1732,12 +2531,6 @@
       );
 
 
-      /*
-       * Editor tetap terbuka agar
-       * user dapat memperbaiki data.
-       */
-
-
     } finally {
 
       const currentButton =
@@ -1762,7 +2555,9 @@
    * TOGGLE
    * ============================================================ */
 
-  async function toggleProvider(id) {
+  async function toggleProvider(
+    id
+  ) {
 
     const provider =
       state.providers.find(
@@ -1773,7 +2568,9 @@
               item
             ).id
           ) ===
-          String(id);
+          String(
+            id
+          );
 
         }
       );
@@ -1862,7 +2659,9 @@
    * DELETE
    * ============================================================ */
 
-  async function deleteProvider(id) {
+  async function deleteProvider(
+    id
+  ) {
 
     const provider =
       state.providers.find(
@@ -1873,7 +2672,9 @@
               item
             ).id
           ) ===
-          String(id);
+          String(
+            id
+          );
 
         }
       );
@@ -2195,6 +2996,7 @@
       function () {
 
         return {
+
           providers:
             state.providers.slice(),
 
@@ -2206,6 +3008,7 @@
 
           initialized:
             state.initialized
+
         };
 
       }
@@ -2226,7 +3029,8 @@
       "DOMContentLoaded",
       init,
       {
-        once: true
+        once:
+          true
       }
     );
 
