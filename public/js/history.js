@@ -905,7 +905,8 @@
 
           const provider =
             providerLabel(
-              job.provider
+               job.provider,
+               job
             );
 
           const prompt =
