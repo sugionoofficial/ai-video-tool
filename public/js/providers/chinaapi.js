@@ -1,20 +1,7 @@
-import axios from "axios";
-
 const CHINAAPI_BASE_URL = "https://api.chinaapi.ai/v1";
 const DEFAULT_MODEL = "agnes-video-2.5-flash";
 const DEFAULT_POLL_INTERVAL = 5000;
 const DEFAULT_TIMEOUT = 30 * 60 * 1000;
-
-/**
-
-* ChinaAPI Video Provider
-* 
-* Model aktif saat ini:
-* - agnes-video-2.5-flash
-* 
-* Model lain nantinya dapat ditambahkan ke CHINAAPI_MODELS
-* tanpa perlu mengubah alur generate/polling utama.
-  */
 
 const CHINAAPI_MODELS = {
 "agnes-video-2.5-flash": {
@@ -24,7 +11,12 @@ name: "Agnes Video 2.5 Flash",
 };
 
 function getApiKey() {
-const apiKey = process.env.CHINAAPI_KEY;
+const apiKey =
+typeof globalThis !== "undefined" &&
+globalThis.process &&
+globalThis.process.env
+? globalThis.process.env.CHINAAPI_KEY
+: undefined;
 
 if (!apiKey) {
 throw new Error("CHINAAPI_KEY is not configured.");
@@ -35,55 +27,50 @@ return apiKey;
 
 function getHeaders() {
 return {
-Authorization: "Bearer ${getApiKey()}",
+Authorization: "Bearer " + getApiKey(),
 "Content-Type": "application/json",
 };
 }
 
 function sleep(ms) {
-return new Promise((resolve) => setTimeout(resolve, ms));
+return new Promise(function (resolve) {
+setTimeout(resolve, ms);
+});
 }
 
-function getModel(model = DEFAULT_MODEL) {
-const config = CHINAAPI_MODELS[model];
+function getModel(model) {
+const selectedModel = model || DEFAULT_MODEL;
+const config = CHINAAPI_MODELS[selectedModel];
 
 if (!config) {
 throw new Error(
-"ChinaAPI model "${model}" is not configured. Available models: ${Object.keys( CHINAAPI_MODELS ).join(", ")}"
+"ChinaAPI model "" +
+selectedModel +
+"" is not configured. Available models: " +
+Object.keys(CHINAAPI_MODELS).join(", ")
 );
 }
 
 return config;
 }
 
-/**
+export async function createVideo(options) {
+const settings = options || {};
+const prompt = settings.prompt;
+const model = settings.model || DEFAULT_MODEL;
+const duration = settings.duration;
+const resolution = settings.resolution;
+const extra = settings.extra || {};
 
-* Create a video generation task.
-* 
-* @param {Object} options
-* @param {string} options.prompt
-* @param {string} [options.model]
-* @param {number} [options.duration]
-* @param {string} [options.resolution]
-* @param {Object} [options.extra]
-* @returns {Promise<Object>}
-  */
-  export async function createVideo({
-  prompt,
-  model = DEFAULT_MODEL,
-  duration,
-  resolution,
-  extra = {},
-  }) {
-  if (!prompt || typeof prompt !== "string") {
-  throw new Error("ChinaAPI video prompt is required.");
-  }
+if (!prompt || typeof prompt !== "string") {
+throw new Error("ChinaAPI video prompt is required.");
+}
 
 const modelConfig = getModel(model);
 
 const payload = {
 model: modelConfig.id,
-prompt,
+prompt: prompt,
 ...extra,
 };
 
@@ -95,85 +82,77 @@ if (resolution) {
 payload.resolution = resolution;
 }
 
-const response = await axios.post(
-"${CHINAAPI_BASE_URL}/videos",
-payload,
-{
+const response = await fetch(CHINAAPI_BASE_URL + "/videos", {
+method: "POST",
 headers: getHeaders(),
-timeout: 60000,
-}
-);
+body: JSON.stringify(payload),
+});
 
-if (!response.data) {
-throw new Error("ChinaAPI returned an empty response.");
-}
+const data = await response.json();
 
-if (!response.data.id) {
+if (!response.ok) {
 throw new Error(
-"ChinaAPI did not return a task id: ${JSON.stringify(response.data)}"
+data && data.message
+? data.message
+: "ChinaAPI video creation failed with HTTP " + response.status
+);
+}
+
+if (!data || !data.id) {
+throw new Error(
+"ChinaAPI did not return a task id: " + JSON.stringify(data)
 );
 }
 
 return {
-...response.data,
+...data,
 provider: "chinaapi",
 model: modelConfig.id,
-taskId: response.data.id,
+taskId: data.id,
 };
 }
 
-/**
+export async function getVideoStatus(taskId) {
+if (!taskId) {
+throw new Error("ChinaAPI task id is required.");
+}
 
-* Get the current status of a video generation task.
-* 
-* @param {string} taskId
-* @returns {Promise<Object>}
-  */
-  export async function getVideoStatus(taskId) {
-  if (!taskId) {
-  throw new Error("ChinaAPI task id is required.");
-  }
-
-const response = await axios.get(
-"${CHINAAPI_BASE_URL}/videos/${encodeURIComponent(taskId)}",
+const response = await fetch(
+CHINAAPI_BASE_URL + "/videos/" + encodeURIComponent(taskId),
 {
+method: "GET",
 headers: getHeaders(),
-timeout: 60000,
 }
 );
 
-if (!response.data) {
-throw new Error("ChinaAPI returned an empty status response.");
+const data = await response.json();
+
+if (!response.ok) {
+throw new Error(
+data && data.message
+? data.message
+: "ChinaAPI status request failed with HTTP " + response.status
+);
 }
 
-return response.data;
+return data;
 }
 
-/**
+export async function waitForVideo(taskId, options) {
+const settings = options || {};
+const pollInterval =
+settings.pollInterval || DEFAULT_POLL_INTERVAL;
+const timeout = settings.timeout || DEFAULT_TIMEOUT;
+const onStatus = settings.onStatus;
 
-* Wait until the video generation task is completed or failed.
-* 
-* @param {string} taskId
-* @param {Object} [options]
-* @param {number} [options.pollInterval]
-* @param {number} [options.timeout]
-* @param {Function} [options.onStatus]
-* @returns {Promise<Object>}
-  */
-  export async function waitForVideo(
-  taskId,
-  {
-  pollInterval = DEFAULT_POLL_INTERVAL,
-  timeout = DEFAULT_TIMEOUT,
-  onStatus,
-  } = {}
-  ) {
-  const startedAt = Date.now();
+const startedAt = Date.now();
 
 while (true) {
 if (Date.now() - startedAt >= timeout) {
 throw new Error(
-"ChinaAPI video generation timed out after ${Math.round( timeout / 1000 )} seconds."
+"ChinaAPI video generation timed out after " +
+Math.round(timeout / 1000) +
+" seconds."
 );
 }
 
@@ -191,10 +170,13 @@ if (currentStatus === "completed") {
 
 if (currentStatus === "failed") {
   const errorMessage =
-    status.error?.message ||
-    status.error ||
-    status.message ||
-    "ChinaAPI video generation failed.";
+    status && status.error && status.error.message
+      ? status.error.message
+      : status && status.error
+        ? status.error
+        : status && status.message
+          ? status.message
+          : "ChinaAPI video generation failed.";
 
   const error = new Error(String(errorMessage));
   error.provider = "chinaapi";
@@ -209,46 +191,32 @@ await sleep(pollInterval);
 }
 }
 
-/**
+export async function generateVideo(options) {
+const settings = options || {};
+const task = await createVideo(settings);
+const taskId = task.id || task.taskId;
 
-* Generate a video and wait for completion.
-* 
-* @param {Object} options
-* @returns {Promise<Object>}
-  */
-  export async function generateVideo(options) {
-  const task = await createVideo(options);
-
-return waitForVideo(task.id || task.taskId, {
-pollInterval: options?.pollInterval,
-timeout: options?.timeout,
-onStatus: options?.onStatus,
+return waitForVideo(taskId, {
+pollInterval: settings.pollInterval,
+timeout: settings.timeout,
+onStatus: settings.onStatus,
 });
 }
 
-/**
-
-* Return configured ChinaAPI models.
-* 
-* This makes it easy for the application UI to discover
-* available models later.
-  */
-  export function getModels() {
-  return Object.values(CHINAAPI_MODELS);
-  }
+export function getModels() {
+return Object.values(CHINAAPI_MODELS);
+}
 
 export const provider = {
 id: "chinaapi",
 name: "ChinaAPI",
 type: "video",
-
 models: CHINAAPI_MODELS,
-
-createVideo,
-getVideoStatus,
-waitForVideo,
-generateVideo,
-getModels,
+createVideo: createVideo,
+getVideoStatus: getVideoStatus,
+waitForVideo: waitForVideo,
+generateVideo: generateVideo,
+getModels: getModels,
 };
 
 export default provider;
