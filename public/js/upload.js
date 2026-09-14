@@ -1314,84 +1314,37 @@
 
   function updateImageAvailability() {
 
-    const input =
-      $('image');
+  const input =
+    $('image');
 
+  const group =
+    $('imageReferenceGroup');
 
-    const group =
-      $('imageReferenceGroup');
+  if (!input) {
+    return;
+  }
 
+  const rules =
+    getCurrentRules();
 
-    if (!input) {
-
-      return;
-
-    }
-
-
-    const limit =
-      getImageLimit();
-
-
-    const supported =
-      limit > 0 ||
-      limit === Infinity;
-
-
-    updateImageHint();
-
-
-    if (!supported) {
-
-      input.disabled =
-        true;
-
-
-      input.multiple =
-        false;
-
-
-      if (group) {
-
-        group.classList.add(
-          'hidden'
-        );
-
-        group.style.setProperty(
-          'display',
-          'none',
-          'important'
-        );
-
-        group.setAttribute(
-          'aria-hidden',
-          'true'
-        );
-
-      }
-
-
-      clearImage();
-
-
-      return;
-
-    }
-
+  /*
+   * Jika model/rule belum tersedia,
+   * jangan menganggap image tidak didukung.
+   *
+   * Ini penting saat provider/model sedang
+   * melakukan sinkronisasi setelah upload.
+   */
+  if (!rules) {
 
     input.disabled =
       false;
 
-
     input.multiple =
-      limit === Infinity ||
-      limit > 1;
-
+      false;
 
     input.removeAttribute(
       'aria-disabled'
     );
-
 
     if (group) {
 
@@ -1411,7 +1364,105 @@
 
     }
 
+    updateImageHint();
+
+    return;
   }
+
+  const limit =
+    getImageLimit();
+
+  /*
+   * Hanya anggap benar-benar tidak mendukung
+   * jika rule model secara eksplisit memberikan
+   * limit 0.
+   */
+  const supported =
+    Number.isFinite(limit)
+      ? limit > 0
+      : limit === Infinity;
+
+  updateImageHint();
+
+  if (!supported) {
+
+    input.disabled =
+      true;
+
+    input.multiple =
+      false;
+
+    input.setAttribute(
+      'aria-disabled',
+      'true'
+    );
+
+    if (group) {
+
+      group.classList.add(
+        'hidden'
+      );
+
+      group.style.setProperty(
+        'display',
+        'none',
+        'important'
+      );
+
+      group.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+
+    }
+
+    /*
+     * JANGAN clearImage() di sini.
+     *
+     * Reference image harus tetap disimpan.
+     * Jika model tidak mendukung image,
+     * cukup sembunyikan input-nya.
+     *
+     * Sebelumnya:
+     *
+     * clearImage();
+     *
+     * menyebabkan gambar langsung hilang
+     * setelah upload.
+     */
+
+    return;
+  }
+
+  input.disabled =
+    false;
+
+  input.multiple =
+    limit === Infinity ||
+    limit > 1;
+
+  input.removeAttribute(
+    'aria-disabled'
+  );
+
+  if (group) {
+
+    group.classList.remove(
+      'hidden'
+    );
+
+    group.style.setProperty(
+      'display',
+      '',
+      'important'
+    );
+
+    group.removeAttribute(
+      'aria-hidden'
+    );
+
+  }
+}
 
 
   /* =======================================================
