@@ -690,13 +690,63 @@
 
       data.url,
 
+      data.result_url,
+
       data.metadata?.url,
+
+      data.metadata?.videoUrl,
+
+      data.metadata?.video_url,
+
+      data.metadata?.result_url,
 
       data.result?.videoUrl,
 
       data.result?.video_url,
 
-      data.result?.url
+      data.result?.result_url,
+
+      data.result?.url,
+
+      data.output?.videoUrl,
+
+      data.output?.video_url,
+
+      data.output?.result_url,
+
+      data.output?.url,
+
+      data.data?.videoUrl,
+
+      data.data?.video_url,
+
+      data.data?.result_url,
+
+      data.data?.url,
+
+      data.data?.metadata?.url,
+
+      data.data?.metadata?.videoUrl,
+
+      data.data?.metadata?.video_url,
+
+      data.data?.metadata?.result_url,
+
+      data.data?.result?.videoUrl,
+
+      data.data?.result?.video_url,
+
+      data.data?.result?.result_url,
+
+      data.data?.result?.url,
+
+      data.data?.output?.videoUrl,
+
+      data.data?.output?.video_url,
+
+      data.data?.output?.result_url,
+
+      data.data?.output?.url
 
     ];
 
@@ -747,6 +797,7 @@
       data.message ||
       data.details?.message ||
       data.data?.error ||
+      data.data?.message ||
       fallback ||
       "Generation gagal."
     );
@@ -1019,7 +1070,7 @@
 
     const response =
       await fetch(
-        "/api/status",
+        "/api/generate/status",
         {
           method:
             "POST",
@@ -1049,7 +1100,6 @@
 
                 operationName:
                   externalId
-
               }
             )
         }
@@ -1497,6 +1547,7 @@
 
       generateRunning =
         false;
+
 
       setGenerateLoading(
         false
