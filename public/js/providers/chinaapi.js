@@ -347,6 +347,33 @@ function isFailedStatus(
 }
 
 
+function isProcessingStatus(
+  value
+) {
+
+  return [
+
+    "processing",
+    "in_progress",
+    "in-progress",
+    "queued",
+    "queue",
+    "pending",
+    "not_start",
+    "not-start",
+    "not started",
+    "created",
+    "submitted",
+    "starting",
+    "running"
+
+  ].includes(
+    normalizeStatus(value)
+  );
+
+}
+
+
 // ============================================================
 // VIDEO URL
 // ============================================================
@@ -362,12 +389,6 @@ function getVideoUrl(
     data?.video_url,
 
     data?.url,
-
-    data?.data?.result_url,
-
-    data?.data?.video_url,
-
-    data?.data?.url,
 
     data?.result?.result_url,
 
@@ -385,7 +406,31 @@ function getVideoUrl(
 
     data?.metadata?.video_url,
 
-    data?.metadata?.url
+    data?.metadata?.url,
+
+    data?.data?.result_url,
+
+    data?.data?.video_url,
+
+    data?.data?.url,
+
+    data?.data?.result?.result_url,
+
+    data?.data?.result?.video_url,
+
+    data?.data?.result?.url,
+
+    data?.data?.output?.result_url,
+
+    data?.data?.output?.video_url,
+
+    data?.data?.output?.url,
+
+    data?.data?.metadata?.result_url,
+
+    data?.data?.metadata?.video_url,
+
+    data?.data?.metadata?.url
 
   ];
 
@@ -419,26 +464,6 @@ function getVideoUrl(
 function getExternalId(
   data
 ) {
-
-  /*
-   * Response ChinaAPI aktual:
-   *
-   * {
-   *   "id": 569,
-   *   "task_id": "task_071pJHu...",
-   *   "data": {
-   *     "id": "task_dlxJh7q...",
-   *     "url": null,
-   *     "status": "in_progress"
-   *   }
-   * }
-   *
-   * Untuk polling endpoint /videos/{taskId},
-   * gunakan task_id dari response utama.
-   *
-   * data.id hanya digunakan sebagai fallback.
-   */
-
 
   const candidates = [
 
@@ -1004,6 +1029,61 @@ export async function generate(
 
 
 // ============================================================
+// STATUS REQUEST
+// ============================================================
+
+async function requestStatus(
+  url,
+  apiKey
+) {
+
+  try {
+
+    const response =
+      await fetch(
+        url,
+        {
+
+          method:
+            "GET",
+
+          headers: {
+
+            Authorization:
+              `Bearer ${apiKey}`,
+
+            Accept:
+              "application/json"
+
+          }
+
+        }
+      );
+
+    const data =
+      await safeJson(
+        response
+      );
+
+    return {
+      response,
+      data
+    };
+
+  } catch {
+
+    throw providerError(
+      "Tidak dapat terhubung ke server ChinaAPI.",
+      502,
+      "connection_error"
+    );
+
+  }
+
+}
+
+
+// ============================================================
 // STATUS
 // ============================================================
 
@@ -1037,50 +1117,66 @@ export async function status(
   }
 
 
-  let response;
+  // ==========================================================
+  // PRIMARY ENDPOINT
+  // ==========================================================
+
+  let result =
+    await requestStatus(
+      `${CHINAAPI_BASE_URL}/videos/${encodeURIComponent(
+        taskId
+      )}`,
+      apiKey
+    );
 
 
-  try {
+  let response =
+    result.response;
 
-    response =
-      await fetch(
-        `${CHINAAPI_BASE_URL}/videos/${encodeURIComponent(
+  let data =
+    result.data;
+
+
+  // ==========================================================
+  // LEGACY FALLBACK
+  // ==========================================================
+  //
+  // Beberapa response ChinaAPI menggunakan endpoint:
+  //
+  // GET /v1/video/generations/{task_id}
+  //
+  // Jika endpoint /videos/{task_id} tidak tersedia,
+  // coba endpoint legacy sebelum menganggap status gagal.
+  // ==========================================================
+
+  if (
+    !response.ok &&
+    (
+      response.status === 404 ||
+      response.status === 405
+    )
+  ) {
+
+    result =
+      await requestStatus(
+        `${CHINAAPI_BASE_URL}/video/generations/${encodeURIComponent(
           taskId
         )}`,
-        {
-
-          method:
-            "GET",
-
-          headers: {
-
-            Authorization:
-              `Bearer ${apiKey}`,
-
-            Accept:
-              "application/json"
-
-          }
-
-        }
+        apiKey
       );
 
-  } catch {
+    response =
+      result.response;
 
-    throw providerError(
-      "Tidak dapat terhubung ke server ChinaAPI.",
-      502,
-      "connection_error"
-    );
+    data =
+      result.data;
 
   }
 
 
-  const data =
-    await safeJson(
-      response
-    );
-
+  // ==========================================================
+  // HTTP ERROR
+  // ==========================================================
 
   if (
     !response.ok
@@ -1101,7 +1197,7 @@ export async function status(
 
 
   // ==========================================================
-  // NORMALIZE STATUS
+  // STATUS
   // ==========================================================
 
   const currentStatus =
@@ -1218,11 +1314,12 @@ export async function status(
         data?.model ||
         data?.data?.model ||
         data?.properties?.origin_model_name ||
+        data?.data?.properties?.origin_model_name ||
         MODEL_ID,
 
       progress:
-        data?.progress ||
-        data?.data?.progress ||
+        data?.progress ??
+        data?.data?.progress ??
         100
 
     };
@@ -1232,6 +1329,48 @@ export async function status(
 
   // ==========================================================
   // PROCESSING
+  // ==========================================================
+
+  if (
+    isProcessingStatus(
+      currentStatus
+    )
+  ) {
+
+    return {
+
+      success:
+        true,
+
+      status:
+        "processing",
+
+      provider:
+        ID,
+
+      adapter:
+        ID,
+
+      progress:
+        data?.progress ??
+        data?.data?.progress ??
+        0,
+
+      providerStatus:
+        currentStatus
+
+    };
+
+  }
+
+
+  // ==========================================================
+  // UNKNOWN STATUS
+  // ==========================================================
+  //
+  // Jangan gagal hanya karena ChinaAPI memperkenalkan status
+  // baru. Selama task belum jelas failed/completed, anggap
+  // masih diproses.
   // ==========================================================
 
   return {
@@ -1249,9 +1388,12 @@ export async function status(
       ID,
 
     progress:
-      data?.progress ||
-      data?.data?.progress ||
-      0
+      data?.progress ??
+      data?.data?.progress ??
+      0,
+
+    providerStatus:
+      currentStatus || "unknown"
 
   };
 
