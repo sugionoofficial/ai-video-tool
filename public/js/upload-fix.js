@@ -10,6 +10,8 @@
    - Menambahkan tombol X untuk menghapus image
    - Menjaga preview reference video tetap terlihat
    - Menambahkan tombol X untuk menghapus video
+   - Menjadikan "Pilih AI Engine" hanya sebagai placeholder
+   - Placeholder provider tidak dapat dipilih
    - Tidak mengambil alih proses upload
    - Tidak menangani event change input
    - Tidak mengubah FileReader
@@ -69,6 +71,100 @@
       ) &&
       GENZ.upload.videoFiles.length > 0
     );
+
+  }
+
+
+  /* =======================================================
+     PROVIDER PLACEHOLDER
+  ======================================================= */
+
+  function lockProviderPlaceholder() {
+
+    const provider =
+      get('provider');
+
+    if (!provider) {
+      return;
+    }
+
+    const options =
+      Array.from(
+        provider.options || []
+      );
+
+    if (!options.length) {
+      return;
+    }
+
+    options.forEach(function (option) {
+
+      const value =
+        String(
+          option.value || ''
+        ).trim();
+
+      const label =
+        String(
+          option.textContent || ''
+        ).trim()
+        .toLowerCase();
+
+      const isPlaceholder =
+        value === '' ||
+        label === 'pilih ai engine' ||
+        label === 'pilih provider' ||
+        label === '-- pilih ai engine --' ||
+        label === '-- pilih provider --';
+
+      if (isPlaceholder) {
+
+        option.disabled = true;
+
+        option.setAttribute(
+          'aria-disabled',
+          'true'
+        );
+
+      }
+
+    });
+
+    /*
+     * Jika placeholder sedang terpilih sementara masih ada
+     * provider yang tersedia, pindahkan pilihan ke provider
+     * pertama yang benar-benar aktif.
+     */
+    const selected =
+      provider.options[
+        provider.selectedIndex
+      ];
+
+    if (
+      selected &&
+      selected.disabled
+    ) {
+
+      const validOption =
+        options.find(function (option) {
+
+          return (
+            !option.disabled &&
+            String(
+              option.value || ''
+            ).trim() !== ''
+          );
+
+        });
+
+      if (validOption) {
+
+        provider.value =
+          validOption.value;
+
+      }
+
+    }
 
   }
 
@@ -554,6 +650,13 @@
 
   function refresh() {
 
+    /*
+     * Provider placeholder harus selalu dikunci
+     * setelah providers.js selesai membuat option.
+     */
+    lockProviderPlaceholder();
+
+
     if (hasImages()) {
 
       keepImageGroupVisible();
@@ -661,6 +764,56 @@
 
 
   /* =======================================================
+     OBSERVE PROVIDER
+  ======================================================= */
+
+  function observeProvider() {
+
+    const provider =
+      get('provider');
+
+    if (!provider) {
+
+      return;
+
+    }
+
+
+    const observer =
+      new MutationObserver(
+        function () {
+
+          lockProviderPlaceholder();
+
+        }
+      );
+
+
+    observer.observe(
+      provider,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+
+    provider.addEventListener(
+      'change',
+      function () {
+
+        setTimeout(
+          lockProviderPlaceholder,
+          0
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
      EVENTS
   ======================================================= */
 
@@ -718,18 +871,17 @@
 
     observeVideoPreview();
 
+    observeProvider();
+
     refresh();
 
 
     /*
-     * upload.js dapat merender ulang
-     * preview ketika model/provider
-     * berubah.
-     *
-     * Interval hanya menjaga UI.
-     * Tidak menyentuh proses upload.
+     * Providers.js dapat membangun ulang option
+     * secara dinamis. Interval ini hanya memastikan
+     * placeholder tetap terkunci dan tidak menyentuh
+     * proses upload.
      */
-
     setInterval(
       refresh,
       500
