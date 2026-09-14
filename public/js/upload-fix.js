@@ -1,105 +1,88 @@
 /* =========================================================
    GEN-Z.AI
-   REFERENCE MEDIA + GENERATOR UI FIX
+   GENERATOR UI FIX
 
    File:
    public/js/upload-fix.js
 
    Fungsi:
-   - Menjaga preview reference image
-   - Menjaga preview reference video
-   - Tombol X untuk menghapus reference
-   - Tidak mengambil alih proses upload
-   - Memperbaiki capability Aspect Ratio
+   - Memperbaiki Aspect Ratio
    - Memperbaiki Duration
    - Memperbaiki Resolution
-   - Mendukung langsung registry model ChinaAPI
-   - Tidak memakai polling 1 detik
+   - Menampilkan Reference Image sesuai kemampuan model
+   - Menampilkan Reference Video sesuai kemampuan model
+   - Menambahkan tombol X pada preview
+   - Tidak mengambil alih proses upload
+   - Tidak mengganti FileReader
+   - Tidak mengintercept input file
+   - Tidak menggunakan polling setInterval
 ========================================================= */
 
 (function () {
 
   'use strict';
 
-  window.GENZ = window.GENZ || {};
 
-  const GENZ = window.GENZ;
+  window.GENZ =
+    window.GENZ ||
+    {};
 
-  GENZ.upload = GENZ.upload || {};
-  GENZ.state = GENZ.state || {};
+  const GENZ =
+    window.GENZ;
 
-  let refreshFrame = null;
-  let refreshRunning = false;
+  GENZ.upload =
+    GENZ.upload ||
+    {};
+
+  GENZ.state =
+    GENZ.state ||
+    {};
 
 
   /* =======================================================
-     DOM
+     HELPER
   ======================================================= */
 
   function get(id) {
+
     return document.getElementById(id);
-  }
-
-
-  /* =======================================================
-     NORMALIZE
-  ======================================================= */
-
-  function normalizeProvider(value) {
-
-    return String(value || '')
-      .trim()
-      .toLowerCase()
-      .replace(/[_\s]+/g, '-')
-      .replace(/-+/g, '-');
 
   }
 
 
-  function normalizeModel(value) {
+  function normalize(value) {
 
-    return String(value || '')
+    return String(
+      value || ''
+    )
       .trim()
       .toLowerCase();
 
   }
 
 
-  function normalizeArray(value) {
+  function normalizeProvider(value) {
 
-    if (!Array.isArray(value)) {
-      return [];
-    }
+    return normalize(value)
+      .replace(/[_\s]+/g, '-')
+      .replace(/-+/g, '-');
+
+  }
+
+
+  function unique(values) {
 
     return [
       ...new Set(
-        value
-          .map(function (item) {
+        (Array.isArray(values)
+          ? values
+          : []
+        )
+          .map(function (value) {
 
-            if (
-              item === null ||
-              item === undefined
-            ) {
-              return '';
-            }
-
-            if (
-              typeof item === 'object'
-            ) {
-
-              return String(
-                item.id ||
-                item.value ||
-                item.name ||
-                item.label ||
-                item.model ||
-                item.duration ||
-                ''
-              ).trim();
-
-            }
-
-            return String(item).trim();
+            return String(
+              value
+            ).trim();
 
           })
           .filter(Boolean)
@@ -113,9 +96,10 @@
      CURRENT PROVIDER
   ======================================================= */
 
-  function getCurrentProvider() {
+  function getProvider() {
 
-    const element = get('provider');
+    const element =
+      get('provider');
 
     if (
       element &&
@@ -127,6 +111,7 @@
       );
 
     }
+
 
     return normalizeProvider(
       GENZ.state.provider ||
@@ -141,9 +126,10 @@
      CURRENT MODEL
   ======================================================= */
 
-  function getCurrentModel() {
+  function getModel() {
 
-    const element = get('model');
+    const element =
+      get('model');
 
     if (
       element &&
@@ -156,6 +142,7 @@
 
     }
 
+
     return String(
       GENZ.state.model ||
       GENZ.state.modelId ||
@@ -166,305 +153,195 @@
 
 
   /* =======================================================
-     CHINAAPI DIRECT MODEL INFO
+     MODEL TEXT
   ======================================================= */
 
-  function getChinaApiModelInfo() {
+  function getModelText() {
 
-    const provider =
-      getCurrentProvider();
+    const element =
+      get('model');
 
-    const model =
-      getCurrentModel();
+    if (!element) {
 
-    if (
-      provider !== 'chinaapi' ||
-      !model
-    ) {
-
-      return null;
+      return '';
 
     }
 
 
-    const registry =
-      window.GENZ_CHINAAPI_MODELS;
+    const option =
+      element.options[
+        element.selectedIndex
+      ];
 
-    if (
-      !registry ||
-      typeof registry.getModelInfo !==
-        'function'
-    ) {
+    if (!option) {
 
-      return null;
+      return '';
 
     }
 
 
-    try {
-
-      const info =
-        registry.getModelInfo(
-          model
-        );
-
-      if (
-        info &&
-        typeof info === 'object' &&
-        info.supported !== false
-      ) {
-
-        return info;
-
-      }
-
-    } catch (_) {}
-
-    return null;
+    return String(
+      option.textContent ||
+      option.label ||
+      ''
+    ).trim();
 
   }
 
 
   /* =======================================================
-     GENERIC ADAPTER INFO
+     BUILT-IN MODEL CAPABILITIES
+     -------------------------------------------------------
+     Ini mengikuti konfigurasi model yang ada di repository.
   ======================================================= */
 
-  function getAdapterInfo() {
+  const MODEL_CAPABILITIES = {
 
-    const provider =
-      getCurrentProvider();
+    'agnes-video-2.5-flash': {
 
-    if (!provider) {
-      return null;
+      durations: [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+
+      aspects: [
+        '16:9',
+        '9:16',
+        '4:3',
+        '3:4',
+        '1:1',
+        '21:9'
+      ],
+
+      resolutions: [
+        '720P'
+      ],
+
+      imageSupported: true,
+
+      maxImages: 5,
+
+      videoSupported: false,
+
+      maxVideos: 0
+
+    },
+
+
+    'doubao-seedance-2-0-mini-260615': {
+
+      durations: [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+
+      aspects: [
+        '21:9',
+        '16:9',
+        '4:3',
+        '1:1',
+        '3:4',
+        '9:16'
+      ],
+
+      resolutions: [
+        '480P',
+        '720P'
+      ],
+
+      imageSupported: true,
+
+      maxImages: 9,
+
+      videoSupported: true,
+
+      maxVideos: 3
+
     }
 
-
-    const registry =
-      window.GENZ_PROVIDERS;
-
-    if (
-      !registry ||
-      typeof registry.getAdapterInfo !==
-        'function'
-    ) {
-
-      return null;
-
-    }
-
-
-    try {
-
-      const info =
-        registry.getAdapterInfo(
-          provider
-        );
-
-      if (
-        info &&
-        typeof info === 'object'
-      ) {
-
-        return info;
-
-      }
-
-    } catch (_) {}
-
-    return null;
-
-  }
+  };
 
 
   /* =======================================================
-     GENERIC MODEL INFO
+     GET MODEL CAPABILITY
   ======================================================= */
 
-  function getGenericModelInfo(
-    adapterInfo
-  ) {
+  function getModelCapabilities() {
+
+    const provider =
+      getProvider();
 
     const model =
-      normalizeModel(
-        getCurrentModel()
+      normalize(
+        getModel()
       );
 
-    if (
-      !adapterInfo ||
-      !model
-    ) {
-
-      return null;
-
-    }
-
-
-    const models =
-      Array.isArray(
-        adapterInfo.models
-      )
-        ? adapterInfo.models
-        : [];
-
-
-    for (
-      const item of models
-    ) {
-
-      if (
-        typeof item === 'string'
-      ) {
-
-        if (
-          normalizeModel(item) ===
-          model
-        ) {
-
-          return {
-            id: item
-          };
-
-        }
-
-        continue;
-
-      }
-
-
-      if (
-        !item ||
-        typeof item !== 'object'
-      ) {
-
-        continue;
-
-      }
-
-
-      const id =
-        normalizeModel(
-          item.id ||
-          item.model ||
-          item.modelId ||
-          item.slug ||
-          ''
-        );
-
-
-      if (
-        id === model
-      ) {
-
-        return item;
-
-      }
-
-    }
-
-
-    return null;
-
-  }
-
-
-  /* =======================================================
-     CAPABILITY EXTRACTION
-  ======================================================= */
-
-  function getCapabilities() {
-
-    const provider =
-      getCurrentProvider();
-
-    const model =
-      getCurrentModel();
-
-
-    if (
-      !provider ||
-      !model
-    ) {
-
-      return {
-        durations: [],
-        aspects: [],
-        resolutions: []
-      };
-
-    }
-
-
-    /*
-     * =====================================================
-     * CHINAAPI
-     *
-     * Ambil langsung dari registry model.
-     * Ini adalah sumber capability yang sebenarnya.
-     * =====================================================
-     */
 
     if (
       provider === 'chinaapi'
     ) {
 
-      const modelInfo =
-        getChinaApiModelInfo();
+      if (
+        MODEL_CAPABILITIES[
+          model
+        ]
+      ) {
+
+        return MODEL_CAPABILITIES[
+          model
+        ];
+
+      }
 
 
-      if (modelInfo) {
-
-        const info =
-          modelInfo.info &&
-          typeof modelInfo.info ===
-            'object'
-            ? modelInfo.info
-            : {};
+      const modelText =
+        normalize(
+          getModelText()
+        );
 
 
-        const capabilities =
-          modelInfo.capabilities &&
-          typeof modelInfo.capabilities ===
-            'object'
-            ? modelInfo.capabilities
-            : {};
+      if (
+        modelText.includes(
+          'agnes'
+        )
+      ) {
+
+        return MODEL_CAPABILITIES[
+          'agnes-video-2.5-flash'
+        ];
+
+      }
 
 
-        return {
+      if (
+        modelText.includes(
+          'doubao'
+        ) ||
+        modelText.includes(
+          'seedance'
+        )
+      ) {
 
-          durations:
-            normalizeArray(
-              capabilities.durations
-            ).length
-              ? normalizeArray(
-                  capabilities.durations
-                )
-              : normalizeArray(
-                  info.durations
-                ),
-
-          aspects:
-            normalizeArray(
-              capabilities.aspects
-            ).length
-              ? normalizeArray(
-                  capabilities.aspects
-                )
-              : normalizeArray(
-                  info.aspects
-                ),
-
-          resolutions:
-            normalizeArray(
-              capabilities.resolutions
-            ).length
-              ? normalizeArray(
-                  capabilities.resolutions
-                )
-              : normalizeArray(
-                  info.resolutions
-                )
-
-        };
+        return MODEL_CAPABILITIES[
+          'doubao-seedance-2-0-mini-260615'
+        ];
 
       }
 
@@ -472,101 +349,102 @@
 
 
     /*
-     * =====================================================
-     * PROVIDER LAIN
-     * =====================================================
+     * Coba ambil capability dari
+     * registry yang tersedia jika provider
+     * lain memang mengeksposnya.
      */
 
-    const adapterInfo =
-      getAdapterInfo();
+    const registry =
+      window.GENZ_PROVIDERS;
 
 
-    if (!adapterInfo) {
+    if (
+      registry &&
+      typeof registry.getCapabilities ===
+        'function'
+    ) {
 
-      return {
-        durations: [],
-        aspects: [],
-        resolutions: []
-      };
+      try {
+
+        const result =
+          registry.getCapabilities(
+            provider,
+            model
+          );
+
+
+        if (
+          result &&
+          typeof result === 'object'
+        ) {
+
+          return {
+
+            durations:
+              unique(
+                result.durations
+              ),
+
+            aspects:
+              unique(
+                result.aspects
+              ),
+
+            resolutions:
+              unique(
+                result.resolutions
+              ),
+
+            imageSupported:
+              Boolean(
+                result.imageSupported ||
+                result.imageReferenceSupported
+              ),
+
+            maxImages:
+              Number(
+                result.maxImages ||
+                result.maxReferenceImages ||
+                0
+              ),
+
+            videoSupported:
+              Boolean(
+                result.videoSupported ||
+                result.videoReferenceSupported
+              ),
+
+            maxVideos:
+              Number(
+                result.maxVideos ||
+                result.maxReferenceVideos ||
+                0
+              )
+
+          };
+
+        }
+
+      } catch (_) {}
 
     }
 
 
-    const modelInfo =
-      getGenericModelInfo(
-        adapterInfo
-      );
-
-
-    const providerCapabilities =
-      adapterInfo.capabilities &&
-      typeof adapterInfo.capabilities ===
-        'object'
-        ? adapterInfo.capabilities
-        : {};
-
-
-    const modelCapabilities =
-      modelInfo &&
-      modelInfo.capabilities &&
-      typeof modelInfo.capabilities ===
-        'object'
-        ? modelInfo.capabilities
-        : {};
-
-
     return {
 
-      durations:
-        normalizeArray(
-          modelCapabilities.durations
-        ).length
-          ? normalizeArray(
-              modelCapabilities.durations
-            )
-          : normalizeArray(
-              adapterInfo.durations
-            ).length
-            ? normalizeArray(
-                adapterInfo.durations
-              )
-            : normalizeArray(
-                providerCapabilities.durations
-              ),
+      durations: [],
 
-      aspects:
-        normalizeArray(
-          modelCapabilities.aspects
-        ).length
-          ? normalizeArray(
-              modelCapabilities.aspects
-            )
-          : normalizeArray(
-              adapterInfo.aspects
-            ).length
-            ? normalizeArray(
-                adapterInfo.aspects
-              )
-            : normalizeArray(
-                providerCapabilities.aspects
-              ),
+      aspects: [],
 
-      resolutions:
-        normalizeArray(
-          modelCapabilities.resolutions
-        ).length
-          ? normalizeArray(
-              modelCapabilities.resolutions
-            )
-          : normalizeArray(
-              adapterInfo.resolutions
-            ).length
-            ? normalizeArray(
-                adapterInfo.resolutions
-              )
-            : normalizeArray(
-                providerCapabilities.resolutions
-              )
+      resolutions: [],
+
+      imageSupported: false,
+
+      maxImages: 0,
+
+      videoSupported: false,
+
+      maxVideos: 0
 
     };
 
@@ -574,214 +452,14 @@
 
 
   /* =======================================================
-     OPTIONS
-  ======================================================= */
-
-  function getExistingValues(select) {
-
-    if (!select) {
-      return [];
-    }
-
-    return Array.from(
-      select.options
-    ).map(function (option) {
-
-      return String(
-        option.value
-      );
-
-    });
-
-  }
-
-
-  function sameValues(
-    current,
-    next
-  ) {
-
-    if (
-      current.length !==
-      next.length
-    ) {
-
-      return false;
-
-    }
-
-
-    return current.every(
-      function (value, index) {
-
-        return (
-          String(value) ===
-          String(next[index])
-        );
-
-      }
-    );
-
-  }
-
-
-  function setOptions(
-    select,
-    values,
-    placeholder
-  ) {
-
-    if (!select) {
-      return;
-    }
-
-
-    const list =
-      normalizeArray(
-        values
-      );
-
-
-    if (!list.length) {
-      return;
-    }
-
-
-    const currentValues =
-      getExistingValues(
-        select
-      );
-
-
-    /*
-     * Jika provider.js sudah mempunyai
-     * option yang sama, jangan rebuild.
-     */
-
-    const expectedValues = [
-      '',
-      ...list.map(function (value) {
-
-        return String(value);
-
-      })
-    ];
-
-
-    if (
-      sameValues(
-        currentValues,
-        expectedValues
-      )
-    ) {
-
-      select.dataset.capabilityReady =
-        'true';
-
-      return;
-
-    }
-
-
-    const previous =
-      String(
-        select.value || ''
-      ).trim();
-
-
-    select.replaceChildren();
-
-
-    const placeholderOption =
-      document.createElement(
-        'option'
-      );
-
-    placeholderOption.value =
-      '';
-
-    placeholderOption.textContent =
-      placeholder;
-
-    placeholderOption.disabled =
-      false;
-
-    select.appendChild(
-      placeholderOption
-    );
-
-
-    list.forEach(
-      function (value) {
-
-        const option =
-          document.createElement(
-            'option'
-          );
-
-        option.value =
-          String(value);
-
-        option.textContent =
-          String(value);
-
-        select.appendChild(
-          option
-        );
-
-      }
-    );
-
-
-    if (
-      previous &&
-      list.some(
-        function (value) {
-
-          return (
-            String(value) ===
-            previous
-          );
-
-        }
-      )
-    ) {
-
-      select.value =
-        previous;
-
-    } else if (
-      list.length === 1
-    ) {
-
-      select.value =
-        String(
-          list[0]
-        );
-
-    } else {
-
-      select.value =
-        '';
-
-    }
-
-
-    select.dataset.capabilityReady =
-      'true';
-
-  }
-
-
-  /* =======================================================
-     DURATION SORT
+     SORT DURATION
   ======================================================= */
 
   function sortDurations(
     values
   ) {
 
-    return normalizeArray(
+    return unique(
       values
     ).sort(
       function (a, b) {
@@ -822,138 +500,586 @@
 
 
   /* =======================================================
-     FIX GENERATOR CAPABILITIES
+     SELECT OPTIONS
   ======================================================= */
 
-  function fixGeneratorCapabilities() {
+  function currentOptions(
+    select
+  ) {
 
-    if (refreshRunning) {
-      return;
+    if (!select) {
+
+      return [];
+
     }
 
 
-    refreshRunning =
-      true;
+    return Array.from(
+      select.options || []
+    ).map(
+      function (option) {
 
-
-    try {
-
-      const provider =
-        getCurrentProvider();
-
-      const model =
-        getCurrentModel();
-
-
-      if (
-        !provider ||
-        !model
-      ) {
-
-        return;
+        return String(
+          option.value
+        );
 
       }
+    );
+
+  }
 
 
-      const capabilities =
-        getCapabilities();
+  function setOptions(
+    select,
+    values,
+    placeholder
+  ) {
+
+    if (
+      !select ||
+      !Array.isArray(values) ||
+      !values.length
+    ) {
+
+      return;
+
+    }
 
 
-      const ratio =
-        get('ratio');
+    const list =
+      values.map(
+        function (value) {
 
-      const duration =
-        get('duration');
+          return String(
+            value
+          );
 
-      const resolution =
-        get('resolution');
+        }
+      );
+
+
+    const expected = [
+      '',
+      ...list
+    ];
+
+
+    const existing =
+      currentOptions(
+        select
+      );
+
+
+    /*
+     * Jangan rebuild jika sudah benar.
+     * Ini mencegah select berkedip/reset.
+     */
+
+    if (
+      existing.length ===
+      expected.length &&
+      existing.every(
+        function (value, index) {
+
+          return (
+            value ===
+            expected[index]
+          );
+
+        }
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    const previous =
+      String(
+        select.value || ''
+      );
+
+
+    select.replaceChildren();
+
+
+    const placeholderOption =
+      document.createElement(
+        'option'
+      );
+
+    placeholderOption.value =
+      '';
+
+    placeholderOption.textContent =
+      placeholder;
+
+    select.appendChild(
+      placeholderOption
+    );
+
+
+    list.forEach(
+      function (value) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value =
+          value;
+
+        option.textContent =
+          value;
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    if (
+      previous &&
+      list.includes(
+        previous
+      )
+    ) {
+
+      select.value =
+        previous;
+
+    }
+
+
+    select.dispatchEvent(
+      new Event(
+        'change',
+        {
+          bubbles: true
+        }
+      )
+    );
+
+  }
+
+
+  /* =======================================================
+     FIX CAPABILITY
+  ======================================================= */
+
+  function fixCapabilities() {
+
+    const provider =
+      getProvider();
+
+    const model =
+      getModel();
+
+
+    if (
+      !provider ||
+      !model
+    ) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      getModelCapabilities();
+
+
+    if (
+      !capabilities
+    ) {
+
+      return;
+
+    }
+
+
+    const ratio =
+      get('ratio');
+
+    const duration =
+      get('duration');
+
+    const resolution =
+      get('resolution');
+
+
+    /*
+     * Aspect ratio
+     */
+
+    if (
+      ratio &&
+      capabilities.aspects &&
+      capabilities.aspects.length
+    ) {
+
+      setOptions(
+        ratio,
+        capabilities.aspects,
+        'Pilih aspect ratio'
+      );
+
+    }
+
+
+    /*
+     * Duration
+     */
+
+    if (
+      duration &&
+      capabilities.durations &&
+      capabilities.durations.length
+    ) {
+
+      setOptions(
+        duration,
+        sortDurations(
+          capabilities.durations
+        ),
+        'Pilih durasi'
+      );
+
+    }
+
+
+    /*
+     * Resolution
+     */
+
+    if (
+      resolution &&
+      capabilities.resolutions &&
+      capabilities.resolutions.length
+    ) {
+
+      setOptions(
+        resolution,
+        capabilities.resolutions,
+        'Pilih resolusi'
+      );
+
+    }
+
+
+    /*
+     * Simpan capability ke state.
+     */
+
+    GENZ.state.capabilities =
+      GENZ.state.capabilities ||
+      {};
+
+    GENZ.state.capabilities.provider =
+      provider;
+
+    GENZ.state.capabilities.model =
+      model;
+
+    GENZ.state.capabilities.durations =
+      capabilities.durations || [];
+
+    GENZ.state.capabilities.aspects =
+      capabilities.aspects || [];
+
+    GENZ.state.capabilities.resolutions =
+      capabilities.resolutions || [];
+
+  }
+
+
+  /* =======================================================
+     REFERENCE IMAGE UI
+  ======================================================= */
+
+  function fixImageReference() {
+
+    const group =
+      get('imageReferenceGroup');
+
+    const addTile =
+      get('imageAddTile');
+
+    const input =
+      get('image');
+
+    const hint =
+      get('imageReferenceHint');
+
+
+    if (!group) {
+
+      return;
+
+    }
+
+
+    const provider =
+      getProvider();
+
+    const model =
+      getModel();
+
+
+    if (
+      !provider ||
+      !model
+    ) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      getModelCapabilities();
+
+
+    if (
+      capabilities &&
+      capabilities.imageSupported
+    ) {
+
+      /*
+       * Tampilkan seluruh blok reference image.
+       */
+
+      group.classList.remove(
+        'hidden'
+      );
+
+      group.style.display =
+        'block';
+
+      group.removeAttribute(
+        'aria-hidden'
+      );
 
 
       /*
-       * Aspect Ratio
+       * Tampilkan tile +.
        */
 
-      if (
-        ratio &&
-        capabilities.aspects.length
-      ) {
+      if (addTile) {
 
-        setOptions(
-          ratio,
-          capabilities.aspects,
-          'Pilih aspect ratio'
+        addTile.style.display =
+          'flex';
+
+        addTile.classList.remove(
+          'hidden'
         );
 
       }
 
 
       /*
-       * Duration
+       * Input tetap aktif.
+       * Tidak diubah event-nya.
        */
 
-      if (
-        duration &&
-        capabilities.durations.length
-      ) {
+      if (input) {
 
-        setOptions(
-          duration,
-          sortDurations(
-            capabilities.durations
-          ),
-          'Pilih durasi'
-        );
+        input.disabled =
+          false;
 
       }
 
 
       /*
-       * Resolution
+       * Update keterangan.
        */
 
-      if (
-        resolution &&
-        capabilities.resolutions.length
-      ) {
+      if (hint) {
 
-        setOptions(
-          resolution,
-          capabilities.resolutions,
-          'Pilih resolusi'
+        const max =
+          Number(
+            capabilities.maxImages ||
+            0
+          );
+
+
+        if (max > 0) {
+
+          hint.textContent =
+            'Maksimal ' +
+            max +
+            ' reference image.';
+
+        } else {
+
+          hint.textContent =
+            'Reference image tersedia.';
+
+        }
+
+      }
+
+
+      return;
+
+    }
+
+
+    /*
+     * Jika model tidak mendukung image,
+     * sembunyikan blok.
+     */
+
+    group.classList.add(
+      'hidden'
+    );
+
+    group.style.display =
+      'none';
+
+
+    if (addTile) {
+
+      addTile.style.display =
+        'none';
+
+    }
+
+  }
+
+
+  /* =======================================================
+     REFERENCE VIDEO UI
+  ======================================================= */
+
+  function fixVideoReference() {
+
+    const group =
+      get('videoReferenceGroup');
+
+    const addTile =
+      get('videoAddTile');
+
+    const input =
+      get('referenceVideo');
+
+    const hint =
+      get('videoReferenceHint');
+
+
+    if (!group) {
+
+      return;
+
+    }
+
+
+    const provider =
+      getProvider();
+
+    const model =
+      getModel();
+
+
+    if (
+      !provider ||
+      !model
+    ) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      getModelCapabilities();
+
+
+    if (
+      capabilities &&
+      capabilities.videoSupported
+    ) {
+
+      group.classList.remove(
+        'hidden'
+      );
+
+      group.style.display =
+        'block';
+
+      group.removeAttribute(
+        'aria-hidden'
+      );
+
+
+      if (addTile) {
+
+        addTile.style.display =
+          'flex';
+
+        addTile.classList.remove(
+          'hidden'
         );
 
       }
 
 
-      /*
-       * Simpan capability di state
-       * supaya generator lain dapat
-       * membaca data yang sama.
-       */
+      if (input) {
 
-      GENZ.state.capabilities =
-        GENZ.state.capabilities ||
-        {};
+        input.disabled =
+          false;
 
-      GENZ.state.capabilities.provider =
-        provider;
+      }
 
-      GENZ.state.capabilities.model =
-        model;
 
-      GENZ.state.capabilities.durations =
-        capabilities.durations;
+      if (hint) {
 
-      GENZ.state.capabilities.aspects =
-        capabilities.aspects;
+        const max =
+          Number(
+            capabilities.maxVideos ||
+            0
+          );
 
-      GENZ.state.capabilities.resolutions =
-        capabilities.resolutions;
 
-    } finally {
+        if (max > 0) {
 
-      refreshRunning =
-        false;
+          hint.textContent =
+            'Maksimal ' +
+            max +
+            ' reference video.';
+
+        } else {
+
+          hint.textContent =
+            'Reference video tersedia.';
+
+        }
+
+      }
+
+
+      return;
+
+    }
+
+
+    group.classList.add(
+      'hidden'
+    );
+
+    group.style.display =
+      'none';
+
+
+    if (addTile) {
+
+      addTile.style.display =
+        'none';
 
     }
 
@@ -978,12 +1104,21 @@
     }
 
 
-    GENZ.upload.images = [];
-    GENZ.upload.imageFiles = [];
-    GENZ.upload.imageData = null;
+    GENZ.upload.images =
+      [];
 
-    GENZ.state.images = [];
-    GENZ.state.imageData = null;
+    GENZ.upload.imageFiles =
+      [];
+
+    GENZ.upload.imageData =
+      null;
+
+
+    GENZ.state.images =
+      [];
+
+    GENZ.state.imageData =
+      null;
 
 
     const input =
@@ -992,7 +1127,10 @@
     if (input) {
 
       try {
-        input.value = '';
+
+        input.value =
+          '';
+
       } catch (_) {}
 
     }
@@ -1003,14 +1141,12 @@
 
     if (preview) {
 
-      preview.innerHTML = '';
+      preview.innerHTML =
+        '';
 
       preview.classList.add(
         'hidden'
       );
-
-      preview.style.display =
-        'none';
 
     }
 
@@ -1035,13 +1171,18 @@
     }
 
 
-    GENZ.upload.videoFiles = [];
-    GENZ.upload.videoData = null;
-    GENZ.upload.videoObjectUrls = [];
+    GENZ.upload.videoFiles =
+      [];
+
+    GENZ.upload.videoData =
+      null;
 
 
-    GENZ.state.videoFiles = [];
-    GENZ.state.videoData = null;
+    GENZ.state.videoFiles =
+      [];
+
+    GENZ.state.videoData =
+      null;
 
 
     const input =
@@ -1050,45 +1191,11 @@
     if (input) {
 
       try {
-        input.value = '';
+
+        input.value =
+          '';
+
       } catch (_) {}
-
-    }
-
-
-    const video =
-      get(
-        'referenceVideoPreview'
-      );
-
-    if (video) {
-
-      try {
-        video.pause();
-      } catch (_) {}
-
-      video.removeAttribute(
-        'src'
-      );
-
-      try {
-        video.load();
-      } catch (_) {}
-
-    }
-
-
-    const preview =
-      get('videoPreview');
-
-    if (preview) {
-
-      preview.classList.add(
-        'hidden'
-      );
-
-      preview.style.display =
-        'none';
 
     }
 
@@ -1100,6 +1207,7 @@
   ======================================================= */
 
   function createRemoveButton(
+    className,
     label,
     handler
   ) {
@@ -1109,11 +1217,16 @@
         'button'
       );
 
+
     button.type =
       'button';
 
+    button.className =
+      className;
+
     button.textContent =
       '×';
+
 
     button.setAttribute(
       'aria-label',
@@ -1124,9 +1237,6 @@
       'title',
       label
     );
-
-    button.dataset.genzRemove =
-      'true';
 
 
     button.style.position =
@@ -1198,6 +1308,7 @@
       function (event) {
 
         event.preventDefault();
+
         event.stopPropagation();
 
         handler();
@@ -1212,7 +1323,7 @@
 
 
   /* =======================================================
-     IMAGE PREVIEW
+     IMAGE PREVIEW BUTTON
   ======================================================= */
 
   function fixImagePreview() {
@@ -1220,8 +1331,11 @@
     const preview =
       get('imagePreview');
 
+
     if (!preview) {
+
       return;
+
     }
 
 
@@ -1241,7 +1355,9 @@
 
 
     if (!hasImage) {
+
       return;
+
     }
 
 
@@ -1249,20 +1365,15 @@
       'hidden'
     );
 
-    preview.style.display =
-      '';
-
-
-    const parent =
-      preview.parentElement;
 
     if (
-      parent &&
-      getComputedStyle(parent)
-        .position === 'static'
+      getComputedStyle(
+        preview
+      ).position ===
+      'static'
     ) {
 
-      parent.style.position =
+      preview.style.position =
         'relative';
 
     }
@@ -1270,24 +1381,16 @@
 
     if (
       !preview.querySelector(
-        '[data-genz-remove="image"]'
+        '.reference-image-remove-all'
       )
     ) {
 
-      const button =
+      preview.appendChild(
         createRemoveButton(
+          'reference-image-remove-all',
           'Hapus reference image',
           removeImage
-        );
-
-      button.dataset.genzRemove =
-        'image';
-
-      preview.style.position =
-        'relative';
-
-      preview.appendChild(
-        button
+        )
       );
 
     }
@@ -1296,7 +1399,7 @@
 
 
   /* =======================================================
-     VIDEO PREVIEW
+     VIDEO PREVIEW BUTTON
   ======================================================= */
 
   function fixVideoPreview() {
@@ -1304,8 +1407,11 @@
     const preview =
       get('videoPreview');
 
+
     if (!preview) {
+
       return;
+
     }
 
 
@@ -1325,7 +1431,9 @@
 
 
     if (!hasVideo) {
+
       return;
+
     }
 
 
@@ -1333,31 +1441,32 @@
       'hidden'
     );
 
-    preview.style.display =
-      '';
 
+    if (
+      getComputedStyle(
+        preview
+      ).position ===
+      'static'
+    ) {
 
-    preview.style.position =
-      'relative';
+      preview.style.position =
+        'relative';
+
+    }
 
 
     if (
       !preview.querySelector(
-        '[data-genz-remove="video"]'
+        '.reference-video-remove-all'
       )
     ) {
 
-      const button =
+      preview.appendChild(
         createRemoveButton(
+          'reference-video-remove-all',
           'Hapus reference video',
           removeVideo
-        );
-
-      button.dataset.genzRemove =
-        'video';
-
-      preview.appendChild(
-        button
+        )
       );
 
     }
@@ -1374,30 +1483,34 @@
     const provider =
       get('provider');
 
+
     if (!provider) {
+
       return;
+
     }
 
 
-    const first =
-      provider.options &&
-      provider.options.length
-        ? provider.options[0]
-        : null;
+    const placeholder =
+      Array.from(
+        provider.options || []
+      ).find(
+        function (option) {
+
+          return (
+            String(
+              option.value || ''
+            ) === ''
+          );
+
+        }
+      );
 
 
-    if (
-      first &&
-      String(
-        first.value || ''
-      ) === ''
-    ) {
+    if (placeholder) {
 
-      first.disabled =
+      placeholder.disabled =
         true;
-
-      first.hidden =
-        false;
 
     }
 
@@ -1410,53 +1523,123 @@
 
   function fixGenerateButton() {
 
-    const button =
-      get('generateBtn');
-
-    if (!button) {
-      return;
-    }
+    const buttons =
+      document.querySelectorAll(
+        '#generateBtn, [data-generate-button]'
+      );
 
 
-    button.style.width =
-      '220px';
+    buttons.forEach(
+      function (button) {
 
-    button.style.minWidth =
-      '220px';
+        button.style.setProperty(
+          'width',
+          '220px',
+          'important'
+        );
 
-    button.style.maxWidth =
-      '220px';
+        button.style.setProperty(
+          'min-width',
+          '220px',
+          'important'
+        );
 
-    button.style.height =
-      '48px';
+        button.style.setProperty(
+          'max-width',
+          '220px',
+          'important'
+        );
 
-    button.style.minHeight =
-      '48px';
+        button.style.setProperty(
+          'height',
+          '48px',
+          'important'
+        );
 
-    button.style.borderRadius =
-      '999px';
+        button.style.setProperty(
+          'min-height',
+          '48px',
+          'important'
+        );
 
-    button.style.background =
-      '#198754';
+        button.style.setProperty(
+          'max-height',
+          '48px',
+          'important'
+        );
 
-    button.style.color =
-      '#fff';
+        button.style.setProperty(
+          'padding',
+          '0 24px',
+          'important'
+        );
 
-    button.style.border =
-      '0';
+        button.style.setProperty(
+          'margin',
+          '18px auto 0',
+          'important'
+        );
 
-    button.style.fontWeight =
-      '700';
+        button.style.setProperty(
+          'display',
+          'block',
+          'important'
+        );
 
-    button.style.cursor =
-      button.disabled
-        ? 'not-allowed'
-        : 'pointer';
+        button.style.setProperty(
+          'background',
+          '#198754',
+          'important'
+        );
 
-    button.style.opacity =
-      button.disabled
-        ? '.55'
-        : '1';
+        button.style.setProperty(
+          'background-color',
+          '#198754',
+          'important'
+        );
+
+        button.style.setProperty(
+          'color',
+          '#fff',
+          'important'
+        );
+
+        button.style.setProperty(
+          'border',
+          '0',
+          'important'
+        );
+
+        button.style.setProperty(
+          'border-radius',
+          '999px',
+          'important'
+        );
+
+        button.style.setProperty(
+          'font-weight',
+          '700',
+          'important'
+        );
+
+        button.style.setProperty(
+          'cursor',
+          button.disabled
+            ? 'not-allowed'
+            : 'pointer',
+          'important'
+        );
+
+        button.style.setProperty(
+          'opacity',
+          button.disabled
+            ? '.55'
+            : '1',
+          'important'
+        );
+
+      }
+    );
 
   }
 
@@ -1467,7 +1650,11 @@
 
   function refresh() {
 
-    fixGeneratorCapabilities();
+    fixCapabilities();
+
+    fixImageReference();
+
+    fixVideoReference();
 
     fixImagePreview();
 
@@ -1480,34 +1667,8 @@
   }
 
 
-  function scheduleRefresh() {
-
-    if (
-      refreshFrame !== null
-    ) {
-
-      return;
-
-    }
-
-
-    refreshFrame =
-      window.requestAnimationFrame(
-        function () {
-
-          refreshFrame =
-            null;
-
-          refresh();
-
-        }
-      );
-
-  }
-
-
   /* =======================================================
-     CHANGE EVENTS
+     EVENT LISTENER
   ======================================================= */
 
   document.addEventListener(
@@ -1517,25 +1678,23 @@
       const target =
         event.target;
 
+
       if (!target) {
+
         return;
+
       }
 
 
       if (
-        target.id ===
-        'provider' ||
-        target.id ===
-        'model' ||
-        target.id ===
-        'duration' ||
-        target.id ===
-        'ratio' ||
-        target.id ===
-        'resolution'
+        target.id === 'provider' ||
+        target.id === 'model'
       ) {
 
-        scheduleRefresh();
+        setTimeout(
+          refresh,
+          0
+        );
 
       }
 
@@ -1545,10 +1704,10 @@
 
 
   /* =======================================================
-     DOM OBSERVER
+     MUTATION OBSERVER
   ======================================================= */
 
-  function observeGenerator() {
+  function observe() {
 
     if (
       typeof MutationObserver !==
@@ -1560,51 +1719,18 @@
     }
 
 
-    const root =
-      document.body;
-
-    if (!root) {
-      return;
-    }
-
-
     const observer =
       new MutationObserver(
-        function (mutations) {
+        function () {
 
-          let relevant =
-            false;
-
-
-          for (
-            const mutation of mutations
-          ) {
-
-            if (
-              mutation.type ===
-              'childList'
-            ) {
-
-              relevant =
-                true;
-
-              break;
-
-            }
-
-          }
-
-
-          if (relevant) {
-            scheduleRefresh();
-          }
+          refresh();
 
         }
       );
 
 
     observer.observe(
-      root,
+      document.body,
       {
         childList: true,
         subtree: true
@@ -1622,21 +1748,30 @@
 
     refresh();
 
-    observeGenerator();
+    observe();
+
 
     setTimeout(
-      scheduleRefresh,
+      refresh,
       100
     );
 
+
     setTimeout(
-      scheduleRefresh,
+      refresh,
       500
     );
 
+
     setTimeout(
-      scheduleRefresh,
-      1200
+      refresh,
+      1000
+    );
+
+
+    setTimeout(
+      refresh,
+      2000
     );
 
   }
