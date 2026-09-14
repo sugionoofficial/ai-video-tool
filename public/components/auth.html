@@ -222,45 +222,6 @@
               aria-label="Tampilkan password"
               aria-pressed="false"
               title="Tampilkan password"
-              onclick="
-                event.preventDefault();
-                event.stopPropagation();
-
-                const password = document.getElementById('password');
-                const toggle = document.getElementById('togglePassword');
-
-                if (password && toggle) {
-                  const showing = password.type === 'text';
-
-                  password.type = showing ? 'password' : 'text';
-
-                  toggle.classList.toggle(
-                    'password-visible',
-                    !showing
-                  );
-
-                  toggle.setAttribute(
-                    'aria-label',
-                    showing
-                      ? 'Tampilkan password'
-                      : 'Sembunyikan password'
-                  );
-
-                  toggle.setAttribute(
-                    'aria-pressed',
-                    showing ? 'false' : 'true'
-                  );
-
-                  toggle.setAttribute(
-                    'title',
-                    showing
-                      ? 'Tampilkan password'
-                      : 'Sembunyikan password'
-                  );
-                }
-
-                return false;
-              "
             >
 
               <svg
