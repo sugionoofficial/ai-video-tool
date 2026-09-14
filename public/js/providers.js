@@ -5,18 +5,11 @@
    File:
    public/js/providers.js
 
-   Fixed:
-   - Provider/model/capability tetap sinkron
-   - Mendukung capability model langsung
-   - Mendukung modeRules textToVideo/referenceToVideo
-   - Fallback capability ChinaAPI
-   - Aspect ratio tidak menjadi "Tidak tersedia"
-   - Duration tidak menjadi "Tidak tersedia"
-   - Resolution tidak menjadi "Tidak tersedia"
-   - Resolution tetap mengikuti duration bila rule tersedia
-   - Reference image tidak dihapus saat refresh
-   - Tidak menggunakan interval permanen
-   - Generate button hanya disabled jika data memang belum lengkap
+   Provider Identity Rule:
+   - provider.id     = IDENTITAS TETAP / BACKEND ID
+   - provider.name   = NAMA TAMPILAN
+   - provider.adapter = ADAPTER BACKEND
+   - Provider Name TIDAK PERNAH menjadi Provider ID
    ========================================================= */
 
 (function () {
@@ -56,6 +49,39 @@
       .toLowerCase()
       .replace(/[^a-z0-9_.-]+/g, '-')
       .replace(/^[-_.]+|[-_.]+$/g, '');
+  }
+
+
+  function getProviderId(provider) {
+
+    if (!provider) {
+      return '';
+    }
+
+    return text(
+      provider.id ||
+      provider.providerId ||
+      ''
+    );
+
+  }
+
+
+  function getProviderName(provider) {
+
+    if (!provider) {
+      return '';
+    }
+
+    const id =
+      getProviderId(provider);
+
+    return text(
+      provider.name ||
+      provider.displayName ||
+      id
+    );
+
   }
 
 
@@ -123,6 +149,7 @@
   const BUILTIN_MODEL_CAPABILITIES = {
 
     'agnes-video-2.5-flash': {
+
       aspects: [
         '16:9',
         '9:16',
@@ -155,6 +182,7 @@
       },
 
       constraints: {
+
         textToVideo: {
           4: ['720P'],
           5: ['720P'],
@@ -178,11 +206,14 @@
           11: ['720P'],
           12: ['720P']
         }
+
       }
+
     },
 
 
     'doubao-seedance-2-0-mini-260615': {
+
       aspects: [
         '21:9',
         '16:9',
@@ -218,6 +249,7 @@
         videoSupported: true,
         maxVideos: 3
       }
+
     }
 
   };
@@ -400,7 +432,9 @@
       direct &&
       typeof direct === 'object'
     ) {
+
       return direct;
+
     }
 
 
@@ -428,10 +462,13 @@
           normalizeId(item) ===
           normalized
         ) {
+
           return null;
+
         }
 
         continue;
+
       }
 
 
@@ -455,6 +492,7 @@
         ) {
 
           return item;
+
         }
 
       }
@@ -464,7 +502,10 @@
 
     const providerModelRules =
       capabilities.constraints &&
-      capabilities.constraints[modelId];
+      (
+        capabilities.constraints[modelId] ||
+        capabilities.constraints[normalized]
+      );
 
 
     if (
@@ -523,6 +564,7 @@
     ) {
 
       return direct;
+
     }
 
 
@@ -539,6 +581,7 @@
     ) {
 
       return modelData.constraints;
+
     }
 
 
@@ -548,6 +591,7 @@
     ) {
 
       return modelData.rules;
+
     }
 
 
@@ -560,6 +604,7 @@
       return BUILTIN_MODEL_CAPABILITIES[
         normalized
       ].constraints;
+
     }
 
 
@@ -926,6 +971,7 @@
       }
 
       return;
+
     }
 
 
@@ -1191,15 +1237,6 @@
 
     }
 
-
-    /*
-     * Jangan mengembalikan [] hanya karena
-     * duration belum cocok dengan modeRules.
-     *
-     * Gunakan capability model/provider sebagai
-     * fallback sehingga UI tidak menampilkan
-     * "Tidak tersedia" secara palsu.
-     */
 
     if (
       modelCapabilities.resolutions.length
@@ -1548,9 +1585,7 @@
 
 
         if (!allowed.length) {
-
           return;
-
         }
 
 
@@ -1712,7 +1747,7 @@
 
     const providerReady =
       Boolean(
-        provider
+        getProviderId(provider)
       );
 
 
@@ -1729,125 +1764,115 @@
     buttons.forEach(
       function (button) {
 
-        if (
-          button.id ===
-            'generateBtn' ||
-          button.hasAttribute(
-            'data-generate-button'
-          )
-        ) {
-
-          button.disabled =
-            !enabled;
+        button.disabled =
+          !enabled;
 
 
-          button.style.setProperty(
-            'display',
-            'inline-flex',
-            'important'
-          );
+        button.style.setProperty(
+          'display',
+          'inline-flex',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'align-items',
-            'center',
-            'important'
-          );
+        button.style.setProperty(
+          'align-items',
+          'center',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'justify-content',
-            'center',
-            'important'
-          );
+        button.style.setProperty(
+          'justify-content',
+          'center',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'width',
-            '100%',
-            'important'
-          );
+        button.style.setProperty(
+          'width',
+          '100%',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'min-height',
-            '48px',
-            'important'
-          );
+        button.style.setProperty(
+          'min-height',
+          '48px',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'height',
-            '48px',
-            'important'
-          );
+        button.style.setProperty(
+          'height',
+          '48px',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'padding',
-            '0 24px',
-            'important'
-          );
+        button.style.setProperty(
+          'padding',
+          '0 24px',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'border',
-            '0',
-            'important'
-          );
+        button.style.setProperty(
+          'border',
+          '0',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'border-radius',
-            '999px',
-            'important'
-          );
+        button.style.setProperty(
+          'border-radius',
+          '999px',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'background-color',
-            '#198754',
-            'important'
-          );
+        button.style.setProperty(
+          'background-color',
+          '#198754',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'color',
-            '#ffffff',
-            'important'
-          );
+        button.style.setProperty(
+          'color',
+          '#ffffff',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'font-weight',
-            '700',
-            'important'
-          );
+        button.style.setProperty(
+          'font-weight',
+          '700',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'font-size',
-            '15px',
-            'important'
-          );
+        button.style.setProperty(
+          'font-size',
+          '15px',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'cursor',
-            enabled
-              ? 'pointer'
-              : 'not-allowed',
-            'important'
-          );
+        button.style.setProperty(
+          'cursor',
+          enabled
+            ? 'pointer'
+            : 'not-allowed',
+          'important'
+        );
 
 
-          button.style.setProperty(
-            'opacity',
-            '1',
-            'important'
-          );
-
-        }
+        button.style.setProperty(
+          'opacity',
+          '1',
+          'important'
+        );
 
       }
     );
@@ -1863,6 +1888,12 @@
     providerId
   ) {
 
+    const normalizedProviderId =
+      normalizeId(
+        providerId
+      );
+
+
     document
       .querySelectorAll(
         '[data-provider]'
@@ -1874,9 +1905,7 @@
             normalizeId(
               button.dataset.provider
             ) ===
-            normalizeId(
-              providerId
-            );
+            normalizedProviderId;
 
 
           button.classList.toggle(
@@ -1961,10 +1990,6 @@
         );
 
 
-      /* ===================================================
-         MODEL
-      =================================================== */
-
       setOptions(
         'model',
         getEffectiveCapabilities(
@@ -1991,20 +2016,12 @@
       }
 
 
-      /* ===================================================
-         MODEL CAPABILITY
-      =================================================== */
-
       const modelCapabilities =
         getModelCapabilities(
           provider,
           model
         );
 
-
-      /* ===================================================
-         ASPECT
-      =================================================== */
 
       const aspects =
         modelCapabilities.aspects.length
@@ -2038,17 +2055,9 @@
       }
 
 
-      /* ===================================================
-         IMAGE STATE
-      =================================================== */
-
       const hasImage =
         hasImageReference();
 
-
-      /* ===================================================
-         DURATION
-      =================================================== */
 
       let duration =
         applyDurationRules(
@@ -2101,10 +2110,6 @@
       }
 
 
-      /* ===================================================
-         RESOLUTION
-      =================================================== */
-
       let resolution =
         applyResolutionRules(
           provider,
@@ -2121,10 +2126,6 @@
 
       }
 
-
-      /* ===================================================
-         RESOLUTION -> DURATION
-      =================================================== */
 
       if (
         changedField ===
@@ -2185,10 +2186,6 @@
       }
 
 
-      /* ===================================================
-         FINAL RESOLUTION
-      =================================================== */
-
       resolution =
         applyResolutionRules(
           provider,
@@ -2198,12 +2195,8 @@
         );
 
 
-      /* ===================================================
-         STATE
-      =================================================== */
-
       GENZ.state.provider =
-        provider.id;
+        getProviderId(provider);
 
 
       GENZ.state.model =
@@ -2231,17 +2224,13 @@
         );
 
 
-      /* ===================================================
-         BUTTON
-      =================================================== */
-
       updateGenerateButton(
         provider
       );
 
 
       updateActiveButton(
-        provider.id
+        getProviderId(provider)
       );
 
     } finally {
@@ -2280,12 +2269,28 @@
     }
 
 
+    const providerId =
+      getProviderId(provider);
+
+
+    if (!providerId) {
+
+      console.error(
+        '[GEN-Z.AI] Provider tidak memiliki ID:',
+        provider
+      );
+
+      return;
+
+    }
+
+
     GENZ.state.provider =
-      provider.id;
+      providerId;
 
 
     GENZ.providers.current =
-      provider.id;
+      providerId;
 
 
     GENZ.providers.currentProvider =
@@ -2294,7 +2299,7 @@
 
     setValue(
       'provider',
-      provider.id
+      providerId
     );
 
 
@@ -2309,7 +2314,7 @@
 
 
     updateActiveButton(
-      provider.id
+      providerId
     );
 
   }
@@ -2323,19 +2328,29 @@
     provider
   ) {
 
+    const providerId =
+      getProviderId(provider);
+
+
+    if (!providerId) {
+      return;
+    }
+
+
     document.dispatchEvent(
       new CustomEvent(
         'genz-provider-change',
         {
           detail: {
+
             provider:
               provider,
 
             id:
-              provider.id,
+              providerId,
 
             name:
-              provider.name,
+              getProviderName(provider),
 
             adapter:
               provider.adapter ||
@@ -2345,6 +2360,7 @@
               getEffectiveCapabilities(
                 provider
               )
+
           }
         }
       )
@@ -2379,6 +2395,15 @@
     providers.forEach(
       function (provider) {
 
+        const providerId =
+          getProviderId(provider);
+
+
+        if (!providerId) {
+          return;
+        }
+
+
         const button =
           document.createElement(
             'button'
@@ -2394,12 +2419,15 @@
 
 
         button.dataset.provider =
-          provider.id;
+          providerId;
+
+
+        button.dataset.providerId =
+          providerId;
 
 
         button.textContent =
-          provider.name ||
-          provider.id;
+          getProviderName(provider);
 
 
         fragment.appendChild(
@@ -2449,6 +2477,7 @@
 
 
         selectProvider(
+          button.dataset.providerId ||
           button.dataset.provider
         );
 
@@ -2519,19 +2548,49 @@
     providers.forEach(
       function (provider) {
 
+        const providerId =
+          getProviderId(provider);
+
+
+        const providerName =
+          getProviderName(provider);
+
+
+        if (!providerId) {
+          return;
+        }
+
+
         const option =
           document.createElement(
             'option'
           );
 
 
+        /*
+         * PENTING:
+         *
+         * value = Provider ID
+         * text  = Provider Name
+         *
+         * Nama provider tidak pernah
+         * digunakan sebagai identity.
+         */
+
         option.value =
-          provider.id;
+          providerId;
+
+
+        option.dataset.providerId =
+          providerId;
+
+
+        option.dataset.providerName =
+          providerName;
 
 
         option.textContent =
-          provider.name ||
-          provider.id;
+          providerName;
 
 
         fragment.appendChild(
@@ -2551,21 +2610,39 @@
     );
 
 
-    if (
-      previous &&
-      providers.some(
+    const selected =
+      providers.find(
         function (provider) {
+
           return (
-            String(
-              provider.id
-            ) === previous
+            normalizeId(
+              getProviderId(provider)
+            ) ===
+            normalizeId(
+              previous
+            )
           );
+
         }
-      )
-    ) {
+      );
+
+
+    if (selected) {
 
       element.value =
-        previous;
+        getProviderId(selected);
+
+    } else if (providers.length) {
+
+      element.value =
+        getProviderId(
+          providers[0]
+        );
+
+    } else {
+
+      element.value =
+        '';
 
     }
 
@@ -2585,66 +2662,92 @@
     }
 
 
-    return list
-      .filter(
-        function (provider) {
-
-          if (!provider) {
-            return false;
-          }
+    const result = [];
 
 
-          if (
-            provider.enabled ===
-            false
-          ) {
+    list.forEach(
+      function (provider) {
 
-            return false;
-
-          }
+        if (!provider) {
+          return;
+        }
 
 
-          return Boolean(
-            provider.id ||
-            provider.name
+        if (
+          provider.enabled ===
+          false
+        ) {
+
+          return;
+
+        }
+
+
+        /*
+         * Provider ID WAJIB berasal
+         * dari provider.id/providerId.
+         *
+         * Jangan pernah menggunakan
+         * provider.name sebagai ID.
+         */
+
+        const id =
+          getProviderId(
+            provider
           );
 
-        }
-      )
-      .map(
-        function (provider) {
 
-          const id =
-            text(
-              provider.id ||
-              provider.name
-            );
+        if (!id) {
 
+          console.warn(
+            '[GEN-Z.AI] Provider diabaikan karena tidak memiliki ID:',
+            provider
+          );
 
-          const name =
-            text(
-              provider.name ||
-              id
-            );
-
-
-          return {
-            ...provider,
-
-            id:
-              id,
-
-            name:
-              name,
-
-            capabilities:
-              normalizeCapabilities(
-                provider
-              )
-          };
+          return;
 
         }
-      );
+
+
+        const name =
+          getProviderName(
+            provider
+          );
+
+
+        const normalizedProvider = {
+
+          ...provider,
+
+          id:
+            id,
+
+          name:
+            name,
+
+          adapter:
+            text(
+              provider.adapter ||
+              ''
+            ),
+
+          capabilities:
+            normalizeCapabilities(
+              provider
+            )
+
+        };
+
+
+        result.push(
+          normalizedProvider
+        );
+
+      }
+    );
+
+
+    return result;
 
   }
 
@@ -2668,13 +2771,20 @@
       );
 
 
+    if (!normalized) {
+      return null;
+    }
+
+
     return (
       providers.find(
         function (provider) {
 
           return (
             normalizeId(
-              provider.id
+              getProviderId(
+                provider
+              )
             ) ===
             normalized
           );
@@ -2695,6 +2805,12 @@
     providerId
   ) {
 
+    /*
+     * providerId harus berupa ID.
+     * Nama provider tidak diterima
+     * sebagai identity.
+     */
+
     const provider =
       findProvider(
         providerId
@@ -2704,7 +2820,7 @@
     if (!provider) {
 
       console.warn(
-        '[GEN-Z.AI] Provider tidak ditemukan:',
+        '[GEN-Z.AI] Provider ID tidak ditemukan:',
         providerId
       );
 
@@ -2858,10 +2974,12 @@
             function (provider) {
 
               return (
-                String(
-                  provider.id
+                normalizeId(
+                  getProviderId(provider)
                 ) ===
-                requested
+                normalizeId(
+                  requested
+                )
               );
 
             }
@@ -2960,11 +3078,13 @@
             'genz-providers-loaded',
             {
               detail: {
+
                 providers:
                   providers,
 
                 count:
                   providers.length
+
               }
             }
           )
@@ -3023,8 +3143,14 @@
       'change',
       function () {
 
+        /*
+         * element.value = PROVIDER ID
+         */
+
         const providerId =
-          element.value;
+          text(
+            element.value
+          );
 
 
         if (!providerId) {
