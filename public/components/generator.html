@@ -263,8 +263,29 @@
 
 
       <div
+        id="generatorStatus"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style="
+          display:none;
+          margin-top:12px;
+          padding:11px 14px;
+          border-radius:10px;
+          background:rgba(13,110,253,.08);
+          border:1px solid rgba(13,110,253,.18);
+          color:#495057;
+          font-size:13px;
+          line-height:1.5;
+          text-align:center;
+        "
+      ></div>
+
+
+      <div
         id="result"
         class="generator-result"
+        style="display:none !important;"
       >
 
         <div
@@ -279,6 +300,7 @@
         <div
           id="resultVideoContainer"
           class="result-video-container hidden"
+          style="display:none !important;"
         >
 
           <video
