@@ -469,35 +469,37 @@
     }
 
     if (discountElement) {
-      if (discount > 0) {
-        discountElement.textContent =
-          'Diskon: ' +
-          formatNumber(
-            discount
-          ) +
-          '%';
+      discountElement.textContent =
+        'Diskon: ' +
+        formatNumber(
+          discount
+        ) +
+        '%';
 
-        discountElement.style.color =
-          '#198754';
+      /*
+       * Paksa warna diskon hijau.
+       * !important digunakan agar stylesheet
+       * global tidak mengubahnya kembali
+       * menjadi abu-abu.
+       */
 
-        discountElement.style.fontWeight =
-          '700';
+      discountElement.style.setProperty(
+        'color',
+        '#198754',
+        'important'
+      );
 
-        discountElement.style.opacity =
-          '1';
-      } else {
-        discountElement.textContent =
-          'Diskon: 0%';
+      discountElement.style.setProperty(
+        'font-weight',
+        '700',
+        'important'
+      );
 
-        discountElement.style.color =
-          '';
-
-        discountElement.style.fontWeight =
-          '';
-
-        discountElement.style.opacity =
-          '';
-      }
+      discountElement.style.setProperty(
+        'opacity',
+        '1',
+        'important'
+      );
     }
 
     if (final) {
