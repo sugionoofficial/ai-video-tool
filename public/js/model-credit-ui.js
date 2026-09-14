@@ -1,5 +1,5 @@
 (function () {
-  "use strict";
+  'use strict';
 
   const state = {
     bound: false,
@@ -11,10 +11,12 @@
     return document.getElementById(id);
   }
 
+  function text(value) {
+    return String(value ?? '').trim();
+  }
+
   function normalizeId(value) {
-    return String(value || "")
-      .trim()
-      .toLowerCase();
+    return text(value).toLowerCase();
   }
 
   function toNumber(value, fallback) {
@@ -26,61 +28,58 @@
   }
 
   function getProviderId() {
-    const provider = get("provider");
+    const element = get('provider');
 
-    return provider
-      ? String(provider.value || "").trim()
-      : "";
+    return element
+      ? text(element.value)
+      : '';
   }
 
   function getModelId() {
-    const model = get("model");
+    const element = get('model');
 
-    return model
-      ? String(model.value || "").trim()
-      : "";
+    return element
+      ? text(element.value)
+      : '';
   }
 
-  function getProviders() {
-    const candidates = [
-      window.GENZ && window.GENZ.state
-        ? window.GENZ.state.providers
-        : null,
-
-      window.GENZ && window.GENZ.state
-        ? window.GENZ.state.videoProviders
-        : null,
-
-      window.GENZ
-        ? window.GENZ.providers
-        : null,
-
-      window.videoProviders
-    ];
-
-    for (const value of candidates) {
-      if (Array.isArray(value)) {
-        return value;
-      }
-
-      if (value && typeof value === "object") {
-        return Object.values(value);
-      }
+  function getCurrentProvider() {
+    if (
+      window.GENZ &&
+      window.GENZ.providers &&
+      window.GENZ.providers.currentProvider
+    ) {
+      return window.GENZ.providers.currentProvider;
     }
 
-    return [];
+    if (
+      window.GENZ &&
+      window.GENZ.state &&
+      window.GENZ.state.currentProvider
+    ) {
+      return window.GENZ.state.currentProvider;
+    }
+
+    return null;
   }
 
-  function getProvider(providerId) {
-    const normalized = normalizeId(providerId);
-
-    if (!normalized) {
+  function getProviderFromList(providerId) {
+    if (
+      !window.GENZ ||
+      !window.GENZ.providers
+    ) {
       return null;
     }
 
-    const providers = getProviders();
+    const list =
+      Array.isArray(window.GENZ.providers.list)
+        ? window.GENZ.providers.list
+        : [];
 
-    return providers.find(function (provider) {
+    const normalized =
+      normalizeId(providerId);
+
+    return list.find(function (provider) {
       if (!provider) {
         return false;
       }
@@ -94,169 +93,200 @@
     }) || null;
   }
 
-  function getModels(provider) {
+  function getProvider() {
+    const providerId =
+      getProviderId();
+
+    const current =
+      getCurrentProvider();
+
+    if (current) {
+      const currentId =
+        normalizeId(
+          current.id ||
+          current.provider ||
+          current.name ||
+          current.slug
+        );
+
+      if (
+        !providerId ||
+        currentId === normalizeId(providerId)
+      ) {
+        return current;
+      }
+    }
+
+    return getProviderFromList(
+      providerId
+    );
+  }
+
+  function getMap(provider, name) {
     if (!provider) {
-      return [];
+      return {};
+    }
+
+    const config =
+      provider.config &&
+      typeof provider.config === 'object'
+        ? provider.config
+        : {};
+
+    const candidates = [
+      provider[name],
+      config[name]
+    ];
+
+    for (const value of candidates) {
+      if (
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value)
+      ) {
+        return value;
+      }
+    }
+
+    return {};
+  }
+
+  function findMapValue(map, modelId) {
+    if (
+      !map ||
+      typeof map !== 'object'
+    ) {
+      return undefined;
+    }
+
+    const direct =
+      text(modelId);
+
+    if (
+      direct &&
+      Object.prototype.hasOwnProperty.call(
+        map,
+        direct
+      )
+    ) {
+      return map[direct];
+    }
+
+    const normalized =
+      normalizeId(modelId);
+
+    const key =
+      Object.keys(map).find(
+        function (item) {
+          return normalizeId(item) === normalized;
+        }
+      );
+
+    return key !== undefined
+      ? map[key]
+      : undefined;
+  }
+
+  function getModel(provider, modelId) {
+    if (
+      !provider ||
+      !modelId
+    ) {
+      return null;
     }
 
     const candidates = [
       provider.models,
-      provider.config && provider.config.models,
-      provider.capabilities && provider.capabilities.models
+      provider.capabilities &&
+      provider.capabilities.models
     ];
 
     for (const models of candidates) {
-      if (Array.isArray(models)) {
-        return models;
+      if (!Array.isArray(models)) {
+        continue;
       }
 
-      if (models && typeof models === "object") {
-        return Object.entries(models).map(function (entry) {
-          const key = entry[0];
-          const value = entry[1];
-
-          if (value && typeof value === "object") {
-            return Object.assign(
-              {
-                id: key
-              },
-              value
-            );
+      const found =
+        models.find(function (model) {
+          if (
+            model === null ||
+            model === undefined
+          ) {
+            return false;
           }
 
-          return {
-            id: key,
-            credit: value
-          };
+          if (
+            typeof model === 'string' ||
+            typeof model === 'number'
+          ) {
+            return normalizeId(model) ===
+              normalizeId(modelId);
+          }
+
+          return normalizeId(
+            model.id ||
+            model.model ||
+            model.modelId ||
+            model.slug ||
+            model.name
+          ) === normalizeId(modelId);
         });
+
+      if (found) {
+        return found;
       }
     }
 
-    return [];
+    return null;
   }
 
-  function getModel(provider, modelId) {
-    const normalized = normalizeId(modelId);
+  function getBaseCredit(provider, modelId) {
+    if (
+      window.GENZ &&
+      window.GENZ.state &&
+      window.GENZ.state.modelCredit !== undefined &&
+      window.GENZ.state.modelCredit !== null &&
+      window.GENZ.state.modelCredit !== ''
+    ) {
+      const stateCredit =
+        toNumber(
+          window.GENZ.state.modelCredit,
+          0
+        );
 
-    if (!provider || !normalized) {
-      return null;
-    }
-
-    const models = getModels(provider);
-
-    return models.find(function (model) {
-      if (!model) {
-        return false;
-      }
-
-      return normalizeId(
-        model.id ||
-        model.model ||
-        model.name ||
-        model.slug
-      ) === normalized;
-    }) || null;
-  }
-
-  function getModelCredits(provider) {
-    if (!provider) {
-      return {};
-    }
-
-    const config = provider.config || {};
-
-    return (
-      config.modelCredits ||
-      provider.modelCredits ||
-      {}
-    );
-  }
-
-  function getModelDiscounts(provider) {
-    if (!provider) {
-      return {};
-    }
-
-    const config = provider.config || {};
-
-    return (
-      config.modelDiscounts ||
-      provider.modelDiscounts ||
-      {}
-    );
-  }
-
-  function getModelEnabled(provider) {
-    if (!provider) {
-      return {};
-    }
-
-    const config = provider.config || {};
-
-    return (
-      config.modelEnabled ||
-      provider.modelEnabled ||
-      {}
-    );
-  }
-
-  function findMapValue(map, modelId) {
-    if (!map || typeof map !== "object") {
-      return undefined;
-    }
-
-    const normalized = normalizeId(modelId);
-
-    const directKeys = [
-      modelId,
-      normalized
-    ];
-
-    for (const key of directKeys) {
-      if (
-        key &&
-        Object.prototype.hasOwnProperty.call(map, key)
-      ) {
-        return map[key];
+      if (stateCredit > 0) {
+        return stateCredit;
       }
     }
 
-    const foundKey = Object.keys(map).find(function (key) {
-      return normalizeId(key) === normalized;
-    });
+    const modelCredits =
+      getMap(
+        provider,
+        'modelCredits'
+      );
 
-    return foundKey
-      ? map[foundKey]
-      : undefined;
-  }
-
-  function getBaseCredit(provider, model) {
-    const modelId = model
-      ? (
-          model.id ||
-          model.model ||
-          model.name ||
-          model.slug
-        )
-      : "";
-
-    const credits = getModelCredits(provider);
-
-    const configured = findMapValue(
-      credits,
-      modelId
-    );
+    const configured =
+      findMapValue(
+        modelCredits,
+        modelId
+      );
 
     if (
       configured !== undefined &&
       configured !== null &&
-      configured !== ""
+      configured !== ''
     ) {
       return Math.max(
         1,
         toNumber(configured, 1)
       );
     }
+
+    const model =
+      getModel(
+        provider,
+        modelId
+      );
 
     if (model) {
       const candidates = [
@@ -270,7 +300,7 @@
         if (
           value !== undefined &&
           value !== null &&
-          value !== ""
+          value !== ''
         ) {
           return Math.max(
             1,
@@ -283,27 +313,45 @@
     return 1;
   }
 
-  function getDiscount(provider, model) {
-    const modelId = model
-      ? (
-          model.id ||
-          model.model ||
-          model.name ||
-          model.slug
+  function getDiscount(provider, modelId) {
+    if (
+      window.GENZ &&
+      window.GENZ.state &&
+      window.GENZ.state.modelDiscount !== undefined &&
+      window.GENZ.state.modelDiscount !== null &&
+      window.GENZ.state.modelDiscount !== ''
+    ) {
+      const stateDiscount =
+        toNumber(
+          window.GENZ.state.modelDiscount,
+          0
+        );
+
+      return Math.min(
+        100,
+        Math.max(
+          0,
+          stateDiscount
         )
-      : "";
+      );
+    }
 
-    const discounts = getModelDiscounts(provider);
+    const discounts =
+      getMap(
+        provider,
+        'modelDiscounts'
+      );
 
-    const configured = findMapValue(
-      discounts,
-      modelId
-    );
+    const configured =
+      findMapValue(
+        discounts,
+        modelId
+      );
 
     if (
       configured !== undefined &&
       configured !== null &&
-      configured !== ""
+      configured !== ''
     ) {
       return Math.min(
         100,
@@ -313,6 +361,12 @@
         )
       );
     }
+
+    const model =
+      getModel(
+        provider,
+        modelId
+      );
 
     if (model) {
       const candidates = [
@@ -325,7 +379,7 @@
         if (
           value !== undefined &&
           value !== null &&
-          value !== ""
+          value !== ''
         ) {
           return Math.min(
             100,
@@ -341,47 +395,17 @@
     return 0;
   }
 
-  function isModelEnabled(provider, model) {
-    if (!model) {
-      return false;
-    }
-
-    const modelId =
-      model.id ||
-      model.model ||
-      model.name ||
-      model.slug ||
-      "";
-
-    const enabledMap = getModelEnabled(provider);
-
-    const configured = findMapValue(
-      enabledMap,
-      modelId
-    );
-
-    if (
-      configured !== undefined &&
-      configured !== null
-    ) {
-      return configured !== false;
-    }
-
-    if (model.enabled !== undefined) {
-      return model.enabled !== false;
-    }
-
-    return true;
-  }
-
-  function calculateFinalCredit(baseCredit, discount) {
-    const finalCredit = Math.ceil(
-      baseCredit * (100 - discount) / 100
-    );
-
+  function calculateFinalCredit(
+    baseCredit,
+    discount
+  ) {
     return Math.max(
       1,
-      finalCredit
+      Math.ceil(
+        baseCredit *
+        (100 - discount) /
+        100
+      )
     );
   }
 
@@ -393,25 +417,40 @@
     }
 
     return String(
-      Number(value.toFixed(2))
+      Number(
+        value.toFixed(2)
+      )
     );
   }
 
   function hide() {
-    const info = get("modelCreditInfo");
+    const info =
+      get('modelCreditInfo');
 
     if (!info) {
       return;
     }
 
-    info.style.display = "none";
+    info.style.display =
+      'none';
   }
 
-  function show(baseCredit, discount, finalCredit) {
-    const info = get("modelCreditInfo");
-    const base = get("modelCreditBase");
-    const discountElement = get("modelCreditDiscount");
-    const final = get("modelCreditFinal");
+  function show(
+    baseCredit,
+    discount,
+    finalCredit
+  ) {
+    const info =
+      get('modelCreditInfo');
+
+    const base =
+      get('modelCreditBase');
+
+    const discountElement =
+      get('modelCreditDiscount');
+
+    const final =
+      get('modelCreditFinal');
 
     if (!info) {
       return;
@@ -419,76 +458,78 @@
 
     if (base) {
       base.textContent =
-        "Credit normal: " +
-        formatNumber(baseCredit);
+        'Credit normal: ' +
+        formatNumber(
+          baseCredit
+        );
     }
 
     if (discountElement) {
       if (discount > 0) {
         discountElement.textContent =
-          "Diskon: " +
-          formatNumber(discount) +
-          "%";
+          'Diskon: ' +
+          formatNumber(
+            discount
+          ) +
+          '%';
       } else {
         discountElement.textContent =
-          "Diskon: 0%";
+          'Diskon: 0%';
       }
     }
 
     if (final) {
       final.textContent =
-        "Credit digunakan: " +
-        formatNumber(finalCredit);
+        'Credit digunakan: ' +
+        formatNumber(
+          finalCredit
+        );
     }
 
-    info.style.display = "block";
+    info.style.display =
+      'block';
   }
 
   function update() {
-    const providerId = getProviderId();
-    const modelId = getModelId();
+    const providerId =
+      getProviderId();
 
-    if (!providerId || !modelId) {
+    const modelId =
+      getModelId();
+
+    if (
+      !providerId ||
+      !modelId
+    ) {
       hide();
       return;
     }
 
-    const provider = getProvider(providerId);
+    const provider =
+      getProvider();
 
     if (!provider) {
       hide();
       return;
     }
 
-    const model = getModel(
-      provider,
-      modelId
-    );
+    const baseCredit =
+      getBaseCredit(
+        provider,
+        modelId
+      );
 
-    if (!model) {
-      hide();
-      return;
-    }
+    const discount =
+      getDiscount(
+        provider,
+        modelId
+      );
 
-    if (!isModelEnabled(provider, model)) {
-      hide();
-      return;
-    }
-
-    const baseCredit = getBaseCredit(
-      provider,
-      model
-    );
-
-    const discount = getDiscount(
-      provider,
-      model
-    );
-
-    const finalCredit = calculateFinalCredit(
-      baseCredit,
-      discount
-    );
+    const finalCredit =
+      calculateFinalCredit(
+        baseCredit,
+        discount
+      );
 
     show(
       baseCredit,
@@ -498,40 +539,45 @@
   }
 
   function bind() {
-    if (state.bound) {
-      return;
-    }
+    const provider =
+      get('provider');
 
-    const provider = get("provider");
-    const model = get("model");
-
-    if (!provider || !model) {
-      return;
-    }
-
-    state.bound = true;
-
-    provider.addEventListener(
-      "change",
-      function () {
-        window.setTimeout(
-          update,
-          0
-        );
-      }
-    );
-
-    model.addEventListener(
-      "change",
-      function () {
-        window.setTimeout(
-          update,
-          0
-        );
-      }
-    );
+    const model =
+      get('model');
 
     if (
+      !provider ||
+      !model
+    ) {
+      return false;
+    }
+
+    if (!state.bound) {
+      state.bound = true;
+
+      provider.addEventListener(
+        'change',
+        function () {
+          window.setTimeout(
+            update,
+            0
+          );
+        }
+      );
+
+      model.addEventListener(
+        'change',
+        function () {
+          window.setTimeout(
+            update,
+            0
+          );
+        }
+      );
+    }
+
+    if (
+      !state.observer &&
       window.MutationObserver
     ) {
       state.observer =
@@ -554,6 +600,8 @@
     }
 
     update();
+
+    return true;
   }
 
   function start() {
@@ -596,16 +644,17 @@
     window.GENZ || {};
 
   window.GENZ.modelCreditUI = {
-    update,
-    start,
-    destroy
+    update: update,
+    start: start,
+    destroy: destroy
   };
 
   if (
-    document.readyState === "loading"
+    document.readyState ===
+    'loading'
   ) {
     document.addEventListener(
-      "DOMContentLoaded",
+      'DOMContentLoaded',
       start,
       {
         once: true
