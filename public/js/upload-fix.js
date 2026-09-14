@@ -1,6 +1,6 @@
 /* =========================================================
    GEN-Z.AI
-   REFERENCE MEDIA UI FIX
+   REFERENCE MEDIA + GENERATOR UI FIX
 
    File:
    public/js/upload-fix.js
@@ -14,6 +14,8 @@
    - Tidak menangani event change input
    - Tidak mengubah FileReader
    - Tidak mengubah proses upload
+   - Provider placeholder bukan provider yang dapat dipilih
+   - Tombol Generate selalu full width
 ========================================================= */
 
 (function () {
@@ -549,6 +551,182 @@
 
 
   /* =======================================================
+     PROVIDER PLACEHOLDER FIX
+  ======================================================= */
+
+  function fixProviderPlaceholder() {
+
+    const provider =
+      get('provider');
+
+    if (!provider) {
+
+      return;
+
+    }
+
+
+    const options =
+      Array.from(
+        provider.options || []
+      );
+
+    if (!options.length) {
+
+      return;
+
+    }
+
+
+    const placeholder =
+      options.find(
+        function (option) {
+
+          return (
+            option.value === ''
+          );
+
+        }
+      );
+
+
+    if (!placeholder) {
+
+      return;
+
+    }
+
+
+    /*
+     * Provider dengan value kosong
+     * adalah placeholder saja.
+     *
+     * Jangan biarkan placeholder
+     * dianggap sebagai provider.
+     */
+
+    placeholder.disabled =
+      true;
+
+    placeholder.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+
+    /*
+     * Jika belum ada provider
+     * yang dipilih, tetap tampilkan
+     * placeholder.
+     */
+
+    if (
+      !provider.value
+    ) {
+
+      provider.value =
+        '';
+
+    }
+
+  }
+
+
+  /* =======================================================
+     GENERATE BUTTON SIZE FIX
+  ======================================================= */
+
+  function fixGenerateButton() {
+
+    const buttons =
+      document.querySelectorAll(
+        '#generateBtn, .generate-btn, [data-generate-button]'
+      );
+
+
+    if (!buttons.length) {
+
+      return;
+
+    }
+
+
+    buttons.forEach(
+      function (button) {
+
+        if (!button) {
+
+          return;
+
+        }
+
+
+        /*
+         * Jangan biarkan flex/grid parent
+         * mengecilkan tombol.
+         */
+
+        button.style.width =
+          '100%';
+
+        button.style.minWidth =
+          '100%';
+
+        button.style.maxWidth =
+          '100%';
+
+        button.style.boxSizing =
+          'border-box';
+
+        button.style.display =
+          'block';
+
+        button.style.flex =
+          '0 0 100%';
+
+        button.style.alignSelf =
+          'stretch';
+
+
+        /*
+         * Jika tombol utama Generate
+         * menggunakan class generate-btn,
+         * pastikan tinggi tetap konsisten.
+         */
+
+        if (
+          button.id ===
+            'generateBtn' ||
+          button.classList.contains(
+            'generate-btn'
+          )
+        ) {
+
+          button.style.height =
+            '82px';
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     UI FIX
+  ======================================================= */
+
+  function refreshGeneratorUI() {
+
+    fixProviderPlaceholder();
+
+    fixGenerateButton();
+
+  }
+
+
+  /* =======================================================
      REFRESH UI
   ======================================================= */
 
@@ -570,6 +748,9 @@
       ensureVideoButton();
 
     }
+
+
+    refreshGeneratorUI();
 
   }
 
@@ -661,6 +842,84 @@
 
 
   /* =======================================================
+     OBSERVE PROVIDER SELECT
+  ======================================================= */
+
+  function observeProviderSelect() {
+
+    const provider =
+      get('provider');
+
+    if (!provider) {
+
+      return;
+
+    }
+
+
+    const observer =
+      new MutationObserver(
+        function () {
+
+          fixProviderPlaceholder();
+
+          fixGenerateButton();
+
+        }
+      );
+
+
+    observer.observe(
+      provider,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     OBSERVE GENERATOR AREA
+  ======================================================= */
+
+  function observeGeneratorArea() {
+
+    const root =
+      document.body;
+
+    if (!root) {
+
+      return;
+
+    }
+
+
+    const observer =
+      new MutationObserver(
+        function () {
+
+          fixProviderPlaceholder();
+
+          fixGenerateButton();
+
+        }
+      );
+
+
+    observer.observe(
+      root,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+  }
+
+
+  /* =======================================================
      EVENTS
   ======================================================= */
 
@@ -718,21 +977,25 @@
 
     observeVideoPreview();
 
+    observeProviderSelect();
+
+    observeGeneratorArea();
+
     refresh();
 
 
     /*
-     * upload.js dapat merender ulang
-     * preview ketika model/provider
-     * berubah.
+     * Provider dan Generator dapat
+     * dirender ulang oleh aplikasi.
      *
-     * Interval hanya menjaga UI.
+     * Interval tetap hanya untuk menjaga
+     * kompatibilitas dengan rendering lama.
      * Tidak menyentuh proses upload.
      */
 
     setInterval(
       refresh,
-      500
+      1000
     );
 
   }
