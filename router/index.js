@@ -249,6 +249,29 @@ function getFriendlyErrorMessage(
     )
   ) {
 
+    if (
+      message.includes(
+        "insufficient quota"
+      ) ||
+      message.includes(
+        "remaining: $0.000000"
+      ) ||
+      message.includes(
+        "remaining: ＄0.000000"
+      ) ||
+      message.includes(
+        "quota"
+      )
+    ) {
+
+      return (
+        "Mohon maaf, saldo API habis. " +
+        "Silahkan hubungi admin."
+      );
+
+    }
+
+
     return raw;
 
   }
@@ -270,6 +293,29 @@ function getFriendlyErrorMessage(
       )
     )
   ) {
+
+    if (
+      message.includes(
+        "insufficient quota"
+      ) ||
+      message.includes(
+        "remaining: $0.000000"
+      ) ||
+      message.includes(
+        "remaining: ＄0.000000"
+      ) ||
+      message.includes(
+        "quota"
+      )
+    ) {
+
+      return (
+        "Mohon maaf, saldo API habis. " +
+        "Silahkan hubungi admin."
+      );
+
+    }
+
 
     return (
       `ChinaAPI [${code}]: ${raw}`
