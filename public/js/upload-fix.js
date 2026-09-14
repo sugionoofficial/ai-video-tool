@@ -15,7 +15,9 @@
    - Tidak mengubah FileReader
    - Tidak mengubah proses upload
    - Provider placeholder bukan provider yang dapat dipilih
-   - Tombol Generate selalu full width
+   - Mengambil fallback capability dari provider adapter
+   - Menjaga aspect ratio, duration dan resolution tetap tersedia
+   - Mengurangi polling berat
 ========================================================= */
 
 (function () {
@@ -71,6 +73,677 @@
       ) &&
       GENZ.upload.videoFiles.length > 0
     );
+
+  }
+
+
+  function normalizeProviderId(value) {
+
+    return String(
+      value || ''
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/[_\s]+/g, '-')
+      .replace(/-+/g, '-');
+
+  }
+
+
+  function normalizeArray(value) {
+
+    if (
+      !Array.isArray(value)
+    ) {
+
+      return [];
+
+    }
+
+    return [
+      ...new Set(
+        value
+          .map(function (item) {
+
+            if (
+              item === null ||
+              item === undefined
+            ) {
+
+              return '';
+
+            }
+
+            if (
+              typeof item === 'object'
+            ) {
+
+              return String(
+                item.id ||
+                item.value ||
+                item.name ||
+                item.label ||
+                item.duration ||
+                ''
+              ).trim();
+
+            }
+
+            return String(
+              item
+            ).trim();
+
+          })
+          .filter(Boolean)
+      )
+    ];
+
+  }
+
+
+  function getCurrentProviderId() {
+
+    const provider =
+      get('provider');
+
+    if (
+      provider &&
+      provider.value
+    ) {
+
+      return normalizeProviderId(
+        provider.value
+      );
+
+    }
+
+    return normalizeProviderId(
+      GENZ.state.provider ||
+      GENZ.state.providerId ||
+      ''
+    );
+
+  }
+
+
+  function getCurrentModelId() {
+
+    const model =
+      get('model');
+
+    if (
+      model &&
+      model.value
+    ) {
+
+      return String(
+        model.value
+      ).trim();
+
+    }
+
+    return String(
+      GENZ.state.model ||
+      GENZ.state.modelId ||
+      ''
+    ).trim();
+
+  }
+
+
+  function getAdapterInfo() {
+
+    const providerId =
+      getCurrentProviderId();
+
+    if (
+      !providerId
+    ) {
+
+      return null;
+
+    }
+
+
+    const registry =
+      window.GENZ_PROVIDERS;
+
+    if (
+      !registry ||
+      typeof registry.getAdapterInfo !==
+        'function'
+    ) {
+
+      return null;
+
+    }
+
+
+    try {
+
+      const info =
+        registry.getAdapterInfo(
+          providerId
+        );
+
+      if (
+        info &&
+        typeof info === 'object'
+      ) {
+
+        return info;
+
+      }
+
+    } catch (_) {}
+
+    return null;
+
+  }
+
+
+  function getModelInfo(
+    adapterInfo
+  ) {
+
+    const modelId =
+      getCurrentModelId();
+
+    if (
+      !adapterInfo ||
+      !modelId
+    ) {
+
+      return null;
+
+    }
+
+
+    const models =
+      Array.isArray(
+        adapterInfo.models
+      )
+        ? adapterInfo.models
+        : [];
+
+
+    const normalizedModelId =
+      String(
+        modelId
+      )
+        .trim()
+        .toLowerCase();
+
+
+    for (
+      const model of models
+    ) {
+
+      if (
+        typeof model ===
+        'string'
+      ) {
+
+        if (
+          model
+            .trim()
+            .toLowerCase() ===
+          normalizedModelId
+        ) {
+
+          return {
+            id: model
+          };
+
+        }
+
+        continue;
+
+      }
+
+
+      if (
+        !model ||
+        typeof model !==
+          'object'
+      ) {
+
+        continue;
+
+      }
+
+
+      const id =
+        String(
+          model.id ||
+          model.model ||
+          model.modelId ||
+          model.slug ||
+          ''
+        )
+          .trim()
+          .toLowerCase();
+
+
+      if (
+        id ===
+        normalizedModelId
+      ) {
+
+        return model;
+
+      }
+
+    }
+
+
+    return null;
+
+  }
+
+
+  function getCapabilities() {
+
+    const adapterInfo =
+      getAdapterInfo();
+
+    if (
+      !adapterInfo
+    ) {
+
+      return {};
+
+    }
+
+
+    const modelInfo =
+      getModelInfo(
+        adapterInfo
+      );
+
+
+    const providerCapabilities =
+      adapterInfo.capabilities &&
+      typeof adapterInfo.capabilities ===
+        'object'
+        ? adapterInfo.capabilities
+        : {};
+
+
+    const modelCapabilities =
+      modelInfo &&
+      modelInfo.capabilities &&
+      typeof modelInfo.capabilities ===
+        'object'
+        ? modelInfo.capabilities
+        : {};
+
+
+    return {
+
+      provider:
+        providerCapabilities,
+
+      model:
+        modelCapabilities,
+
+      durations:
+        normalizeArray(
+          modelCapabilities.durations
+        ).length
+          ? normalizeArray(
+              modelCapabilities.durations
+            )
+          : normalizeArray(
+              adapterInfo.durations
+            ).length
+            ? normalizeArray(
+                adapterInfo.durations
+              )
+            : normalizeArray(
+                providerCapabilities.durations
+              ),
+
+      aspects:
+        normalizeArray(
+          modelCapabilities.aspects
+        ).length
+          ? normalizeArray(
+              modelCapabilities.aspects
+            )
+          : normalizeArray(
+              adapterInfo.aspects
+            ).length
+            ? normalizeArray(
+                adapterInfo.aspects
+              )
+            : normalizeArray(
+                providerCapabilities.aspects
+              ),
+
+      resolutions:
+        normalizeArray(
+          modelCapabilities.resolutions
+        ).length
+          ? normalizeArray(
+              modelCapabilities.resolutions
+            )
+          : normalizeArray(
+              adapterInfo.resolutions
+            ).length
+            ? normalizeArray(
+                adapterInfo.resolutions
+              )
+            : normalizeArray(
+                providerCapabilities.resolutions
+              )
+
+    };
+
+  }
+
+
+  /* =======================================================
+     SET SELECT OPTIONS
+  ======================================================= */
+
+  function setCapabilityOptions(
+    select,
+    values,
+    placeholder
+  ) {
+
+    if (
+      !select
+    ) {
+
+      return false;
+
+    }
+
+
+    const normalized =
+      normalizeArray(
+        values
+      );
+
+
+    if (
+      !normalized.length
+    ) {
+
+      return false;
+
+    }
+
+
+    const currentValue =
+      String(
+        select.value ||
+        ''
+      ).trim();
+
+
+    const fragment =
+      document.createDocumentFragment();
+
+
+    const firstOption =
+      document.createElement(
+        'option'
+      );
+
+    firstOption.value =
+      '';
+
+    firstOption.textContent =
+      placeholder;
+
+    fragment.appendChild(
+      firstOption
+    );
+
+
+    normalized.forEach(
+      function (value) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value =
+          String(
+            value
+          );
+
+        option.textContent =
+          String(
+            value
+          );
+
+        fragment.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    select.replaceChildren(
+      fragment
+    );
+
+
+    if (
+      currentValue &&
+      normalized.some(
+        function (value) {
+
+          return (
+            String(value) ===
+            currentValue
+          );
+
+        }
+      )
+    ) {
+
+      select.value =
+        currentValue;
+
+    } else {
+
+      const stateValue =
+        String(
+          select.dataset.lastValue ||
+          ''
+        ).trim();
+
+      if (
+        stateValue &&
+        normalized.some(
+          function (value) {
+
+            return (
+              String(value) ===
+              stateValue
+            );
+
+          }
+        )
+      ) {
+
+        select.value =
+          stateValue;
+
+      } else if (
+        normalized.length ===
+        1
+      ) {
+
+        select.value =
+          String(
+            normalized[0]
+          );
+
+      } else {
+
+        select.value =
+          '';
+
+      }
+
+    }
+
+
+    select.dataset.capabilityFallback =
+      'true';
+
+    return true;
+
+  }
+
+
+  /* =======================================================
+     CAPABILITY FALLBACK
+  ======================================================= */
+
+  function fixGeneratorCapabilities() {
+
+    const provider =
+      getCurrentProviderId();
+
+    const model =
+      getCurrentModelId();
+
+
+    if (
+      !provider ||
+      !model
+    ) {
+
+      return;
+
+    }
+
+
+    const capabilities =
+      getCapabilities();
+
+
+    if (
+      !capabilities
+    ) {
+
+      return;
+
+    }
+
+
+    const ratio =
+      get('ratio');
+
+    const duration =
+      get('duration');
+
+    const resolution =
+      get('resolution');
+
+
+    /*
+     * Aspect ratio
+     */
+
+    if (
+      ratio &&
+      capabilities.aspects.length
+    ) {
+
+      setCapabilityOptions(
+        ratio,
+        capabilities.aspects,
+        'Pilih aspect ratio'
+      );
+
+    }
+
+
+    /*
+     * Duration
+     */
+
+    if (
+      duration &&
+      capabilities.durations.length
+    ) {
+
+      const values =
+        capabilities.durations
+          .map(function (value) {
+
+            const number =
+              Number(
+                value
+              );
+
+            return Number.isFinite(
+              number
+            )
+              ? number
+              : value;
+
+          })
+          .sort(function (a, b) {
+
+            const na =
+              Number(a);
+
+            const nb =
+              Number(b);
+
+            if (
+              Number.isFinite(na) &&
+              Number.isFinite(nb)
+            ) {
+
+              return na - nb;
+
+            }
+
+            return String(a)
+              .localeCompare(
+                String(b)
+              );
+
+          });
+
+
+      setCapabilityOptions(
+        duration,
+        values,
+        'Pilih durasi'
+      );
+
+    }
+
+
+    /*
+     * Resolution
+     */
+
+    if (
+      resolution &&
+      capabilities.resolutions.length
+    ) {
+
+      setCapabilityOptions(
+        resolution,
+        capabilities.resolutions,
+        'Pilih resolusi'
+      );
+
+    }
 
   }
 
@@ -597,14 +1270,6 @@
     }
 
 
-    /*
-     * Provider dengan value kosong
-     * adalah placeholder saja.
-     *
-     * Jangan biarkan placeholder
-     * dianggap sebagai provider.
-     */
-
     placeholder.disabled =
       true;
 
@@ -613,12 +1278,6 @@
       'true'
     );
 
-
-    /*
-     * Jika belum ada provider
-     * yang dipilih, tetap tampilkan
-     * placeholder.
-     */
 
     if (
       !provider.value
@@ -662,18 +1321,24 @@
 
 
         /*
-         * Jangan biarkan flex/grid parent
-         * mengecilkan tombol.
+         * Tombol Generate dibuat oval,
+         * tidak terlalu lebar.
          */
 
         button.style.width =
-          '100%';
+          '220px';
 
         button.style.minWidth =
-          '100%';
+          '220px';
 
         button.style.maxWidth =
-          '100%';
+          '220px';
+
+        button.style.height =
+          '48px';
+
+        button.style.minHeight =
+          '48px';
 
         button.style.boxSizing =
           'border-box';
@@ -682,28 +1347,50 @@
           'block';
 
         button.style.flex =
-          '0 0 100%';
+          '0 0 220px';
 
         button.style.alignSelf =
-          'stretch';
+          'center';
 
+        button.style.marginLeft =
+          'auto';
 
-        /*
-         * Jika tombol utama Generate
-         * menggunakan class generate-btn,
-         * pastikan tinggi tetap konsisten.
-         */
+        button.style.marginRight =
+          'auto';
+
+        button.style.borderRadius =
+          '999px';
+
+        button.style.background =
+          '#198754';
+
+        button.style.color =
+          '#fff';
+
+        button.style.border =
+          '0';
+
+        button.style.cursor =
+          'pointer';
+
+        button.style.fontWeight =
+          '700';
+
+        button.style.transition =
+          'opacity .15s ease, transform .15s ease';
+
 
         if (
-          button.id ===
-            'generateBtn' ||
-          button.classList.contains(
-            'generate-btn'
-          )
+          button.disabled
         ) {
 
-          button.style.height =
-            '82px';
+          button.style.opacity =
+            '0.55';
+
+        } else {
+
+          button.style.opacity =
+            '1';
 
         }
 
@@ -720,6 +1407,8 @@
   function refreshGeneratorUI() {
 
     fixProviderPlaceholder();
+
+    fixGeneratorCapabilities();
 
     fixGenerateButton();
 
@@ -863,6 +1552,8 @@
 
           fixProviderPlaceholder();
 
+          fixGeneratorCapabilities();
+
           fixGenerateButton();
 
         }
@@ -902,6 +1593,8 @@
 
           fixProviderPlaceholder();
 
+          fixGeneratorCapabilities();
+
           fixGenerateButton();
 
         }
@@ -939,7 +1632,9 @@
 
       'genz-provider-change',
 
-      'genz-providers-loaded'
+      'genz-providers-loaded',
+
+      'change'
 
     ];
 
@@ -949,11 +1644,39 @@
 
         document.addEventListener(
           eventName,
-          function () {
+          function (event) {
 
-            setTimeout(
-              refresh,
-              0
+            if (
+              eventName ===
+              'change'
+            ) {
+
+              const target =
+                event.target;
+
+              if (
+                !target ||
+                !target.id ||
+                ![
+                  'provider',
+                  'model',
+                  'ratio',
+                  'duration',
+                  'resolution'
+                ].includes(
+                  target.id
+                )
+              ) {
+
+                return;
+
+              }
+
+            }
+
+
+            requestAnimationFrame(
+              refresh
             );
 
           }
@@ -982,21 +1705,6 @@
     observeGeneratorArea();
 
     refresh();
-
-
-    /*
-     * Provider dan Generator dapat
-     * dirender ulang oleh aplikasi.
-     *
-     * Interval tetap hanya untuk menjaga
-     * kompatibilitas dengan rendering lama.
-     * Tidak menyentuh proses upload.
-     */
-
-    setInterval(
-      refresh,
-      1000
-    );
 
   }
 
