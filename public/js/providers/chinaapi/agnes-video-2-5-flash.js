@@ -18,15 +18,10 @@ const MODEL_CONFIG = {
   // ==========================================================
   // CREDIT
   // ==========================================================
-  //
-  // Nilai ini menjadi nilai default.
-  // Nantinya dapat diubah melalui halaman Admin > Providers.
-  //
+
   credits: {
     default: 1,
 
-    // Apabila admin mengatur credit berdasarkan durasi,
-    // nilai berikut dapat digunakan oleh sistem.
     duration: {
       4: 1,
       5: 1,
@@ -39,13 +34,11 @@ const MODEL_CONFIG = {
       12: 1
     },
 
-    // Credit berdasarkan mode.
     mode: {
       text: 1,
       reference: 1
     },
 
-    // Credit berdasarkan resolusi.
     resolution: {
       "720P": 1
     }
@@ -148,7 +141,9 @@ const MODEL_CONFIG = {
   payload: {
     model: MODEL_ID,
 
-    size: "720P"
+    size: "720P",
+
+    n: 1
   }
 };
 
@@ -200,16 +195,6 @@ function calculateCredits(options = {}) {
     );
   }
 
-  /*
-   * Untuk sekarang credit model menggunakan
-   * nilai tertinggi dari aturan yang tersedia.
-   *
-   * Ini mencegah credit terhitung 3x hanya karena
-   * duration + mode + resolution sama-sama memiliki
-   * nilai default.
-   *
-   * Nantinya Admin dapat menentukan formula final.
-   */
   return Math.max(
     MODEL_CONFIG.credits.default,
     durationCredit,
@@ -247,6 +232,19 @@ function validate(options = {}) {
       options.mode ||
       "text"
     );
+
+  const referenceImages =
+    Array.isArray(
+      options.referenceImages
+    )
+      ? options.referenceImages.filter(
+          Boolean
+        )
+      : Array.isArray(options.images)
+        ? options.images.filter(
+            Boolean
+          )
+        : [];
 
   if (
     !MODEL_CONFIG.durations.includes(
@@ -288,12 +286,101 @@ function validate(options = {}) {
     );
   }
 
+  if (
+    referenceImages.length >
+    MODEL_CONFIG.reference.maxImages
+  ) {
+    errors.push(
+      `Maksimal ${MODEL_CONFIG.reference.maxImages} gambar referensi untuk ${MODEL_CONFIG.name}.`
+    );
+  }
+
+  if (
+    mode === "reference" &&
+    referenceImages.length === 0
+  ) {
+    errors.push(
+      "Mode reference membutuhkan minimal satu gambar referensi."
+    );
+  }
+
   return {
     valid:
       errors.length === 0,
 
     errors
   };
+}
+
+
+// ============================================================
+// REFERENCE PROMPT
+// ============================================================
+
+function buildReferencePrompt(
+  prompt,
+  referenceImages
+) {
+  const cleanPrompt =
+    String(
+      prompt || ""
+    ).trim();
+
+  const images =
+    Array.isArray(
+      referenceImages
+    )
+      ? referenceImages.filter(
+          Boolean
+        )
+      : [];
+
+  if (
+    !images.length
+  ) {
+    return cleanPrompt;
+  }
+
+  /*
+   * Agnes reference mode mendukung referensi
+   * dengan penanda <Picture N>.
+   *
+   * Jangan hanya mengirim images tanpa menyebutkannya
+   * di prompt karena model dapat memperlakukannya sebagai
+   * referensi lemah.
+   */
+
+  const pictureReferences =
+    images.map(
+      (_, index) =>
+        `<Picture ${index + 1}>`
+    );
+
+  const referenceInstruction =
+    images.length === 1
+      ? [
+          "Use <Picture 1> as the primary visual reference.",
+          "Preserve the same person, face identity, hairstyle, clothing, body appearance, and important visual characteristics from the reference image.",
+          "Do not replace the person with a different person.",
+          "Keep the identity consistent throughout the entire video."
+        ].join(" ")
+      : [
+          `Use ${pictureReferences.join(" and ")} as the primary visual references.`,
+          "Preserve the identity, appearance, clothing, and important visual characteristics from the reference images.",
+          "Do not replace the referenced person or subject with a different person.",
+          "Keep the referenced identity consistent throughout the entire video."
+        ].join(" ");
+
+  if (
+    !cleanPrompt
+  ) {
+    return referenceInstruction;
+  }
+
+  return (
+    `${referenceInstruction} ` +
+    `Create the video according to this instruction: ${cleanPrompt}`
+  );
 }
 
 
@@ -318,7 +405,7 @@ function buildPayload(options = {}) {
       "720P"
     );
 
-  const prompt =
+  const rawPrompt =
     String(
       options.prompt ||
       ""
@@ -331,12 +418,22 @@ function buildPayload(options = {}) {
       ? options.referenceImages.filter(
           Boolean
         )
-      : [];
+      : Array.isArray(options.images)
+        ? options.images.filter(
+            Boolean
+          )
+        : [];
 
   const mode =
     referenceImages.length > 0
       ? "reference"
       : "text";
+
+  const prompt =
+    buildReferencePrompt(
+      rawPrompt,
+      referenceImages
+    );
 
   const payload = {
     model: MODEL_ID,
@@ -352,7 +449,9 @@ function buildPayload(options = {}) {
       resolution,
 
     aspect_ratio:
-      aspectRatio
+      aspectRatio,
+
+    n: 1
   };
 
   if (
