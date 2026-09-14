@@ -1310,19 +1310,6 @@ export async function generate(
    * ==========================================================
    * AGNES REFERENCE IMAGE
    * ==========================================================
-   *
-   * Browser saat ini mengirim:
-   *
-   * data:image/png;base64,...
-   *
-   * Agnes tidak dapat mengambil data URL browser tersebut.
-   *
-   * Upload terlebih dahulu ke Supabase Storage sehingga
-   * Agnes menerima:
-   *
-   * https://.../storage/v1/object/public/reference-media/...
-   *
-   * Model lain tidak melewati blok ini.
    */
 
   if (
@@ -2014,6 +2001,120 @@ export async function status(
 
 
 // ============================================================
+// FETCH VIDEO
+// ============================================================
+//
+// ChinaAPI mengembalikan signed HTTPS URL untuk file video.
+// Tidak perlu endpoint file_id khusus seperti MiniMax.
+//
+// router/video.js akan memanggil:
+// adapter.fetchVideo(target, provider, env)
+//
+// target dapat berasal dari:
+// 1. metadata.provider_file_id
+// 2. job.video_url
+//
+// Untuk ChinaAPI yang digunakan adalah job.video_url.
+//
+// ============================================================
+
+export async function fetchVideo(
+  target,
+  provider = {},
+  env = {}
+) {
+
+  const videoUrl =
+    String(
+      target || ""
+    ).trim();
+
+
+  if (
+    !videoUrl
+  ) {
+
+    throw providerError(
+      "URL video ChinaAPI tidak valid.",
+      400,
+      "invalid_video_url"
+    );
+
+  }
+
+
+  /*
+   * ChinaAPI mengembalikan signed URL HTTPS.
+   *
+   * Jangan kirim URL internal seperti:
+   * /api/video
+   *
+   * Jangan izinkan HTTP biasa.
+   */
+  if (
+    !/^https:\/\//i.test(
+      videoUrl
+    )
+  ) {
+
+    throw providerError(
+      "URL video ChinaAPI harus menggunakan HTTPS.",
+      400,
+      "invalid_video_url"
+    );
+
+  }
+
+
+  let response;
+
+
+  try {
+
+    response =
+      await fetch(
+        videoUrl,
+        {
+
+          method:
+            "GET",
+
+          redirect:
+            "follow"
+
+        }
+      );
+
+  } catch {
+
+    throw providerError(
+      "Gagal mengambil file video dari ChinaAPI.",
+      502,
+      "video_fetch_error"
+    );
+
+  }
+
+
+  if (
+    !response.ok
+  ) {
+
+    throw providerError(
+      `Gagal mengambil video ChinaAPI. HTTP ${response.status}.`,
+      502,
+      "video_fetch_error"
+    );
+
+  }
+
+
+  return response;
+
+}
+
+
+// ============================================================
 // CREATE VIDEO
 // ============================================================
 
@@ -2187,6 +2288,8 @@ export const provider = {
   generate,
 
   status,
+
+  fetchVideo,
 
   createVideo,
 
