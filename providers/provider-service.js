@@ -10,6 +10,10 @@ import {
   getAdapterInfo
 } from "../public/js/providers/index.js";
 
+import {
+  getCredits as getChinaApiModelCredits
+} from "../public/js/providers/chinaapi/index.js";
+
 
 /*
  * ============================================================
@@ -22,8 +26,220 @@ import {
  *
  * Capability provider berasal dari adapter masing-masing,
  * bukan hard-coded di frontend.
+ *
+ * Untuk ChinaAPI:
+ *
+ * provider.config.modelCredits
+ *
+ * boleh digunakan untuk override credit per model.
+ *
+ * Contoh:
+ *
+ * {
+ *   "modelCredits": {
+ *     "agnes-video-2.5-flash": 1,
+ *     "doubao-seedance-2-0-mini-260615": 2
+ *   }
+ * }
+ *
+ * Hanya bagian modelCredits yang aman dikirim ke frontend.
  * ============================================================
  */
+
+
+/*
+ * ============================================================
+ * CONSTANT
+ * ============================================================
+ */
+
+const MAX_MODEL_CREDIT =
+  1000;
+
+
+/*
+ * ============================================================
+ * NORMALIZE MODEL CREDIT
+ * ============================================================
+ */
+
+function normalizeModelCredit(
+  value
+) {
+  const credit =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      credit
+    ) ||
+    !Number.isInteger(
+      credit
+    ) ||
+    credit < 1 ||
+    credit > MAX_MODEL_CREDIT
+  ) {
+    return null;
+  }
+
+  return credit;
+}
+
+
+/*
+ * ============================================================
+ * NORMALIZE MODEL CREDIT MAP
+ * ============================================================
+ *
+ * Hanya menerima:
+ *
+ * {
+ *   modelId: number
+ * }
+ *
+ * Semua nilai invalid dibuang.
+ * ============================================================
+ */
+
+function normalizeModelCredits(
+  value
+) {
+  if (
+    !value ||
+    typeof value !==
+      "object" ||
+    Array.isArray(
+      value
+    )
+  ) {
+    return {};
+  }
+
+  const result = {};
+
+  Object.entries(
+    value
+  ).forEach(
+    function (
+      entry
+    ) {
+      const model =
+        String(
+          entry[0] || ""
+        ).trim();
+
+      if (
+        !model
+      ) {
+        return;
+      }
+
+      const credit =
+        normalizeModelCredit(
+          entry[1]
+        );
+
+      if (
+        credit === null
+      ) {
+        return;
+      }
+
+      result[
+        model
+      ] =
+        credit;
+    }
+  );
+
+  return result;
+}
+
+
+/*
+ * ============================================================
+ * GET DEFAULT MODEL CREDITS
+ * ============================================================
+ *
+ * Credit default berasal dari model adapter.
+ *
+ * Ini memastikan sistem tetap bekerja walaupun admin belum
+ * menyimpan override pada database.
+ * ============================================================
+ */
+
+function getDefaultModelCredits(
+  adapterId,
+  models
+) {
+  const normalizedAdapter =
+    String(
+      adapterId || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalizedAdapter !==
+    "chinaapi"
+  ) {
+    return {};
+  }
+
+  const result = {};
+
+  const modelList =
+    Array.isArray(
+      models
+    )
+      ? models
+      : [];
+
+  modelList.forEach(
+    function (
+      model
+    ) {
+      const modelId =
+        String(
+          model || ""
+        ).trim();
+
+      if (
+        !modelId
+      ) {
+        return;
+      }
+
+      try {
+        const credit =
+          normalizeModelCredit(
+            getChinaApiModelCredits(
+              modelId
+            )
+          );
+
+        if (
+          credit !==
+          null
+        ) {
+          result[
+            modelId
+          ] =
+            credit;
+        }
+      } catch (_) {
+        /*
+         * Model tanpa konfigurasi credit
+         * tidak dimasukkan.
+         */
+      }
+    }
+  );
+
+  return result;
+}
 
 
 /*
@@ -44,7 +260,9 @@ export async function getProvider(
       .trim()
       .toLowerCase();
 
-  if (!providerId) {
+  if (
+    !providerId
+  ) {
     throw new HttpError(
       "Provider tidak valid.",
       400
@@ -77,7 +295,9 @@ export async function getProvider(
       env
     );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw new HttpError(
       "Gagal mengambil konfigurasi provider.",
       502
@@ -88,11 +308,15 @@ export async function getProvider(
     await response.json();
 
   const provider =
-    Array.isArray(rows)
+    Array.isArray(
+      rows
+    )
       ? rows[0]
       : null;
 
-  if (!provider) {
+  if (
+    !provider
+  ) {
     throw new HttpError(
       "Provider tidak ditemukan atau tidak aktif.",
       404
@@ -120,13 +344,21 @@ export async function getProvider(
  * Capability diambil dari adapter registry.
  * Dengan demikian frontend tidak perlu mengetahui
  * aturan khusus masing-masing provider.
+ *
+ * Khusus ChinaAPI:
+ * - modelCredits hanya berisi angka credit
+ * - config lain tidak dikirim
+ * - jika admin belum mengatur override, nilai default model
+ *   dikirim sebagai fallback
  * ============================================================
  */
 
 export function publicProvider(
   provider
 ) {
-  if (!provider) {
+  if (
+    !provider
+  ) {
     return null;
   }
 
@@ -150,7 +382,8 @@ export function publicProvider(
 
   const capabilities =
     adapterInfo?.capabilities &&
-    typeof adapterInfo.capabilities === "object"
+    typeof adapterInfo.capabilities ===
+      "object"
       ? adapterInfo.capabilities
       : {};
 
@@ -201,6 +434,47 @@ export function publicProvider(
         )
         ? capabilities.resolutions
         : [];
+
+  /*
+   * ==========================================================
+   * MODEL CREDIT
+   * ==========================================================
+   *
+   * Default:
+   *
+   * adapter model config
+   *
+   * Override:
+   *
+   * provider.config.modelCredits
+   *
+   * Contoh:
+   *
+   * modelCredits:
+   * {
+   *   "agnes-video-2.5-flash": 3,
+   *   "doubao-seedance-2-0-mini-260615": 5
+   * }
+   *
+   * Override hanya diterima jika nilainya valid.
+   * ==========================================================
+   */
+
+  const defaultModelCredits =
+    getDefaultModelCredits(
+      adapterId,
+      models
+    );
+
+  const configuredModelCredits =
+    normalizeModelCredits(
+      provider?.config?.modelCredits
+    );
+
+  const modelCredits = {
+    ...defaultModelCredits,
+    ...configuredModelCredits
+  };
 
   return {
     id:
@@ -258,6 +532,17 @@ export function publicProvider(
       aspects,
 
       resolutions
-    }
+    },
+
+    /*
+     * ========================================================
+     * MODEL CREDIT
+     * ========================================================
+     *
+     * Aman untuk frontend.
+     *
+     * Tidak ada config provider lain yang ikut dikirim.
+     */
+    modelCredits
   };
 }
