@@ -4,7 +4,6 @@
  * ============================================================ */
 
 (function () {
-
   "use strict";
 
   const API_TIMEOUT = 15000;
@@ -31,19 +30,9 @@
     initialized: false
   };
 
-
-  /* ============================================================
-   * DOM
-   * ============================================================ */
-
   function $(id) {
     return document.getElementById(id);
   }
-
-
-  /* ============================================================
-   * HELPERS
-   * ============================================================ */
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -54,8 +43,24 @@
       .replace(/'/g, "&#039;");
   }
 
+  function normalizeObject(value) {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value)
+    ) {
+      return {};
+    }
 
-  function normalizeInteger(value, fallback, min, max) {
+    return value;
+  }
+
+  function normalizeInteger(
+    value,
+    fallback = 1,
+    min = 1,
+    max = 1000
+  ) {
     const number = Number.parseInt(value, 10);
 
     if (!Number.isFinite(number)) {
@@ -67,7 +72,6 @@
       Math.max(min, number)
     );
   }
-
 
   function normalizeDiscount(value) {
     const number = Number.parseInt(value, 10);
@@ -82,61 +86,34 @@
     );
   }
 
+  function getEffectiveCredit(
+    credit,
+    discount
+  ) {
+    const base =
+      normalizeInteger(
+        credit,
+        1,
+        1,
+        1000
+      );
 
-  function normalizeObject(value) {
-    if (
-      !value ||
-      typeof value !== "object" ||
-      Array.isArray(value)
-    ) {
-      return {};
-    }
-
-    return value;
-  }
-
-
-  function getConfigValue(object, key, fallback) {
-    const source = normalizeObject(object);
-
-    if (
-      source[key] === undefined ||
-      source[key] === null
-    ) {
-      return fallback;
-    }
-
-    return source[key];
-  }
-
-
-  function getEffectiveCredit(credit, discount) {
-    const base = normalizeInteger(
-      credit,
-      1,
-      1,
-      1000
-    );
-
-    const percentage = normalizeDiscount(
-      discount
-    );
-
-    if (percentage <= 0) {
-      return base;
-    }
+    const percentage =
+      normalizeDiscount(
+        discount
+      );
 
     return Math.max(
       1,
       Math.min(
         1000,
         Math.round(
-          base * (1 - percentage / 100)
+          base *
+          (1 - percentage / 100)
         )
       )
     );
   }
-
 
   function safeModelKey(modelId) {
     return String(modelId || "")
@@ -146,31 +123,60 @@
       );
   }
 
+  function getValue(
+    object,
+    key,
+    fallback
+  ) {
+    const source =
+      normalizeObject(
+        object
+      );
 
-  function setStatus(message, type) {
-    const el = $("providerStatus");
+    return source[key] !== undefined &&
+      source[key] !== null
+      ? source[key]
+      : fallback;
+  }
+
+  function setStatus(
+    message,
+    type
+  ) {
+    const el =
+      $("providerStatus");
 
     if (!el) {
       return;
     }
 
-    el.textContent = message || "";
-    el.className = "admin-status-message";
+    el.textContent =
+      message || "";
+
+    el.className =
+      "admin-status-message";
 
     if (type) {
-      el.classList.add(type);
+      el.classList.add(
+        type
+      );
     }
   }
 
-
-  function setLoadingMessage(message) {
-    const loading = $("providerLoading");
+  function setLoadingMessage(
+    message
+  ) {
+    const loading =
+      $("providerLoading");
 
     if (!loading) {
       return;
     }
 
-    const paragraph = loading.querySelector("p");
+    const paragraph =
+      loading.querySelector(
+        "p"
+      );
 
     if (paragraph) {
       paragraph.textContent =
@@ -179,7 +185,6 @@
     }
   }
 
-
   function withTimeout(
     promise,
     ms,
@@ -187,32 +192,40 @@
   ) {
     let timer;
 
-    const timeout = new Promise(
-      function (_, reject) {
-        timer = setTimeout(
-          function () {
-            const error =
-              new Error(message);
+    const timeout =
+      new Promise(
+        function (_, reject) {
+          timer =
+            setTimeout(
+              function () {
+                const error =
+                  new Error(
+                    message
+                  );
 
-            error.status = 408;
+                error.status =
+                  408;
 
-            reject(error);
-          },
-          ms
-        );
-      }
-    );
+                reject(
+                  error
+                );
+              },
+              ms
+            );
+        }
+      );
 
     return Promise.race([
       promise,
       timeout
     ]).finally(
       function () {
-        clearTimeout(timer);
+        clearTimeout(
+          timer
+        );
       }
     );
   }
-
 
   /* ============================================================
    * AUTH
@@ -229,7 +242,8 @@
           "Supabase client tidak tersedia."
         );
 
-      error.status = 503;
+      error.status =
+        503;
 
       throw error;
     }
@@ -248,7 +262,8 @@
               Accept:
                 "application/json"
             },
-            cache: "no-store"
+            cache:
+              "no-store"
           }
         ),
         CONFIG_TIMEOUT,
@@ -274,12 +289,14 @@
 
     const supabaseUrl =
       String(
-        config?.supabaseUrl || ""
+        config?.supabaseUrl ||
+        ""
       ).trim();
 
     const publishableKey =
       String(
-        config?.supabasePublishableKey || ""
+        config?.supabasePublishableKey ||
+        ""
       ).trim();
 
     if (
@@ -291,7 +308,8 @@
           "Konfigurasi Supabase belum tersedia."
         );
 
-      error.status = 503;
+      error.status =
+        503;
 
       throw error;
     }
@@ -302,34 +320,23 @@
         publishableKey,
         {
           auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            storage: window.localStorage
+            persistSession:
+              true,
+            autoRefreshToken:
+              true,
+            detectSessionInUrl:
+              true,
+            storage:
+              window.localStorage
           }
         }
       );
-
-    if (
-      !client ||
-      !client.auth
-    ) {
-      const error =
-        new Error(
-          "Supabase authentication client tidak tersedia."
-        );
-
-      error.status = 503;
-
-      throw error;
-    }
 
     window.GENZ_AUTH_CLIENT =
       client;
 
     return client;
   }
-
 
   async function getSupabaseClient() {
     if (
@@ -373,7 +380,6 @@
     return createSupabaseClient();
   }
 
-
   async function getAccessToken() {
     const client =
       await getSupabaseClient();
@@ -398,7 +404,8 @@
           "Sesi login tidak ditemukan."
         );
 
-      error.status = 401;
+      error.status =
+        401;
 
       throw error;
     }
@@ -406,15 +413,14 @@
     return token;
   }
 
-
   /* ============================================================
    * API
    * ============================================================ */
 
-  async function api(path, options) {
-    const opts =
-      options || {};
-
+  async function api(
+    path,
+    options = {}
+  ) {
     const token =
       await getAccessToken();
 
@@ -428,36 +434,18 @@
 
     headers.set(
       "Authorization",
-      "Bearer " + token
+      "Bearer " +
+        token
     );
 
     if (
-      opts.body !== undefined &&
-      opts.body !== null
+      options.body !==
+      undefined &&
+      options.body !== null
     ) {
       headers.set(
         "Content-Type",
         "application/json; charset=utf-8"
-      );
-    }
-
-    if (opts.headers) {
-      Object.keys(
-        opts.headers
-      ).forEach(
-        function (key) {
-          if (
-            key.toLowerCase() ===
-            "content-type"
-          ) {
-            return;
-          }
-
-          headers.set(
-            key,
-            opts.headers[key]
-          );
-        }
       );
     }
 
@@ -478,12 +466,13 @@
           path,
           {
             method:
-              opts.method || "GET",
+              options.method ||
+              "GET",
 
             headers,
 
             body:
-              opts.body,
+              options.body,
 
             signal:
               controller.signal,
@@ -518,7 +507,8 @@
 
           if (text) {
             data = {
-              message: text
+              message:
+                text
             };
           }
         } catch (_) {
@@ -539,19 +529,14 @@
         error.status =
           response.status;
 
-        error.data =
-          data;
-
         throw error;
       }
 
       return data;
-
     } catch (error) {
       if (
-        error &&
-        error.name ===
-          "AbortError"
+        error?.name ===
+        "AbortError"
       ) {
         const timeoutError =
           new Error(
@@ -565,22 +550,31 @@
       }
 
       throw error;
-
     } finally {
-      clearTimeout(timer);
+      clearTimeout(
+        timer
+      );
     }
   }
 
-
   /* ============================================================
-   * NORMALIZER
+   * NORMALIZE PROVIDER
    * ============================================================ */
 
-  function normalizeProvider(provider) {
+  function normalizeProvider(
+    provider
+  ) {
     const item =
       provider || {};
 
+    const config =
+      normalizeObject(
+        item.config
+      );
+
     return {
+      ...item,
+
       id:
         item.id ??
         item.provider_id ??
@@ -595,16 +589,19 @@
         item.adapter ??
         "",
 
-      config:
-        normalizeObject(
-          item.config
-        ),
+      config,
 
       enabled:
-        item.enabled !== undefined
-          ? Boolean(item.enabled)
-          : item.active !== undefined
-            ? Boolean(item.active)
+        item.enabled !==
+        undefined
+          ? Boolean(
+              item.enabled
+            )
+          : item.active !==
+            undefined
+            ? Boolean(
+                item.active
+              )
             : true,
 
       apiKey:
@@ -616,456 +613,147 @@
         Boolean(
           item.apiKeySet ||
           item.api_key
-        ),
-
-      createdAt:
-        item.created_at ??
-        null,
-
-      updatedAt:
-        item.updated_at ??
-        null
+        )
     };
   }
 
-
   /* ============================================================
-   * VIEW
+   * MODEL SOURCE MERGER
+   *
+   * Penting:
+   * Backend dapat mengirim:
+   *
+   * provider.models
+   * provider.capabilities.models
+   * provider.modelCredits
+   * provider.modelDiscounts
+   * provider.modelEnabled
+   *
+   * bukan hanya provider.config.*
    * ============================================================ */
 
-  function showApp() {
-    const loading =
-      $("providerLoading");
-
-    const denied =
-      $("providerDenied");
-
-    const app =
-      $("providerApp");
-
-    if (loading) {
-      loading.hidden = true;
-    }
-
-    if (denied) {
-      denied.hidden = true;
-    }
-
-    if (app) {
-      app.hidden = false;
-    }
-  }
-
-
-  function showDenied(message) {
-    const loading =
-      $("providerLoading");
-
-    const denied =
-      $("providerDenied");
-
-    const app =
-      $("providerApp");
-
-    if (loading) {
-      loading.hidden = true;
-    }
-
-    if (app) {
-      app.hidden = true;
-    }
-
-    if (denied) {
-      denied.hidden = false;
-
-      const paragraphs =
-        denied.querySelectorAll(
-          "p"
-        );
-
-      if (paragraphs.length) {
-        paragraphs[
-          paragraphs.length - 1
-        ].textContent =
-          message ||
-          "Akses ditolak.";
-      }
-    }
-
-    setStatus(
-      message ||
-      "Akses ditolak.",
-      "error"
-    );
-  }
-
-
-  /* ============================================================
-   * PROVIDER LIST
-   * ============================================================ */
-
-  function renderProviders() {
-    const list =
-      $("providerList");
-
-    const count =
-      $("providerCount");
-
-    if (!list) {
-      return;
-    }
-
-    const providers =
-      state.providers.map(
-        normalizeProvider
+  function getModelSource(
+    provider
+  ) {
+    const item =
+      normalizeProvider(
+        provider
       );
 
-    if (count) {
-      count.textContent =
-        providers.length +
-        (
-          providers.length === 1
-            ? " provider"
-            : " providers"
-        );
-    }
+    const config =
+      normalizeObject(
+        item.config
+      );
 
-    if (!providers.length) {
-      list.innerHTML =
-        '<div class="admin-empty">' +
-          "<strong>Belum ada provider.</strong>" +
-          "<br>" +
-          "<span>" +
-            "Tambahkan provider pertama untuk mulai menggunakan sistem." +
-          "</span>" +
-        "</div>";
+    const sources = [
+      item,
+      config,
+      item.capabilities,
+      config.capabilities
+    ];
 
-      return;
-    }
-
-    list.innerHTML =
-      providers
-        .map(
-          function (provider) {
-            const active =
-              provider.enabled;
-
+    return {
+      models:
+        sources.find(
+          function (source) {
             return (
-              '<div class="admin-list-item" ' +
-                'data-provider-id="' +
-                  escapeHtml(
-                    provider.id
-                  ) +
-              '">' +
-
-                '<div class="admin-list-main">' +
-
-                  "<h3>" +
-                    escapeHtml(
-                      provider.name ||
-                      provider.id
-                    ) +
-                  "</h3>" +
-
-                  "<p>ID: " +
-                    escapeHtml(
-                      provider.id
-                    ) +
-                  "</p>" +
-
-                  "<p>Adapter: " +
-                    escapeHtml(
-                      provider.adapter ||
-                      "-"
-                    ) +
-                  "</p>" +
-
-                  "<p>API Key: " +
-                    (
-                      provider.apiKeySet
-                        ? "Tersedia"
-                        : "Belum diatur"
-                    ) +
-                  "</p>" +
-
-                  '<span class="status-badge ' +
-                    (
-                      active
-                        ? "active"
-                        : "inactive"
-                    ) +
-                  '">' +
-                    (
-                      active
-                        ? "Aktif"
-                        : "Nonaktif"
-                    ) +
-                  "</span>" +
-
-                "</div>" +
-
-                '<div class="admin-actions">' +
-
-                  '<button type="button" ' +
-                    'data-action="edit" ' +
-                    'data-id="' +
-                      escapeHtml(
-                        provider.id
-                      ) +
-                    '">' +
-                    "Edit" +
-                  "</button>" +
-
-                  '<button type="button" ' +
-                    'data-action="toggle" ' +
-                    'data-id="' +
-                      escapeHtml(
-                        provider.id
-                      ) +
-                    '">' +
-                    (
-                      active
-                        ? "Deactivate"
-                        : "Activate"
-                    ) +
-                  "</button>" +
-
-                  '<button type="button" ' +
-                    'data-action="delete" ' +
-                    'data-id="' +
-                      escapeHtml(
-                        provider.id
-                      ) +
-                    '">' +
-                    "Delete" +
-                  "</button>" +
-
-                "</div>" +
-
-              "</div>"
+              Array.isArray(
+                source?.models
+              ) &&
+              source.models.length
             );
           }
-        )
-        .join("");
-  }
+        )?.models || [],
 
-
-  async function loadProviders() {
-    if (state.loading) {
-      return;
-    }
-
-    state.loading = true;
-
-    const list =
-      $("providerList");
-
-    if (list) {
-      list.innerHTML =
-        '<div class="admin-loading">' +
-          "Memuat provider..." +
-        "</div>";
-    }
-
-    try {
-      const data =
-        await api(
-          "/api/admin/providers",
-          {
-            method: "GET"
-          }
-        );
-
-      const providers =
-        Array.isArray(
-          data?.providers
-        )
-          ? data.providers
-          : Array.isArray(data)
-            ? data
-            : Array.isArray(
-                data?.data
-              )
-              ? data.data
-              : [];
-
-      state.providers =
-        providers.map(
-          normalizeProvider
-        );
-
-      renderProviders();
-
-      setStatus(
-        state.providers.length +
-        " provider berhasil dimuat.",
-        "success"
-      );
-
-    } catch (error) {
-      console.error(
-        "[GEN-Z.AI Provider] Load error:",
-        error
-      );
-
-      if (error.status === 401) {
-        showDenied(
-          "Sesi login tidak ditemukan."
-        );
-        return;
-      }
-
-      if (error.status === 403) {
-        showDenied(
-          "Akun ini tidak memiliki akses administrator."
-        );
-        return;
-      }
-
-      state.providers = [];
-
-      renderProviders();
-
-      setStatus(
-        error.message ||
-        "Gagal memuat provider.",
-        "error"
-      );
-
-    } finally {
-      state.loading = false;
-    }
-  }
-
-
-  /* ============================================================
-   * MODEL SETTINGS
-   *
-   * Credit dan diskon sekarang bersifat GENERIC.
-   *
-   * Model bisa berasal dari:
-   * 1. modelCredits / modelDiscounts yang sudah tersimpan
-   * 2. modelEnabled
-   * 3. modelIds / models di config
-   * 4. model ChinaAPI bawaan
-   * ============================================================ */
-
-  function getConfiguredModelIds(config) {
-    const ids = new Set();
-
-    const modelCredits =
-      normalizeObject(
-        config.modelCredits
-      );
-
-    const modelDiscounts =
-      normalizeObject(
-        config.modelDiscounts
-      );
-
-    const modelEnabled =
-      normalizeObject(
-        config.modelEnabled
-      );
-
-    Object.keys(
-      modelCredits
-    ).forEach(
-      function (id) {
-        if (id) {
-          ids.add(id);
-        }
-      }
-    );
-
-    Object.keys(
-      modelDiscounts
-    ).forEach(
-      function (id) {
-        if (id) {
-          ids.add(id);
-        }
-      }
-    );
-
-    Object.keys(
-      modelEnabled
-    ).forEach(
-      function (id) {
-        if (id) {
-          ids.add(id);
-        }
-      }
-    );
-
-    if (Array.isArray(config.modelIds)) {
-      config.modelIds.forEach(
-        function (id) {
-          if (id) {
-            ids.add(
-              String(id)
+      modelIds:
+        sources.find(
+          function (source) {
+            return (
+              Array.isArray(
+                source?.modelIds
+              ) &&
+              source.modelIds.length
             );
           }
+        )?.modelIds || [],
+
+      modelCredits:
+        {
+          ...normalizeObject(
+            config.modelCredits
+          ),
+          ...normalizeObject(
+            item.modelCredits
+          )
+        },
+
+      modelDiscounts:
+        {
+          ...normalizeObject(
+            config.modelDiscounts
+          ),
+          ...normalizeObject(
+            item.modelDiscounts
+          )
+        },
+
+      modelEnabled:
+        {
+          ...normalizeObject(
+            config.modelEnabled
+          ),
+          ...normalizeObject(
+            item.modelEnabled
+          )
         }
-      );
-    }
-
-    if (Array.isArray(config.models)) {
-      config.models.forEach(
-        function (model) {
-          const id =
-            typeof model === "string"
-              ? model
-              : model?.id ||
-                model?.model ||
-                model?.name;
-
-          if (id) {
-            ids.add(
-              String(id)
-            );
-          }
-        }
-      );
-    }
-
-    return Array.from(ids);
+    };
   }
-
 
   function getModelDefinitions(
     provider
   ) {
-    const config =
-      normalizeObject(
-        provider?.config
+    const item =
+      normalizeProvider(
+        provider
       );
 
-    const definitions = [];
-    const existing = new Set();
+    const source =
+      getModelSource(
+        item
+      );
+
+    const definitions =
+      [];
+
+    const seen =
+      new Set();
 
     function addModel(
       id,
       name,
-      defaultCredit
+      credit
     ) {
       const modelId =
         String(
           id || ""
         ).trim();
 
-      if (!modelId) {
+      if (
+        !modelId ||
+        seen.has(
+          modelId
+        )
+      ) {
         return;
       }
 
-      if (existing.has(modelId)) {
-        return;
-      }
-
-      existing.add(modelId);
+      seen.add(
+        modelId
+      );
 
       definitions.push({
-        id: modelId,
+        id:
+          modelId,
 
         name:
           String(
@@ -1075,7 +763,7 @@
 
         defaultCredit:
           normalizeInteger(
-            defaultCredit,
+            credit,
             1,
             1,
             1000
@@ -1083,32 +771,11 @@
       });
     }
 
-    if (
-      String(
-        provider?.adapter ||
-        ""
-      ).trim().toLowerCase() ===
-      "chinaapi"
-    ) {
-      CHINAAPI_MODELS.forEach(
-        function (model) {
-          addModel(
-            model.id,
-            model.name,
-            model.defaultCredit
-          );
-        }
-      );
-    }
-
-    const models =
-      Array.isArray(
-        config.models
-      )
-        ? config.models
-        : [];
-
-    models.forEach(
+    /*
+     * Model yang benar-benar dikirim
+     * oleh backend.
+     */
+    source.models.forEach(
       function (model) {
         if (
           typeof model ===
@@ -1117,87 +784,150 @@
           addModel(
             model,
             model,
+            source.modelCredits[
+              model
+            ] ??
             1
           );
 
           return;
         }
 
+        if (
+          model &&
+          typeof model ===
+            "object"
+        ) {
+          const id =
+            model.id ||
+            model.model ||
+            model.modelId ||
+            model.value;
+
+          const name =
+            model.name ||
+            model.label ||
+            model.title ||
+            id;
+
+          const credit =
+            model.credit ??
+            model.credits ??
+            model.defaultCredit ??
+            source.modelCredits[
+              id
+            ] ??
+            1;
+
+          addModel(
+            id,
+            name,
+            credit
+          );
+        }
+      }
+    );
+
+    /*
+     * modelIds dari backend.
+     */
+    source.modelIds.forEach(
+      function (id) {
         addModel(
-          model?.id ||
-          model?.model ||
-          model?.name,
-
-          model?.name ||
-          model?.label ||
-          model?.id ||
-          model?.model,
-
-          model?.credit ??
-          model?.credits ??
-          model?.defaultCredit ??
+          id,
+          id,
+          source.modelCredits[
+            id
+          ] ??
           1
         );
       }
     );
 
-    getConfiguredModelIds(
-      config
-    ).forEach(
+    /*
+     * Model yang sudah memiliki
+     * credit / diskon / enabled.
+     *
+     * Ini penting supaya model tetap
+     * muncul walaupun endpoint hanya
+     * mengirim mapping konfigurasi.
+     */
+    [
+      ...Object.keys(
+        source.modelCredits
+      ),
+      ...Object.keys(
+        source.modelDiscounts
+      ),
+      ...Object.keys(
+        source.modelEnabled
+      )
+    ].forEach(
       function (id) {
         addModel(
           id,
           id,
-          getConfigValue(
-            config.modelCredits,
-            id,
-            1
-          )
+          source.modelCredits[
+            id
+          ] ??
+          1
         );
       }
     );
 
+    /*
+     * ChinaAPI fallback.
+     */
+    if (
+      String(
+        item.adapter ||
+        ""
+      ).toLowerCase() ===
+      "chinaapi"
+    ) {
+      CHINAAPI_MODELS.forEach(
+        function (model) {
+          addModel(
+            model.id,
+            model.name,
+            source.modelCredits[
+              model.id
+            ] ??
+            model.defaultCredit
+          );
+        }
+      );
+    }
+
     return definitions;
   }
 
-
   function getModelSettings(
-    config,
+    provider,
     model
   ) {
-    const safeConfig =
-      normalizeObject(
-        config
-      );
-
-    const enabled =
-      getConfigValue(
-        safeConfig.modelEnabled,
-        model.id,
-        true
-      );
-
-    const credit =
-      getConfigValue(
-        safeConfig.modelCredits,
-        model.id,
-        model.defaultCredit
-      );
-
-    const discount =
-      getConfigValue(
-        safeConfig.modelDiscounts,
-        model.id,
-        0
+    const source =
+      getModelSource(
+        provider
       );
 
     return {
       enabled:
-        Boolean(enabled),
+        source.modelEnabled[
+          model.id
+        ] !== undefined
+          ? Boolean(
+              source.modelEnabled[
+                model.id
+              ]
+            )
+          : true,
 
       credit:
         normalizeInteger(
-          credit,
+          source.modelCredits[
+            model.id
+          ],
           model.defaultCredit,
           1,
           1000
@@ -1205,20 +935,21 @@
 
       discount:
         normalizeDiscount(
-          discount
+          source.modelDiscounts[
+            model.id
+          ] ??
+          0
         )
     };
   }
 
+  /* ============================================================
+   * MODEL UI
+   * ============================================================ */
 
   function renderModelSettings(
     provider
   ) {
-    const config =
-      normalizeObject(
-        provider?.config
-      );
-
     const models =
       getModelDefinitions(
         provider
@@ -1227,59 +958,51 @@
     if (!models.length) {
       return (
         '<div class="provider-model-settings" ' +
-          'style="' +
-            "margin-top:18px;" +
-            "padding:16px;" +
-            "border:1px solid rgba(127,127,127,.22);" +
-            "border-radius:12px;" +
-            "background:rgba(127,127,127,.05);" +
-          '">' +
+        'style="' +
+        "margin-top:18px;" +
+        "padding:16px;" +
+        "border:1px solid rgba(127,127,127,.22);" +
+        "border-radius:12px;" +
+        "background:rgba(127,127,127,.05);" +
+        '">' +
 
-          "<h4 " +
-            'style="margin:0 0 6px;font-size:16px;">' +
-            "Credit & Diskon Model" +
-          "</h4>" +
+        "<h4 style=\"margin:0 0 6px;\">" +
+        "Credit & Diskon Model" +
+        "</h4>" +
 
-          "<p " +
-            'style="margin:0;opacity:.72;font-size:13px;">' +
-            "Belum ada model yang terdaftar pada konfigurasi provider. " +
-            "Tambahkan model melalui Config untuk mengatur credit dan diskon." +
-          "</p>" +
+        "<p style=\"margin:0;opacity:.7;\">" +
+        "Model belum tersedia dari konfigurasi provider." +
+        "</p>" +
 
         "</div>"
       );
     }
 
-    let html = "";
-
-    html +=
+    let html =
       '<div class="provider-model-settings" ' +
-        'style="' +
-          "margin-top:18px;" +
-          "padding:16px;" +
-          "border:1px solid rgba(127,127,127,.22);" +
-          "border-radius:12px;" +
-          "background:rgba(127,127,127,.05);" +
-        '">' +
+      'style="' +
+      "margin-top:18px;" +
+      "padding:16px;" +
+      "border:1px solid rgba(127,127,127,.22);" +
+      "border-radius:12px;" +
+      "background:rgba(127,127,127,.05);" +
+      '">' +
 
-        "<h4 " +
-          'style="margin:0 0 6px;font-size:16px;">' +
-          "Credit & Diskon Model" +
-        "</h4>" +
+      "<h4 style=\"margin:0 0 6px;\">" +
+      "Credit & Diskon Model" +
+      "</h4>" +
 
-        "<p " +
-          'style="margin:0 0 14px;opacity:.72;font-size:13px;">' +
-          "Atur status model, credit dasar, dan diskon. " +
-          "Credit efektif dihitung otomatis." +
-        "</p>" +
+      "<p style=\"margin:0 0 14px;opacity:.7;\">" +
+      "Atur credit dasar dan diskon untuk setiap model." +
+      "</p>" +
 
-        '<div style="display:grid;gap:12px;">';
+      '<div style="display:grid;gap:12px;">';
 
     models.forEach(
       function (model) {
         const settings =
           getModelSettings(
-            config,
+            provider,
             model
           );
 
@@ -1296,175 +1019,163 @@
 
         html +=
           '<div class="provider-model-row" ' +
-            'style="' +
-              "padding:14px;" +
-              "border:1px solid rgba(127,127,127,.18);" +
-              "border-radius:10px;" +
-              "background:rgba(0,0,0,.02);" +
-            '">' +
+          'style="' +
+          "padding:14px;" +
+          "border:1px solid rgba(127,127,127,.18);" +
+          "border-radius:10px;" +
+          "background:rgba(127,127,127,.04);" +
+          '">' +
 
-            '<div style="' +
-              "display:flex;" +
-              "justify-content:space-between;" +
-              "gap:12px;" +
-              "align-items:flex-start;" +
-              "flex-wrap:wrap;" +
-            '">' +
+          '<div style="' +
+          "display:flex;" +
+          "justify-content:space-between;" +
+          "align-items:flex-start;" +
+          "gap:12px;" +
+          "flex-wrap:wrap;" +
+          '">' +
 
-              "<div>" +
+          "<div>" +
 
-                '<strong style="display:block;margin-bottom:4px;">' +
-                  escapeHtml(
-                    model.name
-                  ) +
-                "</strong>" +
+          '<strong style="display:block;">' +
+          escapeHtml(
+            model.name
+          ) +
+          "</strong>" +
 
-                '<small style="opacity:.65;">' +
-                  escapeHtml(
-                    model.id
-                  ) +
-                "</small>" +
+          '<small style="opacity:.65;">' +
+          escapeHtml(
+            model.id
+          ) +
+          "</small>" +
 
-              "</div>" +
+          "</div>" +
 
-              '<label style="' +
-                "display:flex;" +
-                "align-items:center;" +
-                "gap:8px;" +
-                "cursor:pointer;" +
-              '">' +
+          '<label style="' +
+          "display:flex;" +
+          "align-items:center;" +
+          "gap:8px;" +
+          "cursor:pointer;" +
+          '">' +
 
-                '<input ' +
-                  'type="checkbox" ' +
-                  'class="provider-model-enabled" ' +
-                  'data-model-id="' +
-                    escapeHtml(
-                      model.id
-                    ) +
-                  '" ' +
-                  (
-                    settings.enabled
-                      ? "checked"
-                      : ""
-                  ) +
-                ">" +
+          '<input type="checkbox" ' +
+          'class="provider-model-enabled" ' +
+          'data-model-id="' +
+          escapeHtml(
+            model.id
+          ) +
+          '" ' +
+          (
+            settings.enabled
+              ? "checked"
+              : ""
+          ) +
+          ">" +
 
-                "<span>Model aktif</span>" +
+          "<span>Model aktif</span>" +
 
-              "</label>" +
+          "</label>" +
 
-            "</div>" +
+          "</div>" +
 
-            '<div style="' +
-              "display:grid;" +
-              "grid-template-columns:repeat(auto-fit,minmax(150px,1fr));" +
-              "gap:10px;" +
-              "margin-top:12px;" +
-            '">' +
+          '<div style="' +
+          "display:grid;" +
+          "grid-template-columns:repeat(auto-fit,minmax(160px,1fr));" +
+          "gap:10px;" +
+          "margin-top:12px;" +
+          '">' +
 
-              "<div>" +
+          "<div>" +
 
-                '<label for="provider-credit-' +
-                  key +
-                '">' +
-                  "Credit" +
-                "</label>" +
+          '<label for="provider-credit-' +
+          key +
+          '">Credit</label>' +
 
-                '<input ' +
-                  'type="number" ' +
-                  'id="provider-credit-' +
-                    key +
-                  '" ' +
-                  'class="provider-model-credit" ' +
-                  'data-model-id="' +
-                    escapeHtml(
-                      model.id
-                    ) +
-                  '" ' +
-                  'min="1" ' +
-                  'max="1000" ' +
-                  'step="1" ' +
-                  'value="' +
-                    escapeHtml(
-                      settings.credit
-                    ) +
-                  '">' +
+          '<input type="number" ' +
+          'id="provider-credit-' +
+          key +
+          '" ' +
+          'class="provider-model-credit" ' +
+          'data-model-id="' +
+          escapeHtml(
+            model.id
+          ) +
+          '" ' +
+          'min="1" ' +
+          'max="1000" ' +
+          'step="1" ' +
+          'value="' +
+          escapeHtml(
+            settings.credit
+          ) +
+          '">' +
 
-              "</div>" +
+          "</div>" +
 
-              "<div>" +
+          "<div>" +
 
-                '<label for="provider-discount-' +
-                  key +
-                '">' +
-                  "Diskon (%)" +
-                "</label>" +
+          '<label for="provider-discount-' +
+          key +
+          '">Diskon (%)</label>' +
 
-                '<input ' +
-                  'type="number" ' +
-                  'id="provider-discount-' +
-                    key +
-                  '" ' +
-                  'class="provider-model-discount" ' +
-                  'data-model-id="' +
-                    escapeHtml(
-                      model.id
-                    ) +
-                  '" ' +
-                  'min="0" ' +
-                  'max="100" ' +
-                  'step="1" ' +
-                  'value="' +
-                    escapeHtml(
-                      settings.discount
-                    ) +
-                  '">' +
+          '<input type="number" ' +
+          'id="provider-discount-' +
+          key +
+          '" ' +
+          'class="provider-model-discount" ' +
+          'data-model-id="' +
+          escapeHtml(
+            model.id
+          ) +
+          '" ' +
+          'min="0" ' +
+          'max="100" ' +
+          'step="1" ' +
+          'value="' +
+          escapeHtml(
+            settings.discount
+          ) +
+          '">' +
 
-              "</div>" +
+          "</div>" +
 
-              '<div style="display:flex;align-items:end;">' +
+          "<div>" +
 
-                '<div ' +
-                  'class="provider-effective-credit" ' +
-                  'data-model-id="' +
-                    escapeHtml(
-                      model.id
-                    ) +
-                  '" ' +
-                  'style="' +
-                    "padding:10px 12px;" +
-                    "border-radius:8px;" +
-                    "background:rgba(127,127,127,.08);" +
-                    "width:100%;" +
-                  '">' +
+          '<div class="provider-effective-credit" ' +
+          'data-model-id="' +
+          escapeHtml(
+            model.id
+          ) +
+          '" ' +
+          'style="' +
+          "padding:10px 12px;" +
+          "border-radius:8px;" +
+          "background:rgba(25,135,84,.10);" +
+          '">' +
 
-                  '<small style="display:block;opacity:.65;">' +
-                    "Credit efektif" +
-                  "</small>" +
+          '<small style="display:block;opacity:.65;">' +
+          "Credit efektif" +
+          "</small>" +
 
-                  '<strong style="font-size:18px;">' +
-                    escapeHtml(
-                      effective
-                    ) +
-                  "</strong>" +
+          '<strong style="font-size:18px;color:#198754;">' +
+          effective +
+          "</strong>" +
 
-                "</div>" +
+          "</div>" +
 
-              "</div>" +
+          "</div>" +
 
-            "</div>" +
+          "</div>" +
 
           "</div>";
       }
     );
 
     html +=
-        "</div>" +
+      "</div>" +
       "</div>";
 
     return html;
   }
-
 
   function bindModelSettings() {
     const editor =
@@ -1474,27 +1185,34 @@
       return;
     }
 
-    function updateEffectiveCredit(
+    function updateEffective(
       modelId
     ) {
+      const selector =
+        CSS.escape(
+          String(
+            modelId
+          )
+        );
+
       const creditInput =
         editor.querySelector(
           '.provider-model-credit[data-model-id="' +
-            CSS.escape(modelId) +
+          selector +
           '"]'
         );
 
       const discountInput =
         editor.querySelector(
           '.provider-model-discount[data-model-id="' +
-            CSS.escape(modelId) +
+          selector +
           '"]'
         );
 
       const output =
         editor.querySelector(
           '.provider-effective-credit[data-model-id="' +
-            CSS.escape(modelId) +
+          selector +
           '"] strong'
         );
 
@@ -1506,25 +1224,10 @@
         return;
       }
 
-      const credit =
-        normalizeInteger(
-          creditInput.value,
-          1,
-          1,
-          1000
-        );
-
-      const discount =
-        normalizeDiscount(
-          discountInput.value
-        );
-
       output.textContent =
-        String(
-          getEffectiveCredit(
-            credit,
-            discount
-          )
+        getEffectiveCredit(
+          creditInput.value,
+          discountInput.value
         );
     }
 
@@ -1537,7 +1240,7 @@
           input.addEventListener(
             "input",
             function () {
-              updateEffectiveCredit(
+              updateEffective(
                 input.dataset.modelId
               );
             }
@@ -1546,67 +1249,58 @@
       );
   }
 
-
   function collectModelSettings(
-    config
+    provider
   ) {
-    const safeConfig =
-      normalizeObject(
-        config
+    const item =
+      normalizeProvider(
+        provider
       );
 
-    const modelEnabled = {
+    const config = {
       ...normalizeObject(
-        safeConfig.modelEnabled
+        item.config
       )
     };
 
+    const source =
+      getModelSource(
+        item
+      );
+
     const modelCredits = {
-      ...normalizeObject(
-        safeConfig.modelCredits
-      )
+      ...source.modelCredits
     };
 
     const modelDiscounts = {
-      ...normalizeObject(
-        safeConfig.modelDiscounts
-      )
+      ...source.modelDiscounts
     };
 
-    document
+    const modelEnabled = {
+      ...source.modelEnabled
+    };
+
+    const editor =
+      $("providerEditor");
+
+    if (!editor) {
+      return config;
+    }
+
+    editor
       .querySelectorAll(
-        "#providerEditor .provider-model-enabled"
+        ".provider-model-credit"
       )
       .forEach(
         function (input) {
-          const modelId =
+          const id =
             input.dataset.modelId;
 
-          if (!modelId) {
+          if (!id) {
             return;
           }
 
-          modelEnabled[modelId] =
-            Boolean(
-              input.checked
-            );
-        }
-      );
-
-    document
-      .querySelectorAll(
-        "#providerEditor .provider-model-credit"
-      )
-      .forEach(
-        function (input) {
-          const modelId =
-            input.dataset.modelId;
-
-          if (!modelId) {
-            return;
-          }
-
-          modelCredits[modelId] =
+          modelCredits[id] =
             normalizeInteger(
               input.value,
               1,
@@ -1616,37 +1310,61 @@
         }
       );
 
-    document
+    editor
       .querySelectorAll(
-        "#providerEditor .provider-model-discount"
+        ".provider-model-discount"
       )
       .forEach(
         function (input) {
-          const modelId =
+          const id =
             input.dataset.modelId;
 
-          if (!modelId) {
+          if (!id) {
             return;
           }
 
-          modelDiscounts[modelId] =
+          modelDiscounts[id] =
             normalizeDiscount(
               input.value
             );
         }
       );
 
-    return {
-      ...safeConfig,
+    editor
+      .querySelectorAll(
+        ".provider-model-enabled"
+      )
+      .forEach(
+        function (input) {
+          const id =
+            input.dataset.modelId;
 
-      modelEnabled,
+          if (!id) {
+            return;
+          }
 
-      modelCredits,
+          modelEnabled[id] =
+            Boolean(
+              input.checked
+            );
+        }
+      );
 
-      modelDiscounts
-    };
+    /*
+     * Simpan di config juga agar tetap
+     * kompatibel dengan konfigurasi lama.
+     */
+    config.modelCredits =
+      modelCredits;
+
+    config.modelDiscounts =
+      modelDiscounts;
+
+    config.modelEnabled =
+      modelEnabled;
+
+    return config;
   }
-
 
   /* ============================================================
    * EDITOR
@@ -1670,31 +1388,13 @@
         : null;
 
     state.editingId =
-      item
-        ? item.id
-        : null;
-
-    const isEdit =
-      Boolean(item);
+      item?.id ||
+      null;
 
     const config =
       normalizeObject(
         item?.config
       );
-
-    const configText =
-      JSON.stringify(
-        config,
-        null,
-        2
-      );
-
-    const modelSettings =
-      item
-        ? renderModelSettings(
-            item
-          )
-        : "";
 
     editor.hidden =
       false;
@@ -1702,159 +1402,149 @@
     editor.innerHTML =
       '<form id="providerForm" autocomplete="off">' +
 
-        '<div class="admin-form">' +
+      '<div class="admin-form">' +
 
-          "<h3>" +
-            (
-              isEdit
-                ? "Edit Provider"
-                : "Tambah Provider"
-            ) +
-          "</h3>" +
+      "<h3>" +
+      (
+        item
+          ? "Edit Provider"
+          : "Tambah Provider"
+      ) +
+      "</h3>" +
 
-          "<p>" +
-            (
-              isEdit
-                ? "Ubah konfigurasi provider."
-                : "Tambahkan provider baru."
-            ) +
-          "</p>" +
+      "<p>" +
+      (
+        item
+          ? "Ubah konfigurasi provider dan pengaturan credit model."
+          : "Tambahkan provider baru."
+      ) +
+      "</p>" +
 
-          '<label for="providerId">' +
-            "Provider ID" +
-          "</label>" +
+      '<label for="providerId">' +
+      "Provider ID" +
+      "</label>" +
 
-          '<input ' +
-            'type="text" ' +
-            'id="providerId" ' +
-            'name="providerId" ' +
-            'required ' +
-            'maxlength="64" ' +
-            (
-              isEdit
-                ? 'value="' +
-                    escapeHtml(
-                      item.id
-                    ) +
-                  '" readonly'
-                : ""
-            ) +
-          ">" +
-
-          '<label for="providerName">' +
-            "Provider Name" +
-          "</label>" +
-
-          '<input ' +
-            'type="text" ' +
-            'id="providerName" ' +
-            'name="providerName" ' +
-            'required ' +
-            'maxlength="100" ' +
-            'value="' +
-              escapeHtml(
-                item?.name ||
-                ""
-              ) +
-            '">' +
-
-          '<label for="providerAdapter">' +
-            "Adapter" +
-          "</label>" +
-
-          '<input ' +
-            'type="text" ' +
-            'id="providerAdapter" ' +
-            'name="providerAdapter" ' +
-            'required ' +
-            'maxlength="64" ' +
-            'placeholder="contoh: veo, minimax, luma, chinaapi" ' +
-            'value="' +
-              escapeHtml(
-                item?.adapter ||
-                ""
-              ) +
-            '">' +
-
-          "<small>" +
-            "Isi ID adapter secara bebas." +
-          "</small>" +
-
-          '<label for="providerApiKey">' +
-            "API Key" +
-          "</label>" +
-
-          '<input ' +
-            'type="password" ' +
-            'id="providerApiKey" ' +
-            'name="providerApiKey" ' +
-            'autocomplete="new-password" ' +
-            (
-              isEdit
-                ? 'placeholder="Kosongkan jika tidak ingin mengubah API key"'
-                : "required"
-            ) +
-          ">" +
-
-          modelSettings +
-
-          '<label for="providerConfig">' +
-            "Config" +
-          "</label>" +
-
-          '<textarea ' +
-            'id="providerConfig" ' +
-            'name="providerConfig" ' +
-            'rows="8" ' +
-            'spellcheck="false">' +
+      '<input type="text" ' +
+      'id="providerId" ' +
+      'name="providerId" ' +
+      'maxlength="64" ' +
+      'required ' +
+      (
+        item
+          ? 'value="' +
             escapeHtml(
-              configText
+              item.id
             ) +
-          "</textarea>" +
+            '" readonly'
+          : ""
+      ) +
+      ">" +
 
-          '<small style="display:block;margin-top:4px;opacity:.7;">' +
-            (
+      '<label for="providerName">' +
+      "Provider Name" +
+      "</label>" +
+
+      '<input type="text" ' +
+      'id="providerName" ' +
+      'name="providerName" ' +
+      'maxlength="100" ' +
+      'required ' +
+      'value="' +
+      escapeHtml(
+        item?.name ||
+        ""
+      ) +
+      '">' +
+
+      '<label for="providerAdapter">' +
+      "Adapter" +
+      "</label>" +
+
+      '<input type="text" ' +
+      'id="providerAdapter" ' +
+      'name="providerAdapter" ' +
+      'maxlength="64" ' +
+      'required ' +
+      'value="' +
+      escapeHtml(
+        item?.adapter ||
+        ""
+      ) +
+      '">' +
+
+      '<label for="providerApiKey">' +
+      "API Key" +
+      "</label>" +
+
+      '<input type="password" ' +
+      'id="providerApiKey" ' +
+      'name="providerApiKey" ' +
+      'autocomplete="new-password" ' +
+      (
+        item
+          ? 'placeholder="Kosongkan jika tidak ingin mengubah API key"'
+          : "required"
+      ) +
+      ">" +
+
+      (
+        item
+          ? renderModelSettings(
               item
-                ? "Pengaturan model di atas akan disimpan otomatis ke Config. Field Config tetap tersedia untuk pengaturan lanjutan."
-                : "JSON konfigurasi provider."
-            ) +
-          "</small>" +
+            )
+          : ""
+      ) +
 
-          '<label class="provider-checkbox">' +
+      '<label for="providerConfig">' +
+      "Config" +
+      "</label>" +
 
-            '<input ' +
-              'type="checkbox" ' +
-              'id="providerEnabled" ' +
-              'name="providerEnabled" ' +
-              (
-                !item ||
-                item.enabled
-                  ? " checked"
-                  : ""
-              ) +
-            ">" +
+      '<textarea id="providerConfig" ' +
+      'name="providerConfig" ' +
+      'rows="10" ' +
+      'spellcheck="false">' +
+      escapeHtml(
+        JSON.stringify(
+          config,
+          null,
+          2
+        )
+      ) +
+      "</textarea>" +
 
-            "<span>Provider aktif</span>" +
+      '<label class="provider-checkbox">' +
 
-          "</label>" +
+      '<input type="checkbox" ' +
+      'id="providerEnabled" ' +
+      (
+        !item ||
+        item.enabled
+          ? " checked"
+          : ""
+      ) +
+      ">" +
 
-          '<div class="admin-actions">' +
+      "<span>Provider aktif</span>" +
 
-            '<button type="button" id="providerCancelBtn">' +
-              "Batal" +
-            "</button>" +
+      "</label>" +
 
-            '<button type="submit" id="providerSaveBtn">' +
-              (
-                isEdit
-                  ? "Simpan Perubahan"
-                  : "Simpan Provider"
-              ) +
-            "</button>" +
+      '<div class="admin-actions">' +
 
-          "</div>" +
+      '<button type="button" id="providerCancelBtn">' +
+      "Batal" +
+      "</button>" +
 
-        "</div>" +
+      '<button type="submit" id="providerSaveBtn">' +
+      (
+        item
+          ? "Simpan Perubahan"
+          : "Simpan Provider"
+      ) +
+      "</button>" +
+
+      "</div>" +
+
+      "</div>" +
 
       "</form>";
 
@@ -1873,43 +1563,35 @@
       );
     }
 
-    const cancelButton =
+    const cancel =
       $("providerCancelBtn");
 
-    if (cancelButton) {
-      cancelButton.addEventListener(
+    if (cancel) {
+      cancel.addEventListener(
         "click",
         closeEditor
       );
     }
-
-    const saveButton =
-      $("providerSaveBtn");
-
-    if (saveButton) {
-      saveButton.addEventListener(
-        "click",
-        function (event) {
-          event.preventDefault();
-          saveProvider();
-        }
-      );
-    }
   }
-
 
   function openAddEditor() {
-    renderEditor(null);
+    renderEditor(
+      null
+    );
   }
 
-
-  function openEditEditor(id) {
+  function openEditEditor(
+    id
+  ) {
     const provider =
       state.providers.find(
         function (item) {
           return String(
-            normalizeProvider(item).id
-          ) === String(id);
+            normalizeProvider(
+              item
+            ).id
+          ) ===
+          String(id);
         }
       );
 
@@ -1922,108 +1604,67 @@
       return;
     }
 
-    renderEditor(provider);
+    renderEditor(
+      provider
+    );
   }
-
 
   function closeEditor() {
     const editor =
       $("providerEditor");
 
     if (editor) {
-      editor.hidden = true;
-      editor.innerHTML = "";
+      editor.hidden =
+        true;
+
+      editor.innerHTML =
+        "";
     }
 
     state.editingId =
       null;
   }
 
-
   /* ============================================================
    * SAVE
    * ============================================================ */
 
   async function saveProvider() {
-    const saveButton =
-      $("providerSaveBtn");
-
-    if (
-      saveButton &&
-      saveButton.disabled
-    ) {
-      return;
-    }
-
-    const idInput =
-      $("providerId");
-
-    const nameInput =
-      $("providerName");
-
-    const adapterInput =
-      $("providerAdapter");
-
-    const apiKeyInput =
-      $("providerApiKey");
-
-    const configInput =
-      $("providerConfig");
-
-    const enabledInput =
-      $("providerEnabled");
-
     const id =
       String(
-        idInput?.value || ""
+        $("providerId")?.value ||
+        ""
       ).trim();
 
     const name =
       String(
-        nameInput?.value || ""
+        $("providerName")?.value ||
+        ""
       ).trim();
 
     const adapter =
       String(
-        adapterInput?.value || ""
+        $("providerAdapter")?.value ||
+        ""
       ).trim()
       .toLowerCase();
 
     const apiKey =
       String(
-        apiKeyInput?.value || ""
+        $("providerApiKey")?.value ||
+        ""
       ).trim();
 
     const enabled =
-      enabledInput
-        ? Boolean(
-            enabledInput.checked
-          )
-        : true;
+      Boolean(
+        $("providerEnabled")?.checked
+      );
 
     if (!id) {
       setStatus(
         "Provider ID wajib diisi.",
         "error"
       );
-
-      idInput?.focus();
-
-      return;
-    }
-
-    if (
-      !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(
-        id
-      )
-    ) {
-      setStatus(
-        "Provider ID tidak valid.",
-        "error"
-      );
-
-      idInput?.focus();
-
       return;
     }
 
@@ -2032,9 +1673,6 @@
         "Provider Name wajib diisi.",
         "error"
       );
-
-      nameInput?.focus();
-
       return;
     }
 
@@ -2043,24 +1681,6 @@
         "Adapter wajib diisi.",
         "error"
       );
-
-      adapterInput?.focus();
-
-      return;
-    }
-
-    if (
-      !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
-        adapter
-      )
-    ) {
-      setStatus(
-        "ID adapter tidak valid. Gunakan huruf kecil, angka, underscore, atau tanda minus.",
-        "error"
-      );
-
-      adapterInput?.focus();
-
       return;
     }
 
@@ -2068,7 +1688,8 @@
 
     const configText =
       String(
-        configInput?.value || ""
+        $("providerConfig")?.value ||
+        ""
       ).trim();
 
     if (configText) {
@@ -2082,56 +1703,44 @@
           "Config JSON tidak valid.",
           "error"
         );
-
-        configInput?.focus();
-
         return;
       }
     }
 
-    if (
-      !config ||
-      typeof config !== "object" ||
-      Array.isArray(config)
-    ) {
-      setStatus(
-        "Config harus berupa JSON object.",
-        "error"
+    const currentProvider =
+      state.providers.find(
+        function (item) {
+          return String(
+            normalizeProvider(
+              item
+            ).id
+          ) ===
+          String(
+            state.editingId
+          );
+        }
       );
 
-      configInput?.focus();
-
-      return;
-    }
-
-    /*
-     * Credit, diskon, dan status model
-     * sekarang berlaku untuk seluruh provider
-     * yang memiliki model.
-     */
-    if (state.editingId) {
+    if (currentProvider) {
       config =
         collectModelSettings(
-          config
+          currentProvider
         );
     }
 
-    const isEdit =
+    const editing =
       Boolean(
         state.editingId
       );
 
     if (
-      !isEdit &&
+      !editing &&
       !apiKey
     ) {
       setStatus(
         "API Key wajib diisi.",
         "error"
       );
-
-      apiKeyInput?.focus();
-
       return;
     }
 
@@ -2149,17 +1758,15 @@
     }
 
     const endpoint =
-      isEdit
+      editing
         ? "/api/admin/providers/" +
           encodeURIComponent(
             state.editingId
           )
         : "/api/admin/providers";
 
-    const method =
-      isEdit
-        ? "PUT"
-        : "POST";
+    const saveButton =
+      $("providerSaveBtn");
 
     if (saveButton) {
       saveButton.disabled =
@@ -2169,17 +1776,16 @@
         "Menyimpan...";
     }
 
-    setStatus(
-      "Mengirim data provider...",
-      "loading"
-    );
-
     try {
       const result =
         await api(
           endpoint,
           {
-            method,
+            method:
+              editing
+                ? "PUT"
+                : "POST",
+
             body:
               JSON.stringify(
                 payload
@@ -2187,17 +1793,12 @@
           }
         );
 
-      console.log(
-        "[GEN-Z.AI Provider] Save success:",
-        result
-      );
-
       closeEditor();
 
       setStatus(
         result?.message ||
         (
-          isEdit
+          editing
             ? "Provider berhasil diperbarui."
             : "Provider berhasil ditambahkan."
         ),
@@ -2205,75 +1806,267 @@
       );
 
       await loadProviders();
-
     } catch (error) {
       console.error(
         "[GEN-Z.AI Provider] Save error:",
         error
       );
 
-      let message =
-        error?.message ||
-        "Gagal menyimpan provider.";
-
-      if (error?.status === 400) {
-        message =
-          "Data provider ditolak: " +
-          message;
-      }
-
-      if (error?.status === 401) {
-        message =
-          "Sesi login sudah tidak valid.";
-      }
-
-      if (error?.status === 403) {
-        message =
-          "Anda tidak memiliki akses administrator.";
-      }
-
       setStatus(
-        message,
+        error?.message ||
+        "Gagal menyimpan provider.",
         "error"
       );
-
     } finally {
-      const currentButton =
+      const button =
         $("providerSaveBtn");
 
-      if (currentButton) {
-        currentButton.disabled =
+      if (button) {
+        button.disabled =
           false;
-
-        currentButton.textContent =
-          isEdit
-            ? "Simpan Perubahan"
-            : "Simpan Provider";
       }
     }
   }
 
-
   /* ============================================================
-   * TOGGLE
+   * LIST
    * ============================================================ */
 
-  async function toggleProvider(id) {
+  function renderProviders() {
+    const list =
+      $("providerList");
+
+    const count =
+      $("providerCount");
+
+    if (!list) {
+      return;
+    }
+
+    if (count) {
+      count.textContent =
+        state.providers.length +
+        (
+          state.providers.length === 1
+            ? " provider"
+            : " providers"
+        );
+    }
+
+    if (!state.providers.length) {
+      list.innerHTML =
+        '<div class="admin-empty">' +
+        "<strong>Belum ada provider.</strong>" +
+        "</div>";
+
+      return;
+    }
+
+    list.innerHTML =
+      state.providers
+        .map(
+          function (raw) {
+            const provider =
+              normalizeProvider(
+                raw
+              );
+
+            return (
+              '<div class="admin-list-item" ' +
+              'data-provider-id="' +
+              escapeHtml(
+                provider.id
+              ) +
+              '">' +
+
+              '<div class="admin-list-main">' +
+
+              "<h3>" +
+              escapeHtml(
+                provider.name ||
+                provider.id
+              ) +
+              "</h3>" +
+
+              "<p>ID: " +
+              escapeHtml(
+                provider.id
+              ) +
+              "</p>" +
+
+              "<p>Adapter: " +
+              escapeHtml(
+                provider.adapter ||
+                "-"
+              ) +
+              "</p>" +
+
+              "<p>API Key: " +
+              (
+                provider.apiKeySet
+                  ? "Tersedia"
+                  : "Belum diatur"
+              ) +
+              "</p>" +
+
+              '<span class="status-badge ' +
+              (
+                provider.enabled
+                  ? "active"
+                  : "inactive"
+              ) +
+              '">' +
+              (
+                provider.enabled
+                  ? "Aktif"
+                  : "Nonaktif"
+              ) +
+              "</span>" +
+
+              "</div>" +
+
+              '<div class="admin-actions">' +
+
+              '<button type="button" ' +
+              'data-action="edit" ' +
+              'data-id="' +
+              escapeHtml(
+                provider.id
+              ) +
+              '">' +
+              "Edit" +
+              "</button>" +
+
+              '<button type="button" ' +
+              'data-action="toggle" ' +
+              'data-id="' +
+              escapeHtml(
+                provider.id
+              ) +
+              '">' +
+              (
+                provider.enabled
+                  ? "Deactivate"
+                  : "Activate"
+              ) +
+              "</button>" +
+
+              '<button type="button" ' +
+              'data-action="delete" ' +
+              'data-id="' +
+              escapeHtml(
+                provider.id
+              ) +
+              '">' +
+              "Delete" +
+              "</button>" +
+
+              "</div>" +
+
+              "</div>"
+            );
+          }
+        )
+        .join("");
+  }
+
+  async function loadProviders() {
+    if (state.loading) {
+      return;
+    }
+
+    state.loading =
+      true;
+
+    try {
+      const data =
+        await api(
+          "/api/admin/providers",
+          {
+            method: "GET"
+          }
+        );
+
+      const providers =
+        Array.isArray(
+          data?.providers
+        )
+          ? data.providers
+          : Array.isArray(
+              data
+            )
+            ? data
+            : Array.isArray(
+                data?.data
+              )
+              ? data.data
+              : [];
+
+      state.providers =
+        providers.map(
+          normalizeProvider
+        );
+
+      renderProviders();
+
+      setStatus(
+        state.providers.length +
+        " provider berhasil dimuat.",
+        "success"
+      );
+    } catch (error) {
+      console.error(
+        "[GEN-Z.AI Provider] Load error:",
+        error
+      );
+
+      if (
+        error?.status ===
+        401
+      ) {
+        showDenied(
+          "Sesi login tidak ditemukan."
+        );
+        return;
+      }
+
+      if (
+        error?.status ===
+        403
+      ) {
+        showDenied(
+          "Akun ini tidak memiliki akses administrator."
+        );
+        return;
+      }
+
+      setStatus(
+        error?.message ||
+        "Gagal memuat provider.",
+        "error"
+      );
+    } finally {
+      state.loading =
+        false;
+    }
+  }
+
+  async function toggleProvider(
+    id
+  ) {
     const provider =
       state.providers.find(
         function (item) {
           return String(
-            normalizeProvider(item).id
-          ) === String(id);
+            normalizeProvider(
+              item
+            ).id
+          ) ===
+          String(id);
         }
       );
 
     if (!provider) {
-      setStatus(
-        "Provider tidak ditemukan.",
-        "error"
-      );
-
       return;
     }
 
@@ -2282,15 +2075,8 @@
         provider
       );
 
-    const enable =
+    const enabled =
       !normalized.enabled;
-
-    setStatus(
-      enable
-        ? "Mengaktifkan provider..."
-        : "Menonaktifkan provider...",
-      "loading"
-    );
 
     try {
       await api(
@@ -2300,29 +2086,20 @@
         ) +
         "/toggle",
         {
-          method: "POST",
+          method:
+            "POST",
+
           headers: {
             "x-enable":
-              String(enable)
+              String(
+                enabled
+              )
           }
         }
       );
 
-      setStatus(
-        enable
-          ? "Provider berhasil diaktifkan."
-          : "Provider berhasil dinonaktifkan.",
-        "success"
-      );
-
       await loadProviders();
-
     } catch (error) {
-      console.error(
-        "[GEN-Z.AI Provider] Toggle error:",
-        error
-      );
-
       setStatus(
         error?.message ||
         "Gagal mengubah status provider.",
@@ -2331,27 +2108,22 @@
     }
   }
 
-
-  /* ============================================================
-   * DELETE
-   * ============================================================ */
-
-  async function deleteProvider(id) {
+  async function deleteProvider(
+    id
+  ) {
     const provider =
       state.providers.find(
         function (item) {
           return String(
-            normalizeProvider(item).id
-          ) === String(id);
+            normalizeProvider(
+              item
+            ).id
+          ) ===
+          String(id);
         }
       );
 
     if (!provider) {
-      setStatus(
-        "Provider tidak ditemukan.",
-        "error"
-      );
-
       return;
     }
 
@@ -2374,11 +2146,6 @@
       return;
     }
 
-    setStatus(
-      "Menghapus provider...",
-      "loading"
-    );
-
     try {
       await api(
         "/api/admin/providers/" +
@@ -2386,23 +2153,13 @@
           normalized.id
         ),
         {
-          method: "DELETE"
+          method:
+            "DELETE"
         }
       );
 
-      setStatus(
-        "Provider berhasil dihapus.",
-        "success"
-      );
-
       await loadProviders();
-
     } catch (error) {
-      console.error(
-        "[GEN-Z.AI Provider] Delete error:",
-        error
-      );
-
       setStatus(
         error?.message ||
         "Gagal menghapus provider.",
@@ -2411,6 +2168,76 @@
     }
   }
 
+  /* ============================================================
+   * VIEW
+   * ============================================================ */
+
+  function showApp() {
+    const loading =
+      $("providerLoading");
+
+    const denied =
+      $("providerDenied");
+
+    const app =
+      $("providerApp");
+
+    if (loading) {
+      loading.hidden =
+        true;
+    }
+
+    if (denied) {
+      denied.hidden =
+        true;
+    }
+
+    if (app) {
+      app.hidden =
+        false;
+    }
+  }
+
+  function showDenied(
+    message
+  ) {
+    const loading =
+      $("providerLoading");
+
+    const denied =
+      $("providerDenied");
+
+    const app =
+      $("providerApp");
+
+    if (loading) {
+      loading.hidden =
+        true;
+    }
+
+    if (app) {
+      app.hidden =
+        true;
+    }
+
+    if (denied) {
+      denied.hidden =
+        false;
+
+      const paragraphs =
+        denied.querySelectorAll(
+          "p"
+        );
+
+      if (paragraphs.length) {
+        paragraphs[
+          paragraphs.length - 1
+        ].textContent =
+          message ||
+          "Akses ditolak.";
+      }
+    }
+  }
 
   /* ============================================================
    * EVENTS
@@ -2437,23 +2264,6 @@
       );
     }
 
-    const backButton =
-      $("providerBackBtn");
-
-    if (backButton) {
-      backButton.addEventListener(
-        "click",
-        function () {
-          if (history.length > 1) {
-            history.back();
-          } else {
-            window.location.href =
-              "/";
-          }
-        }
-      );
-    }
-
     const list =
       $("providerList");
 
@@ -2476,31 +2286,47 @@
           const id =
             button.dataset.id;
 
-          if (action === "edit") {
-            openEditEditor(id);
+          if (
+            action ===
+            "edit"
+          ) {
+            openEditEditor(
+              id
+            );
             return;
           }
 
-          if (action === "toggle") {
-            toggleProvider(id);
+          if (
+            action ===
+            "toggle"
+          ) {
+            toggleProvider(
+              id
+            );
             return;
           }
 
-          if (action === "delete") {
-            deleteProvider(id);
+          if (
+            action ===
+            "delete"
+          ) {
+            deleteProvider(
+              id
+            );
           }
         }
       );
     }
   }
 
-
   /* ============================================================
    * INIT
    * ============================================================ */
 
   async function init() {
-    if (state.initialized) {
+    if (
+      state.initialized
+    ) {
       return;
     }
 
@@ -2519,26 +2345,29 @@
       bindEvents();
 
       await loadProviders();
-
     } catch (error) {
       console.error(
         "[GEN-Z.AI Provider] Init error:",
         error
       );
 
-      if (error?.status === 401) {
+      if (
+        error?.status ===
+        401
+      ) {
         showDenied(
           "Sesi login tidak ditemukan."
         );
-
         return;
       }
 
-      if (error?.status === 403) {
+      if (
+        error?.status ===
+        403
+      ) {
         showDenied(
           "Akun ini tidak memiliki akses administrator."
         );
-
         return;
       }
 
@@ -2548,11 +2377,6 @@
       );
     }
   }
-
-
-  /* ============================================================
-   * PUBLIC API
-   * ============================================================ */
 
   window.GENZ_ADMIN_PROVIDERS = {
     init,
@@ -2581,11 +2405,6 @@
       }
   };
 
-
-  /* ============================================================
-   * AUTO INIT
-   * ============================================================ */
-
   if (
     document.readyState ===
     "loading"
@@ -2600,5 +2419,4 @@
   } else {
     init();
   }
-
 })();
