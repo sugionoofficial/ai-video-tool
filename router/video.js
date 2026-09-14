@@ -39,6 +39,8 @@ const MAX_PROVIDER_ID_LENGTH = 64;
 
 const MAX_TARGET_LENGTH = 4096;
 
+const MAX_RANGE_LENGTH = 128;
+
 
 // ============================================================
 // HELPERS
@@ -123,6 +125,99 @@ function getJobAdapterId(
   return normalizeAdapterId(
     metadata.adapter
   );
+
+}
+
+
+// ============================================================
+// REQUEST RANGE
+// ============================================================
+//
+// Browser video player biasanya mengirim:
+//
+// Range: bytes=0-
+//
+// atau:
+//
+// Range: bytes=1048576-2097151
+//
+// Kita hanya menerima single byte range.
+// Multi-range tidak diperlukan untuk video streaming biasa.
+// ============================================================
+
+function getRequestRange(
+  request
+) {
+
+  const value =
+    String(
+      request?.headers?.get(
+        "Range"
+      ) || ""
+    ).trim();
+
+
+  if (!value) {
+
+    return "";
+
+  }
+
+
+  if (
+    value.length >
+    MAX_RANGE_LENGTH
+  ) {
+
+    throw new HttpError(
+      "Range request terlalu panjang.",
+      400
+    );
+
+  }
+
+
+  /*
+   * Hanya single byte range:
+   *
+   * bytes=0-
+   * bytes=0-1023
+   * bytes=1024-2048
+   */
+
+  if (
+    !/^bytes=\d*-\d*$/.test(
+      value
+    )
+  ) {
+
+    throw new HttpError(
+      "Range request tidak valid.",
+      400
+    );
+
+  }
+
+
+  /*
+   * Pastikan minimal salah satu sisi
+   * mempunyai angka.
+   */
+
+  if (
+    value ===
+    "bytes=-"
+  ) {
+
+    throw new HttpError(
+      "Range request tidak valid.",
+      400
+    );
+
+  }
+
+
+  return value;
 
 }
 
@@ -543,14 +638,6 @@ export async function handleVideo(
     ).trim();
 
 
-  /*
-   * Untuk adapter yang menyimpan file ID,
-   * provider_file_id digunakan.
-   *
-   * Untuk adapter seperti ChinaAPI yang mengembalikan
-   * signed video URL, video_url digunakan.
-   */
-
   let target;
 
 
@@ -598,9 +685,21 @@ export async function handleVideo(
   // SELF PROXY PROTECTION
   // ==========================================================
 
+  const normalizedTarget =
+    target
+      .trim()
+      .toLowerCase();
+
+
   if (
-    target.startsWith(
+    normalizedTarget.startsWith(
       "/api/video"
+    ) ||
+    normalizedTarget.includes(
+      "/api/video?"
+    ) ||
+    normalizedTarget.includes(
+      "/api/video/"
     )
   ) {
 
@@ -613,6 +712,16 @@ export async function handleVideo(
 
 
   // ==========================================================
+  // RANGE
+  // ==========================================================
+
+  const range =
+    getRequestRange(
+      request
+    );
+
+
+  // ==========================================================
   // ADAPTER EXECUTION
   // ==========================================================
 
@@ -621,11 +730,26 @@ export async function handleVideo(
 
   try {
 
+    /*
+     * Adapter lama yang hanya menerima
+     * 3 argument tetap kompatibel.
+     *
+     * Adapter yang mendukung streaming Range
+     * dapat membaca options.range.
+     */
+
     response =
       await adapter.fetchVideo(
         target,
         provider,
-        env
+        env,
+        {
+          range:
+            range ||
+            null,
+
+          request
+        }
       );
 
   } catch (
@@ -641,6 +765,10 @@ export async function handleVideo(
         adapter:
           adapterId,
 
+        range:
+          range ||
+          null,
+
         error:
           String(
             error?.message ||
@@ -652,6 +780,11 @@ export async function handleVideo(
       }
     );
 
+
+    /*
+     * Jangan membocorkan error provider
+     * secara langsung kepada client.
+     */
 
     throw new HttpError(
       "Gagal mengambil video dari provider.",
@@ -665,26 +798,44 @@ export async function handleVideo(
   // RESPONSE VALIDATION
   // ==========================================================
 
-  if (!response) {
+  if (
+    !(response instanceof Response)
+  ) {
 
     throw new HttpError(
-      "Provider tidak mengembalikan response video.",
+      "Provider tidak mengembalikan response video yang valid.",
       502
     );
 
   }
 
 
+  // ==========================================================
+  // PROVIDER RESPONSE STATUS
+  // ==========================================================
+
+  const providerStatus =
+    Number(
+      response.status ||
+      0
+    );
+
+
+  /*
+   * Response normal:
+   *
+   * 200 OK
+   *
+   * Response Range:
+   *
+   * 206 Partial Content
+   *
+   * 416 Range Not Satisfiable
+   */
+
   if (
     !response.ok
   ) {
-
-    const providerStatus =
-      Number(
-        response.status ||
-        502
-      );
-
 
     const safeStatus =
       providerStatus >= 400 &&
@@ -726,6 +877,10 @@ export async function handleVideo(
   };
 
 
+  // ==========================================================
+  // CONTENT LENGTH
+  // ==========================================================
+
   const contentLength =
     response.headers.get(
       "Content-Length"
@@ -743,6 +898,10 @@ export async function handleVideo(
 
   }
 
+
+  // ==========================================================
+  // CONTENT RANGE
+  // ==========================================================
 
   const contentRange =
     response.headers.get(
@@ -763,6 +922,69 @@ export async function handleVideo(
 
 
   // ==========================================================
+  // ETAG
+  // ==========================================================
+
+  const etag =
+    response.headers.get(
+      "ETag"
+    );
+
+
+  if (
+    etag
+  ) {
+
+    headers[
+      "ETag"
+    ] =
+      etag;
+
+  }
+
+
+  // ==========================================================
+  // LAST MODIFIED
+  // ==========================================================
+
+  const lastModified =
+    response.headers.get(
+      "Last-Modified"
+    );
+
+
+  if (
+    lastModified
+  ) {
+
+    headers[
+      "Last-Modified"
+    ] =
+      lastModified;
+
+  }
+
+
+  // ==========================================================
+  // RESPONSE STATUS
+  // ==========================================================
+  //
+  // Jika provider mengembalikan 206,
+  // proxy juga harus mengembalikan 206.
+  //
+  // Ini penting untuk video player/browser yang
+  // melakukan seeking atau streaming menggunakan Range.
+  //
+  // ==========================================================
+
+  const responseStatus =
+    providerStatus ===
+    206
+      ? 206
+      : 200;
+
+
+  // ==========================================================
   // RETURN VIDEO
   // ==========================================================
 
@@ -770,7 +992,7 @@ export async function handleVideo(
     response.body,
     {
       status:
-        200,
+        responseStatus,
 
       headers
     }
