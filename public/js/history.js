@@ -141,27 +141,37 @@
     return "Diproses";
   }
 
-  function providerLabel(provider) {
-    const value =
-      String(provider || "")
-        .trim()
-        .toLowerCase();
+  function providerLabel(provider, job) {
+  const configuredName =
+    String(
+      job?.provider_name ||
+      job?.providerName ||
+      ""
+    ).trim();
 
-    const map = {
-      veo: "Veo",
-      gemini: "Gemini",
-      gemini2: "Gemini 2",
-      minimax: "MiniMax",
-      luma: "Luma",
-      chinaapi: "ChinaAPI"
-    };
-
-    return (
-      map[value] ||
-      provider ||
-      "Provider"
-    );
+  if (configuredName) {
+    return configuredName;
   }
+
+  const metadata =
+    getMetadata(job);
+
+  const metadataName =
+    String(
+      metadata.provider_name ||
+      metadata.providerName ||
+      ""
+    ).trim();
+
+  if (metadataName) {
+    return metadataName;
+  }
+
+  return (
+    String(provider || "").trim() ||
+    "Provider"
+  );
+}
 
   function getMetadata(job) {
     let metadata =
