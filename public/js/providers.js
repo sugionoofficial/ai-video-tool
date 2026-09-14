@@ -12,6 +12,8 @@
    - Provider/model/duration/resolution tetap sinkron
    - imageReferenceSupported tetap eksplisit
    - Reference image tidak dihapus saat refresh/sinkronisasi
+   - Model object dinormalisasi menjadi model ID
+   - Model credit/discount/enabled tetap tersedia
    ========================================================= */
 
 (function () {
@@ -70,6 +72,213 @@
   }
 
 
+  /*
+   * =====================================================
+   * MODEL NORMALIZER
+   * =====================================================
+   *
+   * Adapter dapat mengembalikan:
+   *
+   * [
+   *   "model-a",
+   *   "model-b"
+   * ]
+   *
+   * atau:
+   *
+   * [
+   *   {
+   *     id: "model-a",
+   *     name: "Model A"
+   *   }
+   * ]
+   *
+   * UI membutuhkan ID string.
+   */
+
+  function getModelId(model) {
+
+    if (
+      model === null ||
+      model === undefined
+    ) {
+      return '';
+    }
+
+    if (
+      typeof model === 'string' ||
+      typeof model === 'number'
+    ) {
+      return text(model);
+    }
+
+    if (
+      typeof model === 'object'
+    ) {
+
+      return text(
+        model.id ||
+        model.model ||
+        model.modelId ||
+        model.slug ||
+        model.name
+      );
+
+    }
+
+    return '';
+  }
+
+
+  function getModelName(model) {
+
+    if (
+      model === null ||
+      model === undefined
+    ) {
+      return '';
+    }
+
+    if (
+      typeof model === 'string' ||
+      typeof model === 'number'
+    ) {
+      return text(model);
+    }
+
+    if (
+      typeof model === 'object'
+    ) {
+
+      return text(
+        model.name ||
+        model.label ||
+        model.displayName ||
+        model.id ||
+        model.model ||
+        model.modelId ||
+        model.slug
+      );
+
+    }
+
+    return '';
+  }
+
+
+  function normalizeModels(value) {
+
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const result = [];
+    const seen = new Set();
+
+    value.forEach(function (model) {
+
+      const id =
+        getModelId(model);
+
+      if (!id) {
+        return;
+      }
+
+      const normalized =
+        normalizeId(id);
+
+      if (!normalized) {
+        return;
+      }
+
+      if (seen.has(id)) {
+        return;
+      }
+
+      seen.add(id);
+
+      result.push(id);
+
+    });
+
+    return result;
+  }
+
+
+  function getModelMetadataMap(value) {
+
+    if (!Array.isArray(value)) {
+      return {};
+    }
+
+    const result = {};
+
+    value.forEach(function (model) {
+
+      const id =
+        getModelId(model);
+
+      if (!id) {
+        return;
+      }
+
+      if (
+        typeof model === 'object' &&
+        model !== null
+      ) {
+
+        result[id] = {
+          id: id,
+          name:
+            getModelName(model),
+          ...model
+        };
+
+      } else {
+
+        result[id] = {
+          id: id,
+          name: id
+        };
+
+      }
+
+    });
+
+    return result;
+  }
+
+
+  function normalizeModelMap(value) {
+
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value)
+    ) {
+      return {};
+    }
+
+    const result = {};
+
+    Object.keys(value).forEach(function (key) {
+
+      const normalizedKey =
+        text(key);
+
+      if (!normalizedKey) {
+        return;
+      }
+
+      result[normalizedKey] =
+        value[key];
+
+    });
+
+    return result;
+  }
+
+
   function scheduleRefresh(changedField) {
 
     if (refreshTimer !== null) {
@@ -121,7 +330,7 @@
               : {}
           );
 
-    const models =
+    const rawModels =
       Array.isArray(source.models)
         ? source.models
         : (
@@ -129,6 +338,16 @@
               ? provider.models
               : []
           );
+
+    const models =
+      normalizeModels(
+        rawModels
+      );
+
+    const modelMetadata =
+      getModelMetadataMap(
+        rawModels
+      );
 
     const durations =
       Array.isArray(source.durations)
@@ -165,6 +384,7 @@
 
     return {
       models: cloneArray(models),
+      modelMetadata: modelMetadata,
       durations: cloneArray(durations),
       aspects: cloneArray(aspects),
       resolutions: cloneArray(resolutions),
@@ -175,6 +395,143 @@
 
   function getEffectiveCapabilities(provider) {
     return normalizeCapabilities(provider);
+  }
+
+
+  /* =======================================================
+     MODEL PRICING
+  ======================================================= */
+
+  function getModelCredits(provider) {
+
+    if (!provider) {
+      return {};
+    }
+
+    return normalizeModelMap(
+      provider.modelCredits ||
+      provider.config?.modelCredits ||
+      {}
+    );
+  }
+
+
+  function getModelDiscounts(provider) {
+
+    if (!provider) {
+      return {};
+    }
+
+    return normalizeModelMap(
+      provider.modelDiscounts ||
+      provider.config?.modelDiscounts ||
+      {}
+    );
+  }
+
+
+  function getModelEnabled(provider) {
+
+    if (!provider) {
+      return {};
+    }
+
+    return normalizeModelMap(
+      provider.modelEnabled ||
+      provider.config?.modelEnabled ||
+      {}
+    );
+  }
+
+
+  function getMapValue(
+    map,
+    modelId
+  ) {
+
+    if (
+      !map ||
+      typeof map !== 'object'
+    ) {
+      return undefined;
+    }
+
+    const direct =
+      text(modelId);
+
+    if (
+      direct &&
+      Object.prototype.hasOwnProperty.call(
+        map,
+        direct
+      )
+    ) {
+      return map[direct];
+    }
+
+    const normalized =
+      normalizeId(modelId);
+
+    const key =
+      Object.keys(map).find(
+        function (item) {
+          return normalizeId(item) === normalized;
+        }
+      );
+
+    return key !== undefined
+      ? map[key]
+      : undefined;
+  }
+
+
+  function isModelEnabled(
+    provider,
+    modelId
+  ) {
+
+    const configured =
+      getMapValue(
+        getModelEnabled(provider),
+        modelId
+      );
+
+    if (
+      configured === undefined ||
+      configured === null
+    ) {
+      return true;
+    }
+
+    if (
+      configured === false ||
+      configured === 0 ||
+      configured === 'false'
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+
+  function getVisibleModels(provider) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+    return capabilities.models.filter(
+      function (modelId) {
+
+        return isModelEnabled(
+          provider,
+          modelId
+        );
+
+      }
+    );
   }
 
 
@@ -239,17 +596,9 @@
     const fileStatus = $('imageFileStatus');
 
     if (fileStatus) {
-      fileStatus.textContent = 'Tidak ada file dipilih';
+      fileStatus.textContent =
+        'Tidak ada file dipilih';
     }
-
-    /*
-     * Jangan panggil GENZ.upload.clear().
-     *
-     * Fungsi tersebut berpotensi mengirim event upload
-     * yang kemudian memanggil scheduleRefresh() lagi.
-     *
-     * State dan DOM sudah dibersihkan langsung di atas.
-     */
   }
 
 
@@ -257,33 +606,33 @@
      MODEL RULES
   ======================================================= */
 
-  function getModelRules(provider, model) {
+  function getModelRules(
+    provider,
+    model
+  ) {
 
     const capabilities =
-      getEffectiveCapabilities(provider);
+      getEffectiveCapabilities(
+        provider
+      );
 
     const constraints =
       capabilities.constraints || {};
 
-    return constraints[model] || null;
+    return (
+      constraints[model] ||
+      constraints[
+        normalizeId(model)
+      ] ||
+      null
+    );
   }
 
 
-  /*
-   * Return value:
-   *
-   * true  = model secara eksplisit mendukung image
-   * false = model secara eksplisit tidak mendukung image
-   * null  = rule/model belum diketahui
-   *
-   * Penting:
-   * null TIDAK boleh dianggap false.
-   *
-   * Saat provider sedang refresh/sinkronisasi,
-   * capability dapat sementara belum tersedia.
-   * Reference image harus tetap dipertahankan.
-   */
-  function modelSupportsImage(provider, model) {
+  function modelSupportsImage(
+    provider,
+    model
+  ) {
 
     const rules =
       getModelRules(
@@ -346,7 +695,9 @@
   ) {
 
     const capabilities =
-      getEffectiveCapabilities(provider);
+      getEffectiveCapabilities(
+        provider
+      );
 
     const modeRules =
       getModeRules(
@@ -385,7 +736,9 @@
   ) {
 
     const capabilities =
-      getEffectiveCapabilities(provider);
+      getEffectiveCapabilities(
+        provider
+      );
 
     const modeRules =
       getModeRules(
@@ -410,7 +763,9 @@
       return [];
     }
 
-    return uniqueArray(allowed);
+    return uniqueArray(
+      allowed
+    );
   }
 
 
@@ -440,13 +795,10 @@
           : element.value
       );
 
-    /*
-     * Jangan rebuild DOM jika option sama.
-     * Ini mengurangi kerja browser dan mencegah
-     * select berkedip saat realtime refresh.
-     */
     const current =
-      Array.from(element.options).map(
+      Array.from(
+        element.options
+      ).map(
         function (option) {
           return option.value;
         }
@@ -454,9 +806,11 @@
 
     const same =
       current.length === list.length &&
-      current.every(function (value, index) {
-        return value === list[index];
-      });
+      current.every(
+        function (value, index) {
+          return value === list[index];
+        }
+      );
 
     if (same) {
 
@@ -464,18 +818,25 @@
         previous &&
         list.includes(previous)
       ) {
-        element.value = previous;
+        element.value =
+          previous;
+
         return previous;
       }
 
       if (
         list.length &&
-        !list.includes(element.value)
+        !list.includes(
+          element.value
+        )
       ) {
-        element.value = list[0];
+        element.value =
+          list[0];
       }
 
-      return text(element.value);
+      return text(
+        element.value
+      );
     }
 
     element.innerHTML = '';
@@ -483,12 +844,18 @@
     if (!list.length) {
 
       const option =
-        document.createElement('option');
+        document.createElement(
+          'option'
+        );
 
       option.value = '';
-      option.textContent = 'Tidak tersedia';
 
-      element.appendChild(option);
+      option.textContent =
+        'Tidak tersedia';
+
+      element.appendChild(
+        option
+      );
 
       return '';
     }
@@ -496,47 +863,205 @@
     const fragment =
       document.createDocumentFragment();
 
-    list.forEach(function (value) {
+    list.forEach(
+      function (value) {
 
-      const option =
-        document.createElement('option');
+        const option =
+          document.createElement(
+            'option'
+          );
 
-      option.value = String(value);
-      option.textContent = String(value);
+        option.value =
+          String(value);
 
-      fragment.appendChild(option);
+        option.textContent =
+          String(value);
 
-    });
+        fragment.appendChild(
+          option
+        );
 
-    element.appendChild(fragment);
+      }
+    );
+
+    element.appendChild(
+      fragment
+    );
 
     if (
       previous &&
       list.includes(previous)
     ) {
-      element.value = previous;
+
+      element.value =
+        previous;
+
       return previous;
     }
 
-    element.value = list[0];
+    element.value =
+      list[0];
 
     return list[0];
   }
 
 
-  function setValue(id, value) {
+  function setModelOptions(
+    provider,
+    preferredValue
+  ) {
 
-    const element = $(id);
+    const element =
+      $('model');
+
+    if (!element) {
+      return '';
+    }
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+    const models =
+      getVisibleModels(
+        provider
+      );
+
+    const previous =
+      text(
+        preferredValue !== undefined
+          ? preferredValue
+          : element.value
+      );
+
+    const current =
+      Array.from(
+        element.options
+      ).map(
+        function (option) {
+          return option.value;
+        }
+      );
+
+    const same =
+      current.length === models.length &&
+      current.every(
+        function (value, index) {
+          return value === models[index];
+        }
+      );
+
+    if (!same) {
+
+      element.innerHTML = '';
+
+      if (!models.length) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value = '';
+
+        option.textContent =
+          'Tidak tersedia';
+
+        element.appendChild(
+          option
+        );
+
+      } else {
+
+        const fragment =
+          document.createDocumentFragment();
+
+        models.forEach(
+          function (modelId) {
+
+            const option =
+              document.createElement(
+                'option'
+              );
+
+            const metadata =
+              capabilities.modelMetadata?.[
+                modelId
+              ] || {};
+
+            option.value =
+              modelId;
+
+            option.textContent =
+              text(
+                metadata.name ||
+                metadata.label ||
+                metadata.displayName ||
+                modelId
+              );
+
+            fragment.appendChild(
+              option
+            );
+
+          }
+        );
+
+        element.appendChild(
+          fragment
+        );
+      }
+    }
+
+    if (
+      previous &&
+      models.includes(previous)
+    ) {
+
+      element.value =
+        previous;
+
+      return previous;
+    }
+
+    if (models.length) {
+
+      element.value =
+        models[0];
+
+      return models[0];
+    }
+
+    element.value = '';
+
+    return '';
+  }
+
+
+  function setValue(
+    id,
+    value
+  ) {
+
+    const element =
+      $(id);
 
     if (!element) {
       return;
     }
 
     const next =
-      String(value ?? '');
+      String(
+        value ?? ''
+      );
 
-    if (element.value !== next) {
-      element.value = next;
+    if (
+      element.value !==
+      next
+    ) {
+      element.value =
+        next;
     }
   }
 
@@ -545,34 +1070,46 @@
      VALID MODEL
   ======================================================= */
 
-  function ensureValidModel(provider) {
+  function ensureValidModel(
+    provider
+  ) {
 
-    const model = $('model');
+    const model =
+      $('model');
 
     if (!model) {
       return '';
     }
 
     const allowed =
-      getEffectiveCapabilities(provider)
-        .models
-        .map(function (value) {
-          return String(value);
-        });
+      getVisibleModels(
+        provider
+      );
 
     if (!allowed.length) {
-      model.value = '';
+
+      model.value =
+        '';
+
       return '';
     }
 
     const current =
-      text(model.value);
+      text(
+        model.value
+      );
 
-    if (allowed.includes(current)) {
+    if (
+      allowed.includes(
+        current
+      )
+    ) {
+
       return current;
     }
 
-    model.value = allowed[0];
+    model.value =
+      allowed[0];
 
     return allowed[0];
   }
@@ -582,38 +1119,51 @@
      VALID ASPECT
   ======================================================= */
 
-  function ensureValidAspect(provider) {
+  function ensureValidAspect(
+    provider
+  ) {
 
     const allowed =
-      getEffectiveCapabilities(provider)
+      getEffectiveCapabilities(
+        provider
+      )
         .aspects
-        .map(function (value) {
-          return String(value);
-        });
+        .map(
+          function (value) {
+            return String(value);
+          }
+        );
 
     [
       $('ratio'),
       $('aspect')
-    ].forEach(function (element) {
+    ].forEach(
+      function (element) {
 
-      if (!element) {
-        return;
+        if (!element) {
+          return;
+        }
+
+        if (!allowed.length) {
+
+          element.value =
+            '';
+
+          return;
+        }
+
+        if (
+          !allowed.includes(
+            text(element.value)
+          )
+        ) {
+
+          element.value =
+            allowed[0];
+        }
+
       }
-
-      if (!allowed.length) {
-        element.value = '';
-        return;
-      }
-
-      if (
-        !allowed.includes(
-          text(element.value)
-        )
-      ) {
-        element.value = allowed[0];
-      }
-
-    });
+    );
   }
 
 
@@ -690,21 +1240,19 @@
     }
 
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
 
     const imageGroup =
       findReferenceImageGroup(
         imageInput
       );
 
-    /*
-     * Belum ada model.
-     *
-     * Jangan pernah menghapus image.
-     */
     if (!model) {
 
-      imageInput.disabled = false;
+      imageInput.disabled =
+        false;
 
       imageInput.removeAttribute(
         'aria-disabled'
@@ -712,7 +1260,9 @@
 
       if (imageGroup) {
 
-        imageGroup.classList.remove('hidden');
+        imageGroup.classList.remove(
+          'hidden'
+        );
 
         imageGroup.style.setProperty(
           'display',
@@ -736,22 +1286,13 @@
 
 
     /*
-     * =====================================================
-     * UNKNOWN / BELUM SIAP
-     * =====================================================
-     *
-     * Ini bagian paling penting.
-     *
-     * Ketika provider/model baru saja berubah atau
-     * capabilities belum lengkap, supported bisa null.
-     *
-     * Jangan disable input.
-     * Jangan hide preview.
-     * Jangan clear image.
+     * UNKNOWN
      */
+
     if (supported === null) {
 
-      imageInput.disabled = false;
+      imageInput.disabled =
+        false;
 
       imageInput.removeAttribute(
         'aria-disabled'
@@ -759,7 +1300,9 @@
 
       if (imageGroup) {
 
-        imageGroup.classList.remove('hidden');
+        imageGroup.classList.remove(
+          'hidden'
+        );
 
         imageGroup.style.setProperty(
           'display',
@@ -777,21 +1320,16 @@
 
 
     /*
-     * =====================================================
-     * MODEL TIDAK MENDUKUNG IMAGE
-     * =====================================================
-     *
-     * UI boleh disembunyikan, tetapi imageData TIDAK
-     * boleh dihapus.
-     *
-     * Dengan begitu saat user kembali ke model yang
-     * mendukung reference image, gambar masih tersedia.
+     * NOT SUPPORTED
      */
+
     if (supported === false) {
 
       if (imageGroup) {
 
-        imageGroup.classList.add('hidden');
+        imageGroup.classList.add(
+          'hidden'
+        );
 
         imageGroup.style.setProperty(
           'display',
@@ -805,41 +1343,27 @@
         );
       }
 
-      imageInput.disabled = true;
+      imageInput.disabled =
+        true;
 
       imageInput.setAttribute(
         'aria-disabled',
         'true'
       );
 
-      /*
-       * JANGAN panggil clearImageReference() di sini.
-       *
-       * Sebelumnya kode melakukan:
-       *
-       * if (hasImageReference()) {
-       *   clearImageReference();
-       * }
-       *
-       * Hal tersebut menyebabkan reference image hilang
-       * ketika refresh provider/model terjadi.
-       *
-       * Image sekarang dipertahankan.
-       */
-
       return;
     }
 
 
     /*
-     * =====================================================
-     * MODEL MENDUKUNG IMAGE
-     * =====================================================
+     * SUPPORTED
      */
 
     if (imageGroup) {
 
-      imageGroup.classList.remove('hidden');
+      imageGroup.classList.remove(
+        'hidden'
+      );
 
       imageGroup.style.setProperty(
         'display',
@@ -852,7 +1376,8 @@
       );
     }
 
-    imageInput.disabled = false;
+    imageInput.disabled =
+      false;
 
     imageInput.removeAttribute(
       'aria-disabled'
@@ -864,10 +1389,14 @@
      MODEL RULES
   ======================================================= */
 
-  function applyModelRules(provider) {
+  function applyModelRules(
+    provider
+  ) {
 
     const model =
-      ensureValidModel(provider);
+      ensureValidModel(
+        provider
+      );
 
     if (!model) {
 
@@ -896,7 +1425,9 @@
   ) {
 
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
 
     if (!model) {
       return '';
@@ -927,16 +1458,24 @@
   ) {
 
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
 
     if (!model) {
       return '';
     }
 
     const duration =
-      Number($('duration')?.value);
+      Number(
+        $('duration')?.value
+      );
 
-    if (!Number.isFinite(duration)) {
+    if (
+      !Number.isFinite(
+        duration
+      )
+    ) {
 
       return setOptions(
         'resolution',
@@ -974,13 +1513,19 @@
       );
 
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
 
     const duration =
-      text($('duration')?.value);
+      text(
+        $('duration')?.value
+      );
 
     const resolution =
-      text($('resolution')?.value);
+      text(
+        $('resolution')?.value
+      );
 
     const enabled =
       Boolean(
@@ -990,20 +1535,23 @@
         resolution
       );
 
-    buttons.forEach(function (button) {
+    buttons.forEach(
+      function (button) {
 
-      /*
-       * Jangan disable seluruh form.
-       * Hanya tombol generate yang relevan.
-       */
-      if (
-        button.id === 'generateBtn' ||
-        button.hasAttribute('data-generate-button')
-      ) {
-        button.disabled = !enabled;
+        if (
+          button.id ===
+            'generateBtn' ||
+          button.hasAttribute(
+            'data-generate-button'
+          )
+        ) {
+
+          button.disabled =
+            !enabled;
+        }
+
       }
-
-    });
+    );
   }
 
 
@@ -1015,25 +1563,31 @@
       .querySelectorAll(
         '[data-provider]'
       )
-      .forEach(function (button) {
+      .forEach(
+        function (button) {
 
-        const active =
-          normalizeId(
-            button.dataset.provider
-          ) === normalizeId(
-            providerId
+          const active =
+            normalizeId(
+              button.dataset.provider
+            ) ===
+            normalizeId(
+              providerId
+            );
+
+          button.classList.toggle(
+            'active',
+            active
           );
 
-        button.classList.toggle(
-          'active',
-          active
-        );
+          button.setAttribute(
+            'aria-selected',
+            active
+              ? 'true'
+              : 'false'
+          );
 
-        button.setAttribute(
-          'aria-selected',
-          active ? 'true' : 'false'
-        );
-      });
+        }
+      );
   }
 
 
@@ -1046,7 +1600,10 @@
   ) {
 
     if (refreshRunning) {
-      refreshQueued = true;
+
+      refreshQueued =
+        true;
+
       return;
     }
 
@@ -1057,33 +1614,43 @@
       return;
     }
 
-    refreshRunning = true;
+    refreshRunning =
+      true;
 
     try {
 
       const previousModel =
-        text($('model')?.value);
+        text(
+          $('model')?.value
+        );
 
       const previousDuration =
-        text($('duration')?.value);
+        text(
+          $('duration')?.value
+        );
 
       const previousResolution =
-        text($('resolution')?.value);
+        text(
+          $('resolution')?.value
+        );
 
       const previousRatio =
-        text($('ratio')?.value);
+        text(
+          $('ratio')?.value
+        );
 
       const previousAspect =
-        text($('aspect')?.value);
+        text(
+          $('aspect')?.value
+        );
 
 
       /* ===================================================
          MODEL
       =================================================== */
 
-      setOptions(
-        'model',
-        getEffectiveCapabilities(provider).models,
+      setModelOptions(
+        provider,
         previousModel
       );
 
@@ -1169,8 +1736,11 @@
 
 
       if (!duration) {
+
         duration =
-          text($('duration')?.value);
+          text(
+            $('duration')?.value
+          );
       }
 
 
@@ -1185,10 +1755,6 @@
         );
 
 
-      /*
-       * Jika resolution yang lama tidak kompatibel,
-       * pilih resolution pertama yang valid.
-       */
       if (!resolution) {
 
         resolution =
@@ -1203,7 +1769,8 @@
       =================================================== */
 
       if (
-        changedField === 'resolution'
+        changedField ===
+        'resolution'
       ) {
 
         const selectedResolution =
@@ -1237,7 +1804,8 @@
           );
 
         if (
-          compatibleDuration !== undefined
+          compatibleDuration !==
+          undefined
         ) {
 
           duration =
@@ -1257,7 +1825,9 @@
       resolution =
         applyResolutionRules(
           provider,
-          text($('resolution')?.value)
+          text(
+            $('resolution')?.value
+          )
         );
 
 
@@ -1269,7 +1839,9 @@
         provider.id;
 
       GENZ.state.model =
-        text($('model')?.value);
+        text(
+          $('model')?.value
+        );
 
       GENZ.state.duration =
         Number(
@@ -1288,16 +1860,36 @@
         );
 
 
-      /*
-       * Jangan sentuh:
-       *
-       * GENZ.state.imageData
-       * GENZ.upload.imageData
-       *
-       * selama refresh provider.
-       *
-       * Reference image dikelola oleh upload.js.
-       */
+      /* ===================================================
+         PRICING STATE
+      =================================================== */
+
+      const selectedModel =
+        text(
+          $('model')?.value
+        );
+
+      const modelCredits =
+        getModelCredits(
+          provider
+        );
+
+      const modelDiscounts =
+        getModelDiscounts(
+          provider
+        );
+
+      GENZ.state.modelCredit =
+        getMapValue(
+          modelCredits,
+          selectedModel
+        );
+
+      GENZ.state.modelDiscount =
+        getMapValue(
+          modelDiscounts,
+          selectedModel
+        );
 
 
       /* ===================================================
@@ -1312,13 +1904,31 @@
         provider.id
       );
 
+
+      /*
+       * Beri tahu UI credit bahwa provider/model
+       * sudah berubah.
+       */
+
+      if (
+        GENZ.modelCreditUI &&
+        typeof GENZ.modelCreditUI.update ===
+          'function'
+      ) {
+
+        GENZ.modelCreditUI.update();
+
+      }
+
     } finally {
 
-      refreshRunning = false;
+      refreshRunning =
+        false;
 
       if (refreshQueued) {
 
-        refreshQueued = false;
+        refreshQueued =
+          false;
 
         scheduleRefresh(
           changedField || ''
@@ -1385,7 +1995,8 @@
             id: provider.id,
             name: provider.name,
             adapter:
-              provider.adapter || null,
+              provider.adapter ||
+              null,
             capabilities:
               getEffectiveCapabilities(
                 provider
@@ -1417,28 +2028,36 @@
     const fragment =
       document.createDocumentFragment();
 
-    providers.forEach(function (provider) {
+    providers.forEach(
+      function (provider) {
 
-      const button =
-        document.createElement(
-          'button'
+        const button =
+          document.createElement(
+            'button'
+          );
+
+        button.type =
+          'button';
+
+        button.className =
+          'provider-button';
+
+        button.dataset.provider =
+          provider.id;
+
+        button.textContent =
+          provider.name ||
+          provider.id;
+
+        fragment.appendChild(
+          button
         );
+      }
+    );
 
-      button.type = 'button';
-      button.className = 'provider-button';
-      button.dataset.provider =
-        provider.id;
+    container.innerHTML =
+      '';
 
-      button.textContent =
-        provider.name ||
-        provider.id;
-
-      fragment.appendChild(
-        button
-      );
-    });
-
-    container.innerHTML = '';
     container.appendChild(
       fragment
     );
@@ -1490,7 +2109,9 @@
     }
 
     const previous =
-      text(element.value);
+      text(
+        element.value
+      );
 
     const fragment =
       document.createDocumentFragment();
@@ -1500,7 +2121,8 @@
         'option'
       );
 
-    placeholder.value = '';
+    placeholder.value =
+      '';
 
     placeholder.textContent =
       providers.length
@@ -1511,26 +2133,29 @@
       placeholder
     );
 
-    providers.forEach(function (provider) {
+    providers.forEach(
+      function (provider) {
 
-      const option =
-        document.createElement(
-          'option'
+        const option =
+          document.createElement(
+            'option'
+          );
+
+        option.value =
+          provider.id;
+
+        option.textContent =
+          provider.name ||
+          provider.id;
+
+        fragment.appendChild(
+          option
         );
+      }
+    );
 
-      option.value =
-        provider.id;
-
-      option.textContent =
-        provider.name ||
-        provider.id;
-
-      fragment.appendChild(
-        option
-      );
-    });
-
-    element.innerHTML = '';
+    element.innerHTML =
+      '';
 
     element.appendChild(
       fragment
@@ -1538,11 +2163,19 @@
 
     if (
       previous &&
-      providers.some(function (provider) {
-        return String(provider.id) === previous;
-      })
+      providers.some(
+        function (provider) {
+          return (
+            String(
+              provider.id
+            ) === previous
+          );
+        }
+      )
     ) {
-      element.value = previous;
+
+      element.value =
+        previous;
     }
   }
 
@@ -1560,45 +2193,84 @@
     }
 
     return list
-      .filter(function (provider) {
+      .filter(
+        function (provider) {
 
-        if (!provider) {
-          return false;
-        }
+          if (!provider) {
+            return false;
+          }
 
-        if (provider.enabled === false) {
-          return false;
-        }
+          if (
+            provider.enabled ===
+            false
+          ) {
+            return false;
+          }
 
-        return Boolean(
-          provider.id ||
-          provider.name
-        );
-      })
-      .map(function (provider) {
-
-        const id =
-          text(
+          return Boolean(
             provider.id ||
             provider.name
           );
+        }
+      )
+      .map(
+        function (provider) {
 
-        const name =
-          text(
-            provider.name ||
-            id
-          );
+          const id =
+            text(
+              provider.id ||
+              provider.name
+            );
 
-        return {
-          ...provider,
-          id: id,
-          name: name,
-          capabilities:
+          const name =
+            text(
+              provider.name ||
+              id
+            );
+
+          const capabilities =
             normalizeCapabilities(
               provider
-            )
-        };
-      });
+            );
+
+          return {
+            ...provider,
+
+            id:
+              id,
+
+            name:
+              name,
+
+            capabilities:
+              capabilities,
+
+            models:
+              capabilities.models,
+
+            modelCredits:
+              normalizeModelMap(
+                provider.modelCredits ||
+                provider.config?.modelCredits ||
+                {}
+              ),
+
+            modelDiscounts:
+              normalizeModelMap(
+                provider.modelDiscounts ||
+                provider.config?.modelDiscounts ||
+                {}
+              ),
+
+            modelEnabled:
+              normalizeModelMap(
+                provider.modelEnabled ||
+                provider.config?.modelEnabled ||
+                {}
+              )
+          };
+        }
+      );
   }
 
 
@@ -1611,7 +2283,8 @@
   ) {
 
     const providers =
-      GENZ.providers.list || [];
+      GENZ.providers.list ||
+      [];
 
     const normalized =
       normalizeId(
@@ -1625,10 +2298,12 @@
           return (
             normalizeId(
               provider.id
-            ) === normalized
+            ) ===
+            normalized
           );
         }
-      ) || null
+      ) ||
+      null
     );
   }
 
@@ -1684,8 +2359,12 @@
         await fetch(
           '/api/providers',
           {
-            method: 'GET',
-            credentials: 'include',
+            method:
+              'GET',
+
+            credentials:
+              'include',
+
             headers: {
               Accept:
                 'application/json'
@@ -1784,7 +2463,8 @@
 
         if (!selected) {
           selected =
-            providers[0] || null;
+            providers[0] ||
+            null;
         }
 
         if (selected) {
@@ -1803,9 +2483,11 @@
 
         } else {
 
-          GENZ.state.provider = null;
+          GENZ.state.provider =
+            null;
 
-          GENZ.providers.current = null;
+          GENZ.providers.current =
+            null;
 
           GENZ.providers.currentProvider =
             null;
@@ -1856,8 +2538,11 @@
             'genz-providers-loaded',
             {
               detail: {
-                providers: providers,
-                count: providers.length
+                providers:
+                  providers,
+
+                count:
+                  providers.length
               }
             }
           )
@@ -1873,7 +2558,8 @@
 
     } finally {
 
-      providersLoading = null;
+      providersLoading =
+        null;
     }
   }
 
@@ -1910,9 +2596,11 @@
 
         if (!providerId) {
 
-          GENZ.state.provider = null;
+          GENZ.state.provider =
+            null;
 
-          GENZ.providers.current = null;
+          GENZ.providers.current =
+            null;
 
           GENZ.providers.currentProvider =
             null;
@@ -1939,14 +2627,16 @@
   function bindCapabilityListeners() {
 
     if (
-      document.documentElement.dataset
+      document.documentElement
+        .dataset
         .providerCapabilityListenersAttached ===
       'true'
     ) {
       return;
     }
 
-    document.documentElement.dataset
+    document.documentElement
+      .dataset
       .providerCapabilityListenersAttached =
       'true';
 
@@ -1962,30 +2652,44 @@
           return;
         }
 
-        switch (target.id) {
+        switch (
+          target.id
+        ) {
 
           case 'model':
-            scheduleRefresh('model');
+            scheduleRefresh(
+              'model'
+            );
             break;
 
           case 'duration':
-            scheduleRefresh('duration');
+            scheduleRefresh(
+              'duration'
+            );
             break;
 
           case 'resolution':
-            scheduleRefresh('resolution');
+            scheduleRefresh(
+              'resolution'
+            );
             break;
 
           case 'ratio':
-            scheduleRefresh('ratio');
+            scheduleRefresh(
+              'ratio'
+            );
             break;
 
           case 'aspect':
-            scheduleRefresh('aspect');
+            scheduleRefresh(
+              'aspect'
+            );
             break;
 
           case 'image':
-            scheduleRefresh('image');
+            scheduleRefresh(
+              'image'
+            );
             break;
 
           default:
@@ -2005,9 +2709,13 @@
 
         if (
           target &&
-          target.id === 'image'
+          target.id ===
+            'image'
         ) {
-          scheduleRefresh('image');
+
+          scheduleRefresh(
+            'image'
+          );
         }
       },
       true
@@ -2020,16 +2728,22 @@
       'genz-image-upload',
       'genz-upload-complete',
       'genz-image-removed'
-    ].forEach(function (eventName) {
+    ].forEach(
+      function (eventName) {
 
-      document.addEventListener(
-        eventName,
-        function () {
-          scheduleRefresh('image');
-        }
-      );
+        document.addEventListener(
+          eventName,
+          function () {
 
-    });
+            scheduleRefresh(
+              'image'
+            );
+
+          }
+        );
+
+      }
+    );
   }
 
 
@@ -2054,10 +2768,57 @@
 
       const provider =
         providerId
-          ? findProvider(providerId)
+          ? findProvider(
+              providerId
+            )
           : GENZ.providers.currentProvider;
 
       return getEffectiveCapabilities(
+        provider
+      );
+    };
+
+  GENZ.providers.getModelCredits =
+    function (providerId) {
+
+      const provider =
+        providerId
+          ? findProvider(
+              providerId
+            )
+          : GENZ.providers.currentProvider;
+
+      return getModelCredits(
+        provider
+      );
+    };
+
+  GENZ.providers.getModelDiscounts =
+    function (providerId) {
+
+      const provider =
+        providerId
+          ? findProvider(
+              providerId
+            )
+          : GENZ.providers.currentProvider;
+
+      return getModelDiscounts(
+        provider
+      );
+    };
+
+  GENZ.providers.getModelEnabled =
+    function (providerId) {
+
+      const provider =
+        providerId
+          ? findProvider(
+              providerId
+            )
+          : GENZ.providers.currentProvider;
+
+      return getModelEnabled(
         provider
       );
     };
@@ -2090,11 +2851,6 @@
 
     await loadProviders();
 
-    /*
-     * Tidak ada lagi refresh tambahan 300 ms.
-     * Provider sudah selesai dimuat dan disinkronkan
-     * pada loadProviders().
-     */
   }
 
 
