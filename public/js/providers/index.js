@@ -3,27 +3,40 @@ GEN-Z.AI
 PROVIDER ADAPTER REGISTRY
 ============================================================
 
-Setiap provider memiliki file adapter sendiri.
+Registry adapter GEN-Z.AI.
+
+Tanggung jawab:
+1. Mendaftarkan adapter
+2. Mencari adapter berdasarkan Adapter ID
+3. Membaca metadata adapter
+4. Membaca capabilities
+5. Memastikan adapter memiliki kontrak minimum
+6. Menyediakan daftar adapter utama
+7. Menyediakan alias adapter
+
+PENTING:
+
+Provider ID database != Provider Name.
 
 Contoh:
-public/js/providers/veo.js
-public/js/providers/minimax.js
-public/js/providers/luma.js
-public/js/providers/kling.js
-public/js/providers/runway.js
-public/js/providers/seedance.js
 
-Registry ini bertugas:
-1. Mendaftarkan adapter
-2. Mencari adapter
-3. Membaca metadata adapter
-4. Membaca capabilities adapter
-5. Menyediakan daftar adapter utama
+provider.id
+    chinaapi
 
-Provider baru TIDAK perlu mengubah UI Admin.
+provider.name
+    ChinaAPI
 
-API key TIDAK disimpan di sini.
+Yang digunakan untuk resolve adapter adalah:
+
+    chinaapi
+
+Bukan:
+
+    ChinaAPI
+
+API key tidak disimpan di registry.
 API key berasal dari database dan diproses server-side.
+
 ============================================================ */
 
 
@@ -31,23 +44,37 @@ API key berasal dari database dan diproses server-side.
 REGISTRY
 ============================================================ */
 
-const PROVIDERS = Object.create(null);
+const PROVIDERS =
+  Object.create(null);
+
 
 /*
-Menyimpan hanya adapter utama.
-
-Alias tidak masuk ke sini sehingga
-listAdapters() tidak menampilkan provider
-yang sama berkali-kali.
-*/
-const PRIMARY_ADAPTERS = Object.create(null);
+ * Hanya adapter utama yang disimpan di sini.
+ *
+ * Alias tidak masuk ke PRIMARY_ADAPTERS.
+ *
+ * Contoh:
+ *
+ * chinaapi
+ * china-api
+ * china api
+ *
+ * Ketiganya menunjuk adapter yang sama,
+ * tetapi listAdapters() hanya menghasilkan:
+ *
+ * chinaapi
+ */
+const PRIMARY_ADAPTERS =
+  Object.create(null);
 
 
 /* ============================================================
 NORMALIZE ADAPTER ID
 ============================================================ */
 
-function normalizeProviderId(value) {
+function normalizeProviderId(
+  value
+) {
 
   if (
     value === null ||
@@ -58,11 +85,95 @@ function normalizeProviderId(value) {
 
   }
 
-  return String(value)
+
+  return String(
+    value
+  )
     .trim()
     .toLowerCase()
-    .replace(/[_\s]+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(
+      /[_\s]+/g,
+      "-"
+    )
+    .replace(
+      /-+/g,
+      "-"
+    );
+
+}
+
+
+/* ============================================================
+VALIDATE ADAPTER
+============================================================ */
+
+/*
+ * Semua adapter video GEN-Z.AI harus memiliki kontrak
+ * minimum berikut:
+ *
+ * generate()
+ * status()
+ * fetchVideo()
+ *
+ * Fungsi tambahan bersifat opsional:
+ *
+ * createVideo()
+ * getVideoStatus()
+ * waitForVideo()
+ * getModels()
+ * info()
+ */
+
+function validateAdapterContract(
+  id,
+  adapter
+) {
+
+  if (
+    !adapter ||
+    typeof adapter !==
+      "object"
+  ) {
+
+    throw new Error(
+      `Implementasi adapter "${id}" tidak valid.`
+    );
+
+  }
+
+
+  const requiredMethods = [
+
+    "generate",
+
+    "status",
+
+    "fetchVideo"
+
+  ];
+
+
+  const missingMethods =
+    requiredMethods.filter(
+      method =>
+        typeof adapter[
+          method
+        ] !== "function"
+    );
+
+
+  if (
+    missingMethods.length
+  ) {
+
+    throw new Error(
+      `Adapter "${id}" tidak lengkap. Fungsi yang hilang: ${missingMethods.join(", ")}.`
+    );
+
+  }
+
+
+  return true;
 
 }
 
@@ -78,9 +189,14 @@ function registerAdapter(
 ) {
 
   const normalizedId =
-    normalizeProviderId(id);
+    normalizeProviderId(
+      id
+    );
 
-  if (!normalizedId) {
+
+  if (
+    !normalizedId
+  ) {
 
     throw new Error(
       "Adapter ID tidak boleh kosong."
@@ -88,31 +204,61 @@ function registerAdapter(
 
   }
 
+
+  validateAdapterContract(
+    normalizedId,
+    adapter
+  );
+
+
+  /*
+   * Jangan izinkan adapter berbeda
+   * mengambil ID utama yang sama.
+   */
+
+  const existingPrimary =
+    PRIMARY_ADAPTERS[
+      normalizedId
+    ];
+
+
   if (
-    !adapter ||
-    typeof adapter !== "object"
+    existingPrimary &&
+    existingPrimary !==
+      adapter
   ) {
 
     throw new Error(
-      `Implementasi adapter "${normalizedId}" tidak valid.`
+      `Adapter "${normalizedId}" sudah terdaftar.`
     );
 
   }
 
-  /*
-  Register sebagai adapter utama.
-  */
-  PROVIDERS[normalizedId] =
-    adapter;
-
-  PRIMARY_ADAPTERS[normalizedId] =
-    adapter;
 
   /*
-  Register alias.
-  */
+   * Register adapter utama.
+   */
+
+  PROVIDERS[
+    normalizedId
+  ] =
+    adapter;
+
+
+  PRIMARY_ADAPTERS[
+    normalizedId
+  ] =
+    adapter;
+
+
+  /*
+   * Register alias.
+   */
+
   if (
-    Array.isArray(aliases)
+    Array.isArray(
+      aliases
+    )
   ) {
 
     aliases.forEach(
@@ -123,23 +269,53 @@ function registerAdapter(
             alias
           );
 
+
         if (
-          normalizedAlias &&
-          normalizedAlias !==
+          !normalizedAlias ||
+          normalizedAlias ===
             normalizedId
         ) {
 
-          PROVIDERS[
-            normalizedAlias
-          ] =
-            adapter;
+          return;
 
         }
+
+
+        const existing =
+          PROVIDERS[
+            normalizedAlias
+          ];
+
+
+        /*
+         * Jangan diam-diam mengganti
+         * adapter milik alias yang sudah
+         * digunakan adapter lain.
+         */
+
+        if (
+          existing &&
+          existing !==
+            adapter
+        ) {
+
+          throw new Error(
+            `Alias adapter "${normalizedAlias}" sudah digunakan oleh adapter lain.`
+          );
+
+        }
+
+
+        PROVIDERS[
+          normalizedAlias
+        ] =
+          adapter;
 
       }
     );
 
   }
+
 
   return adapter;
 
@@ -161,6 +337,7 @@ import * as luma
 
 import * as chinaapi
   from "./chinaapi.js";
+
 
 /* ============================================================
 GOOGLE GEMINI / VEO
@@ -226,6 +403,7 @@ registerAdapter(
   ]
 );
 
+
 /* ============================================================
 CHINAAPI
 ============================================================ */
@@ -234,10 +412,14 @@ registerAdapter(
   "chinaapi",
   chinaapi,
   [
+
     "china-api",
+
     "china api"
+
   ]
 );
+
 
 /* ============================================================
 GET ADAPTER
@@ -252,14 +434,20 @@ function getAdapter(
       providerId
     );
 
-  if (!id) {
+
+  if (
+    !id
+  ) {
 
     return null;
 
   }
 
+
   return (
-    PROVIDERS[id] ||
+    PROVIDERS[
+      id
+    ] ||
     null
   );
 
@@ -275,17 +463,19 @@ function readAdapterMetadata(
   adapter
 ) {
 
-  let metadata = {};
+  let metadata =
+    {};
 
 
   /*
-  Prioritaskan info() jika adapter menyediakan.
-  */
+   * Prioritaskan info().
+   */
+
   try {
 
     if (
       typeof adapter?.info ===
-      "function"
+        "function"
     ) {
 
       metadata =
@@ -296,14 +486,28 @@ function readAdapterMetadata(
 
   } catch {
 
-    metadata = {};
+    metadata =
+      {};
 
   }
 
 
   /*
-  Fallback ke property adapter.
-  */
+   * Pastikan metadata selalu object.
+   */
+
+  if (
+    !metadata ||
+    typeof metadata !==
+      "object"
+  ) {
+
+    metadata =
+      {};
+
+  }
+
+
   const capabilities =
     metadata.capabilities ||
     adapter?.capabilities ||
@@ -378,13 +582,16 @@ function getAdapterInfo(
 
 
   /*
-  Adapter belum memiliki implementasi.
+   * Adapter belum tersedia.
+   *
+   * Provider database tetap boleh ada,
+   * tetapi backend akan mengetahui bahwa
+   * adapter belum didukung.
+   */
 
-  Tetap dikembalikan sebagai unsupported.
-  Ini memungkinkan provider baru disimpan
-  di database tanpa membuat sistem crash.
-  */
-  if (!adapter) {
+  if (
+    !adapter
+  ) {
 
     return {
 
@@ -474,10 +681,95 @@ function adapterSupported(
       providerId
     );
 
+
   return Boolean(
     id &&
-    PROVIDERS[id]
+    PROVIDERS[
+      id
+    ]
   );
+
+}
+
+
+/* ============================================================
+CHECK ADAPTER CONTRACT
+============================================================ */
+
+function adapterContract(
+  providerId
+) {
+
+  const id =
+    normalizeProviderId(
+      providerId
+    );
+
+
+  const adapter =
+    getAdapter(
+      id
+    );
+
+
+  if (
+    !adapter
+  ) {
+
+    return {
+
+      supported:
+        false,
+
+      valid:
+        false,
+
+      id,
+
+      missing:
+        [
+          "adapter"
+        ]
+
+    };
+
+  }
+
+
+  const requiredMethods = [
+
+    "generate",
+
+    "status",
+
+    "fetchVideo"
+
+  ];
+
+
+  const missing =
+    requiredMethods.filter(
+      method =>
+        typeof adapter[
+          method
+        ] !== "function"
+    );
+
+
+  return {
+
+    supported:
+      true,
+
+    valid:
+      missing.length ===
+        0,
+
+    id,
+
+    missing
+
+  };
 
 }
 
@@ -487,13 +779,6 @@ LIST PRIMARY ADAPTERS
 ============================================================ */
 
 function listAdapters() {
-
-  /*
-  Tidak hard-coded.
-
-  Adapter yang sudah diregistrasikan
-  akan otomatis muncul di daftar.
-  */
 
   return Object.keys(
     PRIMARY_ADAPTERS
@@ -522,15 +807,31 @@ function resolveAdapter(
     );
 
 
-  if (!adapter) {
+  if (
+    !adapter
+  ) {
 
     throw new Error(
       `Adapter "${String(
-        providerId || ""
+        providerId ||
+        ""
       )}" belum tersedia.`
     );
 
   }
+
+
+  /*
+   * Pemeriksaan kontrak kedua.
+   *
+   * Ini memastikan adapter yang lolos
+   * registry tetap memiliki fungsi utama.
+   */
+
+  validateAdapterContract(
+    id,
+    adapter
+  );
 
 
   return adapter;
@@ -573,6 +874,8 @@ export {
 
   adapterSupported,
 
+  adapterContract,
+
   normalizeProviderId,
 
   getRegistry
@@ -600,6 +903,8 @@ if (
     resolveAdapter,
 
     adapterSupported,
+
+    adapterContract,
 
     normalizeProviderId,
 
