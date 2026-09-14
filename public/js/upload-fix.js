@@ -1,715 +1,760 @@
 /* =========================================================
-GEN-Z.AI
-REFERENCE MEDIA UI FIX
+   GEN-Z.AI
+   REFERENCE MEDIA UI FIX
 
-File:
-public/js/upload-fix.js
+   File:
+   public/js/upload-fix.js
 
-CATATAN:
-File ini TIDAK mengambil alih proses upload.
-upload.js tetap menjadi pemilik state dan event upload.
-
-Fungsi file ini hanya:
-
-* menjaga preview image tetap terlihat
-* menambahkan tombol hapus image
-* menjaga preview video tetap terlihat
-* menambahkan tombol hapus video
-* tidak mengubah FileReader / File / upload state
-  ========================================================= */
+   Fungsi:
+   - Menjaga preview reference image tetap terlihat
+   - Menambahkan tombol X untuk menghapus image
+   - Menjaga preview reference video tetap terlihat
+   - Menambahkan tombol X untuk menghapus video
+   - Tidak mengambil alih proses upload
+   - Tidak menangani event change input
+   - Tidak mengubah FileReader
+   - Tidak mengubah proses upload
+========================================================= */
 
 (function () {
 
-'use strict';
+  'use strict';
 
-window.GENZ =
-window.GENZ || {};
+  window.GENZ =
+    window.GENZ ||
+    {};
 
-const GENZ =
-window.GENZ;
+  const GENZ =
+    window.GENZ;
 
-GENZ.upload =
-GENZ.upload || {};
+  GENZ.upload =
+    GENZ.upload ||
+    {};
 
-function get(id) {
+  GENZ.state =
+    GENZ.state ||
+    {};
 
-```
-return document.getElementById(
-  id
-);
-```
 
-}
+  /* =======================================================
+     HELPER
+  ======================================================= */
 
-function hasImages() {
+  function get(id) {
 
-```
-return (
-  Array.isArray(
-    GENZ.upload.images
-  ) &&
-  GENZ.upload.images.length > 0
-);
-```
-
-}
-
-function hasVideos() {
-
-```
-return (
-  Array.isArray(
-    GENZ.upload.videoFiles
-  ) &&
-  GENZ.upload.videoFiles.length > 0
-);
-```
-
-}
-
-function removeImage() {
-
-```
-if (
-  GENZ.upload &&
-  typeof GENZ.upload.clearImage ===
-    'function'
-) {
-
-  GENZ.upload.clearImage();
-
-  return;
-
-}
-
-GENZ.upload.images =
-  [];
-
-GENZ.upload.imageFiles =
-  [];
-
-GENZ.upload.imageData =
-  null;
-
-GENZ.state =
-  GENZ.state || {};
-
-GENZ.state.images =
-  [];
-
-GENZ.state.imageData =
-  null;
-
-const input =
-  get('image');
-
-if (input) {
-
-  input.value =
-    '';
-
-}
-
-const preview =
-  get('imagePreview');
-
-if (preview) {
-
-  preview.innerHTML =
-    '';
-
-  preview.classList.add(
-    'hidden'
-  );
-
-  preview.style.display =
-    'none';
-
-}
-```
-
-}
-
-function removeVideo() {
-
-```
-if (
-  GENZ.upload &&
-  typeof GENZ.upload.clearVideo ===
-    'function'
-) {
-
-  GENZ.upload.clearVideo();
-
-  return;
-
-}
-
-GENZ.upload.videoFiles =
-  [];
-
-GENZ.upload.videoData =
-  null;
-
-GENZ.state =
-  GENZ.state || {};
-
-GENZ.state.videoFiles =
-  [];
-
-GENZ.state.videoData =
-  null;
-
-const input =
-  get(
-    'referenceVideo'
-  );
-
-if (input) {
-
-  input.value =
-    '';
-
-}
-
-const video =
-  get(
-    'referenceVideoPreview'
-  );
-
-if (video) {
-
-  video.pause();
-
-  video.removeAttribute(
-    'src'
-  );
-
-  video.load();
-
-}
-
-const preview =
-  get(
-    'videoPreview'
-  );
-
-if (preview) {
-
-  preview.classList.add(
-    'hidden'
-  );
-
-  preview.style.display =
-    'none';
-
-}
-```
-
-}
-
-function createButton(
-className,
-label,
-handler
-) {
-
-```
-const button =
-  document.createElement(
-    'button'
-  );
-
-button.type =
-  'button';
-
-button.className =
-  className;
-
-button.textContent =
-  '×';
-
-button.setAttribute(
-  'aria-label',
-  label
-);
-
-button.setAttribute(
-  'title',
-  label
-);
-
-button.style.position =
-  'absolute';
-
-button.style.top =
-  '8px';
-
-button.style.right =
-  '8px';
-
-button.style.zIndex =
-  '999';
-
-button.style.width =
-  '32px';
-
-button.style.height =
-  '32px';
-
-button.style.minWidth =
-  '32px';
-
-button.style.minHeight =
-  '32px';
-
-button.style.padding =
-  '0';
-
-button.style.margin =
-  '0';
-
-button.style.border =
-  'none';
-
-button.style.borderRadius =
-  '50%';
-
-button.style.background =
-  'rgba(0, 0, 0, 0.78)';
-
-button.style.color =
-  '#ffffff';
-
-button.style.fontSize =
-  '22px';
-
-button.style.fontWeight =
-  '700';
-
-button.style.lineHeight =
-  '32px';
-
-button.style.textAlign =
-  'center';
-
-button.style.cursor =
-  'pointer';
-
-button.addEventListener(
-  'click',
-  function (event) {
-
-    event.preventDefault();
-
-    event.stopPropagation();
-
-    handler();
+    return document.getElementById(
+      id
+    );
 
   }
-);
 
-return button;
-```
 
-}
+  function hasImages() {
 
-function ensureImageButton() {
+    return (
+      Array.isArray(
+        GENZ.upload.images
+      ) &&
+      GENZ.upload.images.length > 0
+    );
 
-```
-const preview =
-  get('imagePreview');
+  }
 
-if (
-  !preview ||
-  !hasImages()
-) {
 
-  return;
+  function hasVideos() {
 
-}
+    return (
+      Array.isArray(
+        GENZ.upload.videoFiles
+      ) &&
+      GENZ.upload.videoFiles.length > 0
+    );
 
-preview.classList.remove(
-  'hidden'
-);
+  }
 
-preview.style.display =
-  '';
 
-if (
-  getComputedStyle(
-    preview
-  ).position ===
-  'static'
-) {
+  /* =======================================================
+     REMOVE IMAGE
+  ======================================================= */
 
-  preview.style.position =
-    'relative';
+  function removeImage() {
 
-}
+    if (
+      typeof GENZ.upload.clearImage ===
+      'function'
+    ) {
 
-/*
- * Jangan membuat tombol per thumbnail.
- * Satu tombol × menghapus seluruh
- * reference image.
- */
+      GENZ.upload.clearImage();
 
-let button =
-  preview.querySelector(
-    '.reference-image-remove-all'
-  );
+      return;
 
-if (button) {
+    }
 
-  return;
 
-}
+    GENZ.upload.images = [];
 
-button =
-  createButton(
-    'reference-image-remove-all',
-    'Hapus reference image',
-    removeImage
-  );
+    GENZ.upload.imageFiles = [];
 
-preview.appendChild(
-  button
-);
-```
+    GENZ.upload.imageData = null;
 
-}
+    GENZ.state.images = [];
 
-function ensureVideoButton() {
+    GENZ.state.imageData = null;
 
-```
-const preview =
-  get(
-    'videoPreview'
-  );
 
-if (
-  !preview ||
-  !hasVideos()
-) {
+    const input =
+      get('image');
 
-  return;
+    if (input) {
 
-}
+      input.value = '';
 
-preview.classList.remove(
-  'hidden'
-);
+    }
 
-preview.style.display =
-  '';
 
-if (
-  getComputedStyle(
-    preview
-  ).position ===
-  'static'
-) {
+    const preview =
+      get('imagePreview');
 
-  preview.style.position =
-    'relative';
+    if (preview) {
 
-}
+      preview.innerHTML = '';
 
-let button =
-  preview.querySelector(
-    '.reference-video-remove-all'
-  );
+      preview.classList.add(
+        'hidden'
+      );
 
-if (button) {
+      preview.style.display =
+        'none';
 
-  return;
+    }
 
-}
+  }
 
-button =
-  createButton(
-    'reference-video-remove-all',
-    'Hapus reference video',
-    removeVideo
-  );
 
-preview.appendChild(
-  button
-);
-```
+  /* =======================================================
+     REMOVE VIDEO
+  ======================================================= */
 
-}
+  function removeVideo() {
 
-function ensureImageGroup() {
+    if (
+      typeof GENZ.upload.clearVideo ===
+      'function'
+    ) {
 
-```
-if (!hasImages()) {
+      GENZ.upload.clearVideo();
 
-  return;
+      return;
 
-}
+    }
 
-const group =
-  get(
-    'imageReferenceGroup'
-  );
 
-if (!group) {
+    GENZ.upload.videoFiles = [];
 
-  return;
+    GENZ.upload.videoData = null;
 
-}
+    GENZ.upload.videoObjectUrls =
+      [];
 
-group.classList.remove(
-  'hidden'
-);
 
-group.style.removeProperty(
-  'display'
-);
+    GENZ.state.videoFiles = [];
 
-group.removeAttribute(
-  'aria-hidden'
-);
-```
+    GENZ.state.videoData = null;
 
-}
 
-function ensureVideoGroup() {
+    const input =
+      get('referenceVideo');
 
-```
-if (!hasVideos()) {
+    if (input) {
 
-  return;
+      input.value = '';
 
-}
+    }
 
-const group =
-  get(
-    'videoReferenceGroup'
-  );
 
-if (!group) {
+    const video =
+      get(
+        'referenceVideoPreview'
+      );
 
-  return;
+    if (video) {
 
-}
+      try {
 
-group.classList.remove(
-  'hidden'
-);
+        video.pause();
 
-group.style.removeProperty(
-  'display'
-);
+      } catch (_) {}
 
-group.removeAttribute(
-  'aria-hidden'
-);
-```
+      video.removeAttribute(
+        'src'
+      );
 
-}
+      try {
 
-function refresh() {
+        video.load();
 
-```
-if (hasImages()) {
+      } catch (_) {}
 
-  ensureImageGroup();
+    }
 
-  ensureImageButton();
 
-}
+    const preview =
+      get('videoPreview');
 
-if (hasVideos()) {
+    if (preview) {
 
-  ensureVideoGroup();
+      preview.classList.add(
+        'hidden'
+      );
 
-  ensureVideoButton();
+      preview.style.display =
+        'none';
 
-}
-```
+    }
 
-}
+  }
 
-function observePreview() {
 
-```
-const imagePreview =
-  get(
-    'imagePreview'
-  );
+  /* =======================================================
+     CREATE REMOVE BUTTON
+  ======================================================= */
 
-const videoPreview =
-  get(
-    'videoPreview'
-  );
+  function createRemoveButton(
+    className,
+    label,
+    handler
+  ) {
 
-if (imagePreview) {
+    const button =
+      document.createElement(
+        'button'
+      );
 
-  const imageObserver =
-    new MutationObserver(
-      function () {
+    button.type =
+      'button';
 
-        if (hasImages()) {
+    button.className =
+      className;
 
-          ensureImageButton();
+    button.textContent =
+      '×';
 
-        }
+    button.setAttribute(
+      'aria-label',
+      label
+    );
+
+    button.setAttribute(
+      'title',
+      label
+    );
+
+
+    button.style.position =
+      'absolute';
+
+    button.style.top =
+      '6px';
+
+    button.style.right =
+      '6px';
+
+    button.style.zIndex =
+      '1000';
+
+    button.style.width =
+      '32px';
+
+    button.style.height =
+      '32px';
+
+    button.style.minWidth =
+      '32px';
+
+    button.style.minHeight =
+      '32px';
+
+    button.style.padding =
+      '0';
+
+    button.style.margin =
+      '0';
+
+    button.style.border =
+      '0';
+
+    button.style.borderRadius =
+      '50%';
+
+    button.style.background =
+      'rgba(0,0,0,0.8)';
+
+    button.style.color =
+      '#fff';
+
+    button.style.fontSize =
+      '22px';
+
+    button.style.fontWeight =
+      '700';
+
+    button.style.lineHeight =
+      '32px';
+
+    button.style.textAlign =
+      'center';
+
+    button.style.cursor =
+      'pointer';
+
+    button.style.display =
+      'flex';
+
+    button.style.alignItems =
+      'center';
+
+    button.style.justifyContent =
+      'center';
+
+
+    button.addEventListener(
+      'click',
+      function (event) {
+
+        event.preventDefault();
+
+        event.stopPropagation();
+
+        handler();
 
       }
     );
 
-  imageObserver.observe(
-    imagePreview,
-    {
-      childList: true,
-      subtree: true
+
+    return button;
+
+  }
+
+
+  /* =======================================================
+     IMAGE GROUP
+  ======================================================= */
+
+  function keepImageGroupVisible() {
+
+    const group =
+      get(
+        'imageReferenceGroup'
+      );
+
+    if (
+      !group ||
+      !hasImages()
+    ) {
+
+      return;
+
     }
-  );
 
-}
 
-if (videoPreview) {
+    group.classList.remove(
+      'hidden'
+    );
 
-  const videoObserver =
-    new MutationObserver(
-      function () {
+    group.style.removeProperty(
+      'display'
+    );
 
-        if (hasVideos()) {
+    group.removeAttribute(
+      'aria-hidden'
+    );
 
-          ensureVideoButton();
+  }
+
+
+  /* =======================================================
+     IMAGE PREVIEW
+  ======================================================= */
+
+  function ensureImageButton() {
+
+    const preview =
+      get(
+        'imagePreview'
+      );
+
+    if (
+      !preview ||
+      !hasImages()
+    ) {
+
+      return;
+
+    }
+
+
+    preview.classList.remove(
+      'hidden'
+    );
+
+    preview.style.removeProperty(
+      'display'
+    );
+
+
+    if (
+      getComputedStyle(
+        preview
+      ).position === 'static'
+    ) {
+
+      preview.style.position =
+        'relative';
+
+    }
+
+
+    let button =
+      preview.querySelector(
+        '.reference-image-remove-all'
+      );
+
+
+    if (button) {
+
+      return;
+
+    }
+
+
+    button =
+      createRemoveButton(
+        'reference-image-remove-all',
+        'Hapus reference image',
+        removeImage
+      );
+
+
+    preview.appendChild(
+      button
+    );
+
+  }
+
+
+  /* =======================================================
+     VIDEO GROUP
+  ======================================================= */
+
+  function keepVideoGroupVisible() {
+
+    const group =
+      get(
+        'videoReferenceGroup'
+      );
+
+    if (
+      !group ||
+      !hasVideos()
+    ) {
+
+      return;
+
+    }
+
+
+    group.classList.remove(
+      'hidden'
+    );
+
+    group.style.removeProperty(
+      'display'
+    );
+
+    group.removeAttribute(
+      'aria-hidden'
+    );
+
+  }
+
+
+  /* =======================================================
+     VIDEO PREVIEW
+  ======================================================= */
+
+  function ensureVideoButton() {
+
+    const preview =
+      get(
+        'videoPreview'
+      );
+
+    if (
+      !preview ||
+      !hasVideos()
+    ) {
+
+      return;
+
+    }
+
+
+    preview.classList.remove(
+      'hidden'
+    );
+
+    preview.style.removeProperty(
+      'display'
+    );
+
+
+    if (
+      getComputedStyle(
+        preview
+      ).position === 'static'
+    ) {
+
+      preview.style.position =
+        'relative';
+
+    }
+
+
+    let button =
+      preview.querySelector(
+        '.reference-video-remove-all'
+      );
+
+
+    if (button) {
+
+      return;
+
+    }
+
+
+    button =
+      createRemoveButton(
+        'reference-video-remove-all',
+        'Hapus reference video',
+        removeVideo
+      );
+
+
+    preview.appendChild(
+      button
+    );
+
+  }
+
+
+  /* =======================================================
+     REFRESH UI
+  ======================================================= */
+
+  function refresh() {
+
+    if (hasImages()) {
+
+      keepImageGroupVisible();
+
+      ensureImageButton();
+
+    }
+
+
+    if (hasVideos()) {
+
+      keepVideoGroupVisible();
+
+      ensureVideoButton();
+
+    }
+
+  }
+
+
+  /* =======================================================
+     OBSERVE IMAGE PREVIEW
+  ======================================================= */
+
+  function observeImagePreview() {
+
+    const preview =
+      get(
+        'imagePreview'
+      );
+
+    if (!preview) {
+
+      return;
+
+    }
+
+
+    const observer =
+      new MutationObserver(
+        function () {
+
+          if (hasImages()) {
+
+            ensureImageButton();
+
+          }
 
         }
+      );
+
+
+    observer.observe(
+      preview,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     OBSERVE VIDEO PREVIEW
+  ======================================================= */
+
+  function observeVideoPreview() {
+
+    const preview =
+      get(
+        'videoPreview'
+      );
+
+    if (!preview) {
+
+      return;
+
+    }
+
+
+    const observer =
+      new MutationObserver(
+        function () {
+
+          if (hasVideos()) {
+
+            ensureVideoButton();
+
+          }
+
+        }
+      );
+
+
+    observer.observe(
+      preview,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     EVENTS
+  ======================================================= */
+
+  function bindEvents() {
+
+    const events = [
+
+      'genz-image-change',
+
+      'genz-image-removed',
+
+      'genz-upload-complete',
+
+      'genz-video-reference-change',
+
+      'genz-video-reference-removed',
+
+      'genz-provider-change',
+
+      'genz-providers-loaded'
+
+    ];
+
+
+    events.forEach(
+      function (eventName) {
+
+        document.addEventListener(
+          eventName,
+          function () {
+
+            setTimeout(
+              refresh,
+              0
+            );
+
+          }
+        );
 
       }
     );
 
-  videoObserver.observe(
-    videoPreview,
-    {
-      childList: true,
-      subtree: true
-    }
-  );
+  }
 
-}
-```
 
-}
+  /* =======================================================
+     INIT
+  ======================================================= */
 
-function bindEvents() {
+  function init() {
 
-```
-document.addEventListener(
-  'genz-image-change',
-  function () {
+    bindEvents();
 
-    setTimeout(
+    observeImagePreview();
+
+    observeVideoPreview();
+
+    refresh();
+
+
+    /*
+     * upload.js dapat merender ulang
+     * preview ketika model/provider
+     * berubah.
+     *
+     * Interval hanya menjaga UI.
+     * Tidak menyentuh proses upload.
+     */
+
+    setInterval(
       refresh,
-      0
+      500
     );
 
   }
-);
 
-document.addEventListener(
-  'genz-upload-complete',
-  function () {
 
-    setTimeout(
-      refresh,
-      0
+  if (
+    document.readyState ===
+    'loading'
+  ) {
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      init,
+      {
+        once: true
+      }
     );
 
-  }
-);
+  } else {
 
-document.addEventListener(
-  'genz-video-reference-change',
-  function () {
-
-    setTimeout(
-      refresh,
-      0
-    );
+    init();
 
   }
-);
-
-document.addEventListener(
-  'genz-provider-change',
-  function () {
-
-    setTimeout(
-      refresh,
-      0
-    );
-
-  }
-);
-
-document.addEventListener(
-  'genz-providers-loaded',
-  function () {
-
-    setTimeout(
-      refresh,
-      0
-    );
-
-  }
-);
-```
-
-}
-
-function init() {
-
-```
-bindEvents();
-
-observePreview();
-
-refresh();
-
-/*
- * upload.js dapat merender ulang preview
- * setelah provider/model berubah.
- *
- * Interval hanya melakukan pemeriksaan
- * UI dan TIDAK mengubah state upload.
- */
-
-setInterval(
-  refresh,
-  500
-);
-```
-
-}
-
-if (
-document.readyState ===
-'loading'
-) {
-
-```
-document.addEventListener(
-  'DOMContentLoaded',
-  init,
-  {
-    once: true
-  }
-);
-```
-
-} else {
-
-```
-init();
-```
-
-}
 
 })();
