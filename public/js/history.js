@@ -16,7 +16,9 @@
     jobs: [],
     loading: false,
     selected: null,
-    bound: false
+    bound: false,
+    statusTimer: null,
+    statusChecking: false
   };
 
   function $(id) {
@@ -43,7 +45,8 @@
       throw new Error("Sistem login belum siap.");
     }
 
-    const result = await client.auth.getSession();
+    const result =
+      await client.auth.getSession();
 
     if (result?.error) {
       throw result.error;
@@ -53,17 +56,26 @@
   }
 
   function normalizeStatus(job) {
-    const status = String(
-      job?.status || ""
-    )
-      .trim()
-      .toLowerCase();
+    const status =
+      String(job?.status || "")
+        .trim()
+        .toLowerCase();
 
-    const providerStatus = String(
-      job?.provider_status || ""
-    )
-      .trim()
-      .toLowerCase();
+    const providerStatus =
+      String(job?.provider_status || "")
+        .trim()
+        .toLowerCase();
+
+    const completed = [
+      "completed",
+      "complete",
+      "success",
+      "successful",
+      "succeeded",
+      "done",
+      "finished",
+      "ready"
+    ];
 
     const failed = [
       "failed",
@@ -77,17 +89,6 @@
       "cancelled",
       "canceled",
       "aborted"
-    ];
-
-    const completed = [
-      "completed",
-      "complete",
-      "success",
-      "successful",
-      "succeeded",
-      "done",
-      "finished",
-      "ready"
     ];
 
     if (
@@ -141,11 +142,10 @@
   }
 
   function providerLabel(provider) {
-    const value = String(
-      provider || ""
-    )
-      .trim()
-      .toLowerCase();
+    const value =
+      String(provider || "")
+        .trim()
+        .toLowerCase();
 
     const map = {
       veo: "Veo",
@@ -164,11 +164,16 @@
   }
 
   function getMetadata(job) {
-    let metadata = job?.metadata;
+    let metadata =
+      job?.metadata;
 
-    if (typeof metadata === "string") {
+    if (
+      typeof metadata ===
+      "string"
+    ) {
       try {
-        metadata = JSON.parse(metadata);
+        metadata =
+          JSON.parse(metadata);
       } catch (_) {
         metadata = {};
       }
@@ -176,7 +181,8 @@
 
     return (
       metadata &&
-      typeof metadata === "object" &&
+      typeof metadata ===
+        "object" &&
       !Array.isArray(metadata)
     )
       ? metadata
@@ -184,7 +190,8 @@
   }
 
   function getPrompt(job) {
-    const metadata = getMetadata(job);
+    const metadata =
+      getMetadata(job);
 
     return (
       metadata.prompt ||
@@ -196,7 +203,8 @@
   }
 
   function getModel(job) {
-    const metadata = getMetadata(job);
+    const metadata =
+      getMetadata(job);
 
     return (
       job?.model ||
@@ -207,7 +215,8 @@
   }
 
   function getDuration(job) {
-    const metadata = getMetadata(job);
+    const metadata =
+      getMetadata(job);
 
     return (
       metadata.duration ||
@@ -218,7 +227,8 @@
   }
 
   function getAspectRatio(job) {
-    const metadata = getMetadata(job);
+    const metadata =
+      getMetadata(job);
 
     return (
       metadata.aspectRatio ||
@@ -229,7 +239,8 @@
   }
 
   function getResolution(job) {
-    const metadata = getMetadata(job);
+    const metadata =
+      getMetadata(job);
 
     return (
       metadata.resolution ||
@@ -245,7 +256,9 @@
     }
 
     try {
-      return new Date(value).toLocaleString(
+      return new Date(
+        value
+      ).toLocaleString(
         "id-ID",
         {
           dateStyle: "medium",
@@ -258,17 +271,19 @@
   }
 
   function getFriendlyError(job) {
-    const code = String(
-      job?.last_error_code || ""
-    )
-      .trim()
-      .toLowerCase();
+    const code =
+      String(
+        job?.last_error_code || ""
+      )
+        .trim()
+        .toLowerCase();
 
-    const raw = String(
-      job?.last_error || ""
-    )
-      .trim()
-      .toLowerCase();
+    const raw =
+      String(
+        job?.last_error || ""
+      )
+        .trim()
+        .toLowerCase();
 
     if (
       code === "429" ||
@@ -314,7 +329,9 @@
     if (
       raw.includes("inlinedata") ||
       raw.includes("inline data") ||
-      raw.includes("isn't supported by this model")
+      raw.includes(
+        "isn't supported by this model"
+      )
     ) {
       return (
         "Reference image belum didukung " +
@@ -341,70 +358,92 @@
     );
   }
 
-  /*
-   * =======================================================
-   * VIDEO URL
-   *
-   * PRIORITAS:
-   * 1. video_url dari database
-   * 2. metadata videoUrl
-   * 3. metadata video_url
-   * 4. metadata result_url
-   * 5. metadata url
-   * 6. proxy /api/video
-   * =======================================================
-   */
-  function getVideoUrl(job) {
+  function isUsableVideoUrl(value) {
     if (
-      normalizeStatus(job) !==
-      "completed"
+      typeof value !==
+      "string"
     ) {
-      return "";
+      return false;
     }
 
-    const metadata = getMetadata(job);
+    const url =
+      value.trim();
+
+    if (!url) {
+      return false;
+    }
+
+    if (
+      url.startsWith(
+        "/api/video"
+      )
+    ) {
+      return false;
+    }
+
+    return (
+      url.startsWith(
+        "http://"
+      ) ||
+      url.startsWith(
+        "https://"
+      ) ||
+      url.startsWith("/")
+    );
+  }
+
+  function getVideoUrl(job) {
+    const metadata =
+      getMetadata(job);
 
     const directCandidates = [
       job?.video_url,
       job?.videoUrl,
+
       metadata.videoUrl,
       metadata.video_url,
       metadata.result_url,
       metadata.resultUrl,
       metadata.url,
       metadata.outputUrl,
+
       metadata.output?.videoUrl,
       metadata.output?.video_url,
+      metadata.output?.result_url,
       metadata.output?.url,
+
       metadata.result?.videoUrl,
       metadata.result?.video_url,
+      metadata.result?.result_url,
       metadata.result?.url,
+
       metadata.data?.videoUrl,
       metadata.data?.video_url,
-      metadata.data?.url
+      metadata.data?.result_url,
+      metadata.data?.url,
+
+      metadata.data?.metadata?.url,
+      metadata.data?.metadata?.videoUrl,
+      metadata.data?.metadata?.video_url,
+      metadata.data?.metadata?.result_url
     ];
 
     for (
-      const candidate of directCandidates
+      const candidate of
+      directCandidates
     ) {
       if (
-        typeof candidate === "string" &&
-        candidate.trim()
+        isUsableVideoUrl(
+          candidate
+        )
       ) {
-        const url =
-          candidate.trim();
-
-        if (
-          url.startsWith("http://") ||
-          url.startsWith("https://") ||
-          url.startsWith("/")
-        ) {
-          return url;
-        }
+        return candidate.trim();
       }
     }
 
     if (
+      normalizeStatus(job) ===
+      "completed" &&
       job?.id &&
       job?.provider
     ) {
@@ -491,19 +530,13 @@
         ? payload.jobs
         : [];
 
-    /*
-     * API sudah memfilter berdasarkan
-     * user aktif. Filter client tetap
-     * dilakukan jika user_id tersedia,
-     * tetapi tidak boleh membuang data
-     * hanya karena field tersebut kosong.
-     */
     state.jobs =
       jobs.filter(
         job => {
           if (
             !job ||
-            typeof job !== "object"
+            typeof job !==
+              "object"
           ) {
             return false;
           }
@@ -526,6 +559,298 @@
       );
 
     return state.jobs;
+  }
+
+  async function checkProcessingJobs() {
+    if (
+      state.statusChecking
+    ) {
+      return false;
+    }
+
+    const processingJobs =
+      state.jobs.filter(
+        job =>
+          normalizeStatus(
+            job
+          ) === "processing" &&
+          job?.provider &&
+          (
+            job?.external_id ||
+            job?.externalId
+          )
+      );
+
+    if (
+      !processingJobs.length
+    ) {
+      return false;
+    }
+
+    state.statusChecking =
+      true;
+
+    let changed = false;
+
+    try {
+      const session =
+        await getSession();
+
+      if (
+        !session?.access_token
+      ) {
+        return false;
+      }
+
+      /*
+       * Batasi pemeriksaan agar
+       * halaman tidak membebani API
+       * jika terdapat banyak job lama.
+       */
+      const targets =
+        processingJobs.slice(
+          0,
+          10
+        );
+
+      const results =
+        await Promise.allSettled(
+          targets.map(
+            async job => {
+              const externalId =
+                String(
+                  job.external_id ||
+                  job.externalId ||
+                  ""
+                ).trim();
+
+              if (!externalId) {
+                return;
+              }
+
+              const response =
+                await fetch(
+                  "/api/generate/status",
+                  {
+                    method:
+                      "POST",
+
+                    headers: {
+                      "Content-Type":
+                        "application/json",
+
+                      Accept:
+                        "application/json",
+
+                      Authorization:
+                        "Bearer " +
+                        session.access_token
+                    },
+
+                    credentials:
+                      "include",
+
+                    body:
+                      JSON.stringify(
+                        {
+                          provider:
+                            job.provider,
+
+                          operationName:
+                            externalId
+                        }
+                      )
+                  }
+                );
+
+              let data = null;
+
+              try {
+                data =
+                  await response.json();
+              } catch (_) {
+                data = null;
+              }
+
+              if (
+                !response.ok
+              ) {
+                throw new Error(
+                  data?.error ||
+                  data?.message ||
+                  "Gagal mengambil status video."
+                );
+              }
+
+              const status =
+                String(
+                  data?.status ||
+                  ""
+                )
+                  .trim()
+                  .toLowerCase();
+
+              if (
+                status ===
+                "completed"
+              ) {
+                job.status =
+                  "completed";
+
+                job.provider_status =
+                  "completed";
+
+                if (
+                  data.videoUrl
+                ) {
+                  job.video_url =
+                    data.videoUrl;
+                }
+
+                if (
+                  data.video_url
+                ) {
+                  job.video_url =
+                    data.video_url;
+                }
+
+                if (
+                  data.metadata
+                ) {
+                  job.metadata =
+                    data.metadata;
+                }
+
+                changed = true;
+
+                return;
+              }
+
+              if (
+                status ===
+                "failed"
+              ) {
+                job.status =
+                  "failed";
+
+                job.provider_status =
+                  "failed";
+
+                job.last_error =
+                  data.error ||
+                  data.message ||
+                  job.last_error ||
+                  "Generation gagal.";
+
+                job.last_error_code =
+                  data.errorCode ||
+                  job.last_error_code ||
+                  "provider_failed";
+
+                changed = true;
+
+                return;
+              }
+
+              if (
+                data?.videoUrl &&
+                isUsableVideoUrl(
+                  data.videoUrl
+                )
+              ) {
+                job.video_url =
+                  data.videoUrl;
+              }
+
+              if (
+                data?.video_url &&
+                isUsableVideoUrl(
+                  data.video_url
+                )
+              ) {
+                job.video_url =
+                  data.video_url;
+              }
+            }
+          )
+        );
+
+      results.forEach(
+        result => {
+          if (
+            result.status ===
+            "rejected"
+          ) {
+            console.warn(
+              "[GEN-Z HISTORY] Status polling gagal:",
+              result.reason
+            );
+          }
+        }
+      );
+    } finally {
+      state.statusChecking =
+        false;
+    }
+
+    return changed;
+  }
+
+  function scheduleStatusCheck() {
+    if (
+      state.statusTimer
+    ) {
+      clearTimeout(
+        state.statusTimer
+      );
+
+      state.statusTimer =
+        null;
+    }
+
+    const hasProcessing =
+      state.jobs.some(
+        job =>
+          normalizeStatus(
+            job
+          ) === "processing"
+      );
+
+    if (!hasProcessing) {
+      return;
+    }
+
+    state.statusTimer =
+      setTimeout(
+        async () => {
+          try {
+            const changed =
+              await checkProcessingJobs();
+
+            if (changed) {
+              render();
+
+              /*
+               * Ambil ulang data dari
+               * database agar video_url,
+               * metadata, dan status final
+               * benar-benar sinkron.
+               */
+              await loadJobs();
+
+              render();
+            }
+          } catch (error) {
+            console.warn(
+              "[GEN-Z HISTORY] Auto status check:",
+              error
+            );
+          }
+
+          scheduleStatusCheck();
+        },
+        4000
+      );
   }
 
   function render() {
@@ -564,7 +889,9 @@
           index
         ) => {
           const status =
-            normalizeStatus(job);
+            normalizeStatus(
+              job
+            );
 
           const provider =
             providerLabel(
@@ -585,10 +912,12 @@
               job.created_at
             );
 
-          let preview = "";
+          let preview =
+            "";
 
           if (
-            status === "completed" &&
+            status ===
+              "completed" &&
             videoUrl
           ) {
             preview = `
@@ -602,13 +931,16 @@
               ></video>
             `;
           } else if (
-            status === "failed"
+            status ===
+            "failed"
           ) {
             preview = `
               <div
                 class="history-placeholder history-failed"
               >
-                <div style="font-size:38px;margin-bottom:8px;">
+                <div
+                  style="font-size:38px;margin-bottom:8px;"
+                >
                   ❌
                 </div>
 
@@ -616,7 +948,9 @@
                   Generate Gagal
                 </strong>
 
-                <small style="margin-top:6px;opacity:.7;">
+                <small
+                  style="margin-top:6px;opacity:.7;"
+                >
                   Klik untuk melihat detail
                 </small>
               </div>
@@ -626,13 +960,21 @@
               <div
                 class="history-placeholder history-processing"
               >
-                <div style="font-size:38px;margin-bottom:8px;">
+                <div
+                  style="font-size:38px;margin-bottom:8px;"
+                >
                   ⏳
                 </div>
 
                 <strong>
                   Sedang Diproses
                 </strong>
+
+                <small
+                  style="margin-top:6px;opacity:.7;"
+                >
+                  Sistem sedang memeriksa hasil video
+                </small>
               </div>
             `;
           }
@@ -650,17 +992,23 @@
                 <div class="history-status">
                   <span>
                     ${escapeHtml(
-                      statusLabel(status)
+                      statusLabel(
+                        status
+                      )
                     )}
                   </span>
                 </div>
 
                 <div class="history-provider">
-                  ${escapeHtml(provider)}
+                  ${escapeHtml(
+                    provider
+                  )}
                 </div>
 
                 <div class="history-model">
-                  ${escapeHtml(model)}
+                  ${escapeHtml(
+                    model
+                  )}
                 </div>
 
                 <div class="history-prompt">
@@ -671,7 +1019,9 @@
                 </div>
 
                 <div class="history-date">
-                  ${escapeHtml(date)}
+                  ${escapeHtml(
+                    date
+                  )}
                 </div>
               </div>
             </div>
@@ -710,9 +1060,6 @@
     const videoUrl =
       getVideoUrl(job);
 
-    const metadata =
-      getMetadata(job);
-
     const friendlyError =
       getFriendlyError(job);
 
@@ -723,10 +1070,12 @@
           : "Detail Video";
     }
 
-    let content = "";
+    let content =
+      "";
 
     if (
-      status === "completed" &&
+      status ===
+        "completed" &&
       videoUrl
     ) {
       content += `
@@ -756,7 +1105,9 @@
           <span>Status</span>
           <strong>
             ${escapeHtml(
-              statusLabel(status)
+              statusLabel(
+                status
+              )
             )}
           </strong>
         </div>
@@ -765,7 +1116,9 @@
           <span>Provider</span>
           <strong>
             ${escapeHtml(
-              providerLabel(job.provider)
+              providerLabel(
+                job.provider
+              )
             )}
           </strong>
         </div>
@@ -810,7 +1163,9 @@
           <span>Tanggal</span>
           <strong>
             ${escapeHtml(
-              formatDate(job.created_at)
+              formatDate(
+                job.created_at
+              )
             )}
           </strong>
         </div>
@@ -860,7 +1215,8 @@
     `;
 
     if (
-      status === "failed"
+      status ===
+      "failed"
     ) {
       content += `
         <div class="history-error">
@@ -877,13 +1233,22 @@
       `;
     }
 
-    /*
-     * Informasi teknis kecil hanya untuk
-     * membantu debugging jika video belum
-     * mempunyai URL langsung.
-     */
     if (
-      status === "completed" &&
+      status ===
+      "processing"
+    ) {
+      content += `
+        <div class="history-error">
+          Video masih diproses.
+          Halaman ini akan memeriksa status
+          secara otomatis.
+        </div>
+      `;
+    }
+
+    if (
+      status ===
+        "completed" &&
       !videoUrl
     ) {
       content += `
@@ -951,11 +1316,6 @@
           return;
         }
 
-        /*
-         * Jangan membuka modal ketika
-         * user sedang menggunakan kontrol
-         * video.
-         */
         if (
           event.target.closest(
             "video, a, button"
@@ -966,11 +1326,14 @@
 
         const index =
           Number(
-            card.dataset.historyIndex
+            card.dataset
+              .historyIndex
           );
 
         if (
-          !Number.isFinite(index)
+          !Number.isFinite(
+            index
+          )
         ) {
           return;
         }
@@ -1076,7 +1439,24 @@
     try {
       await loadJobs();
 
+      /*
+       * Penting:
+       * cek job processing sekarang juga.
+       * Tidak perlu menunggu user kembali
+       * ke halaman Generate.
+       */
+      await checkProcessingJobs();
+
+      /*
+       * Ambil ulang data setelah polling
+       * supaya video_url/status final
+       * berasal dari database.
+       */
+      await loadJobs();
+
       render();
+
+      scheduleStatusCheck();
 
       if (status) {
         status.textContent =
