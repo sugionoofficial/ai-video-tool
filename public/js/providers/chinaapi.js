@@ -9,13 +9,56 @@ const MODEL_ID = "agnes-video-2.5-flash";
 
 const CAPABILITIES = {
   models: [MODEL_ID],
-  durations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-  aspects: ["16:9", "9:16", "4:3", "3:4", "1:1", "21:9"],
-  resolutions: ["720P"],
+
+  durations: [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+
+  aspects: [
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "1:1",
+    "21:9"
+  ],
+
+  resolutions: [
+    "720P"
+  ],
+
   constraints: {
     [MODEL_ID]: {
-      imageReferenceSupported: false,
+      imageReferenceSupported: true,
+      maxReferenceImages: 5,
+      maxReferenceVideos: 0,
+
+      modes: [
+        "text",
+        "reference"
+      ],
+
       textToVideo: {
+        4: ["720P"],
+        5: ["720P"],
+        6: ["720P"],
+        7: ["720P"],
+        8: ["720P"],
+        9: ["720P"],
+        10: ["720P"],
+        11: ["720P"],
+        12: ["720P"]
+      },
+
+      referenceToVideo: {
         4: ["720P"],
         5: ["720P"],
         6: ["720P"],
@@ -30,19 +73,55 @@ const CAPABILITIES = {
   }
 };
 
-function providerError(message, status = 400, code = "") {
-  const error = new Error(String(message || "ChinaAPI provider error."));
-  error.status = Number(status) || 400;
-  error.provider = ID;
-  error.adapter = ID;
-  if (code) error.code = String(code);
+
+// ============================================================
+// ERROR
+// ============================================================
+
+function providerError(
+  message,
+  status = 400,
+  code = ""
+) {
+  const error = new Error(
+    String(
+      message ||
+      "ChinaAPI provider error."
+    )
+  );
+
+  error.status =
+    Number(status) || 400;
+
+  error.provider =
+    ID;
+
+  error.adapter =
+    ID;
+
+  if (code) {
+    error.code =
+      String(code);
+  }
+
   return error;
 }
 
-function getApiKey(provider = {}, env = {}) {
-  const key = String(
-    provider?.api_key || env?.CHINAAPI_KEY || ""
-  ).trim();
+
+// ============================================================
+// API KEY
+// ============================================================
+
+function getApiKey(
+  provider = {},
+  env = {}
+) {
+  const key =
+    String(
+      provider?.api_key ||
+      env?.CHINAAPI_KEY ||
+      ""
+    ).trim();
 
   if (!key) {
     throw providerError(
@@ -55,58 +134,125 @@ function getApiKey(provider = {}, env = {}) {
   return key;
 }
 
-async function safeJson(response) {
-  const text = await response.text();
 
-  if (!text) return {};
+// ============================================================
+// JSON
+// ============================================================
+
+async function safeJson(
+  response
+) {
+  const text =
+    await response.text();
+
+  if (!text) {
+    return {};
+  }
 
   try {
     return JSON.parse(text);
   } catch {
-    return { raw: text };
+    return {
+      raw: text
+    };
   }
 }
 
-function getErrorMessage(data, fallback) {
-  if (typeof data?.error === "string") {
+
+// ============================================================
+// ERROR MESSAGE
+// ============================================================
+
+function getErrorMessage(
+  data,
+  fallback
+) {
+  if (
+    typeof data?.error ===
+    "string"
+  ) {
     return data.error;
   }
 
-  if (data?.error && typeof data.error.message === "string") {
+  if (
+    data?.error &&
+    typeof data.error.message ===
+    "string"
+  ) {
     return data.error.message;
   }
 
-  if (data?.error && typeof data.error.code === "string") {
+  if (
+    data?.error &&
+    typeof data.error.code ===
+    "string"
+  ) {
     return data.error.code;
   }
 
-  if (typeof data?.message === "string") {
+  if (
+    typeof data?.message ===
+    "string"
+  ) {
     return data.message;
   }
 
-  if (typeof data?.raw === "string") {
-    return data.raw.slice(0, 1000);
+  if (
+    typeof data?.raw ===
+    "string"
+  ) {
+    return data.raw.slice(
+      0,
+      1000
+    );
   }
 
   return fallback;
 }
 
-function normalizeStatus(value) {
-  return String(value || "").trim().toLowerCase();
+
+// ============================================================
+// STATUS
+// ============================================================
+
+function normalizeStatus(
+  value
+) {
+  return String(
+    value || ""
+  )
+    .trim()
+    .toLowerCase();
 }
 
-function getVideoUrl(data) {
+
+// ============================================================
+// VIDEO URL
+// ============================================================
+
+function getVideoUrl(
+  data
+) {
   const candidates = [
     data?.metadata?.url,
     data?.metadata?.video_url,
     data?.url,
     data?.video_url,
     data?.output?.url,
-    data?.output?.video_url
+    data?.output?.video_url,
+    data?.data?.result_url,
+    data?.data?.url
   ];
 
-  for (const value of candidates) {
-    if (typeof value === "string" && value.trim()) {
+  for (
+    const value
+    of candidates
+  ) {
+    if (
+      typeof value ===
+        "string" &&
+      value.trim()
+    ) {
       return value.trim();
     }
   }
@@ -114,19 +260,104 @@ function getVideoUrl(data) {
   return "";
 }
 
+
+// ============================================================
+// REFERENCE IMAGES
+// ============================================================
+
+function getReferenceImages(
+  body = {}
+) {
+  const images = [];
+
+  if (
+    Array.isArray(
+      body?.images
+    )
+  ) {
+    body.images.forEach(
+      image => {
+        if (
+          typeof image ===
+            "string" &&
+          image.trim()
+        ) {
+          images.push(
+            image.trim()
+          );
+        }
+      }
+    );
+  }
+
+  if (
+    typeof body?.imageData ===
+      "string" &&
+    body.imageData.trim()
+  ) {
+    const imageData =
+      body.imageData.trim();
+
+    if (
+      !images.includes(
+        imageData
+      )
+    ) {
+      images.unshift(
+        imageData
+      );
+    }
+  }
+
+  return images
+    .filter(Boolean)
+    .slice(
+      0,
+      5
+    );
+}
+
+
+// ============================================================
+// INFO
+// ============================================================
+
 export function info() {
   return {
-    id: ID,
-    name: NAME,
-    supported: true,
-    capabilities: CAPABILITIES
+    id:
+      ID,
+
+    name:
+      NAME,
+
+    supported:
+      true,
+
+    capabilities:
+      CAPABILITIES
   };
 }
 
-export async function generate(body = {}, provider = {}, env = {}) {
-  const apiKey = getApiKey(provider, env);
 
-  const prompt = String(body?.prompt || "").trim();
+// ============================================================
+// GENERATE
+// ============================================================
+
+export async function generate(
+  body = {},
+  provider = {},
+  env = {}
+) {
+  const apiKey =
+    getApiKey(
+      provider,
+      env
+    );
+
+  const prompt =
+    String(
+      body?.prompt || ""
+    ).trim();
 
   if (!prompt) {
     throw providerError(
@@ -136,9 +367,17 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
-  const model = String(body?.model || MODEL_ID).trim();
+  const model =
+    String(
+      body?.model ||
+      MODEL_ID
+    ).trim();
 
-  if (!CAPABILITIES.models.includes(model)) {
+  if (
+    !CAPABILITIES.models.includes(
+      model
+    )
+  ) {
     throw providerError(
       "Model ChinaAPI tidak valid.",
       400,
@@ -146,11 +385,18 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
-  const duration = Number(body?.duration ?? 5);
+  const duration =
+    Number(
+      body?.duration ?? 5
+    );
 
   if (
-    !Number.isFinite(duration) ||
-    !CAPABILITIES.durations.includes(duration)
+    !Number.isFinite(
+      duration
+    ) ||
+    !CAPABILITIES.durations.includes(
+      duration
+    )
   ) {
     throw providerError(
       "Durasi ChinaAPI harus antara 4 sampai 12 detik.",
@@ -159,14 +405,19 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
-  const aspectRatio = String(
-    body?.aspectRatio ||
-    body?.aspect ||
-    body?.ratio ||
-    "16:9"
-  ).trim();
+  const aspectRatio =
+    String(
+      body?.aspectRatio ||
+      body?.aspect ||
+      body?.ratio ||
+      "16:9"
+    ).trim();
 
-  if (!CAPABILITIES.aspects.includes(aspectRatio)) {
+  if (
+    !CAPABILITIES.aspects.includes(
+      aspectRatio
+    )
+  ) {
     throw providerError(
       "Aspect ratio ChinaAPI tidak valid.",
       400,
@@ -174,11 +425,16 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
-  const resolution = String(
-    body?.resolution || "720P"
-  ).trim();
+  const resolution =
+    String(
+      body?.resolution ||
+      "720P"
+    ).trim();
 
-  if (resolution !== "720P") {
+  if (
+    resolution !==
+    "720P"
+  ) {
     throw providerError(
       "Agnes Video 2.5 Flash hanya mendukung 720P.",
       400,
@@ -186,38 +442,108 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
-  if (body?.imageData) {
+
+  // ==========================================================
+  // REFERENCE IMAGE
+  // ==========================================================
+
+  const referenceImages =
+    getReferenceImages(
+      body
+    );
+
+  if (
+    referenceImages.length >
+    5
+  ) {
     throw providerError(
-      "Image reference belum didukung oleh adapter ChinaAPI.",
+      "Agnes Video 2.5 Flash maksimal menerima 5 reference image.",
       400,
-      "image_reference_not_supported"
+      "too_many_reference_images"
     );
   }
 
+
+  // ==========================================================
+  // MODE
+  // ==========================================================
+
+  const mode =
+    referenceImages.length
+      ? "reference"
+      : "text";
+
+
+  // ==========================================================
+  // PAYLOAD
+  // ==========================================================
+
   const payload = {
     model,
+
     prompt,
-    mode: "text",
-    seconds: String(duration),
-    size: "720P",
-    aspect_ratio: aspectRatio
+
+    mode,
+
+    seconds:
+      String(
+        duration
+      ),
+
+    size:
+      "720P",
+
+    aspect_ratio:
+      aspectRatio
   };
+
+
+  // ----------------------------------------------------------
+  // Reference image
+  //
+  // upload.js menyimpan imageData sebagai Data URL.
+  // Kita teruskan ke ChinaAPI melalui field images.
+  // ----------------------------------------------------------
+
+  if (
+    referenceImages.length
+  ) {
+    payload.images =
+      referenceImages;
+  }
+
+
+  // ==========================================================
+  // REQUEST
+  // ==========================================================
 
   let response;
 
   try {
-    response = await fetch(
-      `${CHINAAPI_BASE_URL}/videos`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        },
-        body: JSON.stringify(payload)
-      }
-    );
+    response =
+      await fetch(
+        `${CHINAAPI_BASE_URL}/videos`,
+        {
+          method:
+            "POST",
+
+          headers: {
+            Authorization:
+              `Bearer ${apiKey}`,
+
+            "Content-Type":
+              "application/json",
+
+            Accept:
+              "application/json"
+          },
+
+          body:
+            JSON.stringify(
+              payload
+            )
+        }
+      );
   } catch {
     throw providerError(
       "Tidak dapat terhubung ke server ChinaAPI.",
@@ -226,29 +552,51 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
-  const data = await safeJson(response);
 
-  if (!response.ok) {
+  // ==========================================================
+  // RESPONSE
+  // ==========================================================
+
+  const data =
+    await safeJson(
+      response
+    );
+
+  if (
+    !response.ok
+  ) {
     throw providerError(
       getErrorMessage(
         data,
         "ChinaAPI gagal membuat video."
       ),
       response.status,
-      data?.error?.code || "provider_error"
+      data?.error?.code ||
+      "provider_error"
     );
   }
 
+
+  // ==========================================================
+  // TASK ID
+  // ==========================================================
+
   const externalId =
+    data?.video_id ||
     data?.id ||
     data?.task_id ||
     data?.taskId ||
-    data?.video_id;
+    data?.videoId;
 
   if (
-    externalId === undefined ||
-    externalId === null ||
-    String(externalId).trim() === ""
+    externalId ===
+      undefined ||
+    externalId ===
+      null ||
+    String(
+      externalId
+    ).trim() ===
+      ""
   ) {
     throw providerError(
       "ChinaAPI tidak mengembalikan task ID.",
@@ -257,26 +605,61 @@ export async function generate(body = {}, provider = {}, env = {}) {
     );
   }
 
+
+  // ==========================================================
+  // RESULT
+  // ==========================================================
+
   return {
-    externalId: String(externalId),
-    provider: ID,
-    adapter: ID,
-    status: "processing",
+    externalId:
+      String(
+        externalId
+      ),
+
+    provider:
+      ID,
+
+    adapter:
+      ID,
+
+    status:
+      "processing",
+
     model,
+
     duration,
+
     aspectRatio,
-    resolution
+
+    resolution,
+
+    mode,
+
+    referenceImageCount:
+      referenceImages.length
   };
 }
+
+
+// ============================================================
+// STATUS
+// ============================================================
 
 export async function status(
   externalId,
   provider = {},
   env = {}
 ) {
-  const apiKey = getApiKey(provider, env);
+  const apiKey =
+    getApiKey(
+      provider,
+      env
+    );
 
-  const taskId = String(externalId || "").trim();
+  const taskId =
+    String(
+      externalId || ""
+    ).trim();
 
   if (!taskId) {
     throw providerError(
@@ -289,16 +672,24 @@ export async function status(
   let response;
 
   try {
-    response = await fetch(
-      `${CHINAAPI_BASE_URL}/videos/${encodeURIComponent(taskId)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json"
+    response =
+      await fetch(
+        `${CHINAAPI_BASE_URL}/videos/${encodeURIComponent(
+          taskId
+        )}`,
+        {
+          method:
+            "GET",
+
+          headers: {
+            Authorization:
+              `Bearer ${apiKey}`,
+
+            Accept:
+              "application/json"
+          }
         }
-      }
-    );
+      );
   } catch {
     throw providerError(
       "Tidak dapat terhubung ke server ChinaAPI.",
@@ -307,22 +698,41 @@ export async function status(
     );
   }
 
-  const data = await safeJson(response);
+  const data =
+    await safeJson(
+      response
+    );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw providerError(
       getErrorMessage(
         data,
         "ChinaAPI gagal mengambil status video."
       ),
       response.status,
-      data?.error?.code || "status_error"
+      data?.error?.code ||
+      "status_error"
     );
   }
 
-  const currentStatus = normalizeStatus(
-    data?.status || data?.state
-  );
+
+  // ==========================================================
+  // NORMALIZE STATUS
+  // ==========================================================
+
+  const currentStatus =
+    normalizeStatus(
+      data?.status ||
+      data?.state ||
+      data?.data?.status
+    );
+
+
+  // ==========================================================
+  // FAILED
+  // ==========================================================
 
   if (
     [
@@ -331,21 +741,41 @@ export async function status(
       "error",
       "cancelled",
       "canceled"
-    ].includes(currentStatus)
+    ].includes(
+      currentStatus
+    )
   ) {
     return {
-      success: true,
-      status: "failed",
-      provider: ID,
-      adapter: ID,
-      error: getErrorMessage(
-        data,
-        "ChinaAPI video generation gagal."
-      ),
+      success:
+        true,
+
+      status:
+        "failed",
+
+      provider:
+        ID,
+
+      adapter:
+        ID,
+
+      error:
+        getErrorMessage(
+          data,
+          data?.data?.fail_reason ||
+            "ChinaAPI video generation gagal."
+        ),
+
       errorCode:
-        data?.error?.code || "provider_failed"
+        data?.error?.code ||
+        data?.data?.error?.code ||
+        "provider_failed"
     };
   }
+
+
+  // ==========================================================
+  // COMPLETED
+  // ==========================================================
 
   if (
     [
@@ -354,39 +784,83 @@ export async function status(
       "succeeded",
       "success",
       "finished"
-    ].includes(currentStatus)
+    ].includes(
+      currentStatus
+    )
   ) {
-    const videoUrl = getVideoUrl(data);
+    const videoUrl =
+      getVideoUrl(
+        data
+      );
 
     if (!videoUrl) {
       return {
-        success: true,
-        status: "failed",
-        provider: ID,
-        adapter: ID,
+        success:
+          true,
+
+        status:
+          "failed",
+
+        provider:
+          ID,
+
+        adapter:
+          ID,
+
         error:
           "ChinaAPI selesai tetapi URL video tidak ditemukan.",
-        errorCode: "missing_video_url"
+
+        errorCode:
+          "missing_video_url"
       };
     }
 
     return {
-      success: true,
-      status: "completed",
-      provider: ID,
-      adapter: ID,
+      success:
+        true,
+
+      status:
+        "completed",
+
+      provider:
+        ID,
+
+      adapter:
+        ID,
+
       videoUrl,
-      model: data?.model || MODEL_ID
+
+      model:
+        data?.model ||
+        data?.data?.model ||
+        MODEL_ID
     };
   }
 
+
+  // ==========================================================
+  // PROCESSING
+  // ==========================================================
+
   return {
-    success: true,
-    status: "processing",
-    provider: ID,
-    adapter: ID
+    success:
+      true,
+
+    status:
+      "processing",
+
+    provider:
+      ID,
+
+    adapter:
+      ID
   };
 }
+
+
+// ============================================================
+// CREATE VIDEO
+// ============================================================
 
 export async function createVideo(
   options = {},
@@ -395,11 +869,18 @@ export async function createVideo(
   return generate(
     options,
     {
-      api_key: env?.CHINAAPI_KEY || ""
+      api_key:
+        env?.CHINAAPI_KEY ||
+        ""
     },
     env
   );
 }
+
+
+// ============================================================
+// GET VIDEO STATUS
+// ============================================================
 
 export async function getVideoStatus(
   taskId,
@@ -408,29 +889,45 @@ export async function getVideoStatus(
   return status(
     taskId,
     {
-      api_key: env?.CHINAAPI_KEY || ""
+      api_key:
+        env?.CHINAAPI_KEY ||
+        ""
     },
     env
   );
 }
+
+
+// ============================================================
+// WAIT FOR VIDEO
+// ============================================================
 
 export async function waitForVideo(
   taskId,
   env = {},
   options = {}
 ) {
-  const pollInterval = Number(
-    options?.pollInterval || 5000
-  );
+  const pollInterval =
+    Number(
+      options?.pollInterval ||
+      5000
+    );
 
-  const timeout = Number(
-    options?.timeout || 30 * 60 * 1000
-  );
+  const timeout =
+    Number(
+      options?.timeout ||
+      30 * 60 * 1000
+    );
 
-  const startedAt = Date.now();
+  const startedAt =
+    Date.now();
 
   while (true) {
-    if (Date.now() - startedAt >= timeout) {
+    if (
+      Date.now() -
+        startedAt >=
+      timeout
+    ) {
       throw providerError(
         "ChinaAPI video generation timed out.",
         504,
@@ -438,52 +935,94 @@ export async function waitForVideo(
       );
     }
 
-    const result = await getVideoStatus(
-      taskId,
-      env
-    );
+    const result =
+      await getVideoStatus(
+        taskId,
+        env
+      );
 
-    if (result?.status === "completed") {
+    if (
+      result?.status ===
+      "completed"
+    ) {
       return result;
     }
 
-    if (result?.status === "failed") {
+    if (
+      result?.status ===
+      "failed"
+    ) {
       throw providerError(
         result?.error ||
           "ChinaAPI video generation failed.",
         502,
-        result?.errorCode || "provider_failed"
+        result?.errorCode ||
+          "provider_failed"
       );
     }
 
-    await new Promise(resolve =>
-      setTimeout(resolve, pollInterval)
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          pollInterval
+        )
     );
   }
 }
 
+
+// ============================================================
+// MODELS
+// ============================================================
+
 export function getModels() {
   return [
     {
-      id: MODEL_ID,
-      name: "Agnes Video 2.5 Flash"
+      id:
+        MODEL_ID,
+
+      name:
+        "Agnes Video 2.5 Flash"
     }
   ];
 }
 
+
+// ============================================================
+// PROVIDER
+// ============================================================
+
 export const provider = {
-  id: ID,
-  name: NAME,
-  type: "video",
-  models: getModels(),
-  capabilities: CAPABILITIES,
+  id:
+    ID,
+
+  name:
+    NAME,
+
+  type:
+    "video",
+
+  models:
+    getModels(),
+
+  capabilities:
+    CAPABILITIES,
+
   info,
+
   generate,
+
   status,
+
   createVideo,
+
   getVideoStatus,
+
   waitForVideo,
+
   getModels
 };
+
 
 export default provider;
