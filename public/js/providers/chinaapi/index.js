@@ -2,56 +2,14 @@
 // GEN-Z.AI
 // CHINAAPI MODEL REGISTRY
 // ============================================================
-//
-// Registry khusus model ChinaAPI.
-//
-// Struktur:
-//
-// public/js/providers/chinaapi/
-// ├── index.js
-// ├── agnes-video-2-5-flash.js
-// └── doubao-seedance-2-0-mini-260615.js
-//
-// File ini TIDAK menggantikan adapter utama ChinaAPI.
-// Adapter utama tetap:
-// public/js/providers/chinaapi.js
-//
-// Registry ini hanya mengatur model-model ChinaAPI.
-// ============================================================
-
-
-// ============================================================
-// LOAD MODEL CONFIG
-// ============================================================
-//
-// Import sebagai side-effect.
-//
-// File model mendaftarkan konfigurasi ke globalThis.
-// Cara ini dibuat agar tetap kompatibel dengan:
-//
-// - Browser
-// - Cloudflare/server runtime
-// - Node ESM
-// - sistem adapter lama GEN-Z.AI
-//
-// ============================================================
 
 import "./agnes-video-2-5-flash.js";
-
 import "./doubao-seedance-2-0-mini-260615.js";
 
-
-// ============================================================
-// INTERNAL STORAGE
-// ============================================================
 
 const MODELS =
   Object.create(null);
 
-
-// ============================================================
-// NORMALIZE MODEL ID
-// ============================================================
 
 function normalizeModelId(
   value
@@ -72,10 +30,6 @@ function normalizeModelId(
 
 }
 
-
-// ============================================================
-// REGISTER MODEL
-// ============================================================
 
 function registerModel(
   model
@@ -109,15 +63,10 @@ function registerModel(
 }
 
 
-// ============================================================
-// LOAD BUILT-IN MODELS
-// ============================================================
-
 function loadBuiltInModels() {
 
   const globalObject =
-    typeof globalThis !==
-    "undefined"
+    typeof globalThis !== "undefined"
       ? globalThis
       : null;
 
@@ -143,16 +92,8 @@ function loadBuiltInModels() {
 }
 
 
-// ============================================================
-// INITIALIZE
-// ============================================================
-
 loadBuiltInModels();
 
-
-// ============================================================
-// GET MODEL
-// ============================================================
 
 function getModel(
   modelId
@@ -163,11 +104,13 @@ function getModel(
       modelId
     );
 
+
   if (!id) {
 
     return null;
 
   }
+
 
   return (
     MODELS[id] ||
@@ -176,10 +119,6 @@ function getModel(
 
 }
 
-
-// ============================================================
-// RESOLVE MODEL
-// ============================================================
 
 function resolveModel(
   modelId
@@ -207,10 +146,6 @@ function resolveModel(
 }
 
 
-// ============================================================
-// MODEL EXISTS
-// ============================================================
-
 function hasModel(
   modelId
 ) {
@@ -224,10 +159,6 @@ function hasModel(
 }
 
 
-// ============================================================
-// LIST MODEL IDS
-// ============================================================
-
 function listModels() {
 
   return Object.keys(
@@ -236,10 +167,6 @@ function listModels() {
 
 }
 
-
-// ============================================================
-// LIST ACTIVE MODELS
-// ============================================================
 
 function listActiveModels() {
 
@@ -261,10 +188,6 @@ function listActiveModels() {
 
 }
 
-
-// ============================================================
-// GET MODEL INFO
-// ============================================================
 
 function getModelInfo(
   modelId
@@ -310,7 +233,8 @@ function getModelInfo(
   }
 
 
-  let info = null;
+  let info =
+    null;
 
 
   try {
@@ -368,10 +292,6 @@ function getModelInfo(
 }
 
 
-// ============================================================
-// GET ALL MODEL INFO
-// ============================================================
-
 function getModelsInfo() {
 
   return listModels()
@@ -384,10 +304,6 @@ function getModelsInfo() {
 
 }
 
-
-// ============================================================
-// GET CAPABILITIES
-// ============================================================
 
 function getCapabilities(
   modelId
@@ -413,10 +329,6 @@ function getCapabilities(
 
 }
 
-
-// ============================================================
-// GET CREDITS
-// ============================================================
 
 function getCredits(
   modelId,
@@ -492,9 +404,7 @@ function getCredits(
     }
 
   } catch {
-
-    // Fallback di bawah.
-
+    // fallback
   }
 
 
@@ -522,10 +432,6 @@ function getCredits(
 
 }
 
-
-// ============================================================
-// VALIDATE MODEL
-// ============================================================
 
 function validateModel(
   modelId,
@@ -601,18 +507,29 @@ function validateModel(
 }
 
 
-// ============================================================
-// BUILD PAYLOAD
-// ============================================================
-
 function buildPayload(
   modelId,
   options = {}
 ) {
 
+  const selectedModelId =
+    String(
+      modelId || ""
+    ).trim();
+
+
+  if (!selectedModelId) {
+
+    throw new Error(
+      "Model ChinaAPI tidak boleh kosong."
+    );
+
+  }
+
+
   const model =
     resolveModel(
-      modelId
+      selectedModelId
     );
 
 
@@ -622,27 +539,100 @@ function buildPayload(
   ) {
 
     throw new Error(
-      `Model "${modelId}" belum memiliki payload builder.`
+      `Model "${selectedModelId}" belum memiliki payload builder.`
     );
 
   }
 
 
-  return model.buildPayload(
-    options
-  );
+  const payload =
+    model.buildPayload(
+      {
+        ...options,
+
+        model:
+          selectedModelId
+      }
+    );
+
+
+  if (
+    !payload ||
+    typeof payload !==
+      "object" ||
+    Array.isArray(payload)
+  ) {
+
+    throw new Error(
+      `Payload model "${selectedModelId}" tidak valid.`
+    );
+
+  }
+
+
+  /*
+   * PENTING
+   *
+   * Jangan mempercayakan field model hanya kepada
+   * masing-masing model builder.
+   *
+   * Beberapa model/provider dapat mengembalikan
+   * payload tanpa field model.
+   *
+   * ChinaAPI membutuhkan:
+   *
+   * {
+   *   "model": "nama-model"
+   * }
+   *
+   * Karena modelId sudah divalidasi melalui registry,
+   * selalu paksa model yang dipilih masuk ke payload.
+   */
+
+  payload.model =
+    selectedModelId;
+
+
+  /*
+   * Normalisasi prompt jika tersedia.
+   */
+
+  if (
+    options.prompt !==
+      undefined &&
+    payload.prompt ===
+      undefined
+  ) {
+
+    payload.prompt =
+      String(
+        options.prompt || ""
+      ).trim();
+
+  }
+
+
+  /*
+   * Pastikan model tidak pernah kosong
+   * setelah proses builder.
+   */
+
+  if (
+    !String(
+      payload.model || ""
+    ).trim()
+  ) {
+
+    payload.model =
+      selectedModelId;
+
+  }
+
+
+  return payload;
 
 }
 
-
-// ============================================================
-// REGISTER EXTERNAL MODEL
-// ============================================================
-//
-// Admin/provider nantinya dapat memakai fungsi ini
-// untuk menambahkan model baru tanpa mengubah registry utama.
-//
-// ============================================================
 
 function registerExternalModel(
   model
@@ -654,10 +644,6 @@ function registerExternalModel(
 
 }
 
-
-// ============================================================
-// REMOVE MODEL
-// ============================================================
 
 function unregisterModel(
   modelId
@@ -695,10 +681,6 @@ function unregisterModel(
 }
 
 
-// ============================================================
-// GET REGISTRY
-// ============================================================
-
 function getRegistry() {
 
   return Object.freeze({
@@ -709,10 +691,6 @@ function getRegistry() {
 
 }
 
-
-// ============================================================
-// PUBLIC API
-// ============================================================
 
 const ChinaApiModels = {
 
@@ -739,7 +717,6 @@ const ChinaApiModels = {
   buildPayload,
 
   registerModel:
-
     registerExternalModel,
 
   unregisterModel,
@@ -748,10 +725,6 @@ const ChinaApiModels = {
 
 };
 
-
-// ============================================================
-// BROWSER BRIDGE
-// ============================================================
 
 if (
   typeof globalThis !==
@@ -763,10 +736,6 @@ if (
 
 }
 
-
-// ============================================================
-// EXPORTS
-// ============================================================
 
 export {
 
