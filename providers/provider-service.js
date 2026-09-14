@@ -24,44 +24,35 @@ import {
  *
  * API key dan config internal TIDAK pernah dikirim ke frontend.
  *
- * Capability provider berasal dari adapter masing-masing,
- * bukan hard-coded di frontend.
- *
- * Untuk ChinaAPI:
+ * Khusus ChinaAPI:
  *
  * provider.config.modelCredits
+ * provider.config.modelDiscounts
+ * provider.config.modelEnabled
  *
- * boleh digunakan untuk override credit per model.
+ * digunakan untuk mengatur:
  *
- * Contoh:
- *
- * {
- *   "modelCredits": {
- *     "agnes-video-2.5-flash": 1,
- *     "doubao-seedance-2-0-mini-260615": 2
- *   }
- * }
- *
- * Hanya bagian modelCredits yang aman dikirim ke frontend.
+ * - credit dasar masing-masing model
+ * - diskon masing-masing model
+ * - status aktif/nonaktif masing-masing model
  * ============================================================
  */
 
 
-/*
- * ============================================================
+/* ============================================================
  * CONSTANT
- * ============================================================
- */
+ * ============================================================ */
 
 const MAX_MODEL_CREDIT =
   1000;
 
+const MAX_MODEL_DISCOUNT =
+  100;
 
-/*
- * ============================================================
+
+/* ============================================================
  * NORMALIZE MODEL CREDIT
- * ============================================================
- */
+ * ============================================================ */
 
 function normalizeModelCredit(
   value
@@ -88,20 +79,84 @@ function normalizeModelCredit(
 }
 
 
-/*
- * ============================================================
+/* ============================================================
+ * NORMALIZE MODEL DISCOUNT
+ * ============================================================ */
+
+function normalizeModelDiscount(
+  value
+) {
+  const discount =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      discount
+    ) ||
+    !Number.isInteger(
+      discount
+    ) ||
+    discount < 0 ||
+    discount > MAX_MODEL_DISCOUNT
+  ) {
+    return null;
+  }
+
+  return discount;
+}
+
+
+/* ============================================================
+ * NORMALIZE MODEL ENABLED
+ * ============================================================ */
+
+function normalizeModelEnabled(
+  value
+) {
+  if (
+    typeof value ===
+    "boolean"
+  ) {
+    return value;
+  }
+
+  if (
+    value ===
+    "true"
+  ) {
+    return true;
+  }
+
+  if (
+    value ===
+    "false"
+  ) {
+    return false;
+  }
+
+  if (
+    value ===
+    1
+  ) {
+    return true;
+  }
+
+  if (
+    value ===
+    0
+  ) {
+    return false;
+  }
+
+  return null;
+}
+
+
+/* ============================================================
  * NORMALIZE MODEL CREDIT MAP
- * ============================================================
- *
- * Hanya menerima:
- *
- * {
- *   modelId: number
- * }
- *
- * Semua nilai invalid dibuang.
- * ============================================================
- */
+ * ============================================================ */
 
 function normalizeModelCredits(
   value
@@ -125,6 +180,7 @@ function normalizeModelCredits(
     function (
       entry
     ) {
+
       const model =
         String(
           entry[0] || ""
@@ -142,7 +198,8 @@ function normalizeModelCredits(
         );
 
       if (
-        credit === null
+        credit ===
+        null
       ) {
         return;
       }
@@ -158,22 +215,137 @@ function normalizeModelCredits(
 }
 
 
-/*
- * ============================================================
+/* ============================================================
+ * NORMALIZE MODEL DISCOUNT MAP
+ * ============================================================ */
+
+function normalizeModelDiscounts(
+  value
+) {
+  if (
+    !value ||
+    typeof value !==
+      "object" ||
+    Array.isArray(
+      value
+    )
+  ) {
+    return {};
+  }
+
+  const result = {};
+
+  Object.entries(
+    value
+  ).forEach(
+    function (
+      entry
+    ) {
+
+      const model =
+        String(
+          entry[0] || ""
+        ).trim();
+
+      if (
+        !model
+      ) {
+        return;
+      }
+
+      const discount =
+        normalizeModelDiscount(
+          entry[1]
+        );
+
+      if (
+        discount ===
+        null
+      ) {
+        return;
+      }
+
+      result[
+        model
+      ] =
+        discount;
+    }
+  );
+
+  return result;
+}
+
+
+/* ============================================================
+ * NORMALIZE MODEL ENABLED MAP
+ * ============================================================ */
+
+function normalizeModelEnabledMap(
+  value
+) {
+  if (
+    !value ||
+    typeof value !==
+      "object" ||
+    Array.isArray(
+      value
+    )
+  ) {
+    return {};
+  }
+
+  const result = {};
+
+  Object.entries(
+    value
+  ).forEach(
+    function (
+      entry
+    ) {
+
+      const model =
+        String(
+          entry[0] || ""
+        ).trim();
+
+      if (
+        !model
+      ) {
+        return;
+      }
+
+      const enabled =
+        normalizeModelEnabled(
+          entry[1]
+        );
+
+      if (
+        enabled ===
+        null
+      ) {
+        return;
+      }
+
+      result[
+        model
+      ] =
+        enabled;
+    }
+  );
+
+  return result;
+}
+
+
+/* ============================================================
  * GET DEFAULT MODEL CREDITS
- * ============================================================
- *
- * Credit default berasal dari model adapter.
- *
- * Ini memastikan sistem tetap bekerja walaupun admin belum
- * menyimpan override pada database.
- * ============================================================
- */
+ * ============================================================ */
 
 function getDefaultModelCredits(
   adapterId,
   models
 ) {
+
   const normalizedAdapter =
     String(
       adapterId || ""
@@ -201,6 +373,7 @@ function getDefaultModelCredits(
     function (
       model
     ) {
+
       const modelId =
         String(
           model || ""
@@ -213,6 +386,7 @@ function getDefaultModelCredits(
       }
 
       try {
+
         const credit =
           normalizeModelCredit(
             getChinaApiModelCredits(
@@ -224,17 +398,22 @@ function getDefaultModelCredits(
           credit !==
           null
         ) {
+
           result[
             modelId
           ] =
             credit;
         }
+
       } catch (_) {
+
         /*
-         * Model tanpa konfigurasi credit
-         * tidak dimasukkan.
+         * Model tanpa konfigurasi
+         * credit tidak dimasukkan.
          */
+
       }
+
     }
   );
 
@@ -242,17 +421,104 @@ function getDefaultModelCredits(
 }
 
 
-/*
- * ============================================================
+/* ============================================================
+ * GET DEFAULT MODEL DISCOUNTS
+ * ============================================================ */
+
+function getDefaultModelDiscounts(
+  models
+) {
+
+  const result = {};
+
+  const modelList =
+    Array.isArray(
+      models
+    )
+      ? models
+      : [];
+
+  modelList.forEach(
+    function (
+      model
+    ) {
+
+      const modelId =
+        String(
+          model || ""
+        ).trim();
+
+      if (
+        !modelId
+      ) {
+        return;
+      }
+
+      result[
+        modelId
+      ] = 0;
+
+    }
+  );
+
+  return result;
+}
+
+
+/* ============================================================
+ * GET DEFAULT MODEL ENABLED
+ * ============================================================ */
+
+function getDefaultModelEnabled(
+  models
+) {
+
+  const result = {};
+
+  const modelList =
+    Array.isArray(
+      models
+    )
+      ? models
+      : [];
+
+  modelList.forEach(
+    function (
+      model
+    ) {
+
+      const modelId =
+        String(
+          model || ""
+        ).trim();
+
+      if (
+        !modelId
+      ) {
+        return;
+      }
+
+      result[
+        modelId
+      ] = true;
+
+    }
+  );
+
+  return result;
+}
+
+
+/* ============================================================
  * GET PROVIDER
- * ============================================================
- */
+ * ============================================================ */
 
 export async function getProvider(
   id,
   env,
   includeDisabled = false
 ) {
+
   const providerId =
     String(
       id || ""
@@ -327,35 +593,14 @@ export async function getProvider(
 }
 
 
-/*
- * ============================================================
+/* ============================================================
  * PUBLIC PROVIDER
- * ============================================================
- *
- * Data yang aman dikirim ke frontend.
- *
- * JANGAN expose:
- * - api_key
- * - config mentah
- * - credential
- * - secret
- * - token
- *
- * Capability diambil dari adapter registry.
- * Dengan demikian frontend tidak perlu mengetahui
- * aturan khusus masing-masing provider.
- *
- * Khusus ChinaAPI:
- * - modelCredits hanya berisi angka credit
- * - config lain tidak dikirim
- * - jika admin belum mengatur override, nilai default model
- *   dikirim sebagai fallback
- * ============================================================
- */
+ * ============================================================ */
 
 export function publicProvider(
   provider
 ) {
+
   if (
     !provider
   ) {
@@ -369,12 +614,11 @@ export function publicProvider(
       .trim()
       .toLowerCase();
 
-  /*
-   * Ambil metadata adapter.
-   *
-   * Jika adapter belum tersedia, registry akan
-   * mengembalikan supported:false dan capabilities:{}.
-   */
+
+  /* ==========================================================
+   * ADAPTER INFORMATION
+   * ========================================================== */
+
   const adapterInfo =
     getAdapterInfo(
       adapterId
@@ -387,10 +631,11 @@ export function publicProvider(
       ? adapterInfo.capabilities
       : {};
 
-  /*
-   * Pastikan struktur capability selalu aman
-   * untuk dipakai frontend.
-   */
+
+  /* ==========================================================
+   * MODELS
+   * ========================================================== */
+
   const models =
     Array.isArray(
       adapterInfo?.models
@@ -401,6 +646,11 @@ export function publicProvider(
         )
         ? capabilities.models
         : [];
+
+
+  /* ==========================================================
+   * DURATIONS
+   * ========================================================== */
 
   const durations =
     Array.isArray(
@@ -413,6 +663,11 @@ export function publicProvider(
         ? capabilities.durations
         : [];
 
+
+  /* ==========================================================
+   * ASPECTS
+   * ========================================================== */
+
   const aspects =
     Array.isArray(
       adapterInfo?.aspects
@@ -423,6 +678,11 @@ export function publicProvider(
         )
         ? capabilities.aspects
         : [];
+
+
+  /* ==========================================================
+   * RESOLUTIONS
+   * ========================================================== */
 
   const resolutions =
     Array.isArray(
@@ -435,30 +695,10 @@ export function publicProvider(
         ? capabilities.resolutions
         : [];
 
-  /*
-   * ==========================================================
+
+  /* ==========================================================
    * MODEL CREDIT
-   * ==========================================================
-   *
-   * Default:
-   *
-   * adapter model config
-   *
-   * Override:
-   *
-   * provider.config.modelCredits
-   *
-   * Contoh:
-   *
-   * modelCredits:
-   * {
-   *   "agnes-video-2.5-flash": 3,
-   *   "doubao-seedance-2-0-mini-260615": 5
-   * }
-   *
-   * Override hanya diterima jika nilainya valid.
-   * ==========================================================
-   */
+   * ========================================================== */
 
   const defaultModelCredits =
     getDefaultModelCredits(
@@ -476,7 +716,53 @@ export function publicProvider(
     ...configuredModelCredits
   };
 
+
+  /* ==========================================================
+   * MODEL DISCOUNT
+   * ========================================================== */
+
+  const defaultModelDiscounts =
+    getDefaultModelDiscounts(
+      models
+    );
+
+  const configuredModelDiscounts =
+    normalizeModelDiscounts(
+      provider?.config?.modelDiscounts
+    );
+
+  const modelDiscounts = {
+    ...defaultModelDiscounts,
+    ...configuredModelDiscounts
+  };
+
+
+  /* ==========================================================
+   * MODEL ENABLED
+   * ========================================================== */
+
+  const defaultModelEnabled =
+    getDefaultModelEnabled(
+      models
+    );
+
+  const configuredModelEnabled =
+    normalizeModelEnabledMap(
+      provider?.config?.modelEnabled
+    );
+
+  const modelEnabled = {
+    ...defaultModelEnabled,
+    ...configuredModelEnabled
+  };
+
+
+  /* ==========================================================
+   * RETURN PUBLIC DATA
+   * ========================================================== */
+
   return {
+
     id:
       provider.id,
 
@@ -504,9 +790,11 @@ export function publicProvider(
         ? "••••••••"
         : "",
 
-    /*
-     * Metadata adapter.
-     */
+
+    /* ========================================================
+     * ADAPTER
+     * ======================================================== */
+
     adapterName:
       adapterInfo?.name ||
       adapterId,
@@ -516,12 +804,11 @@ export function publicProvider(
         adapterInfo?.supported
       ),
 
-    /*
-     * Capability utama.
-     *
-     * Frontend membaca data ini secara dinamis.
-     * Tidak ada daftar provider yang di-hard-code.
-     */
+
+    /* ========================================================
+     * CAPABILITIES
+     * ======================================================== */
+
     capabilities: {
       ...capabilities,
 
@@ -534,15 +821,26 @@ export function publicProvider(
       resolutions
     },
 
-    /*
-     * ========================================================
+
+    /* ========================================================
      * MODEL CREDIT
-     * ========================================================
-     *
-     * Aman untuk frontend.
-     *
-     * Tidak ada config provider lain yang ikut dikirim.
-     */
-    modelCredits
+     * ======================================================== */
+
+    modelCredits,
+
+
+    /* ========================================================
+     * MODEL DISCOUNT
+     * ======================================================== */
+
+    modelDiscounts,
+
+
+    /* ========================================================
+     * MODEL ENABLED
+     * ======================================================== */
+
+    modelEnabled
+
   };
 }
