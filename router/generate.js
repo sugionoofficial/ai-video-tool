@@ -52,6 +52,7 @@ const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
 
 const DEFAULT_CREDIT_COST = 1;
 const MAX_CREDIT_COST = 1000;
+const MAX_MODEL_DISCOUNT = 100;
 
 
 /* ============================================================
@@ -200,6 +201,93 @@ function normalizeModelCredit(
 
 
 /* ============================================================
+MODEL DISCOUNT
+============================================================ */
+
+function normalizeModelDiscount(
+  value
+) {
+  const discount =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      discount
+    ) ||
+    discount < 0 ||
+    discount > MAX_MODEL_DISCOUNT
+  ) {
+    return null;
+  }
+
+  return discount;
+}
+
+
+/* ============================================================
+MODEL ENABLED
+============================================================ */
+
+function normalizeModelEnabled(
+  value
+) {
+  if (
+    value === true ||
+    value === false
+  ) {
+    return value;
+  }
+
+  if (
+    typeof value === "string"
+  ) {
+    const normalized =
+      value
+        .trim()
+        .toLowerCase();
+
+    if (
+      normalized === "true" ||
+      normalized === "1" ||
+      normalized === "on" ||
+      normalized === "yes"
+    ) {
+      return true;
+    }
+
+    if (
+      normalized === "false" ||
+      normalized === "0" ||
+      normalized === "off" ||
+      normalized === "no"
+    ) {
+      return false;
+    }
+  }
+
+  if (
+    typeof value === "number"
+  ) {
+    if (
+      value === 1
+    ) {
+      return true;
+    }
+
+    if (
+      value === 0
+    ) {
+      return false;
+    }
+  }
+
+  return null;
+}
+
+
+/* ============================================================
 CHINAAPI DEFAULT MODEL CREDIT
 ============================================================ */
 
@@ -279,10 +367,172 @@ function getProviderModelCredit(
 
 
 /* ============================================================
-RESOLVE CREDIT COST
+PROVIDER MODEL DISCOUNT
 ============================================================ */
 
-function resolveCreditCost(
+function getProviderModelDiscount(
+  provider,
+  model
+) {
+  const modelId =
+    String(
+      model || ""
+    ).trim();
+
+  if (!modelId) {
+    return 0;
+  }
+
+  const configured =
+    provider?.config?.modelDiscounts;
+
+  if (
+    !configured ||
+    typeof configured !==
+      "object" ||
+    Array.isArray(
+      configured
+    )
+  ) {
+    return 0;
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      configured,
+      modelId
+    )
+  ) {
+    return 0;
+  }
+
+  const discount =
+    normalizeModelDiscount(
+      configured[
+        modelId
+      ]
+    );
+
+  return discount === null
+    ? 0
+    : discount;
+}
+
+
+/* ============================================================
+PROVIDER MODEL ENABLED
+============================================================ */
+
+function getProviderModelEnabled(
+  provider,
+  model
+) {
+  const modelId =
+    String(
+      model || ""
+    ).trim();
+
+  if (!modelId) {
+    return true;
+  }
+
+  const configured =
+    provider?.config?.modelEnabled;
+
+  if (
+    !configured ||
+    typeof configured !==
+      "object" ||
+    Array.isArray(
+      configured
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      configured,
+      modelId
+    )
+  ) {
+    return true;
+  }
+
+  const enabled =
+    normalizeModelEnabled(
+      configured[
+        modelId
+      ]
+    );
+
+  return enabled === null
+    ? true
+    : enabled;
+}
+
+
+/* ============================================================
+CALCULATE DISCOUNTED CREDIT
+============================================================ */
+
+function calculateDiscountedCredit(
+  baseCredit,
+  discount
+) {
+  const normalizedBase =
+    normalizeModelCredit(
+      baseCredit
+    );
+
+  if (
+    normalizedBase === null
+  ) {
+    throw new HttpError(
+      "Credit model tidak valid.",
+      500
+    );
+  }
+
+  const normalizedDiscount =
+    normalizeModelDiscount(
+      discount
+    );
+
+  if (
+    normalizedDiscount === null
+  ) {
+    throw new HttpError(
+      "Diskon model tidak valid.",
+      500
+    );
+  }
+
+  const discounted =
+    Math.ceil(
+      normalizedBase *
+      (
+        100 -
+        normalizedDiscount
+      ) /
+      100
+    );
+
+  return Math.max(
+    1,
+    Math.min(
+      MAX_CREDIT_COST,
+      discounted
+    )
+  );
+}
+
+
+/* ============================================================
+RESOLVE CREDIT PRICING
+============================================================ */
+
+function resolveCreditPricing(
   adapterId,
   model,
   provider,
@@ -291,6 +541,11 @@ function resolveCreditCost(
   const normalizedAdapter =
     normalizeAdapterId(
       adapterId
+    );
+
+  let baseCredit =
+    getDefaultCreditCost(
+      env
     );
 
   if (
@@ -306,24 +561,62 @@ function resolveCreditCost(
     if (
       providerCost !== null
     ) {
-      return providerCost;
-    }
+      baseCredit =
+        providerCost;
+    } else {
+      const modelCost =
+        getChinaApiCreditCost(
+          model
+        );
 
-    const modelCost =
-      getChinaApiCreditCost(
-        model
-      );
-
-    if (
-      modelCost !== null
-    ) {
-      return modelCost;
+      if (
+        modelCost !== null
+      ) {
+        baseCredit =
+          modelCost;
+      }
     }
   }
 
-  return getDefaultCreditCost(
+  const discount =
+    normalizedAdapter ===
+    "chinaapi"
+      ? getProviderModelDiscount(
+          provider,
+          model
+        )
+      : 0;
+
+  const creditCost =
+    calculateDiscountedCredit(
+      baseCredit,
+      discount
+    );
+
+  return {
+    baseCredit,
+    discount,
+    creditCost
+  };
+}
+
+
+/* ============================================================
+RESOLVE CREDIT COST
+============================================================ */
+
+function resolveCreditCost(
+  adapterId,
+  model,
+  provider,
+  env
+) {
+  return resolveCreditPricing(
+    adapterId,
+    model,
+    provider,
     env
-  );
+  ).creditCost;
 }
 
 
@@ -356,7 +649,11 @@ function resolveDefaultModel(
     );
 
   if (
-    configuredModel
+    configuredModel &&
+    getProviderModelEnabled(
+      provider,
+      configuredModel
+    )
   ) {
     return configuredModel;
   }
@@ -367,7 +664,11 @@ function resolveDefaultModel(
     );
 
   if (
-    configuredModelId
+    configuredModelId &&
+    getProviderModelEnabled(
+      provider,
+      configuredModelId
+    )
   ) {
     return configuredModelId;
   }
@@ -378,7 +679,11 @@ function resolveDefaultModel(
     );
 
   if (
-    configuredModelName
+    configuredModelName &&
+    getProviderModelEnabled(
+      provider,
+      configuredModelName
+    )
   ) {
     return configuredModelName;
   }
@@ -395,12 +700,23 @@ function resolveDefaultModel(
       ? info.models
       : [];
 
-  if (
-    models.length
+  for (
+    const model of models
   ) {
-    return normalizeRequestedString(
-      models[0]
-    );
+    const normalizedModel =
+      normalizeRequestedString(
+        model
+      );
+
+    if (
+      normalizedModel &&
+      getProviderModelEnabled(
+        provider,
+        normalizedModel
+      )
+    ) {
+      return normalizedModel;
+    }
   }
 
   return null;
@@ -584,6 +900,32 @@ export async function handleGenerate(
       provider
     );
 
+  if (
+    !effectiveModel
+  ) {
+    throw new HttpError(
+      "Model video belum tersedia untuk provider ini.",
+      400
+    );
+  }
+
+
+  /* ==========================================================
+  MODEL ENABLED CHECK
+  ========================================================== */
+
+  if (
+    !getProviderModelEnabled(
+      provider,
+      effectiveModel
+    )
+  ) {
+    throw new HttpError(
+      `Model "${effectiveModel}" sedang dinonaktifkan oleh administrator.`,
+      400
+    );
+  }
+
 
   /* ==========================================================
   DURATION
@@ -661,16 +1003,28 @@ export async function handleGenerate(
 
 
   /* ==========================================================
-  CREDIT COST
+  CREDIT PRICING
   ==========================================================
 
-  Urutan credit:
+  Urutan credit dasar:
 
   1. provider.config.modelCredits
   2. default credit model ChinaAPI
   3. GENERATION_CREDIT_COST
 
+  Setelah credit dasar ditemukan:
+
+  creditCost =
+    ceil(
+      baseCredit *
+      (100 - modelDiscount) /
+      100
+    )
+
+  Minimum credit tetap 1.
+
   User tidak dapat mengirim:
+
   {
     "credit": 1
   }
@@ -678,13 +1032,22 @@ export async function handleGenerate(
   untuk memanipulasi biaya.
   ========================================================== */
 
-  const cost =
-    resolveCreditCost(
+  const pricing =
+    resolveCreditPricing(
       adapterId,
       effectiveModel,
       provider,
       env
     );
+
+  const baseCredit =
+    pricing.baseCredit;
+
+  const modelDiscount =
+    pricing.discount;
+
+  const cost =
+    pricing.creditCost;
 
 
   /* ==========================================================
@@ -753,7 +1116,16 @@ export async function handleGenerate(
           body.videos
         )
           ? body.videos.length
-          : 0
+          : 0,
+
+      creditBase:
+        baseCredit,
+
+      creditDiscount:
+        modelDiscount,
+
+      creditCost:
+        cost
     });
 
   const digest =
@@ -853,7 +1225,17 @@ export async function handleGenerate(
 
           status:
             reservation.status ||
-            "processing"
+            "processing",
+
+          creditBase:
+            baseCredit,
+
+          creditDiscount:
+            modelDiscount,
+
+          creditCost:
+            reservation.credit_cost ||
+            cost
         },
         200,
         env
@@ -894,6 +1276,12 @@ export async function handleGenerate(
 
       resolution:
         requestedResolution,
+
+      creditBase:
+        baseCredit,
+
+      creditDiscount:
+        modelDiscount,
 
       creditCost:
         cost
@@ -982,16 +1370,42 @@ export async function handleGenerate(
 
 
     /* ========================================================
+    FINAL MODEL ENABLED CHECK
+    ======================================================== */
+
+    if (
+      !getProviderModelEnabled(
+        provider,
+        finalModel
+      )
+    ) {
+      throw new HttpError(
+        `Model "${finalModel}" sedang dinonaktifkan oleh administrator.`,
+        409
+      );
+    }
+
+
+    /* ========================================================
     FINAL CREDIT
     ======================================================== */
 
-    const finalCreditCost =
-      resolveCreditCost(
+    const finalPricing =
+      resolveCreditPricing(
         adapterId,
         finalModel,
         provider,
         env
       );
+
+    const finalCreditBase =
+      finalPricing.baseCredit;
+
+    const finalCreditDiscount =
+      finalPricing.discount;
+
+    const finalCreditCost =
+      finalPricing.creditCost;
 
 
     /*
@@ -1001,11 +1415,14 @@ export async function handleGenerate(
      * credit final yang ditentukan server.
      *
      * Jika model default provider berbeda dengan
-     * model yang dipakai adapter dan biaya berubah,
-     * jangan biarkan metadata berbeda dari reservation.
+     * model yang dipakai adapter atau konfigurasi
+     * credit/diskon berubah, generation dibatalkan
+     * agar credit tidak salah.
      */
     if (
-      finalCreditCost !== cost
+      finalCreditCost !== cost ||
+      finalCreditBase !== baseCredit ||
+      finalCreditDiscount !== modelDiscount
     ) {
       throw new HttpError(
         "Konfigurasi credit model berubah atau tidak konsisten. Generation dibatalkan agar credit tidak salah.",
@@ -1048,6 +1465,12 @@ export async function handleGenerate(
         requestedResolution ||
         result.resolution ||
         null,
+
+      creditBase:
+        finalCreditBase,
+
+      creditDiscount:
+        finalCreditDiscount,
 
       creditCost:
         finalCreditCost
@@ -1133,6 +1556,12 @@ export async function handleGenerate(
 
         model:
           finalModel,
+
+        creditBase:
+          finalCreditBase,
+
+        creditDiscount:
+          finalCreditDiscount,
 
         creditCost:
           finalCreditCost,
