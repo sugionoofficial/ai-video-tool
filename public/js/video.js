@@ -62,9 +62,7 @@
 
   function $(id) {
 
-    return document.getElementById(
-      id
-    );
+    return document.getElementById(id);
 
   }
 
@@ -127,9 +125,7 @@
     }
 
 
-    return Promise.resolve(
-      null
-    );
+    return Promise.resolve(null);
 
   }
 
@@ -290,16 +286,9 @@
     if (!option) {
 
       return {
-
-        id:
-          "",
-
-        name:
-          "",
-
-        adapter:
-          ""
-
+        id: "",
+        name: "",
+        adapter: ""
       };
 
     }
@@ -353,6 +342,7 @@
       data.details?.message ||
       data.data?.error ||
       data.data?.message ||
+      data.data?.details?.message ||
       fallback ||
       "Generation gagal."
     );
@@ -438,6 +428,306 @@
 
 
     return null;
+
+  }
+
+
+  /* =====================================================
+     EXTRACT JOB ID
+  ===================================================== */
+
+  function extractJobId(
+    data
+  ) {
+
+    if (!data) {
+
+      return "";
+
+    }
+
+
+    const candidates = [
+
+      data.jobId,
+      data.job_id,
+
+      data.data?.jobId,
+      data.data?.job_id,
+
+      data.metadata?.jobId,
+      data.metadata?.job_id,
+
+      data.result?.jobId,
+      data.result?.job_id
+
+    ];
+
+
+    for (
+      const candidate of candidates
+    ) {
+
+      const value =
+        text(candidate);
+
+      if (value) {
+
+        return value;
+
+      }
+
+    }
+
+
+    return "";
+
+  }
+
+
+  /* =====================================================
+     EXTRACT EXTERNAL ID
+  ===================================================== */
+
+  function extractExternalId(
+    data
+  ) {
+
+    if (!data) {
+
+      return "";
+
+    }
+
+
+    const candidates = [
+
+      data.externalId,
+      data.external_id,
+
+      data.taskId,
+      data.task_id,
+
+      data.operationName,
+      data.operation_name,
+
+      data.id,
+
+      data.data?.externalId,
+      data.data?.external_id,
+
+      data.data?.taskId,
+      data.data?.task_id,
+
+      data.data?.operationName,
+      data.data?.operation_name,
+
+      data.data?.id,
+
+      data.result?.externalId,
+      data.result?.external_id,
+
+      data.result?.taskId,
+      data.result?.task_id,
+
+      data.result?.operationName,
+      data.result?.operation_name,
+
+      data.result?.id,
+
+      data.metadata?.externalId,
+      data.metadata?.external_id,
+
+      data.metadata?.taskId,
+      data.metadata?.task_id
+
+    ];
+
+
+    for (
+      const candidate of candidates
+    ) {
+
+      const value =
+        text(candidate);
+
+      if (value) {
+
+        return value;
+
+      }
+
+    }
+
+
+    return "";
+
+  }
+
+
+  /* =====================================================
+     NORMALIZE PROTECTED VIDEO URL
+  ===================================================== */
+
+  function normalizeProtectedVideoUrl(
+    url,
+    provider,
+    jobId
+  ) {
+
+    const videoUrl =
+      text(url);
+
+
+    if (!videoUrl) {
+
+      return "";
+
+    }
+
+
+    if (
+      !videoUrl.startsWith(
+        "/api/video"
+      )
+    ) {
+
+      return videoUrl;
+
+    }
+
+
+    try {
+
+      const parsed =
+        new URL(
+          videoUrl,
+          window.location.origin
+        );
+
+
+      const normalizedProvider =
+        text(provider)
+          .toLowerCase();
+
+
+      const normalizedJobId =
+        text(jobId);
+
+
+      if (
+        normalizedProvider &&
+        !parsed.searchParams.has(
+          "provider"
+        )
+      ) {
+
+        parsed.searchParams.set(
+          "provider",
+          normalizedProvider
+        );
+
+      }
+
+
+      if (
+        normalizedJobId &&
+        !parsed.searchParams.has(
+          "jobId"
+        )
+      ) {
+
+        parsed.searchParams.set(
+          "jobId",
+          normalizedJobId
+        );
+
+      }
+
+
+      return (
+        parsed.pathname +
+        parsed.search
+      );
+
+    } catch (_) {
+
+      return videoUrl;
+
+    }
+
+  }
+
+
+  /* =====================================================
+     DISPLAY COMPLETED VIDEO
+  ===================================================== */
+
+  async function displayCompletedVideo(
+    data,
+    provider
+  ) {
+
+    let videoUrl =
+      extractVideoUrl(data);
+
+
+    if (!videoUrl) {
+
+      throw new Error(
+        "Generation selesai tetapi URL video tidak ditemukan."
+      );
+
+    }
+
+
+    const jobId =
+      extractJobId(data);
+
+
+    videoUrl =
+      normalizeProtectedVideoUrl(
+        videoUrl,
+        provider,
+        jobId
+      );
+
+
+    console.log(
+      "[GEN-Z.AI] Completed video:",
+      {
+        provider:
+          provider,
+
+        jobId:
+          jobId || null,
+
+        videoUrl:
+          videoUrl
+      }
+    );
+
+
+    if (
+      videoUrl.startsWith(
+        "/api/video"
+      )
+    ) {
+
+      await GENZ.video.fetchProtected(
+        videoUrl
+      );
+
+    } else {
+
+      GENZ.video.show(
+        videoUrl
+      );
+
+    }
+
+
+    return videoUrl;
 
   }
 
@@ -537,8 +827,7 @@
 
       if (GENZ.state) {
 
-        GENZ.state
-          .currentVideoObjectUrl =
+        GENZ.state.currentVideoObjectUrl =
           null;
 
       }
@@ -559,6 +848,7 @@
           this.poll
         );
 
+
         this.poll =
           null;
 
@@ -574,7 +864,11 @@
   GENZ.video.show =
     function (url) {
 
-      if (!url) {
+      const videoUrl =
+        text(url);
+
+
+      if (!videoUrl) {
 
         throw new Error(
           "URL video tidak ditemukan."
@@ -607,11 +901,46 @@
       }
 
 
+      /*
+       * Jika sebelumnya menggunakan
+       * object URL yang berbeda,
+       * bersihkan terlebih dahulu.
+       */
+
+      const previousObjectUrl =
+        this.objectUrl;
+
+
+      if (
+        previousObjectUrl &&
+        previousObjectUrl !==
+          videoUrl
+      ) {
+
+        try {
+
+          URL.revokeObjectURL(
+            previousObjectUrl
+          );
+
+        } catch (_) {}
+
+        this.objectUrl =
+          null;
+
+      }
+
+
       video.pause();
 
 
+      video.removeAttribute(
+        "src"
+      );
+
+
       video.src =
-        url;
+        videoUrl;
 
 
       video.controls =
@@ -647,7 +976,7 @@
       if (download) {
 
         download.href =
-          url;
+          videoUrl;
 
 
         download.download =
@@ -669,27 +998,26 @@
 
 
       if (
-        String(url).startsWith(
+        videoUrl.startsWith(
           "blob:"
         )
       ) {
 
         this.objectUrl =
-          url;
+          videoUrl;
 
 
         if (GENZ.state) {
 
-          GENZ.state
-            .currentVideoObjectUrl =
-            url;
+          GENZ.state.currentVideoObjectUrl =
+            videoUrl;
 
         }
 
       }
 
 
-      return url;
+      return videoUrl;
 
     };
 
@@ -701,10 +1029,27 @@
   GENZ.video.fetchProtected =
     async function (url) {
 
-      if (!url) {
+      const protectedUrl =
+        text(url);
+
+
+      if (!protectedUrl) {
 
         throw new Error(
           "URL video protected tidak ditemukan."
+        );
+
+      }
+
+
+      if (
+        !protectedUrl.startsWith(
+          "/api/video"
+        )
+      ) {
+
+        return this.show(
+          protectedUrl
         );
 
       }
@@ -725,7 +1070,7 @@
 
       const response =
         await fetch(
-          url,
+          protectedUrl,
           {
 
             method:
@@ -803,8 +1148,7 @@
 
       if (GENZ.state) {
 
-        GENZ.state
-          .currentVideoObjectUrl =
+        GENZ.state.currentVideoObjectUrl =
           objectUrl;
 
       }
@@ -814,6 +1158,12 @@
         objectUrl
       );
 
+
+      /*
+       * show() menyimpan object URL.
+       * Jangan revoke objectUrl yang
+       * baru dibuat.
+       */
 
       if (
         previousObjectUrl &&
@@ -1121,9 +1471,16 @@
 
     if (loading) {
 
-      button.dataset
-        .originalText =
-        button.textContent;
+      if (
+        !button.dataset
+          .originalText
+      ) {
+
+        button.dataset
+          .originalText =
+          button.textContent;
+
+      }
 
 
       button.textContent =
@@ -1137,6 +1494,80 @@
         "Generate Video";
 
     }
+
+  }
+
+
+  /* =====================================================
+     POLL DELAY
+  ===================================================== */
+
+  function getPollDelay(
+    attempt
+  ) {
+
+    const current =
+      Number(attempt) || 0;
+
+
+    if (
+      current < 20
+    ) {
+
+      return 2000;
+
+    }
+
+
+    if (
+      current < 60
+    ) {
+
+      return 3000;
+
+    }
+
+
+    if (
+      current < 120
+    ) {
+
+      return 5000;
+
+    }
+
+
+    return 8000;
+
+  }
+
+
+  /* =====================================================
+     WAIT POLL
+  ===================================================== */
+
+  function waitForPoll(
+    delay
+  ) {
+
+    return new Promise(
+      resolve => {
+
+        GENZ.video.poll =
+          setTimeout(
+            function () {
+
+              GENZ.video.poll =
+                null;
+
+              resolve();
+
+            },
+            delay
+          );
+
+      }
+    );
 
   }
 
@@ -1161,9 +1592,12 @@
      */
 
     provider =
-      text(
-        provider
-      ).toLowerCase();
+      text(provider)
+        .toLowerCase();
+
+
+    externalId =
+      text(externalId);
 
 
     if (!provider) {
@@ -1257,8 +1691,8 @@
 
             })
 
-        }
-      );
+          }
+        );
 
 
     let data =
@@ -1288,7 +1722,9 @@
     const status =
       text(
         data?.status ||
-        data?.data?.status
+        data?.data?.status ||
+        data?.providerStatus ||
+        data?.data?.providerStatus
       ).toLowerCase();
 
 
@@ -1304,49 +1740,16 @@
     =================================================== */
 
     if (
-      status ===
-        "completed" ||
-      status ===
-        "complete" ||
-      status ===
-        "success" ||
-      status ===
-        "succeeded"
+      status === "completed" ||
+      status === "complete" ||
+      status === "success" ||
+      status === "succeeded"
     ) {
 
-      const videoUrl =
-        extractVideoUrl(
-          data
-        );
-
-
-      if (!videoUrl) {
-
-        throw new Error(
-          "Generation selesai tetapi URL video tidak ditemukan."
-        );
-
-      }
-
-
-      if (
-        videoUrl.startsWith(
-          "/api/video"
-        )
-      ) {
-
-        await GENZ.video
-          .fetchProtected(
-            videoUrl
-          );
-
-      } else {
-
-        GENZ.video.show(
-          videoUrl
-        );
-
-      }
+      await displayCompletedVideo(
+        data,
+        provider
+      );
 
 
       setStatus(
@@ -1365,14 +1768,10 @@
     =================================================== */
 
     if (
-      status ===
-        "failed" ||
-      status ===
-        "error" ||
-      status ===
-        "cancelled" ||
-      status ===
-        "canceled"
+      status === "failed" ||
+      status === "error" ||
+      status === "cancelled" ||
+      status === "canceled"
     ) {
 
       throw new Error(
@@ -1386,8 +1785,30 @@
 
 
     /* ===================================================
+       UNKNOWN STATUS
+    =================================================== */
+
+    if (
+      !status
+    ) {
+
+      console.warn(
+        "[GEN-Z.AI] Status kosong dari backend.",
+        data
+      );
+
+    }
+
+
+    /* ===================================================
        PROCESSING
     =================================================== */
+
+    const delay =
+      getPollDelay(
+        attempt
+      );
+
 
     setStatus(
       "Video sedang diproses...",
@@ -1395,15 +1816,20 @@
     );
 
 
-    await new Promise(
-      resolve => {
+    console.log(
+      "[GEN-Z.AI] Next poll:",
+      {
+        attempt:
+          attempt + 1,
 
-        thisPollDelay(
-          resolve,
-          2000
-        );
-
+        delay:
+          delay
       }
+    );
+
+
+    await waitForPoll(
+      delay
     );
 
 
@@ -1417,37 +1843,17 @@
 
 
   /* =====================================================
-     POLL DELAY
-  ===================================================== */
-
-  function thisPollDelay(
-    resolve,
-    delay
-  ) {
-
-    GENZ.video.poll =
-      setTimeout(
-        function () {
-
-          GENZ.video.poll =
-            null;
-
-          resolve();
-
-        },
-        delay
-      );
-
-  }
-
-
-  /* =====================================================
      GENERATE
   ===================================================== */
 
   async function generate() {
 
     if (generateRunning) {
+
+      console.warn(
+        "[GEN-Z.AI] Generate masih berjalan."
+      );
+
 
       return;
 
@@ -1543,9 +1949,7 @@
               "include",
 
             body:
-              JSON.stringify(
-                body
-              )
+              JSON.stringify(body)
 
           }
         );
@@ -1581,8 +1985,7 @@
 
       if (
         data &&
-        data.success ===
-          false
+        data.success === false
       ) {
 
         throw new Error(
@@ -1602,32 +2005,17 @@
 
 
       /* =================================================
-         EXTERNAL ID
-      ================================================= */
-
-      const externalId =
-        text(
-          data?.externalId ||
-          data?.external_id ||
-          data?.taskId ||
-          data?.task_id ||
-          data?.operationName ||
-          data?.id ||
-          data?.jobId
-        );
-
-
-      /* =================================================
          PROVIDER ID
       =================================================
 
          PENTING:
 
-         Jangan mengambil Provider Name
-         dari response untuk polling.
-
          Provider ID dari request awal
          adalah sumber kebenaran.
+
+         Provider Name dari response
+         TIDAK pernah digunakan untuk
+         polling.
       */
 
       const provider =
@@ -1664,7 +2052,7 @@
          DIRECT VIDEO
       ================================================= */
 
-      const directVideoUrl =
+      let directVideoUrl =
         extractVideoUrl(
           data
         );
@@ -1674,16 +2062,35 @@
         directVideoUrl
       ) {
 
+        directVideoUrl =
+          normalizeProtectedVideoUrl(
+            directVideoUrl,
+            provider,
+            extractJobId(data)
+          );
+
+
+        console.log(
+          "[GEN-Z.AI] Direct video detected:",
+          {
+            provider:
+              provider,
+
+            videoUrl:
+              directVideoUrl
+          }
+        );
+
+
         if (
           directVideoUrl.startsWith(
             "/api/video"
           )
         ) {
 
-          await GENZ.video
-            .fetchProtected(
-              directVideoUrl
-            );
+          await GENZ.video.fetchProtected(
+            directVideoUrl
+          );
 
         } else {
 
@@ -1701,6 +2108,45 @@
 
 
         return;
+
+      }
+
+
+      /* =================================================
+         EXTERNAL ID
+      ================================================= */
+
+      const externalId =
+        extractExternalId(
+          data
+        );
+
+
+      /* =================================================
+         COMPLETED WITHOUT URL
+      ================================================= */
+
+      const initialStatus =
+        text(
+          data?.status ||
+          data?.data?.status
+        ).toLowerCase();
+
+
+      if (
+        initialStatus ===
+          "completed" ||
+        initialStatus ===
+          "complete" ||
+        initialStatus ===
+          "success" ||
+        initialStatus ===
+          "succeeded"
+      ) {
+
+        throw new Error(
+          "Generation selesai tetapi backend tidak memberikan URL video."
+        );
 
       }
 
@@ -1743,6 +2189,9 @@
       );
 
 
+      GENZ.video.stopPolling();
+
+
       setStatus(
         error?.message ||
         "Generation gagal.",
@@ -1750,10 +2199,19 @@
       );
 
 
-      alert(
-        error?.message ||
-        "Generation gagal."
-      );
+      /*
+       * Hindari alert jika browser
+       * sudah tidak tersedia.
+       */
+
+      try {
+
+        alert(
+          error?.message ||
+          "Generation gagal."
+        );
+
+      } catch (_) {}
 
     } finally {
 
