@@ -11,6 +11,7 @@
    - Refresh realtime tetapi dijadwalkan satu kali
    - Provider/model/duration/resolution tetap sinkron
    - imageReferenceSupported tetap eksplisit
+   - Reference image tidak dihapus saat refresh/sinkronisasi
    ========================================================= */
 
 (function () {
@@ -268,6 +269,20 @@
   }
 
 
+  /*
+   * Return value:
+   *
+   * true  = model secara eksplisit mendukung image
+   * false = model secara eksplisit tidak mendukung image
+   * null  = rule/model belum diketahui
+   *
+   * Penting:
+   * null TIDAK boleh dianggap false.
+   *
+   * Saat provider sedang refresh/sinkronisasi,
+   * capability dapat sementara belum tersedia.
+   * Reference image harus tetap dipertahankan.
+   */
   function modelSupportsImage(provider, model) {
 
     const rules =
@@ -277,7 +292,7 @@
       );
 
     if (!rules) {
-      return false;
+      return null;
     }
 
     return (
@@ -311,7 +326,7 @@
       modelSupportsImage(
         provider,
         model
-      )
+      ) === true
     ) {
       return rules.imageToVideo || null;
     }
@@ -682,9 +697,18 @@
         imageInput
       );
 
+    /*
+     * Belum ada model.
+     *
+     * Jangan pernah menghapus image.
+     */
     if (!model) {
 
       imageInput.disabled = false;
+
+      imageInput.removeAttribute(
+        'aria-disabled'
+      );
 
       if (imageGroup) {
 
@@ -710,7 +734,60 @@
         model
       );
 
-    if (!supported) {
+
+    /*
+     * =====================================================
+     * UNKNOWN / BELUM SIAP
+     * =====================================================
+     *
+     * Ini bagian paling penting.
+     *
+     * Ketika provider/model baru saja berubah atau
+     * capabilities belum lengkap, supported bisa null.
+     *
+     * Jangan disable input.
+     * Jangan hide preview.
+     * Jangan clear image.
+     */
+    if (supported === null) {
+
+      imageInput.disabled = false;
+
+      imageInput.removeAttribute(
+        'aria-disabled'
+      );
+
+      if (imageGroup) {
+
+        imageGroup.classList.remove('hidden');
+
+        imageGroup.style.setProperty(
+          'display',
+          '',
+          'important'
+        );
+
+        imageGroup.removeAttribute(
+          'aria-hidden'
+        );
+      }
+
+      return;
+    }
+
+
+    /*
+     * =====================================================
+     * MODEL TIDAK MENDUKUNG IMAGE
+     * =====================================================
+     *
+     * UI boleh disembunyikan, tetapi imageData TIDAK
+     * boleh dihapus.
+     *
+     * Dengan begitu saat user kembali ke model yang
+     * mendukung reference image, gambar masih tersedia.
+     */
+    if (supported === false) {
 
       if (imageGroup) {
 
@@ -736,16 +813,29 @@
       );
 
       /*
-       * Hanya clear jika memang ada image.
-       * Ini mencegah DOM ditulis ulang terus-menerus
-       * setiap refresh.
+       * JANGAN panggil clearImageReference() di sini.
+       *
+       * Sebelumnya kode melakukan:
+       *
+       * if (hasImageReference()) {
+       *   clearImageReference();
+       * }
+       *
+       * Hal tersebut menyebabkan reference image hilang
+       * ketika refresh provider/model terjadi.
+       *
+       * Image sekarang dipertahankan.
        */
-      if (hasImageReference()) {
-        clearImageReference();
-      }
 
       return;
     }
+
+
+    /*
+     * =====================================================
+     * MODEL MENDUKUNG IMAGE
+     * =====================================================
+     */
 
     if (imageGroup) {
 
@@ -780,6 +870,11 @@
       ensureValidModel(provider);
 
     if (!model) {
+
+      updateImageAvailability(
+        provider
+      );
+
       return '';
     }
 
@@ -1191,6 +1286,18 @@
           $('aspect')?.value ||
           $('ratio')?.value
         );
+
+
+      /*
+       * Jangan sentuh:
+       *
+       * GENZ.state.imageData
+       * GENZ.upload.imageData
+       *
+       * selama refresh provider.
+       *
+       * Reference image dikelola oleh upload.js.
+       */
 
 
       /* ===================================================
