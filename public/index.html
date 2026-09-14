@@ -48,6 +48,7 @@
 
   <script
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    defer
   ></script>
 
 
@@ -83,6 +84,8 @@
        ========================================================= -->
 
   <script>
+
+  function initGenerationController() {
 
   (function () {
 
@@ -1878,6 +1881,18 @@
     );
 
   })();
+
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener(
+      'DOMContentLoaded',
+      initGenerationController,
+      { once: true }
+    );
+  } else {
+    initGenerationController();
+  }
 
   </script>
 
