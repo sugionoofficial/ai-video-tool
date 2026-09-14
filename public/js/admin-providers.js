@@ -42,7 +42,7 @@
 
 
   /* ============================================================
-   * HTML ESCAPE
+   * HELPERS
    * ============================================================ */
 
   function escapeHtml(value) {
@@ -55,17 +55,8 @@
   }
 
 
-  /* ============================================================
-   * NUMBER HELPERS
-   * ============================================================ */
-
   function normalizeInteger(value, fallback, min, max) {
-
-    const number =
-      Number.parseInt(
-        value,
-        10
-      );
+    const number = Number.parseInt(value, 10);
 
     if (!Number.isFinite(number)) {
       return fallback;
@@ -73,21 +64,13 @@
 
     return Math.min(
       max,
-      Math.max(
-        min,
-        number
-      )
+      Math.max(min, number)
     );
   }
 
 
   function normalizeDiscount(value) {
-
-    const number =
-      Number.parseInt(
-        value,
-        10
-      );
+    const number = Number.parseInt(value, 10);
 
     if (!Number.isFinite(number)) {
       return 0;
@@ -95,142 +78,68 @@
 
     return Math.min(
       100,
-      Math.max(
-        0,
-        number
-      )
+      Math.max(0, number)
     );
   }
 
 
-  function getModelConfigValue(
-    object,
-    modelId,
-    fallback
-  ) {
+  function normalizeObject(value) {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value)
+    ) {
+      return {};
+    }
+
+    return value;
+  }
+
+
+  function getConfigValue(object, key, fallback) {
+    const source = normalizeObject(object);
 
     if (
-      !object ||
-      typeof object !== "object" ||
-      Array.isArray(object)
+      source[key] === undefined ||
+      source[key] === null
     ) {
       return fallback;
     }
 
-    if (
-      object[modelId] === undefined ||
-      object[modelId] === null
-    ) {
-      return fallback;
-    }
-
-    return object[modelId];
+    return source[key];
   }
 
 
-  function getChinaApiModelSettings(config, model) {
+  function getEffectiveCredit(credit, discount) {
+    const base = normalizeInteger(
+      credit,
+      1,
+      1,
+      1000
+    );
 
-    const safeConfig =
-      config &&
-      typeof config === "object" &&
-      !Array.isArray(config)
-        ? config
-        : {};
+    const percentage = normalizeDiscount(
+      discount
+    );
 
-    const modelEnabled =
-      getModelConfigValue(
-        safeConfig.modelEnabled,
-        model.id,
-        true
-      );
-
-    const modelCredits =
-      getModelConfigValue(
-        safeConfig.modelCredits,
-        model.id,
-        model.defaultCredit
-      );
-
-    const modelDiscounts =
-      getModelConfigValue(
-        safeConfig.modelDiscounts,
-        model.id,
-        0
-      );
-
-    return {
-      enabled:
-        Boolean(
-          modelEnabled
-        ),
-
-      credit:
-        normalizeInteger(
-          modelCredits,
-          model.defaultCredit,
-          1,
-          1000
-        ),
-
-      discount:
-        normalizeDiscount(
-          modelDiscounts
-        )
-    };
-  }
-
-
-  function getEffectiveCredit(
-    credit,
-    discount
-  ) {
-
-    const base =
-      normalizeInteger(
-        credit,
-        1,
-        1,
-        1000
-      );
-
-    const percentage =
-      normalizeDiscount(
-        discount
-      );
-
-    if (
-      percentage <= 0
-    ) {
+    if (percentage <= 0) {
       return base;
     }
-
-    const calculated =
-      Math.round(
-        base *
-        (
-          1 -
-          (
-            percentage /
-            100
-          )
-        )
-      );
 
     return Math.max(
       1,
       Math.min(
         1000,
-        calculated
+        Math.round(
+          base * (1 - percentage / 100)
+        )
       )
     );
   }
 
 
   function safeModelKey(modelId) {
-
-    return String(
-      modelId || ""
-    )
+    return String(modelId || "")
       .replace(
         /[^a-zA-Z0-9_-]/g,
         "_"
@@ -238,167 +147,115 @@
   }
 
 
-  /* ============================================================
-   * STATUS
-   * ============================================================ */
-
   function setStatus(message, type) {
-
-    const el =
-      $("providerStatus");
+    const el = $("providerStatus");
 
     if (!el) {
       return;
     }
 
-    el.textContent =
-      message || "";
-
-    el.className =
-      "admin-status-message";
+    el.textContent = message || "";
+    el.className = "admin-status-message";
 
     if (type) {
-      el.classList.add(
-        type
-      );
+      el.classList.add(type);
     }
-
   }
 
 
   function setLoadingMessage(message) {
-
-    const loading =
-      $("providerLoading");
+    const loading = $("providerLoading");
 
     if (!loading) {
       return;
     }
 
-    const paragraph =
-      loading.querySelector(
-        "p"
-      );
+    const paragraph = loading.querySelector("p");
 
     if (paragraph) {
       paragraph.textContent =
         message ||
         "Memeriksa akses administrator...";
     }
-
   }
 
-
-  /* ============================================================
-   * TIMEOUT
-   * ============================================================ */
 
   function withTimeout(
     promise,
     ms,
     message
   ) {
-
     let timer;
 
-    const timeout =
-      new Promise(
-        function (_, reject) {
+    const timeout = new Promise(
+      function (_, reject) {
+        timer = setTimeout(
+          function () {
+            const error =
+              new Error(message);
 
-          timer =
-            setTimeout(
-              function () {
+            error.status = 408;
 
-                const error =
-                  new Error(
-                    message
-                  );
-
-                error.status =
-                  408;
-
-                reject(
-                  error
-                );
-
-              },
-              ms
-            );
-
-        }
-      );
+            reject(error);
+          },
+          ms
+        );
+      }
+    );
 
     return Promise.race([
       promise,
       timeout
     ]).finally(
       function () {
-
-        clearTimeout(
-          timer
-        );
-
+        clearTimeout(timer);
       }
     );
-
   }
 
 
   /* ============================================================
-   * SUPABASE
+   * AUTH
    * ============================================================ */
 
   async function createSupabaseClient() {
-
     if (
       !window.supabase ||
       typeof window.supabase.createClient !==
         "function"
     ) {
-
       const error =
         new Error(
           "Supabase client tidak tersedia."
         );
 
-      error.status =
-        503;
+      error.status = 503;
 
       throw error;
     }
 
-
     setLoadingMessage(
       "Memuat konfigurasi autentikasi..."
     );
-
 
     const response =
       await withTimeout(
         fetch(
           "/api/config",
           {
-            method:
-              "GET",
-
+            method: "GET",
             headers: {
-              "Accept":
+              Accept:
                 "application/json"
             },
-
-            cache:
-              "no-store"
+            cache: "no-store"
           }
         ),
-
         CONFIG_TIMEOUT,
-
         "Konfigurasi autentikasi tidak merespons."
       );
 
-
     if (!response.ok) {
-
       const error =
         new Error(
           "Gagal mengambil konfigurasi autentikasi (" +
@@ -412,41 +269,32 @@
       throw error;
     }
 
-
     const config =
       await response.json();
 
-
     const supabaseUrl =
       String(
-        config?.supabaseUrl ||
-        ""
+        config?.supabaseUrl || ""
       ).trim();
-
 
     const publishableKey =
       String(
-        config?.supabasePublishableKey ||
-        ""
+        config?.supabasePublishableKey || ""
       ).trim();
-
 
     if (
       !supabaseUrl ||
       !publishableKey
     ) {
-
       const error =
         new Error(
           "Konfigurasi Supabase belum tersedia."
         );
 
-      error.status =
-        503;
+      error.status = 503;
 
       throw error;
     }
-
 
     const client =
       window.supabase.createClient(
@@ -454,38 +302,27 @@
         publishableKey,
         {
           auth: {
-            persistSession:
-              true,
-
-            autoRefreshToken:
-              true,
-
-            detectSessionInUrl:
-              true,
-
-            storage:
-              window.localStorage
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage
           }
         }
       );
-
 
     if (
       !client ||
       !client.auth
     ) {
-
       const error =
         new Error(
           "Supabase authentication client tidak tersedia."
         );
 
-      error.status =
-        503;
+      error.status = 503;
 
       throw error;
     }
-
 
     window.GENZ_AUTH_CLIENT =
       client;
@@ -495,7 +332,6 @@
 
 
   async function getSupabaseClient() {
-
     if (
       window.GENZ_AUTH_CLIENT &&
       window.GENZ_AUTH_CLIENT.auth
@@ -503,16 +339,13 @@
       return window.GENZ_AUTH_CLIENT;
     }
 
-
     if (
       window.GENZ &&
       window.GENZ.auth &&
       typeof window.GENZ.auth.getClient ===
         "function"
     ) {
-
       try {
-
         const client =
           await withTimeout(
             window.GENZ.auth.getClient(),
@@ -520,20 +353,16 @@
             "Supabase client tidak merespons."
           );
 
-
         if (
           client &&
           client.auth
         ) {
-
           window.GENZ_AUTH_CLIENT =
             client;
 
           return client;
         }
-
       } catch (error) {
-
         console.warn(
           "[GEN-Z.AI Provider] Auth client gagal:",
           error
@@ -541,20 +370,13 @@
       }
     }
 
-
     return createSupabaseClient();
   }
 
 
-  /* ============================================================
-   * SESSION
-   * ============================================================ */
-
   async function getAccessToken() {
-
     const client =
       await getSupabaseClient();
-
 
     const result =
       await withTimeout(
@@ -563,94 +385,67 @@
         "Session Supabase tidak merespons."
       );
 
-
-    if (
-      result &&
-      result.error
-    ) {
+    if (result?.error) {
       throw result.error;
     }
 
-
-    const session =
-      result?.data?.session;
-
-
     const token =
-      session?.access_token;
-
+      result?.data?.session?.access_token;
 
     if (!token) {
-
       const error =
         new Error(
           "Sesi login tidak ditemukan."
         );
 
-      error.status =
-        401;
+      error.status = 401;
 
       throw error;
     }
-
 
     return token;
   }
 
 
   /* ============================================================
-   * API REQUEST
+   * API
    * ============================================================ */
 
-  async function api(
-    path,
-    options
-  ) {
-
+  async function api(path, options) {
     const opts =
       options || {};
-
 
     const token =
       await getAccessToken();
 
-
     const headers =
       new Headers();
-
 
     headers.set(
       "Accept",
       "application/json"
     );
 
-
     headers.set(
       "Authorization",
-      "Bearer " +
-      token
+      "Bearer " + token
     );
-
 
     if (
       opts.body !== undefined &&
       opts.body !== null
     ) {
-
       headers.set(
         "Content-Type",
         "application/json; charset=utf-8"
       );
     }
 
-
     if (opts.headers) {
-
       Object.keys(
         opts.headers
       ).forEach(
         function (key) {
-
           if (
             key.toLowerCase() ===
             "content-type"
@@ -662,39 +457,30 @@
             key,
             opts.headers[key]
           );
-
         }
       );
     }
 
-
     const controller =
       new AbortController();
-
 
     const timer =
       setTimeout(
         function () {
-
           controller.abort();
-
         },
         API_TIMEOUT
       );
 
-
     try {
-
       const response =
         await fetch(
           path,
           {
             method:
-              opts.method ||
-              "GET",
+              opts.method || "GET",
 
-            headers:
-              headers,
+            headers,
 
             body:
               opts.body,
@@ -707,98 +493,66 @@
           }
         );
 
-
-      let data =
-        null;
-
+      let data = null;
 
       const contentType =
         response.headers.get(
           "content-type"
         ) || "";
 
-
       if (
         contentType.includes(
           "application/json"
         )
       ) {
-
         try {
-
           data =
             await response.json();
-
         } catch (_) {
-
-          data =
-            null;
+          data = null;
         }
-
       } else {
-
         try {
-
           const text =
             await response.text();
 
           if (text) {
-
             data = {
-              message:
-                text
+              message: text
             };
           }
-
         } catch (_) {
-
-          data =
-            null;
+          data = null;
         }
       }
 
-
       if (!response.ok) {
-
-        const message =
-          data &&
-          (
-            data.error ||
-            data.message
-          );
-
-
         const error =
           new Error(
-            message ||
+            data?.error ||
+            data?.message ||
             "Permintaan API gagal (" +
             response.status +
             ")."
           );
 
-
         error.status =
           response.status;
-
 
         error.data =
           data;
 
-
         throw error;
       }
-
 
       return data;
 
     } catch (error) {
-
       if (
         error &&
         error.name ===
           "AbortError"
       ) {
-
         const timeoutError =
           new Error(
             "Server terlalu lama merespons."
@@ -810,14 +564,10 @@
         throw timeoutError;
       }
 
-
       throw error;
 
     } finally {
-
-      clearTimeout(
-        timer
-      );
+      clearTimeout(timer);
     }
   }
 
@@ -826,16 +576,11 @@
    * NORMALIZER
    * ============================================================ */
 
-  function normalizeProvider(
-    provider
-  ) {
-
+  function normalizeProvider(provider) {
     const item =
       provider || {};
 
-
     return {
-
       id:
         item.id ??
         item.provider_id ??
@@ -851,24 +596,15 @@
         "",
 
       config:
-        item.config &&
-        typeof item.config ===
-          "object" &&
-        !Array.isArray(
+        normalizeObject(
           item.config
-        )
-          ? item.config
-          : {},
+        ),
 
       enabled:
         item.enabled !== undefined
-          ? Boolean(
-              item.enabled
-            )
+          ? Boolean(item.enabled)
           : item.active !== undefined
-            ? Boolean(
-                item.active
-              )
+            ? Boolean(item.active)
             : true,
 
       apiKey:
@@ -898,7 +634,6 @@
    * ============================================================ */
 
   function showApp() {
-
     const loading =
       $("providerLoading");
 
@@ -908,28 +643,21 @@
     const app =
       $("providerApp");
 
-
     if (loading) {
-      loading.hidden =
-        true;
+      loading.hidden = true;
     }
 
     if (denied) {
-      denied.hidden =
-        true;
+      denied.hidden = true;
     }
 
     if (app) {
-      app.hidden =
-        false;
+      app.hidden = false;
     }
   }
 
 
-  function showDenied(
-    message
-  ) {
-
+  function showDenied(message) {
     const loading =
       $("providerLoading");
 
@@ -939,32 +667,23 @@
     const app =
       $("providerApp");
 
-
     if (loading) {
-      loading.hidden =
-        true;
+      loading.hidden = true;
     }
 
     if (app) {
-      app.hidden =
-        true;
+      app.hidden = true;
     }
 
-
     if (denied) {
-
-      denied.hidden =
-        false;
-
+      denied.hidden = false;
 
       const paragraphs =
         denied.querySelectorAll(
           "p"
         );
 
-
       if (paragraphs.length) {
-
         paragraphs[
           paragraphs.length - 1
         ].textContent =
@@ -972,7 +691,6 @@
           "Akses ditolak.";
       }
     }
-
 
     setStatus(
       message ||
@@ -983,31 +701,26 @@
 
 
   /* ============================================================
-   * RENDER LIST
+   * PROVIDER LIST
    * ============================================================ */
 
   function renderProviders() {
-
     const list =
       $("providerList");
 
     const count =
       $("providerCount");
 
-
     if (!list) {
       return;
     }
-
 
     const providers =
       state.providers.map(
         normalizeProvider
       );
 
-
     if (count) {
-
       count.textContent =
         providers.length +
         (
@@ -1017,9 +730,7 @@
         );
     }
 
-
     if (!providers.length) {
-
       list.innerHTML =
         '<div class="admin-empty">' +
           "<strong>Belum ada provider.</strong>" +
@@ -1032,23 +743,19 @@
       return;
     }
 
-
     list.innerHTML =
       providers
         .map(
           function (provider) {
-
             const active =
               provider.enabled;
 
-
             return (
-
               '<div class="admin-list-item" ' +
                 'data-provider-id="' +
-                escapeHtml(
-                  provider.id
-                ) +
+                  escapeHtml(
+                    provider.id
+                  ) +
               '">' +
 
                 '<div class="admin-list-main">' +
@@ -1060,23 +767,20 @@
                     ) +
                   "</h3>" +
 
-                  "<p>" +
-                    "ID: " +
+                  "<p>ID: " +
                     escapeHtml(
                       provider.id
                     ) +
                   "</p>" +
 
-                  "<p>" +
-                    "Adapter: " +
+                  "<p>Adapter: " +
                     escapeHtml(
                       provider.adapter ||
                       "-"
                     ) +
                   "</p>" +
 
-                  "<p>" +
-                    "API Key: " +
+                  "<p>API Key: " +
                     (
                       provider.apiKeySet
                         ? "Tersedia"
@@ -1139,79 +843,58 @@
                 "</div>" +
 
               "</div>"
-
             );
-
           }
         )
         .join("");
   }
 
 
-  /* ============================================================
-   * LOAD PROVIDERS
-   * ============================================================ */
-
   async function loadProviders() {
-
     if (state.loading) {
       return;
     }
 
-
-    state.loading =
-      true;
-
+    state.loading = true;
 
     const list =
       $("providerList");
 
-
     if (list) {
-
       list.innerHTML =
         '<div class="admin-loading">' +
           "Memuat provider..." +
         "</div>";
     }
 
-
     try {
-
       const data =
         await api(
           "/api/admin/providers",
           {
-            method:
-              "GET"
+            method: "GET"
           }
         );
-
 
       const providers =
         Array.isArray(
           data?.providers
         )
           ? data.providers
-          : Array.isArray(
-              data
-            )
-              ? data
-              : Array.isArray(
-                  data?.data
-                )
-                  ? data.data
-                  : [];
-
+          : Array.isArray(data)
+            ? data
+            : Array.isArray(
+                data?.data
+              )
+              ? data.data
+              : [];
 
       state.providers =
         providers.map(
           normalizeProvider
         );
 
-
       renderProviders();
-
 
       setStatus(
         state.providers.length +
@@ -1219,46 +902,29 @@
         "success"
       );
 
-
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI Provider] Load error:",
         error
       );
 
-
-      if (
-        error.status ===
-        401
-      ) {
-
+      if (error.status === 401) {
         showDenied(
           "Sesi login tidak ditemukan."
         );
-
         return;
       }
 
-
-      if (
-        error.status ===
-        403
-      ) {
-
+      if (error.status === 403) {
         showDenied(
           "Akun ini tidak memiliki akses administrator."
         );
-
         return;
       }
 
-
-      state.providers =
-        [];
+      state.providers = [];
 
       renderProviders();
-
 
       setStatus(
         error.message ||
@@ -1267,31 +933,327 @@
       );
 
     } finally {
-
-      state.loading =
-        false;
+      state.loading = false;
     }
   }
 
 
   /* ============================================================
-   * CHINAAPI MODEL SETTINGS HTML
+   * MODEL SETTINGS
+   *
+   * Credit dan diskon sekarang bersifat GENERIC.
+   *
+   * Model bisa berasal dari:
+   * 1. modelCredits / modelDiscounts yang sudah tersimpan
+   * 2. modelEnabled
+   * 3. modelIds / models di config
+   * 4. model ChinaAPI bawaan
    * ============================================================ */
 
-  function renderChinaApiModelSettings(
-    config
+  function getConfiguredModelIds(config) {
+    const ids = new Set();
+
+    const modelCredits =
+      normalizeObject(
+        config.modelCredits
+      );
+
+    const modelDiscounts =
+      normalizeObject(
+        config.modelDiscounts
+      );
+
+    const modelEnabled =
+      normalizeObject(
+        config.modelEnabled
+      );
+
+    Object.keys(
+      modelCredits
+    ).forEach(
+      function (id) {
+        if (id) {
+          ids.add(id);
+        }
+      }
+    );
+
+    Object.keys(
+      modelDiscounts
+    ).forEach(
+      function (id) {
+        if (id) {
+          ids.add(id);
+        }
+      }
+    );
+
+    Object.keys(
+      modelEnabled
+    ).forEach(
+      function (id) {
+        if (id) {
+          ids.add(id);
+        }
+      }
+    );
+
+    if (Array.isArray(config.modelIds)) {
+      config.modelIds.forEach(
+        function (id) {
+          if (id) {
+            ids.add(
+              String(id)
+            );
+          }
+        }
+      );
+    }
+
+    if (Array.isArray(config.models)) {
+      config.models.forEach(
+        function (model) {
+          const id =
+            typeof model === "string"
+              ? model
+              : model?.id ||
+                model?.model ||
+                model?.name;
+
+          if (id) {
+            ids.add(
+              String(id)
+            );
+          }
+        }
+      );
+    }
+
+    return Array.from(ids);
+  }
+
+
+  function getModelDefinitions(
+    provider
   ) {
+    const config =
+      normalizeObject(
+        provider?.config
+      );
+
+    const definitions = [];
+    const existing = new Set();
+
+    function addModel(
+      id,
+      name,
+      defaultCredit
+    ) {
+      const modelId =
+        String(
+          id || ""
+        ).trim();
+
+      if (!modelId) {
+        return;
+      }
+
+      if (existing.has(modelId)) {
+        return;
+      }
+
+      existing.add(modelId);
+
+      definitions.push({
+        id: modelId,
+
+        name:
+          String(
+            name ||
+            modelId
+          ),
+
+        defaultCredit:
+          normalizeInteger(
+            defaultCredit,
+            1,
+            1,
+            1000
+          )
+      });
+    }
+
+    if (
+      String(
+        provider?.adapter ||
+        ""
+      ).trim().toLowerCase() ===
+      "chinaapi"
+    ) {
+      CHINAAPI_MODELS.forEach(
+        function (model) {
+          addModel(
+            model.id,
+            model.name,
+            model.defaultCredit
+          );
+        }
+      );
+    }
 
     const models =
-      CHINAAPI_MODELS;
+      Array.isArray(
+        config.models
+      )
+        ? config.models
+        : [];
+
+    models.forEach(
+      function (model) {
+        if (
+          typeof model ===
+          "string"
+        ) {
+          addModel(
+            model,
+            model,
+            1
+          );
+
+          return;
+        }
+
+        addModel(
+          model?.id ||
+          model?.model ||
+          model?.name,
+
+          model?.name ||
+          model?.label ||
+          model?.id ||
+          model?.model,
+
+          model?.credit ??
+          model?.credits ??
+          model?.defaultCredit ??
+          1
+        );
+      }
+    );
+
+    getConfiguredModelIds(
+      config
+    ).forEach(
+      function (id) {
+        addModel(
+          id,
+          id,
+          getConfigValue(
+            config.modelCredits,
+            id,
+            1
+          )
+        );
+      }
+    );
+
+    return definitions;
+  }
 
 
-    let html =
-      "";
+  function getModelSettings(
+    config,
+    model
+  ) {
+    const safeConfig =
+      normalizeObject(
+        config
+      );
 
+    const enabled =
+      getConfigValue(
+        safeConfig.modelEnabled,
+        model.id,
+        true
+      );
+
+    const credit =
+      getConfigValue(
+        safeConfig.modelCredits,
+        model.id,
+        model.defaultCredit
+      );
+
+    const discount =
+      getConfigValue(
+        safeConfig.modelDiscounts,
+        model.id,
+        0
+      );
+
+    return {
+      enabled:
+        Boolean(enabled),
+
+      credit:
+        normalizeInteger(
+          credit,
+          model.defaultCredit,
+          1,
+          1000
+        ),
+
+      discount:
+        normalizeDiscount(
+          discount
+        )
+    };
+  }
+
+
+  function renderModelSettings(
+    provider
+  ) {
+    const config =
+      normalizeObject(
+        provider?.config
+      );
+
+    const models =
+      getModelDefinitions(
+        provider
+      );
+
+    if (!models.length) {
+      return (
+        '<div class="provider-model-settings" ' +
+          'style="' +
+            "margin-top:18px;" +
+            "padding:16px;" +
+            "border:1px solid rgba(127,127,127,.22);" +
+            "border-radius:12px;" +
+            "background:rgba(127,127,127,.05);" +
+          '">' +
+
+          "<h4 " +
+            'style="margin:0 0 6px;font-size:16px;">' +
+            "Credit & Diskon Model" +
+          "</h4>" +
+
+          "<p " +
+            'style="margin:0;opacity:.72;font-size:13px;">' +
+            "Belum ada model yang terdaftar pada konfigurasi provider. " +
+            "Tambahkan model melalui Config untuk mengatur credit dan diskon." +
+          "</p>" +
+
+        "</div>"
+      );
+    }
+
+    let html = "";
 
     html +=
-      '<div class="chinaapi-model-settings" ' +
+      '<div class="provider-model-settings" ' +
         'style="' +
           "margin-top:18px;" +
           "padding:16px;" +
@@ -1301,34 +1263,22 @@
         '">' +
 
         "<h4 " +
-          'style="' +
-            "margin:0 0 6px;" +
-            "font-size:16px;" +
-          '">' +
-          "Model ChinaAPI" +
+          'style="margin:0 0 6px;font-size:16px;">' +
+          "Credit & Diskon Model" +
         "</h4>" +
 
         "<p " +
-          'style="' +
-            "margin:0 0 14px;" +
-            "opacity:.72;" +
-            "font-size:13px;" +
-          '">' +
-          "Atur status model, credit dasar, dan diskon masing-masing model." +
+          'style="margin:0 0 14px;opacity:.72;font-size:13px;">' +
+          "Atur status model, credit dasar, dan diskon. " +
+          "Credit efektif dihitung otomatis." +
         "</p>" +
 
-        '<div ' +
-          'style="' +
-            "display:grid;" +
-            "gap:12px;" +
-          '">';
-
+        '<div style="display:grid;gap:12px;">';
 
     models.forEach(
       function (model) {
-
         const settings =
-          getChinaApiModelSettings(
+          getModelSettings(
             config,
             model
           );
@@ -1338,17 +1288,14 @@
             model.id
           );
 
-        const effectiveCredit =
+        const effective =
           getEffectiveCredit(
             settings.credit,
             settings.discount
           );
 
-
         html +=
-
-          '<div ' +
-            'class="chinaapi-model-row" ' +
+          '<div class="provider-model-row" ' +
             'style="' +
               "padding:14px;" +
               "border:1px solid rgba(127,127,127,.18);" +
@@ -1356,26 +1303,23 @@
               "background:rgba(0,0,0,.02);" +
             '">' +
 
-            '<div ' +
-              'style="' +
-                "display:flex;" +
-                "justify-content:space-between;" +
-                "gap:12px;" +
-                "align-items:flex-start;" +
-                "flex-wrap:wrap;" +
-              '">' +
+            '<div style="' +
+              "display:flex;" +
+              "justify-content:space-between;" +
+              "gap:12px;" +
+              "align-items:flex-start;" +
+              "flex-wrap:wrap;" +
+            '">' +
 
               "<div>" +
 
-                '<strong ' +
-                  'style="display:block;margin-bottom:4px;">' +
+                '<strong style="display:block;margin-bottom:4px;">' +
                   escapeHtml(
                     model.name
                   ) +
                 "</strong>" +
 
-                '<small ' +
-                  'style="opacity:.65;">' +
+                '<small style="opacity:.65;">' +
                   escapeHtml(
                     model.id
                   ) +
@@ -1383,17 +1327,16 @@
 
               "</div>" +
 
-              '<label ' +
-                'style="' +
-                  "display:flex;" +
-                  "align-items:center;" +
-                  "gap:8px;" +
-                  "cursor:pointer;" +
-                '">' +
+              '<label style="' +
+                "display:flex;" +
+                "align-items:center;" +
+                "gap:8px;" +
+                "cursor:pointer;" +
+              '">' +
 
                 '<input ' +
                   'type="checkbox" ' +
-                  'class="chinaapi-model-enabled" ' +
+                  'class="provider-model-enabled" ' +
                   'data-model-id="' +
                     escapeHtml(
                       model.id
@@ -1406,37 +1349,33 @@
                   ) +
                 ">" +
 
-                "<span>" +
-                  "Model aktif" +
-                "</span>" +
+                "<span>Model aktif</span>" +
 
               "</label>" +
 
             "</div>" +
 
-            '<div ' +
-              'style="' +
-                "display:grid;" +
-                "grid-template-columns:repeat(auto-fit,minmax(150px,1fr));" +
-                "gap:10px;" +
-                "margin-top:12px;" +
-              '">' +
+            '<div style="' +
+              "display:grid;" +
+              "grid-template-columns:repeat(auto-fit,minmax(150px,1fr));" +
+              "gap:10px;" +
+              "margin-top:12px;" +
+            '">' +
 
-              '<div>' +
+              "<div>" +
 
-                '<label ' +
-                  'for="chinaapi-credit-' +
-                    key +
-                  '">' +
+                '<label for="provider-credit-' +
+                  key +
+                '">' +
                   "Credit" +
                 "</label>" +
 
                 '<input ' +
                   'type="number" ' +
-                  'id="chinaapi-credit-' +
+                  'id="provider-credit-' +
                     key +
                   '" ' +
-                  'class="chinaapi-model-credit" ' +
+                  'class="provider-model-credit" ' +
                   'data-model-id="' +
                     escapeHtml(
                       model.id
@@ -1453,21 +1392,20 @@
 
               "</div>" +
 
-              '<div>' +
+              "<div>" +
 
-                '<label ' +
-                  'for="chinaapi-discount-' +
-                    key +
-                  '">' +
+                '<label for="provider-discount-' +
+                  key +
+                '">' +
                   "Diskon (%)" +
                 "</label>" +
 
                 '<input ' +
                   'type="number" ' +
-                  'id="chinaapi-discount-' +
+                  'id="provider-discount-' +
                     key +
                   '" ' +
-                  'class="chinaapi-model-discount" ' +
+                  'class="provider-model-discount" ' +
                   'data-model-id="' +
                     escapeHtml(
                       model.id
@@ -1484,14 +1422,10 @@
 
               "</div>" +
 
-              '<div ' +
-                'style="' +
-                  "display:flex;" +
-                  "align-items:end;" +
-                '">' +
+              '<div style="display:flex;align-items:end;">' +
 
                 '<div ' +
-                  'class="chinaapi-effective-credit" ' +
+                  'class="provider-effective-credit" ' +
                   'data-model-id="' +
                     escapeHtml(
                       model.id
@@ -1504,15 +1438,13 @@
                     "width:100%;" +
                   '">' +
 
-                  "<small " +
-                    'style="display:block;opacity:.65;">' +
+                  '<small style="display:block;opacity:.65;">' +
                     "Credit efektif" +
                   "</small>" +
 
-                  '<strong ' +
-                    'style="font-size:18px;">' +
+                  '<strong style="font-size:18px;">' +
                     escapeHtml(
-                      effectiveCredit
+                      effective
                     ) +
                   "</strong>" +
 
@@ -1523,21 +1455,18 @@
             "</div>" +
 
           "</div>";
-
-      });
-
+      }
+    );
 
     html +=
         "</div>" +
       "</div>";
 
-
     return html;
   }
 
 
-  function bindChinaApiModelSettings() {
-
+  function bindModelSettings() {
     const editor =
       $("providerEditor");
 
@@ -1545,152 +1474,111 @@
       return;
     }
 
+    function updateEffectiveCredit(
+      modelId
+    ) {
+      const creditInput =
+        editor.querySelector(
+          '.provider-model-credit[data-model-id="' +
+            CSS.escape(modelId) +
+          '"]'
+        );
 
-    const updateEffectiveCredit =
-      function (modelId) {
+      const discountInput =
+        editor.querySelector(
+          '.provider-model-discount[data-model-id="' +
+            CSS.escape(modelId) +
+          '"]'
+        );
 
-        const creditInput =
-          editor.querySelector(
-            '.chinaapi-model-credit[data-model-id="' +
-            CSS.escape(
-              modelId
-            ) +
-            '"]'
-          );
+      const output =
+        editor.querySelector(
+          '.provider-effective-credit[data-model-id="' +
+            CSS.escape(modelId) +
+          '"] strong'
+        );
 
-        const discountInput =
-          editor.querySelector(
-            '.chinaapi-model-discount[data-model-id="' +
-            CSS.escape(
-              modelId
-            ) +
-            '"]'
-          );
+      if (
+        !creditInput ||
+        !discountInput ||
+        !output
+      ) {
+        return;
+      }
 
-        const output =
-          editor.querySelector(
-            '.chinaapi-effective-credit[data-model-id="' +
-            CSS.escape(
-              modelId
-            ) +
-            '"] strong'
-          );
+      const credit =
+        normalizeInteger(
+          creditInput.value,
+          1,
+          1,
+          1000
+        );
 
+      const discount =
+        normalizeDiscount(
+          discountInput.value
+        );
 
-        if (
-          !creditInput ||
-          !discountInput ||
-          !output
-        ) {
-          return;
-        }
-
-
-        const credit =
-          normalizeInteger(
-            creditInput.value,
-            1,
-            1,
-            1000
-          );
-
-        const discount =
-          normalizeDiscount(
-            discountInput.value
-          );
-
-        const effective =
+      output.textContent =
+        String(
           getEffectiveCredit(
             credit,
             discount
-          );
-
-
-        output.textContent =
-          String(
-            effective
-          );
-      };
-
+          )
+        );
+    }
 
     editor
       .querySelectorAll(
-        ".chinaapi-model-credit, .chinaapi-model-discount"
+        ".provider-model-credit, .provider-model-discount"
       )
       .forEach(
         function (input) {
-
           input.addEventListener(
             "input",
             function () {
-
               updateEffectiveCredit(
                 input.dataset.modelId
               );
-
             }
           );
-
         }
       );
   }
 
 
-  function collectChinaApiModelSettings(
+  function collectModelSettings(
     config
   ) {
-
     const safeConfig =
-      config &&
-      typeof config === "object" &&
-      !Array.isArray(config)
-        ? config
-        : {};
+      normalizeObject(
+        config
+      );
 
-
-    const modelEnabled =
-      safeConfig.modelEnabled &&
-      typeof safeConfig.modelEnabled === "object" &&
-      !Array.isArray(
+    const modelEnabled = {
+      ...normalizeObject(
         safeConfig.modelEnabled
       )
-        ? {
-            ...safeConfig.modelEnabled
-          }
-        : {};
+    };
 
-
-    const modelCredits =
-      safeConfig.modelCredits &&
-      typeof safeConfig.modelCredits === "object" &&
-      !Array.isArray(
+    const modelCredits = {
+      ...normalizeObject(
         safeConfig.modelCredits
       )
-        ? {
-            ...safeConfig.modelCredits
-          }
-        : {};
+    };
 
-
-    const modelDiscounts =
-      safeConfig.modelDiscounts &&
-      typeof safeConfig.modelDiscounts === "object" &&
-      !Array.isArray(
+    const modelDiscounts = {
+      ...normalizeObject(
         safeConfig.modelDiscounts
       )
-        ? {
-            ...safeConfig.modelDiscounts
-          }
-        : {};
-
+    };
 
     document
       .querySelectorAll(
-        "#providerEditor .chinaapi-model-enabled"
+        "#providerEditor .provider-model-enabled"
       )
       .forEach(
         function (input) {
-
           const modelId =
             input.dataset.modelId;
 
@@ -1702,18 +1590,15 @@
             Boolean(
               input.checked
             );
-
         }
       );
 
-
     document
       .querySelectorAll(
-        "#providerEditor .chinaapi-model-credit"
+        "#providerEditor .provider-model-credit"
       )
       .forEach(
         function (input) {
-
           const modelId =
             input.dataset.modelId;
 
@@ -1728,18 +1613,15 @@
               1,
               1000
             );
-
         }
       );
 
-
     document
       .querySelectorAll(
-        "#providerEditor .chinaapi-model-discount"
+        "#providerEditor .provider-model-discount"
       )
       .forEach(
         function (input) {
-
           const modelId =
             input.dataset.modelId;
 
@@ -1751,10 +1633,8 @@
             normalizeDiscount(
               input.value
             );
-
         }
       );
-
 
     return {
       ...safeConfig,
@@ -1775,15 +1655,12 @@
   function renderEditor(
     provider
   ) {
-
     const editor =
       $("providerEditor");
-
 
     if (!editor) {
       return;
     }
-
 
     const item =
       provider
@@ -1792,29 +1669,18 @@
           )
         : null;
 
-
     state.editingId =
       item
         ? item.id
         : null;
 
-
     const isEdit =
-      Boolean(
-        item
-      );
-
+      Boolean(item);
 
     const config =
-      item?.config &&
-      typeof item.config ===
-        "object" &&
-      !Array.isArray(
-        item.config
-      )
-        ? item.config
-        : {};
-
+      normalizeObject(
+        item?.config
+      );
 
     const configText =
       JSON.stringify(
@@ -1823,31 +1689,18 @@
         2
       );
 
-
-    const isChinaApi =
-      String(
-        item?.adapter ||
-        ""
-      ).trim().toLowerCase() ===
-      "chinaapi";
-
-
-    const chinaApiModelSettings =
-      isChinaApi
-        ? renderChinaApiModelSettings(
-            config
+    const modelSettings =
+      item
+        ? renderModelSettings(
+            item
           )
         : "";
-
 
     editor.hidden =
       false;
 
-
     editor.innerHTML =
-
-      '<form id="providerForm" ' +
-        'autocomplete="off">' +
+      '<form id="providerForm" autocomplete="off">' +
 
         '<div class="admin-form">' +
 
@@ -1903,8 +1756,7 @@
                 item?.name ||
                 ""
               ) +
-            '"' +
-          ">" +
+            '">' +
 
           '<label for="providerAdapter">' +
             "Adapter" +
@@ -1916,14 +1768,13 @@
             'name="providerAdapter" ' +
             'required ' +
             'maxlength="64" ' +
-            'placeholder="contoh: veo, minimax, luma, chinaapi"' +
+            'placeholder="contoh: veo, minimax, luma, chinaapi" ' +
             'value="' +
               escapeHtml(
                 item?.adapter ||
                 ""
               ) +
-            '"' +
-          ">" +
+            '">' +
 
           "<small>" +
             "Isi ID adapter secara bebas." +
@@ -1941,15 +1792,11 @@
             (
               isEdit
                 ? 'placeholder="Kosongkan jika tidak ingin mengubah API key"'
-                : 'required'
+                : "required"
             ) +
           ">" +
 
-          (
-            isChinaApi
-              ? chinaApiModelSettings
-              : ""
-          ) +
+          modelSettings +
 
           '<label for="providerConfig">' +
             "Config" +
@@ -1959,17 +1806,15 @@
             'id="providerConfig" ' +
             'name="providerConfig" ' +
             'rows="8" ' +
-            'spellcheck="false"' +
-          ">" +
+            'spellcheck="false">' +
             escapeHtml(
               configText
             ) +
           "</textarea>" +
 
-          '<small ' +
-            'style="display:block;margin-top:4px;opacity:.7;">' +
+          '<small style="display:block;margin-top:4px;opacity:.7;">' +
             (
-              isChinaApi
+              item
                 ? "Pengaturan model di atas akan disimpan otomatis ke Config. Field Config tetap tersedia untuk pengaturan lanjutan."
                 : "JSON konfigurasi provider."
             ) +
@@ -1989,23 +1834,17 @@
               ) +
             ">" +
 
-            "<span>" +
-              "Provider aktif" +
-            "</span>" +
+            "<span>Provider aktif</span>" +
 
           "</label>" +
 
           '<div class="admin-actions">' +
 
-            '<button ' +
-              'type="button" ' +
-              'id="providerCancelBtn">' +
+            '<button type="button" id="providerCancelBtn">' +
               "Batal" +
             "</button>" +
 
-            '<button ' +
-              'type="submit" ' +
-              'id="providerSaveBtn">' +
+            '<button type="submit" id="providerSaveBtn">' +
               (
                 isEdit
                   ? "Simpan Perubahan"
@@ -2019,60 +1858,40 @@
 
       "</form>";
 
-
-    bindChinaApiModelSettings();
-
+    bindModelSettings();
 
     const form =
       $("providerForm");
 
-
     if (form) {
-
       form.addEventListener(
         "submit",
         function (event) {
-
           event.preventDefault();
-
           saveProvider();
-
         }
       );
     }
-
 
     const cancelButton =
       $("providerCancelBtn");
 
-
     if (cancelButton) {
-
       cancelButton.addEventListener(
         "click",
-        function () {
-
-          closeEditor();
-
-        }
+        closeEditor
       );
     }
-
 
     const saveButton =
       $("providerSaveBtn");
 
-
     if (saveButton) {
-
       saveButton.addEventListener(
         "click",
         function (event) {
-
           event.preventDefault();
-
           saveProvider();
-
         }
       );
     }
@@ -2080,36 +1899,21 @@
 
 
   function openAddEditor() {
-
-    renderEditor(
-      null
-    );
+    renderEditor(null);
   }
 
 
-  function openEditEditor(
-    id
-  ) {
-
+  function openEditEditor(id) {
     const provider =
       state.providers.find(
         function (item) {
-
           return String(
-            normalizeProvider(
-              item
-            ).id
-          ) ===
-          String(
-            id
-          );
-
+            normalizeProvider(item).id
+          ) === String(id);
         }
       );
 
-
     if (!provider) {
-
       setStatus(
         "Provider tidak ditemukan.",
         "error"
@@ -2118,28 +1922,18 @@
       return;
     }
 
-
-    renderEditor(
-      provider
-    );
+    renderEditor(provider);
   }
 
 
   function closeEditor() {
-
     const editor =
       $("providerEditor");
 
-
     if (editor) {
-
-      editor.hidden =
-        true;
-
-      editor.innerHTML =
-        "";
+      editor.hidden = true;
+      editor.innerHTML = "";
     }
-
 
     state.editingId =
       null;
@@ -2147,14 +1941,12 @@
 
 
   /* ============================================================
-   * SAVE PROVIDER
+   * SAVE
    * ============================================================ */
 
   async function saveProvider() {
-
     const saveButton =
       $("providerSaveBtn");
-
 
     if (
       saveButton &&
@@ -2162,7 +1954,6 @@
     ) {
       return;
     }
-
 
     const idInput =
       $("providerId");
@@ -2182,35 +1973,26 @@
     const enabledInput =
       $("providerEnabled");
 
-
     const id =
       String(
-        idInput?.value ||
-        ""
+        idInput?.value || ""
       ).trim();
-
 
     const name =
       String(
-        nameInput?.value ||
-        ""
+        nameInput?.value || ""
       ).trim();
-
 
     const adapter =
       String(
-        adapterInput?.value ||
-        ""
+        adapterInput?.value || ""
       ).trim()
       .toLowerCase();
 
-
     const apiKey =
       String(
-        apiKeyInput?.value ||
-        ""
+        apiKeyInput?.value || ""
       ).trim();
-
 
     const enabled =
       enabledInput
@@ -2219,9 +2001,7 @@
           )
         : true;
 
-
     if (!id) {
-
       setStatus(
         "Provider ID wajib diisi.",
         "error"
@@ -2232,13 +2012,11 @@
       return;
     }
 
-
     if (
       !/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(
         id
       )
     ) {
-
       setStatus(
         "Provider ID tidak valid.",
         "error"
@@ -2249,9 +2027,7 @@
       return;
     }
 
-
     if (!name) {
-
       setStatus(
         "Provider Name wajib diisi.",
         "error"
@@ -2262,9 +2038,7 @@
       return;
     }
 
-
     if (!adapter) {
-
       setStatus(
         "Adapter wajib diisi.",
         "error"
@@ -2275,13 +2049,11 @@
       return;
     }
 
-
     if (
       !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(
         adapter
       )
     ) {
-
       setStatus(
         "ID adapter tidak valid. Gunakan huruf kecil, angka, underscore, atau tanda minus.",
         "error"
@@ -2292,29 +2064,20 @@
       return;
     }
 
-
-    let config =
-      {};
-
+    let config = {};
 
     const configText =
       String(
-        configInput?.value ||
-        ""
+        configInput?.value || ""
       ).trim();
 
-
     if (configText) {
-
       try {
-
         config =
           JSON.parse(
             configText
           );
-
-      } catch (error) {
-
+      } catch (_) {
         setStatus(
           "Config JSON tidak valid.",
           "error"
@@ -2326,16 +2089,11 @@
       }
     }
 
-
     if (
       !config ||
-      typeof config !==
-        "object" ||
-      Array.isArray(
-        config
-      )
+      typeof config !== "object" ||
+      Array.isArray(config)
     ) {
-
       setStatus(
         "Config harus berupa JSON object.",
         "error"
@@ -2346,36 +2104,27 @@
       return;
     }
 
-
     /*
-     * Untuk ChinaAPI:
-     * nilai modelEnabled, modelCredits,
-     * dan modelDiscounts dari UI model
-     * menjadi sumber konfigurasi provider.
+     * Credit, diskon, dan status model
+     * sekarang berlaku untuk seluruh provider
+     * yang memiliki model.
      */
-    if (
-      adapter ===
-      "chinaapi"
-    ) {
-
+    if (state.editingId) {
       config =
-        collectChinaApiModelSettings(
+        collectModelSettings(
           config
         );
     }
-
 
     const isEdit =
       Boolean(
         state.editingId
       );
 
-
     if (
       !isEdit &&
       !apiKey
     ) {
-
       setStatus(
         "API Key wajib diisi.",
         "error"
@@ -2386,27 +2135,18 @@
       return;
     }
 
-
     const payload = {
-
       id,
-
       name,
-
       adapter,
-
       enabled,
-
       config
     };
 
-
     if (apiKey) {
-
       payload.api_key =
         apiKey;
     }
-
 
     const endpoint =
       isEdit
@@ -2416,15 +2156,12 @@
           )
         : "/api/admin/providers";
 
-
     const method =
       isEdit
         ? "PUT"
         : "POST";
 
-
     if (saveButton) {
-
       saveButton.disabled =
         true;
 
@@ -2432,40 +2169,30 @@
         "Menyimpan...";
     }
 
-
     setStatus(
       "Mengirim data provider...",
       "loading"
     );
 
-
     try {
-
-      const body =
-        JSON.stringify(
-          payload
-        );
-
-
       const result =
         await api(
           endpoint,
           {
             method,
-
-            body
+            body:
+              JSON.stringify(
+                payload
+              )
           }
         );
-
 
       console.log(
         "[GEN-Z.AI Provider] Save success:",
         result
       );
 
-
       closeEditor();
-
 
       setStatus(
         result?.message ||
@@ -2477,68 +2204,44 @@
         "success"
       );
 
-
       await loadProviders();
 
-
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI Provider] Save error:",
         error
       );
 
-
       let message =
         error?.message ||
         "Gagal menyimpan provider.";
 
-
-      if (
-        error?.status ===
-        400
-      ) {
-
+      if (error?.status === 400) {
         message =
           "Data provider ditolak: " +
           message;
       }
 
-
-      if (
-        error?.status ===
-        401
-      ) {
-
+      if (error?.status === 401) {
         message =
           "Sesi login sudah tidak valid.";
       }
 
-
-      if (
-        error?.status ===
-        403
-      ) {
-
+      if (error?.status === 403) {
         message =
           "Anda tidak memiliki akses administrator.";
       }
-
 
       setStatus(
         message,
         "error"
       );
 
-
     } finally {
-
       const currentButton =
         $("providerSaveBtn");
 
-
       if (currentButton) {
-
         currentButton.disabled =
           false;
 
@@ -2555,29 +2258,17 @@
    * TOGGLE
    * ============================================================ */
 
-  async function toggleProvider(
-    id
-  ) {
-
+  async function toggleProvider(id) {
     const provider =
       state.providers.find(
         function (item) {
-
           return String(
-            normalizeProvider(
-              item
-            ).id
-          ) ===
-          String(
-            id
-          );
-
+            normalizeProvider(item).id
+          ) === String(id);
         }
       );
 
-
     if (!provider) {
-
       setStatus(
         "Provider tidak ditemukan.",
         "error"
@@ -2586,16 +2277,13 @@
       return;
     }
 
-
     const normalized =
       normalizeProvider(
         provider
       );
 
-
     const enable =
       !normalized.enabled;
-
 
     setStatus(
       enable
@@ -2604,9 +2292,7 @@
       "loading"
     );
 
-
     try {
-
       await api(
         "/api/admin/providers/" +
         encodeURIComponent(
@@ -2614,18 +2300,13 @@
         ) +
         "/toggle",
         {
-          method:
-            "POST",
-
+          method: "POST",
           headers: {
             "x-enable":
-              String(
-                enable
-              )
+              String(enable)
           }
         }
       );
-
 
       setStatus(
         enable
@@ -2634,17 +2315,13 @@
         "success"
       );
 
-
       await loadProviders();
 
-
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI Provider] Toggle error:",
         error
       );
-
 
       setStatus(
         error?.message ||
@@ -2659,29 +2336,17 @@
    * DELETE
    * ============================================================ */
 
-  async function deleteProvider(
-    id
-  ) {
-
+  async function deleteProvider(id) {
     const provider =
       state.providers.find(
         function (item) {
-
           return String(
-            normalizeProvider(
-              item
-            ).id
-          ) ===
-          String(
-            id
-          );
-
+            normalizeProvider(item).id
+          ) === String(id);
         }
       );
 
-
     if (!provider) {
-
       setStatus(
         "Provider tidak ditemukan.",
         "error"
@@ -2690,12 +2355,10 @@
       return;
     }
 
-
     const normalized =
       normalizeProvider(
         provider
       );
-
 
     const confirmed =
       window.confirm(
@@ -2707,48 +2370,38 @@
         "\"?"
       );
 
-
     if (!confirmed) {
       return;
     }
-
 
     setStatus(
       "Menghapus provider...",
       "loading"
     );
 
-
     try {
-
       await api(
         "/api/admin/providers/" +
         encodeURIComponent(
           normalized.id
         ),
         {
-          method:
-            "DELETE"
+          method: "DELETE"
         }
       );
-
 
       setStatus(
         "Provider berhasil dihapus.",
         "success"
       );
 
-
       await loadProviders();
 
-
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI Provider] Delete error:",
         error
       );
-
 
       setStatus(
         error?.message ||
@@ -2764,136 +2417,78 @@
    * ============================================================ */
 
   function bindEvents() {
-
     const addButton =
       $("addProviderBtn");
 
-
     if (addButton) {
-
       addButton.addEventListener(
         "click",
-        function () {
-
-          openAddEditor();
-
-        }
+        openAddEditor
       );
     }
-
 
     const refreshButton =
       $("refreshProvidersBtn");
 
-
     if (refreshButton) {
-
       refreshButton.addEventListener(
         "click",
-        function () {
-
-          loadProviders();
-
-        }
+        loadProviders
       );
     }
-
 
     const backButton =
       $("providerBackBtn");
 
-
     if (backButton) {
-
       backButton.addEventListener(
         "click",
         function () {
-
-          if (
-            history.length >
-            1
-          ) {
-
+          if (history.length > 1) {
             history.back();
-
           } else {
-
             window.location.href =
               "/";
-
           }
-
         }
       );
     }
 
-
     const list =
       $("providerList");
 
-
     if (list) {
-
       list.addEventListener(
         "click",
         function (event) {
-
           const button =
             event.target.closest(
               "[data-action]"
             );
 
-
           if (!button) {
             return;
           }
 
-
           const action =
             button.dataset.action;
-
 
           const id =
             button.dataset.id;
 
-
-          if (
-            action ===
-            "edit"
-          ) {
-
-            openEditEditor(
-              id
-            );
-
+          if (action === "edit") {
+            openEditEditor(id);
             return;
           }
 
-
-          if (
-            action ===
-            "toggle"
-          ) {
-
-            toggleProvider(
-              id
-            );
-
+          if (action === "toggle") {
+            toggleProvider(id);
             return;
           }
 
-
-          if (
-            action ===
-            "delete"
-          ) {
-
-            deleteProvider(
-              id
-            );
-
+          if (action === "delete") {
+            deleteProvider(id);
           }
-
         }
       );
     }
@@ -2905,50 +2500,33 @@
    * ============================================================ */
 
   async function init() {
-
-    if (
-      state.initialized
-    ) {
+    if (state.initialized) {
       return;
     }
-
 
     state.initialized =
       true;
 
-
     try {
-
       setLoadingMessage(
         "Memeriksa sesi login..."
       );
 
-
       await getAccessToken();
-
 
       showApp();
 
-
       bindEvents();
-
 
       await loadProviders();
 
-
     } catch (error) {
-
       console.error(
         "[GEN-Z.AI Provider] Init error:",
         error
       );
 
-
-      if (
-        error?.status ===
-        401
-      ) {
-
+      if (error?.status === 401) {
         showDenied(
           "Sesi login tidak ditemukan."
         );
@@ -2956,19 +2534,13 @@
         return;
       }
 
-
-      if (
-        error?.status ===
-        403
-      ) {
-
+      if (error?.status === 403) {
         showDenied(
           "Akun ini tidak memiliki akses administrator."
         );
 
         return;
       }
-
 
       showDenied(
         error?.message ||
@@ -2983,7 +2555,6 @@
    * ============================================================ */
 
   window.GENZ_ADMIN_PROVIDERS = {
-
     init,
 
     load:
@@ -2994,9 +2565,7 @@
 
     getState:
       function () {
-
         return {
-
           providers:
             state.providers.slice(),
 
@@ -3008,11 +2577,8 @@
 
           initialized:
             state.initialized
-
         };
-
       }
-
   };
 
 
@@ -3024,20 +2590,15 @@
     document.readyState ===
     "loading"
   ) {
-
     document.addEventListener(
       "DOMContentLoaded",
       init,
       {
-        once:
-          true
+        once: true
       }
     );
-
   } else {
-
     init();
-
   }
 
 })();
