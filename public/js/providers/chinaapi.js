@@ -1306,11 +1306,9 @@ export async function generate(
     );
 
 
-  /*
-   * ==========================================================
-   * AGNES REFERENCE IMAGE
-   * ==========================================================
-   */
+  // ==========================================================
+  // AGNES REFERENCE IMAGE
+  // ==========================================================
 
   if (
     selectedModelId ===
@@ -2005,23 +2003,36 @@ export async function status(
 // ============================================================
 //
 // ChinaAPI mengembalikan signed HTTPS URL untuk file video.
-// Tidak perlu endpoint file_id khusus seperti MiniMax.
 //
-// router/video.js akan memanggil:
-// adapter.fetchVideo(target, provider, env)
+// Mendukung:
+// - full video request
+// - HTTP Range request
+// - browser seeking
+// - buffering
+// - resume playback
 //
-// target dapat berasal dari:
-// 1. metadata.provider_file_id
-// 2. job.video_url
+// Router akan memanggil:
 //
-// Untuk ChinaAPI yang digunakan adalah job.video_url.
+// adapter.fetchVideo(
+//   target,
+//   provider,
+//   env,
+//   {
+//     range,
+//     request
+//   }
+// );
+//
+// Untuk ChinaAPI:
+// target = signed HTTPS video URL.
 //
 // ============================================================
 
 export async function fetchVideo(
   target,
   provider = {},
-  env = {}
+  env = {},
+  options = {}
 ) {
 
   const videoUrl =
@@ -2029,6 +2040,10 @@ export async function fetchVideo(
       target || ""
     ).trim();
 
+
+  // ==========================================================
+  // VALIDATE URL
+  // ==========================================================
 
   if (
     !videoUrl
@@ -2044,13 +2059,14 @@ export async function fetchVideo(
 
 
   /*
-   * ChinaAPI mengembalikan signed URL HTTPS.
+   * ChinaAPI harus mengembalikan signed HTTPS URL.
    *
-   * Jangan kirim URL internal seperti:
-   * /api/video
+   * HTTP biasa tidak diperbolehkan.
    *
-   * Jangan izinkan HTTP biasa.
+   * Endpoint internal GEN-Z.AI juga tidak boleh masuk
+   * sebagai target upstream.
    */
+
   if (
     !/^https:\/\//i.test(
       videoUrl
@@ -2066,6 +2082,103 @@ export async function fetchVideo(
   }
 
 
+  // ==========================================================
+  // RANGE
+  // ==========================================================
+
+  const range =
+    String(
+      options?.range ||
+      ""
+    ).trim();
+
+
+  /*
+   * Validasi kedua di adapter.
+   *
+   * Router sudah melakukan validasi Range.
+   * Namun adapter tetap memvalidasi agar aman ketika
+   * fetchVideo() dipanggil langsung oleh kode lain.
+   *
+   * Format yang diperbolehkan:
+   *
+   * bytes=0-
+   * bytes=0-1024
+   * bytes=1024-2048
+   * bytes=-1024
+   *
+   * Router GEN-Z.AI saat ini hanya meneruskan format:
+   * bytes=\d*-\d*
+   *
+   * Jadi bytes=-1024 juga akan ditolak oleh router.
+   */
+
+  if (
+    range &&
+    !/^bytes=\d*-\d*$/.test(
+      range
+    )
+  ) {
+
+    throw providerError(
+      "Range video ChinaAPI tidak valid.",
+      400,
+      "invalid_video_range"
+    );
+
+  }
+
+
+  /*
+   * Jangan pernah mengirim:
+   *
+   * Range: bytes=-
+   *
+   * karena itu bukan range yang bermakna.
+   */
+
+  if (
+    range ===
+    "bytes=-"
+  ) {
+
+    throw providerError(
+      "Range video ChinaAPI tidak valid.",
+      400,
+      "invalid_video_range"
+    );
+
+  }
+
+
+  // ==========================================================
+  // REQUEST HEADERS
+  // ==========================================================
+
+  const requestHeaders = {};
+
+
+  /*
+   * Hanya kirim Range jika browser meminta Range.
+   *
+   * Jika tidak ada Range, biarkan upstream menentukan
+   * response full video secara normal.
+   */
+
+  if (
+    range
+  ) {
+
+    requestHeaders.Range =
+      range;
+
+  }
+
+
+  // ==========================================================
+  // FETCH SIGNED VIDEO
+  // ==========================================================
+
   let response;
 
 
@@ -2080,7 +2193,10 @@ export async function fetchVideo(
             "GET",
 
           redirect:
-            "follow"
+            "follow",
+
+          headers:
+            requestHeaders
 
         }
       );
@@ -2096,6 +2212,19 @@ export async function fetchVideo(
   }
 
 
+  // ==========================================================
+  // RESPONSE
+  // ==========================================================
+
+  /*
+   * Response yang valid:
+   *
+   * 200 = full video
+   * 206 = Partial Content / Range
+   *
+   * response.ok bernilai true untuk keduanya.
+   */
+
   if (
     !response.ok
   ) {
@@ -2108,6 +2237,24 @@ export async function fetchVideo(
 
   }
 
+
+  /*
+   * PENTING:
+   *
+   * Jangan:
+   *
+   * await response.arrayBuffer()
+   * await response.text()
+   *
+   * di sini.
+   *
+   * Body harus tetap berupa ReadableStream supaya
+   * router/video.js dapat meneruskannya langsung
+   * ke browser.
+   *
+   * Dengan cara ini video besar tidak perlu dimuat
+   * seluruhnya ke memory Worker.
+   */
 
   return response;
 
