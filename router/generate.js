@@ -59,20 +59,14 @@ const MAX_MODEL_DISCOUNT = 100;
 HELPERS
 ============================================================ */
 
-function normalizeAdapterId(
-  value
-) {
-  return String(
-    value || ""
-  )
+function normalizeAdapterId(value) {
+  return String(value || "")
     .trim()
     .toLowerCase();
 }
 
 
-function normalizeRequestedString(
-  value
-) {
+function normalizeRequestedString(value) {
   if (
     value === undefined ||
     value === null
@@ -80,19 +74,13 @@ function normalizeRequestedString(
     return null;
   }
 
-  const normalized =
-    String(
-      value
-    ).trim();
+  const normalized = String(value).trim();
 
-  return normalized ||
-    null;
+  return normalized || null;
 }
 
 
-function normalizeDuration(
-  value
-) {
+function normalizeDuration(value) {
   if (
     value === undefined ||
     value === null ||
@@ -101,21 +89,11 @@ function normalizeDuration(
     return null;
   }
 
-  const normalized =
-    Number(
-      String(
-        value
-      ).replace(
-        /s$/i,
-        ""
-      )
-    );
+  const normalized = Number(
+    String(value).replace(/s$/i, "")
+  );
 
-  if (
-    !Number.isFinite(
-      normalized
-    )
-  ) {
+  if (!Number.isFinite(normalized)) {
     throw new HttpError(
       "Duration tidak valid.",
       400
@@ -130,16 +108,12 @@ function normalizeDuration(
 NORMALIZE GENERATION STATUS
 ============================================================ */
 
-function normalizeGenerationStatus(
-  value
-) {
-  const normalized =
-    String(
-      value ||
-      "processing"
-    )
-      .trim()
-      .toLowerCase();
+function normalizeGenerationStatus(value) {
+  const normalized = String(
+    value || "processing"
+  )
+    .trim()
+    .toLowerCase();
 
   if (
     [
@@ -149,9 +123,7 @@ function normalizeGenerationStatus(
       "success",
       "finished",
       "done"
-    ].includes(
-      normalized
-    )
+    ].includes(normalized)
   ) {
     return "completed";
   }
@@ -164,9 +136,7 @@ function normalizeGenerationStatus(
       "cancelled",
       "canceled",
       "rejected"
-    ].includes(
-      normalized
-    )
+    ].includes(normalized)
   ) {
     return "failed";
   }
@@ -179,34 +149,22 @@ function normalizeGenerationStatus(
 DEFAULT CREDIT
 ============================================================ */
 
-function getDefaultCreditCost(
-  env
-) {
-  const raw =
-    env?.GENERATION_CREDIT_COST;
+function getDefaultCreditCost(env) {
+  const raw = env?.GENERATION_CREDIT_COST;
 
   if (
     raw === undefined ||
     raw === null ||
-    String(
-      raw
-    ).trim() === ""
+    String(raw).trim() === ""
   ) {
     return DEFAULT_CREDIT_COST;
   }
 
-  const cost =
-    Number(
-      raw
-    );
+  const cost = Number(raw);
 
   if (
-    !Number.isFinite(
-      cost
-    ) ||
-    !Number.isInteger(
-      cost
-    ) ||
+    !Number.isFinite(cost) ||
+    !Number.isInteger(cost) ||
     cost < 1 ||
     cost > MAX_CREDIT_COST
   ) {
@@ -224,21 +182,12 @@ function getDefaultCreditCost(
 MODEL CREDIT
 ============================================================ */
 
-function normalizeModelCredit(
-  value
-) {
-  const cost =
-    Number(
-      value
-    );
+function normalizeModelCredit(value) {
+  const cost = Number(value);
 
   if (
-    !Number.isFinite(
-      cost
-    ) ||
-    !Number.isInteger(
-      cost
-    ) ||
+    !Number.isFinite(cost) ||
+    !Number.isInteger(cost) ||
     cost < 1 ||
     cost > MAX_CREDIT_COST
   ) {
@@ -253,18 +202,11 @@ function normalizeModelCredit(
 MODEL DISCOUNT
 ============================================================ */
 
-function normalizeModelDiscount(
-  value
-) {
-  const discount =
-    Number(
-      value
-    );
+function normalizeModelDiscount(value) {
+  const discount = Number(value);
 
   if (
-    !Number.isFinite(
-      discount
-    ) ||
+    !Number.isFinite(discount) ||
     discount < 0 ||
     discount > MAX_MODEL_DISCOUNT
   ) {
@@ -279,9 +221,7 @@ function normalizeModelDiscount(
 MODEL ENABLED
 ============================================================ */
 
-function normalizeModelEnabled(
-  value
-) {
+function normalizeModelEnabled(value) {
   if (
     value === true ||
     value === false
@@ -289,13 +229,10 @@ function normalizeModelEnabled(
     return value;
   }
 
-  if (
-    typeof value === "string"
-  ) {
-    const normalized =
-      value
-        .trim()
-        .toLowerCase();
+  if (typeof value === "string") {
+    const normalized = value
+      .trim()
+      .toLowerCase();
 
     if (
       normalized === "true" ||
@@ -316,18 +253,12 @@ function normalizeModelEnabled(
     }
   }
 
-  if (
-    typeof value === "number"
-  ) {
-    if (
-      value === 1
-    ) {
+  if (typeof value === "number") {
+    if (value === 1) {
       return true;
     }
 
-    if (
-      value === 0
-    ) {
+    if (value === 0) {
       return false;
     }
   }
@@ -340,27 +271,17 @@ function normalizeModelEnabled(
 CHINAAPI DEFAULT MODEL CREDIT
 ============================================================ */
 
-function getChinaApiCreditCost(
-  model
-) {
-  const modelId =
-    String(
-      model || ""
-    ).trim();
+function getChinaApiCreditCost(model) {
+  const modelId = String(model || "").trim();
 
   if (!modelId) {
     return null;
   }
 
   try {
-    const cost =
-      getChinaApiModelCredits(
-        modelId
-      );
+    const cost = getChinaApiModelCredits(modelId);
 
-    return normalizeModelCredit(
-      cost
-    );
+    return normalizeModelCredit(cost);
   } catch {
     return null;
   }
@@ -375,10 +296,7 @@ function getProviderModelCredit(
   provider,
   model
 ) {
-  const modelId =
-    String(
-      model || ""
-    ).trim();
+  const modelId = String(model || "").trim();
 
   if (!modelId) {
     return null;
@@ -389,11 +307,8 @@ function getProviderModelCredit(
 
   if (
     !configured ||
-    typeof configured !==
-      "object" ||
-    Array.isArray(
-      configured
-    )
+    typeof configured !== "object" ||
+    Array.isArray(configured)
   ) {
     return null;
   }
@@ -408,9 +323,7 @@ function getProviderModelCredit(
   }
 
   return normalizeModelCredit(
-    configured[
-      modelId
-    ]
+    configured[modelId]
   );
 }
 
@@ -423,10 +336,7 @@ function getProviderModelDiscount(
   provider,
   model
 ) {
-  const modelId =
-    String(
-      model || ""
-    ).trim();
+  const modelId = String(model || "").trim();
 
   if (!modelId) {
     return 0;
@@ -437,11 +347,8 @@ function getProviderModelDiscount(
 
   if (
     !configured ||
-    typeof configured !==
-      "object" ||
-    Array.isArray(
-      configured
-    )
+    typeof configured !== "object" ||
+    Array.isArray(configured)
   ) {
     return 0;
   }
@@ -455,12 +362,9 @@ function getProviderModelDiscount(
     return 0;
   }
 
-  const discount =
-    normalizeModelDiscount(
-      configured[
-        modelId
-      ]
-    );
+  const discount = normalizeModelDiscount(
+    configured[modelId]
+  );
 
   return discount === null
     ? 0
@@ -476,10 +380,7 @@ function getProviderModelEnabled(
   provider,
   model
 ) {
-  const modelId =
-    String(
-      model || ""
-    ).trim();
+  const modelId = String(model || "").trim();
 
   if (!modelId) {
     return true;
@@ -490,11 +391,8 @@ function getProviderModelEnabled(
 
   if (
     !configured ||
-    typeof configured !==
-      "object" ||
-    Array.isArray(
-      configured
-    )
+    typeof configured !== "object" ||
+    Array.isArray(configured)
   ) {
     return true;
   }
@@ -508,12 +406,9 @@ function getProviderModelEnabled(
     return true;
   }
 
-  const enabled =
-    normalizeModelEnabled(
-      configured[
-        modelId
-      ]
-    );
+  const enabled = normalizeModelEnabled(
+    configured[modelId]
+  );
 
   return enabled === null
     ? true
@@ -530,13 +425,9 @@ function calculateDiscountedCredit(
   discount
 ) {
   const normalizedBase =
-    normalizeModelCredit(
-      baseCredit
-    );
+    normalizeModelCredit(baseCredit);
 
-  if (
-    normalizedBase === null
-  ) {
+  if (normalizedBase === null) {
     throw new HttpError(
       "Credit model tidak valid.",
       500
@@ -544,28 +435,20 @@ function calculateDiscountedCredit(
   }
 
   const normalizedDiscount =
-    normalizeModelDiscount(
-      discount
-    );
+    normalizeModelDiscount(discount);
 
-  if (
-    normalizedDiscount === null
-  ) {
+  if (normalizedDiscount === null) {
     throw new HttpError(
       "Diskon model tidak valid.",
       500
     );
   }
 
-  const discounted =
-    Math.ceil(
-      normalizedBase *
-      (
-        100 -
-        normalizedDiscount
-      ) /
-      100
-    );
+  const discounted = Math.ceil(
+    normalizedBase *
+    (100 - normalizedDiscount) /
+    100
+  );
 
   return Math.max(
     1,
@@ -588,18 +471,13 @@ function resolveCreditPricing(
   env
 ) {
   const normalizedAdapter =
-    normalizeAdapterId(
-      adapterId
-    );
+    normalizeAdapterId(adapterId);
 
   let baseCredit =
-    getDefaultCreditCost(
-      env
-    );
+    getDefaultCreditCost(env);
 
   if (
-    normalizedAdapter ===
-    "chinaapi"
+    normalizedAdapter === "chinaapi"
   ) {
     const providerCost =
       getProviderModelCredit(
@@ -607,29 +485,20 @@ function resolveCreditPricing(
         model
       );
 
-    if (
-      providerCost !== null
-    ) {
-      baseCredit =
-        providerCost;
+    if (providerCost !== null) {
+      baseCredit = providerCost;
     } else {
       const modelCost =
-        getChinaApiCreditCost(
-          model
-        );
+        getChinaApiCreditCost(model);
 
-      if (
-        modelCost !== null
-      ) {
-        baseCredit =
-          modelCost;
+      if (modelCost !== null) {
+        baseCredit = modelCost;
       }
     }
   }
 
   const discount =
-    normalizedAdapter ===
-    "chinaapi"
+    normalizedAdapter === "chinaapi"
       ? getProviderModelDiscount(
           provider,
           model
@@ -651,25 +520,6 @@ function resolveCreditPricing(
 
 
 /* ============================================================
-RESOLVE CREDIT COST
-============================================================ */
-
-function resolveCreditCost(
-  adapterId,
-  model,
-  provider,
-  env
-) {
-  return resolveCreditPricing(
-    adapterId,
-    model,
-    provider,
-    env
-  ).creditCost;
-}
-
-
-/* ============================================================
 RESOLVE DEFAULT MODEL
 ============================================================ */
 
@@ -678,19 +528,15 @@ function resolveDefaultModel(
   provider
 ) {
   const normalizedAdapter =
-    normalizeAdapterId(
-      adapterId
-    );
+    normalizeAdapterId(adapterId);
 
   if (
-    normalizedAdapter !==
-    "chinaapi"
+    normalizedAdapter !== "chinaapi"
   ) {
     return null;
   }
 
-  const config =
-    provider?.config;
+  const config = provider?.config;
 
   const configuredModel =
     normalizeRequestedString(
@@ -738,24 +584,16 @@ function resolveDefaultModel(
   }
 
   const info =
-    getAdapterInfo(
-      adapterId
-    );
+    getAdapterInfo(adapterId);
 
   const models =
-    Array.isArray(
-      info?.models
-    )
+    Array.isArray(info?.models)
       ? info.models
       : [];
 
-  for (
-    const model of models
-  ) {
+  for (const model of models) {
     const normalizedModel =
-      normalizeRequestedString(
-        model
-      );
+      normalizeRequestedString(model);
 
     if (
       normalizedModel &&
@@ -773,6 +611,99 @@ function resolveDefaultModel(
 
 
 /* ============================================================
+BUILD SAFE RESULT METADATA
+============================================================ */
+
+function buildResultMetadata(
+  initialMetadata,
+  result,
+  providerId,
+  adapterId,
+  finalModel,
+  requestedDuration,
+  requestedAspectRatio,
+  requestedResolution,
+  finalCreditBase,
+  finalCreditDiscount,
+  finalCreditCost
+) {
+  const safeResult =
+    result && typeof result === "object"
+      ? result
+      : {};
+
+  return {
+    ...initialMetadata,
+
+    provider:
+      providerId,
+
+    adapter:
+      adapterId,
+
+    externalId:
+      safeResult.externalId ||
+      null,
+
+    status:
+      normalizeGenerationStatus(
+        safeResult.status
+      ),
+
+    providerStatus:
+      normalizeGenerationStatus(
+        safeResult.status
+      ),
+
+    model:
+      finalModel,
+
+    duration:
+      requestedDuration ??
+      safeResult.duration ??
+      null,
+
+    aspectRatio:
+      requestedAspectRatio ||
+      safeResult.aspectRatio ||
+      null,
+
+    resolution:
+      requestedResolution ||
+      safeResult.resolution ||
+      null,
+
+    videoUrl:
+      safeResult.videoUrl ||
+      null,
+
+    fileId:
+      safeResult.fileId ||
+      null,
+
+    error:
+      safeResult.error ||
+      safeResult.message ||
+      null,
+
+    errorCode:
+      safeResult.errorCode ||
+      safeResult.code ||
+      null,
+
+    creditBase:
+      finalCreditBase,
+
+    creditDiscount:
+      finalCreditDiscount,
+
+    creditCost:
+      finalCreditCost
+  };
+}
+
+
+/* ============================================================
 MAIN GENERATE HANDLER
 ============================================================ */
 
@@ -782,9 +713,7 @@ export async function handleGenerate(
 ) {
   const contentType =
     String(
-      request.headers.get(
-        "content-type"
-      ) || ""
+      request.headers.get("content-type") || ""
     ).toLowerCase();
 
   if (
@@ -814,9 +743,7 @@ export async function handleGenerate(
   RATE LIMIT
   ========================================================== */
 
-  checkGenerateRate(
-    user.id
-  );
+  checkGenerateRate(user.id);
 
 
   /* ==========================================================
@@ -824,9 +751,7 @@ export async function handleGenerate(
   ========================================================== */
 
   const body =
-    await readJson(
-      request
-    );
+    await readJson(request);
 
   if (
     !body ||
@@ -889,9 +814,7 @@ export async function handleGenerate(
 
   try {
     adapter =
-      resolveAdapter(
-        adapterId
-      );
+      resolveAdapter(adapterId);
   } catch {
     throw new HttpError(
       `Adapter "${adapterId}" belum tersedia di Worker.`,
@@ -949,9 +872,7 @@ export async function handleGenerate(
       provider
     );
 
-  if (
-    !effectiveModel
-  ) {
+  if (!effectiveModel) {
     throw new HttpError(
       "Model video belum tersedia untuk provider ini.",
       400
@@ -989,31 +910,19 @@ export async function handleGenerate(
     requestedDuration !== null
   ) {
     const info =
-      getAdapterInfo(
-        adapterId
-      );
+      getAdapterInfo(adapterId);
 
     const allowed =
-      Array.isArray(
-        info?.durations
-      )
+      Array.isArray(info?.durations)
         ? info.durations
-            .map(
-              value =>
-                Number(
-                  String(
-                    value
-                  ).replace(
-                    /s$/i,
-                    ""
-                  )
-                )
+            .map(value =>
+              Number(
+                String(value)
+                  .replace(/s$/i, "")
+              )
             )
-            .filter(
-              value =>
-                Number.isFinite(
-                  value
-                )
+            .filter(value =>
+              Number.isFinite(value)
             )
         : [];
 
@@ -1102,17 +1011,13 @@ export async function handleGenerate(
 
   const fingerprintSource =
     JSON.stringify({
-      provider:
-        id,
+      provider: id,
 
-      adapter:
-        adapterId,
+      adapter: adapterId,
 
-      model:
-        effectiveModel,
+      model: effectiveModel,
 
-      duration:
-        requestedDuration,
+      duration: requestedDuration,
 
       aspectRatio:
         requestedAspectRatio,
@@ -1123,32 +1028,24 @@ export async function handleGenerate(
       prompt,
 
       imageData:
-        Boolean(
-          body.imageData
-        ),
+        Boolean(body.imageData),
 
       images:
-        Array.isArray(
-          body.images
-        )
+        Array.isArray(body.images)
           ? body.images.length
           : 0,
 
       videos:
-        Array.isArray(
-          body.videos
-        )
+        Array.isArray(body.videos)
           ? body.videos.length
           : 0,
 
-      creditBase:
-        baseCredit,
+      creditBase: baseCredit,
 
       creditDiscount:
         modelDiscount,
 
-      creditCost:
-        cost
+      creditCost: cost
     });
 
   const digest =
@@ -1161,18 +1058,12 @@ export async function handleGenerate(
 
   const fingerprint =
     Array.from(
-      new Uint8Array(
-        digest
-      )
+      new Uint8Array(digest)
     )
-      .map(
-        byte =>
-          byte
-            .toString(16)
-            .padStart(
-              2,
-              "0"
-            )
+      .map(byte =>
+        byte
+          .toString(16)
+          .padStart(2, "0")
       )
       .join("");
 
@@ -1211,8 +1102,7 @@ export async function handleGenerate(
     reservation?.existing
   ) {
     if (
-      reservation.provider !==
-      id
+      reservation.provider !== id
     ) {
       throw new HttpError(
         "Idempotency key terkait provider berbeda.",
@@ -1225,22 +1115,18 @@ export async function handleGenerate(
     ) {
       return json(
         {
-          success:
-            true,
+          success: true,
 
-          idempotent:
-            true,
+          idempotent: true,
 
           jobId,
 
           externalId:
             reservation.external_id,
 
-          provider:
-            id,
+          provider: id,
 
-          adapter:
-            adapterId,
+          adapter: adapterId,
 
           model:
             reservation.model ||
@@ -1276,18 +1162,17 @@ export async function handleGenerate(
   GENERATION
   ========================================================== */
 
+  let jobCompleted = false;
+
   try {
     const initialMetadata = {
-      provider:
-        id,
+      provider: id,
 
-      adapter:
-        adapterId,
+      adapter: adapterId,
 
       prompt,
 
-      model:
-        effectiveModel,
+      model: effectiveModel,
 
       requestedModel,
 
@@ -1351,12 +1236,11 @@ export async function handleGenerate(
       ...body
     };
 
-    if (
-      effectiveModel
-    ) {
-      requestBody.model =
-        effectiveModel;
-    }
+    requestBody.provider =
+      id;
+
+    requestBody.model =
+      effectiveModel;
 
     const result =
       await adapter.generate(
@@ -1375,11 +1259,13 @@ export async function handleGenerate(
       );
     }
 
-    result.provider =
-      id;
+    const providerResult = {
+      ...result,
 
-    result.adapter =
-      adapterId;
+      provider: id,
+
+      adapter: adapterId
+    };
 
 
     /* ========================================================
@@ -1388,7 +1274,7 @@ export async function handleGenerate(
 
     const finalModel =
       effectiveModel ||
-      result.model ||
+      providerResult.model ||
       null;
 
 
@@ -1431,12 +1317,9 @@ export async function handleGenerate(
       finalPricing.creditCost;
 
 
-    /*
-     * Safety check:
-     *
-     * Credit yang di-reserve harus sama dengan
-     * credit final yang ditentukan server.
-     */
+    /* ========================================================
+    CREDIT CONSISTENCY
+    ======================================================== */
 
     if (
       finalCreditCost !== cost ||
@@ -1451,58 +1334,32 @@ export async function handleGenerate(
 
 
     /* ========================================================
-    FINAL METADATA
-    ======================================================== */
-
-    const metadata = {
-      ...initialMetadata,
-
-      ...result,
-
-      provider:
-        id,
-
-      adapter:
-        adapterId,
-
-      prompt,
-
-      model:
-        finalModel,
-
-      duration:
-        requestedDuration ??
-        result.duration ??
-        null,
-
-      aspectRatio:
-        requestedAspectRatio ||
-        result.aspectRatio ||
-        null,
-
-      resolution:
-        requestedResolution ||
-        result.resolution ||
-        null,
-
-      creditBase:
-        finalCreditBase,
-
-      creditDiscount:
-        finalCreditDiscount,
-
-      creditCost:
-        finalCreditCost
-    };
-
-
-    /* ========================================================
-    NORMALIZE RESULT STATUS
+    FINAL STATUS
     ======================================================== */
 
     const finalStatus =
       normalizeGenerationStatus(
-        result.status
+        providerResult.status
+      );
+
+
+    /* ========================================================
+    FINAL METADATA
+    ======================================================== */
+
+    const metadata =
+      buildResultMetadata(
+        initialMetadata,
+        providerResult,
+        id,
+        adapterId,
+        finalModel,
+        requestedDuration,
+        requestedAspectRatio,
+        requestedResolution,
+        finalCreditBase,
+        finalCreditDiscount,
+        finalCreditCost
       );
 
 
@@ -1519,29 +1376,25 @@ export async function handleGenerate(
      *    ↓
      * completed
      *
-     * Tidak boleh langsung:
+     * Tidak boleh:
      *
      * reserved → completed
-     *
-     * karena trigger database menolak transisi tersebut.
      */
 
     if (
       finalStatus ===
       "completed"
     ) {
-      /*
-       * STEP 1
-       *
-       * Pindahkan job dari reserved
-       * menjadi processing terlebih dahulu.
-       */
+      /* ------------------------------------------------------
+      STEP 1
+      reserved → processing
+      ------------------------------------------------------ */
 
       await updateJob(
         jobId,
         {
           external_id:
-            result.externalId,
+            providerResult.externalId,
 
           status:
             "processing",
@@ -1567,12 +1420,10 @@ export async function handleGenerate(
       );
 
 
-      /*
-       * STEP 2
-       *
-       * Provider sudah selesai.
-       * Simpan video_url langsung jika tersedia.
-       */
+      /* ------------------------------------------------------
+      STEP 2
+      processing → completed
+      ------------------------------------------------------ */
 
       await updateJob(
         jobId,
@@ -1584,7 +1435,7 @@ export async function handleGenerate(
             "completed",
 
           video_url:
-            result.videoUrl ||
+            providerResult.videoUrl ||
             null,
 
           last_error:
@@ -1601,22 +1452,18 @@ export async function handleGenerate(
         env
       );
 
+      jobCompleted = true;
+
     } else {
-      /*
-       * PROCESSING / FAILED
-       *
-       * Untuk processing, reserved boleh
-       * berubah langsung menjadi processing.
-       *
-       * Untuk failed, reserved → failed juga
-       * diperbolehkan oleh lifecycle database.
-       */
+      /* ------------------------------------------------------
+      PROCESSING / FAILED
+      ------------------------------------------------------ */
 
       await updateJob(
         jobId,
         {
           external_id:
-            result.externalId,
+            providerResult.externalId,
 
           status:
             finalStatus,
@@ -1628,33 +1475,25 @@ export async function handleGenerate(
             finalStatus,
 
           last_error:
-            finalStatus ===
-            "failed"
+            finalStatus === "failed"
               ? (
-                  result.error ||
-                  result.message ||
+                  providerResult.error ||
+                  providerResult.message ||
                   "Provider generation failed"
                 )
               : null,
 
           last_error_code:
-            finalStatus ===
-            "failed"
+            finalStatus === "failed"
               ? String(
-                  result.errorCode ||
-                  result.code ||
+                  providerResult.errorCode ||
+                  providerResult.code ||
                   "provider_error"
                 )
               : null,
 
           video_url:
-            finalStatus ===
-            "completed"
-              ? (
-                  result.videoUrl ||
-                  null
-                )
-              : null,
+            null,
 
           model:
             finalModel,
@@ -1679,8 +1518,7 @@ export async function handleGenerate(
           finalStatus,
 
         message:
-          finalStatus ===
-          "completed"
+          finalStatus === "completed"
             ? "Provider completed generation immediately"
             : "Provider accepted generation request",
 
@@ -1696,24 +1534,19 @@ export async function handleGenerate(
 
     return json(
       {
-        success:
-          true,
+        success: true,
 
         jobId,
 
-        ...result,
+        ...providerResult,
 
-        provider:
-          id,
+        provider: id,
 
-        adapter:
-          adapterId,
+        adapter: adapterId,
 
-        model:
-          finalModel,
+        model: finalModel,
 
-        status:
-          finalStatus,
+        status: finalStatus,
 
         creditBase:
           finalCreditBase,
@@ -1734,22 +1567,34 @@ export async function handleGenerate(
   } catch (err) {
 
     /* ========================================================
+    DO NOT REFUND COMPLETED JOB
+    ======================================================== */
+
+    if (jobCompleted) {
+      throw err;
+    }
+
+
+    /* ========================================================
     MARK JOB FAILED
     ======================================================== */
 
     await updateJob(
       jobId,
       {
+        status:
+          "failed",
+
         last_error:
           String(
             err?.message ||
-              "Generation error"
+            "Generation error"
           ),
 
         last_error_code:
           String(
             err?.status ||
-              "provider_error"
+            "provider_error"
           ),
 
         provider_status:
@@ -1776,16 +1621,18 @@ export async function handleGenerate(
         errorCode:
           String(
             err?.status ||
-              "provider_error"
+            "provider_error"
           ),
 
         message:
           String(
             err?.message ||
-              "Generation error"
+            "Generation error"
           )
       },
       env
+    ).catch(
+      () => {}
     );
 
 
@@ -1796,8 +1643,14 @@ export async function handleGenerate(
     await refundJob(
       jobId,
       env
+    ).catch(
+      () => {}
     );
 
+
+    /* ========================================================
+    REFUND EVENT
+    ======================================================== */
 
     await recordJobEvent(
       jobId,
@@ -1808,6 +1661,8 @@ export async function handleGenerate(
           "Credit refunded after generation error"
       },
       env
+    ).catch(
+      () => {}
     );
 
 
