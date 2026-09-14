@@ -1,2822 +1,1121 @@
-/* =========================================================
-GEN-Z.AI APPLICATION CONTROLLER
-public/js/app.js
-AUTH-FIRST / LAZY STUDIO LOADING
-========================================================= */
-
 (function () {
+  'use strict';
 
-'use strict';
+  const GENZ = window.GENZ || (window.GENZ = {});
 
-/* =======================================================
-GLOBAL GENZ
-======================================================= */
+  let started = false;
+  let authComponentLoaded = false;
+  let studioLoading = null;
+  let navigationBound = false;
+
+  function $(id) {
+    return document.getElementById(id);
+  }
 
-const GENZ =
-window.GENZ ||
-(window.GENZ = {});
+  function log() {
+    console.log.apply(
+      console,
+      ['[GEN-Z.AI]'].concat(Array.from(arguments))
+    );
+  }
 
-/* =======================================================
-INTERNAL STATE
-======================================================= */
+  function error() {
+    console.error.apply(
+      console,
+      ['[GEN-Z.AI]'].concat(Array.from(arguments))
+    );
+  }
+
+  function isLoggedIn() {
+    return !!(
+      GENZ.state &&
+      GENZ.state.loggedIn === true &&
+      GENZ.state.user
+    );
+  }
+
+  function isAdmin() {
+    return !!(
+      GENZ.state &&
+      GENZ.state.account &&
+      GENZ.state.account.isAdmin === true &&
+      GENZ.state.account.roleValidated === true
+    );
+  }
+
+  function escapeHtml(value) {
+    if (typeof GENZ.escapeHtml === 'function') {
+      return GENZ.escapeHtml(value);
+    }
+
+    const div = document.createElement('div');
+
+    div.textContent =
+      value == null
+        ? ''
+        : String(value);
+
+    return div.innerHTML;
+  }
+
+  function createShell() {
+    const app = $('app');
+
+    if (!app) {
+      error(
+        'Element #app tidak ditemukan.'
+      );
 
-let started = false;
+      return null;
+    }
 
-let authBound = false;
+    app.innerHTML =
+      '<div id="auth-container">' +
 
-let navigationBound = false;
+        '<section id="auth" class="auth-page">' +
 
-let authComponentLoaded = false;
+          '<div class="auth-card">' +
 
-let studioComponentsLoaded = false;
+            '<div class="auth-header">' +
 
-let studioComponentsLoading = null;
+              '<div class="auth-logo">' +
+                'GEN-Z.AI' +
+              '</div>' +
 
-let topupSettingsLoading = null;
+              '<h1>' +
+                'Selamat Datang' +
+              '</h1>' +
 
-let dashboardLoading = null;
+              '<p>' +
+                'Login untuk menggunakan GEN-Z.AI' +
+              '</p>' +
 
-let profileLoading = null;
+            '</div>' +
 
-/* =======================================================
-UTILITY
-======================================================= */
+            '<form id="authForm">' +
 
-function $(id) {
+              '<div class="form-group">' +
 
-return document.getElementById(id);
+                '<label for="email">' +
+                  'Email' +
+                '</label>' +
 
-}
+                '<input' +
+                  ' id="email"' +
+                  ' name="email"' +
+                  ' type="email"' +
+                  ' placeholder="Masukkan email"' +
+                  ' autocomplete="email"' +
+                  ' required>' +
 
-function log(...args) {
+              '</div>' +
 
-console.log(
-'[GEN-Z.AI]',
-...args
-);
+              '<div class="form-group">' +
 
-}
+                '<label for="password">' +
+                  'Password' +
+                '</label>' +
 
-function error(...args) {
+                '<input' +
+                  ' id="password"' +
+                  ' name="password"' +
+                  ' type="password"' +
+                  ' placeholder="Masukkan password"' +
+                  ' autocomplete="current-password"' +
+                  ' required>' +
 
-console.error(
-'[GEN-Z.AI]',
-...args
-);
+              '</div>' +
 
-}
+              '<div' +
+                ' id="authMsg"' +
+                ' class="auth-message"' +
+                ' aria-live="polite">' +
+              '</div>' +
 
-function isLoggedIn() {
+              '<button' +
+                ' id="login"' +
+                ' type="submit"' +
+                ' class="auth-primary-btn">' +
+                'LOGIN' +
+              '</button>' +
 
-return (
-GENZ.state &&
-GENZ.state.loggedIn === true &&
-!!GENZ.state.user
-);
+              '<div class="auth-actions">' +
+
+                '<button' +
+                  ' id="register"' +
+                  ' type="button"' +
+                  ' class="auth-secondary-btn">' +
+                  'DAFTAR' +
+                '</button>' +
+
+                '<button' +
+                  ' id="forgotPassword"' +
+                  ' type="button"' +
+                  ' class="auth-link-btn">' +
+                  'LUPA PASSWORD?' +
+                '</button>' +
 
-}
+              '</div>' +
+
+            '</form>' +
+
+          '</div>' +
+
+        '</section>' +
+
+      '</div>' +
+
+      '<div id="application-container" class="hidden">' +
+
+        '<div id="header-container"></div>' +
+
+        '<main id="main-container"></main>' +
+
+        '<div' +
+          ' id="pageContent"' +
+          ' class="hidden">' +
+        '</div>' +
+
+      '</div>';
+
+    return app;
+  }
+
+  async function loadAuthComponent() {
+    if (authComponentLoaded) {
+      return;
+    }
+
+    const container =
+      $('auth-container');
+
+    if (!container) {
+      return;
+    }
+
+    if (
+      typeof GENZ.loadComponent !==
+      'function'
+    ) {
+      error(
+        'GENZ.loadComponent tidak tersedia.'
+      );
+
+      return;
+    }
+
+    try {
+      await GENZ.loadComponent(
+        container,
+        '/components/auth.html'
+      );
+
+      authComponentLoaded = true;
+
+      log(
+        'auth.html berhasil dimuat.'
+      );
+
+    } catch (err) {
+
+      error(
+        'auth.html gagal dimuat:',
+        err
+      );
 
-function isAdmin() {
+      /*
+       * Jangan kosongkan form fallback.
+       * Form login yang dibuat oleh
+       * createShell() tetap dipertahankan.
+       */
+    }
+  }
+
+  async function loadStudioComponents() {
+    if (studioLoading) {
+      return studioLoading;
+    }
+
+    if (
+      $('header-container') &&
+      $('main-container') &&
+      $('header-container').children.length > 0 &&
+      $('main-container').children.length > 0
+    ) {
+      return;
+    }
+
+    studioLoading =
+      (async function () {
 
-return (
-GENZ.state &&
-GENZ.state.account &&
-GENZ.state.account.isAdmin === true &&
-GENZ.state.account.roleValidated === true
-);
+        const header =
+          $('header-container');
+
+        const main =
+          $('main-container');
+
+        if (!header || !main) {
+          throw new Error(
+            'Container studio tidak ditemukan.'
+          );
+        }
+
+        if (
+          typeof GENZ.loadComponent !==
+          'function'
+        ) {
+          throw new Error(
+            'GENZ.loadComponent tidak tersedia.'
+          );
+        }
+
+        try {
+
+          await GENZ.loadComponent(
+            header,
+            '/components/header.html'
+          );
+
+        } catch (err) {
+
+          error(
+            'Header gagal dimuat:',
+            err
+          );
+        }
 
-}
+        try {
 
-/* =======================================================
-DYNAMIC MODULE LOADER
-======================================================= */
+          await GENZ.loadComponent(
+            main,
+            '/components/generator.html'
+          );
+
+        } catch (err) {
+
+          error(
+            'Generator gagal dimuat:',
+            err
+          );
+
+          main.innerHTML =
+            '<section class="page-card">' +
+
+              '<h2>' +
+                'GEN-Z.AI' +
+              '</h2>' +
+
+              '<p>' +
+                'Generator sedang dimuat.' +
+              '</p>' +
+
+            '</section>';
+        }
 
-function loadScriptOnce(
-src,
-moduleName
-) {
+        if (
+          GENZ.account &&
+          typeof GENZ.account.init ===
+          'function'
+        ) {
 
-if (
-moduleName === 'topupSettings' &&
-GENZ.topupSettings &&
-typeof GENZ.topupSettings.load === 'function'
-) {
+          try {
 
-return Promise.resolve(
-GENZ.topupSettings
-);
+            await GENZ.account.init();
 
-}
+          } catch (err) {
 
-if (
-moduleName === 'dashboard' &&
-GENZ.dashboard &&
-typeof GENZ.dashboard.load === 'function'
-) {
+            error(
+              'Account init gagal:',
+              err
+            );
+          }
+        }
 
-return Promise.resolve(
-GENZ.dashboard
-);
+        if (
+          GENZ.account &&
+          typeof GENZ.account.updateUser ===
+          'function' &&
+          GENZ.state.user
+        ) {
 
-}
+          try {
 
-if (
-moduleName === 'profile' &&
-GENZ.profile &&
-typeof GENZ.profile.load === 'function'
-) {
+            GENZ.account.updateUser(
+              GENZ.state.user
+            );
 
-return Promise.resolve(
-GENZ.profile
-);
+          } catch (err) {
 
-}
+            error(
+              'Account update gagal:',
+              err
+            );
+          }
+        }
 
-if (
-moduleName === 'topupSettings' &&
-topupSettingsLoading
-) {
+        if (
+          GENZ.upload &&
+          typeof GENZ.upload.init ===
+          'function'
+        ) {
 
-return topupSettingsLoading;
+          try {
 
-}
+            GENZ.upload.init();
 
-if (
-moduleName === 'dashboard' &&
-dashboardLoading
-) {
+          } catch (err) {
 
-return dashboardLoading;
+            error(
+              'Upload init gagal:',
+              err
+            );
+          }
+        }
 
-}
+        if (
+          GENZ.generator &&
+          typeof GENZ.generator.init ===
+          'function'
+        ) {
 
-if (
-moduleName === 'profile' &&
-profileLoading
-) {
+          try {
 
-return profileLoading;
+            GENZ.generator.init();
 
-}
+          } catch (err) {
 
-const promise =
-new Promise(
-function (resolve, reject) {
+            error(
+              'Generator init gagal:',
+              err
+            );
+          }
+        }
 
-const existing =
-document.querySelector(
-`script[data-genz-module="${moduleName}"]`
-);
+        if (
+          GENZ.providers &&
+          typeof GENZ.providers.load ===
+          'function'
+        ) {
 
-if (existing) {
+          GENZ.providers.load()
+            .catch(function (err) {
 
-function resolveModule() {
+              error(
+                'Provider loading gagal:',
+                err
+              );
 
-if (
-moduleName === 'topupSettings' &&
-GENZ.topupSettings &&
-typeof GENZ.topupSettings.load === 'function'
-) {
+            });
+        }
 
-resolve(
-GENZ.topupSettings
-);
+      })();
 
-return true;
+    try {
 
-}
+      await studioLoading;
 
-if (
-moduleName === 'dashboard' &&
-GENZ.dashboard &&
-typeof GENZ.dashboard.load === 'function'
-) {
+    } finally {
 
-resolve(
-GENZ.dashboard
-);
+      studioLoading = null;
+    }
+  }
 
-return true;
+  function showLogin() {
 
-}
+    const authContainer =
+      $('auth-container');
 
-if (
-moduleName === 'profile' &&
-GENZ.profile &&
-typeof GENZ.profile.load === 'function'
-) {
+    const application =
+      $('application-container');
 
-resolve(
-GENZ.profile
-);
+    const auth =
+      $('auth');
 
-return true;
+    if (application) {
 
-}
+      application.classList.add(
+        'hidden'
+      );
 
-return false;
+      application.style.display =
+        'none';
+    }
 
-}
+    if (authContainer) {
 
-if (
-resolveModule()
-) {
+      authContainer.classList.remove(
+        'hidden'
+      );
 
-return;
+      authContainer.style.display =
+        '';
+    }
 
-}
+    if (auth) {
 
-if (
-existing.dataset.genzLoaded === 'true'
-) {
+      auth.classList.remove(
+        'hidden'
+      );
 
-setTimeout(
-function () {
+      auth.style.display =
+        '';
+    }
+  }
 
-if (
-!resolveModule()
-) {
+  function showStudio() {
 
-reject(
-new Error(
-`Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
-)
-);
+    const authContainer =
+      $('auth-container');
 
-}
+    const application =
+      $('application-container');
 
-},
-0
-);
+    const auth =
+      $('auth');
 
-return;
+    const main =
+      $('main-container');
 
-}
+    const pages =
+      $('pageContent');
 
-const onLoad =
-function () {
+    if (authContainer) {
 
-existing.dataset.genzLoaded =
-'true';
+      authContainer.classList.add(
+        'hidden'
+      );
 
-if (
-!resolveModule()
-) {
+      authContainer.style.display =
+        'none';
+    }
 
-reject(
-new Error(
-`Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
-)
-);
+    if (auth) {
 
-}
+      auth.classList.add(
+        'hidden'
+      );
 
-};
+      auth.style.display =
+        'none';
+    }
 
-const onError =
-function () {
+    if (application) {
 
-reject(
-new Error(
-`Gagal memuat ${src}`
-)
-);
+      application.classList.remove(
+        'hidden'
+      );
 
-};
+      application.style.display =
+        '';
+    }
 
-existing.addEventListener(
-'load',
-onLoad,
-{
-once: true
-}
-);
+    if (main) {
 
-existing.addEventListener(
-'error',
-onError,
-{
-once: true
-}
-);
+      main.classList.remove(
+        'hidden'
+      );
+    }
 
-setTimeout(
-function () {
+    if (pages) {
 
-resolveModule();
+      pages.classList.add(
+        'hidden'
+      );
+    }
 
-},
-0
-);
+    if (GENZ.state) {
 
-return;
+      GENZ.state.currentPage =
+        'studio';
+    }
+  }
 
-}
+  async function handleLogin(user) {
 
-const script =
-document.createElement(
-'script'
-);
+    if (!user) {
+      return;
+    }
 
-script.src =
-src;
+    GENZ.state.loggedIn =
+      true;
 
-script.async =
-true;
+    GENZ.state.user =
+      user;
 
-script.dataset.genzModule =
-moduleName;
+    if (!GENZ.state.account) {
 
-script.onload =
-function () {
+      GENZ.state.account = {};
+    }
 
-script.dataset.genzLoaded =
-'true';
+    showStudio();
 
-if (
-moduleName === 'topupSettings' &&
-GENZ.topupSettings &&
-typeof GENZ.topupSettings.load === 'function'
-) {
+    loadStudioComponents()
+      .catch(function (err) {
 
-resolve(
-GENZ.topupSettings
-);
+        error(
+          'Studio loading error:',
+          err
+        );
 
-return;
+      });
+  }
 
-}
+  function handleLogout() {
 
-if (
-moduleName === 'dashboard' &&
-GENZ.dashboard &&
-typeof GENZ.dashboard.load === 'function'
-) {
+    if (GENZ.state) {
 
-resolve(
-GENZ.dashboard
-);
+      GENZ.state.loggedIn =
+        false;
 
-return;
+      GENZ.state.user =
+        null;
 
-}
+      GENZ.state.account = {
+        isAdmin: false,
+        roleValidated: false
+      };
 
-if (
-moduleName === 'profile' &&
-GENZ.profile &&
-typeof GENZ.profile.load === 'function'
-) {
+      GENZ.state.currentPage =
+        'studio';
+    }
 
-resolve(
-GENZ.profile
-);
+    showLogin();
+  }
 
-return;
+  function showPageUnavailable(
+    title,
+    message
+  ) {
 
-}
+    const pages =
+      $('pageContent');
 
-reject(
-new Error(
-`Modul ${moduleName} berhasil dimuat tetapi GENZ.${moduleName} tidak tersedia.`
-)
-);
+    if (!pages) {
+      return;
+    }
 
-};
+    pages.innerHTML =
+      '<section class="page-card">' +
 
-script.onerror =
-function () {
+        '<div class="page-header">' +
 
-reject(
-new Error(
-`Gagal memuat ${src}`
-)
-);
+          '<button' +
+            ' type="button"' +
+            ' class="back-btn"' +
+            ' id="pageBackButton">' +
+            '←' +
+          '</button>' +
 
-};
+          '<div>' +
 
-document.head.appendChild(
-script
-);
+            '<h2>' +
+              escapeHtml(title) +
+            '</h2>' +
 
-}
-);
+            '<p>' +
+              escapeHtml(message) +
+            '</p>' +
 
-/* =====================================================
-SAVE LOADING STATE
-===================================================== */
+          '</div>' +
 
-if (
-moduleName === 'topupSettings'
-) {
+        '</div>' +
 
-topupSettingsLoading =
-promise;
+      '</section>';
 
-promise.finally(
-function () {
+    const back =
+      $('pageBackButton');
 
-if (
-topupSettingsLoading === promise
-) {
+    if (back) {
 
-topupSettingsLoading =
-null;
+      back.addEventListener(
+        'click',
+        showStudio,
+        { once: true }
+      );
+    }
+  }
 
-}
+  async function showPage(page) {
 
-}
-);
+    if (!isLoggedIn()) {
 
-}
+      showLogin();
 
-if (
-moduleName === 'dashboard'
-) {
+      return;
+    }
 
-dashboardLoading =
-promise;
+    if (
+      !page ||
+      page === 'studio'
+    ) {
 
-promise.finally(
-function () {
+      showStudio();
 
-if (
-dashboardLoading === promise
-) {
+      return;
+    }
 
-dashboardLoading =
-null;
+    await loadStudioComponents();
 
-}
+    const main =
+      $('main-container');
 
-}
-);
+    const pages =
+      $('pageContent');
 
-}
+    if (!pages) {
+      return;
+    }
 
-if (
-moduleName === 'profile'
-) {
+    if (main) {
 
-profileLoading =
-promise;
+      main.classList.add(
+        'hidden'
+      );
+    }
 
-promise.finally(
-function () {
+    pages.classList.remove(
+      'hidden'
+    );
 
-if (
-profileLoading === promise
-) {
+    if (GENZ.state) {
 
-profileLoading =
-null;
+      GENZ.state.currentPage =
+        page;
+    }
 
-}
+    switch (page) {
 
-}
-);
+      case 'credit':
 
-}
+        if (
+          GENZ.credit &&
+          typeof GENZ.credit.load ===
+          'function'
+        ) {
 
-return promise;
+          try {
 
-}
+            await GENZ.credit.load();
 
-/* =======================================================
-ENSURE TOP UP SETTINGS
-======================================================= */
+          } catch (err) {
 
-async function ensureTopupSettings() {
+            error(
+              'Credit error:',
+              err
+            );
 
-if (
-GENZ.topupSettings &&
-typeof GENZ.topupSettings.load === 'function'
-) {
+            showPageUnavailable(
+              'Credit',
+              'Halaman Credit tidak dapat dimuat.'
+            );
+          }
 
-return GENZ.topupSettings;
+        } else {
 
-}
+          showPageUnavailable(
+            'Credit',
+            'Module Credit belum tersedia.'
+          );
+        }
 
-return await loadScriptOnce(
-'/js/topup-settings.js',
-'topupSettings'
-);
+        break;
 
-}
+      case 'profile':
 
-/* =======================================================
-ENSURE DASHBOARD
-======================================================= */
+        if (
+          GENZ.profile &&
+          typeof GENZ.profile.load ===
+          'function'
+        ) {
 
-async function ensureDashboard() {
+          try {
 
-if (
-GENZ.dashboard &&
-typeof GENZ.dashboard.load === 'function'
-) {
+            await GENZ.profile.load();
 
-return GENZ.dashboard;
+          } catch (err) {
 
-}
+            error(
+              'Profile error:',
+              err
+            );
 
-return await loadScriptOnce(
-'/js/dashboard.js',
-'dashboard'
-);
+            showPageUnavailable(
+              'Riwayat Video',
+              'Riwayat video tidak dapat dimuat.'
+            );
+          }
 
-}
+        } else {
 
-/* =======================================================
-ENSURE PROFILE / HISTORY
-======================================================= */
+          showPageUnavailable(
+            'Riwayat Video',
+            'Module riwayat belum tersedia.'
+          );
+        }
 
-async function ensureProfile() {
+        break;
 
-if (
-GENZ.profile &&
-typeof GENZ.profile.load === 'function'
-) {
+      case 'dashboard':
 
-return GENZ.profile;
+        if (
+          GENZ.dashboard &&
+          typeof GENZ.dashboard.load ===
+          'function'
+        ) {
 
-}
+          try {
 
-return await loadScriptOnce(
-'/js/profile.js',
-'profile'
-);
+            await GENZ.dashboard.load();
 
-}
+          } catch (err) {
 
-/* =======================================================
-AUTH COMPONENT
-ONLY LOGIN UI IS LOADED AT STARTUP
-======================================================= */
+            error(
+              'Dashboard error:',
+              err
+            );
 
-async function loadAuthComponent() {
+            showPageUnavailable(
+              'Dashboard',
+              'Dashboard tidak dapat dimuat.'
+            );
+          }
 
-if (
-authComponentLoaded
-) {
+        } else {
 
-return;
+          showPageUnavailable(
+            'Dashboard',
+            'Module Dashboard belum tersedia.'
+          );
+        }
 
-}
+        break;
 
-const app =
-$('app');
+      case 'topup':
 
-if (!app) {
+        await showPage(
+          'credit'
+        );
 
-throw new Error(
-'Element #app tidak ditemukan'
-);
+        break;
 
-}
+      case 'affiliate':
 
-if (
-typeof GENZ.loadComponent !== 'function'
-) {
+        showPageUnavailable(
+          'Affiliate',
+          'Halaman Affiliate sedang disiapkan.'
+        );
 
-throw new Error(
-'GENZ.loadComponent tidak tersedia. Pastikan core.js dimuat.'
-);
+        break;
 
-}
+      case 'membership':
 
-let authContainer =
-$('auth-container');
+        if (isAdmin()) {
 
-if (!authContainer) {
+          showPageUnavailable(
+            'Membership',
+            'Menu Membership tidak tersedia untuk Admin / Owner.'
+          );
 
-app.innerHTML = `
+        } else {
 
-<div
-  id="auth-container">
-</div>
+          showPageUnavailable(
+            'Membership',
+            'Halaman Membership sedang disiapkan.'
+          );
+        }
 
-<div
-  id="application-container"
-  class="hidden">
+        break;
 
-  <div
-    id="header-container">
-  </div>
+      case 'contact':
 
-  <main
-    id="main-container">
-  </main>
+        showPageUnavailable(
+          'Hubungi Admin',
+          'Silakan hubungi Admin untuk bantuan.'
+        );
 
-  <div
-    id="pageContent"
-    class="hidden">
-  </div>
+        break;
 
-</div>
+      case 'admin':
 
-`;
+        if (!isAdmin()) {
 
-authContainer =
-$('auth-container');
+          showPageUnavailable(
+            'Akses Ditolak',
+            'Panel Admin hanya dapat diakses oleh Admin / Owner.'
+          );
 
-}
+          return;
+        }
 
-if (!authContainer) {
+        window.location.href =
+          '/admin.html';
 
-throw new Error(
-'Element #auth-container tidak ditemukan'
-);
+        break;
 
-}
+      case 'topup-settings':
 
-try {
+        if (!isAdmin()) {
 
-await GENZ.loadComponent(
-'#auth-container',
-'/components/auth.html'
-);
+          showPageUnavailable(
+            'Akses Ditolak',
+            'Top Up Setting hanya untuk Admin / Owner.'
+          );
 
-} catch (authComponentError) {
+          return;
+        }
 
-error(
-'Gagal memuat auth.html:',
-authComponentError
-);
+        if (
+          GENZ.topupSettings &&
+          typeof GENZ.topupSettings.load ===
+          'function'
+        ) {
 
-authContainer.innerHTML = `
+          try {
 
-<section
-  id="auth"
-  class="auth-page">
+            await GENZ.topupSettings.load();
 
-  <div
-    class="auth-card">
+          } catch (err) {
 
-```
-<div
-  class="auth-header">
+            error(
+              'Topup settings error:',
+              err
+            );
 
-  <div
-    class="auth-logo">
-    GEN-Z.AI
-  </div>
+            showPageUnavailable(
+              'Top Up Setting',
+              'Top Up Setting tidak dapat dimuat.'
+            );
+          }
 
-  <h1>
-    Selamat Datang
-  </h1>
+        } else {
 
-  <p>
-    Login untuk menggunakan GEN-Z.AI
-  </p>
+          showPageUnavailable(
+            'Top Up Setting',
+            'Module Top Up Setting belum tersedia.'
+          );
+        }
 
-</div>
+        break;
 
-<form
-  id="authForm">
+      default:
 
-  <div
-    class="form-group">
+        showStudio();
+    }
+  }
 
-    <label
-      for="email">
-      Email
-    </label>
+  function bindNavigation() {
 
-    <input
-      id="email"
-      name="email"
-      type="email"
-      placeholder="Masukkan email"
-      autocomplete="email"
-      required>
+    if (navigationBound) {
+      return;
+    }
 
-  </div>
+    navigationBound =
+      true;
 
-  <div
-    class="form-group">
+    document.addEventListener(
+      'click',
+      function (event) {
 
-    <label
-      for="password">
-      Password
-    </label>
+        const target =
+          event.target &&
+          event.target.closest
+            ? event.target.closest(
+                '[data-page]'
+              )
+            : null;
 
-    <input
-      id="password"
-      name="password"
-      type="password"
-      placeholder="Masukkan password"
-      autocomplete="current-password"
-      required>
+        if (!target) {
+          return;
+        }
 
-  </div>
+        const page =
+          target.getAttribute(
+            'data-page'
+          );
 
-  <div
-    id="authMsg"
-    class="auth-message"
-    aria-live="polite">
-  </div>
+        if (!page) {
+          return;
+        }
 
-  <button
-    id="login"
-    type="submit"
-    class="auth-primary-btn">
+        event.preventDefault();
 
-    LOGIN
+        showPage(page)
+          .catch(function (err) {
 
-  </button>
+            error(
+              'Navigation error:',
+              err
+            );
 
-  <div
-    class="auth-actions">
+          });
+      }
+    );
+  }
 
-    <button
-      id="register"
-      type="button"
-      class="auth-secondary-btn">
+  function bindAuthEvents() {
 
-      DAFTAR
+    window.addEventListener(
+      'genz-auth-login',
+      function (event) {
 
-    </button>
+        const detail =
+          event && event.detail
+            ? event.detail
+            : {};
 
-    <button
-      id="forgotPassword"
-      type="button"
-      class="auth-link-btn">
+        const user =
+          detail.user ||
+          detail;
 
-      LUPA PASSWORD?
+        handleLogin(user);
+      }
+    );
 
-    </button>
+    window.addEventListener(
+      'genz-auth-logout',
+      function () {
 
-  </div>
+        handleLogout();
+      }
+    );
+  }
 
-</form>
-```
+  async function syncExistingSession() {
 
-  </div>
+    try {
 
-</section>
+      if (
+        window.GENZ_AUTH &&
+        typeof window.GENZ_AUTH.getSession ===
+        'function'
+      ) {
 
-`;
+        const session =
+          await window.GENZ_AUTH.getSession();
 
-}
+        if (
+          session &&
+          session.user
+        ) {
 
-authComponentLoaded =
-true;
+          await handleLogin(
+            session.user
+          );
 
-}
+          return;
+        }
 
-/* =======================================================
-STUDIO COMPONENTS
-LOADED ONLY AFTER LOGIN
-======================================================= */
+        handleLogout();
 
-async function loadStudioComponents() {
+        return;
+      }
 
-if (
-studioComponentsLoaded
-) {
+      handleLogout();
 
-return;
+    } catch (err) {
 
-}
+      error(
+        'Session sync gagal:',
+        err
+      );
 
-if (
-studioComponentsLoading
-) {
+      showLogin();
+    }
+  }
 
-return studioComponentsLoading;
+  async function start() {
 
-}
+    if (started) {
+      return;
+    }
 
-studioComponentsLoading =
-(async function () {
+    started =
+      true;
 
-const application =
-$('application-container');
+    if (!GENZ.state) {
 
-if (!application) {
+      GENZ.state = {
+        initialized: false,
+        loggedIn: false,
+        user: null,
+        account: null,
+        providers: [],
+        currentPage: 'studio',
+        imageData: null,
+        provider: null,
+        poll: null,
+        currentVideoObjectUrl: null
+      };
+    }
 
-throw new Error(
-'Element #application-container tidak ditemukan'
-);
+    /*
+     * UI login dibuat terlebih dahulu.
+     * Tidak menunggu API atau component.
+     */
+    createShell();
 
-}
+    bindAuthEvents();
 
-const headerContainer =
-$('header-container');
+    bindNavigation();
 
-const main =
-$('main-container');
+    GENZ.state.initialized =
+      true;
 
-const pages =
-$('pageContent');
+    /*
+     * auth.html hanya enhancement.
+     * Jika gagal, form fallback tetap ada.
+     */
+    loadAuthComponent()
+      .catch(function (err) {
 
-if (!headerContainer) {
+        error(
+          'Auth component error:',
+          err
+        );
 
-throw new Error(
-'Element #header-container tidak ditemukan'
-);
+      });
 
-}
+    /*
+     * Session dicek setelah UI tampil.
+     */
+    syncExistingSession()
+      .catch(function (err) {
 
-if (!main) {
+        error(
+          'Initial session error:',
+          err
+        );
 
-throw new Error(
-'Element #main-container tidak ditemukan'
-);
+        showLogin();
 
-}
+      });
 
-if (!pages) {
+    log(
+      'APPLICATION READY'
+    );
+  }
 
-throw new Error(
-'Element #pageContent tidak ditemukan'
-);
+  window.GENZ_APP = {
+    start: start,
+    showStudio: showStudio,
+    showLogin: showLogin,
+    showPage: showPage
+  };
 
-}
+  if (
+    document.readyState ===
+    'loading'
+  ) {
 
-if (
-typeof GENZ.loadComponent !== 'function'
-) {
+    document.addEventListener(
+      'DOMContentLoaded',
+      start,
+      { once: true }
+    );
 
-throw new Error(
-'GENZ.loadComponent tidak tersedia. Pastikan core.js dimuat.'
-);
+  } else {
 
-}
-
-/* =====================================================
-HEADER
-===================================================== */
-
-try {
-
-await GENZ.loadComponent(
-'#header-container',
-'/components/header.html'
-);
-
-} catch (headerError) {
-
-error(
-'Gagal memuat header.html:',
-headerError
-);
-
-headerContainer.innerHTML = `
-
-<header
-  class="app-header">
-
-  <div>
-
-```
-<strong>
-  GEN-Z.AI
-</strong>
-```
-
-  </div>
-
-</header>
-
-`;
-
-}
-
-/* =====================================================
-GENERATOR
-===================================================== */
-
-try {
-
-await GENZ.loadComponent(
-'#main-container',
-'/components/generator.html'
-);
-
-} catch (componentError) {
-
-error(
-'Gagal memuat generator.html:',
-componentError
-);
-
-main.innerHTML = `
-
-<section
-  class="page-card">
-
-  <h2>
-    GEN-Z.AI
-  </h2>
-
-  <p>
-    Generator belum dapat dimuat.
-  </p>
-
-  <small>
-    Periksa file
-    /components/generator.html
-  </small>
-
-</section>
-
-`;
-
-}
-
-/* =====================================================
-ACCOUNT
-===================================================== */
-
-if (
-GENZ.account &&
-typeof GENZ.account.init === 'function'
-) {
-
-try {
-
-await GENZ.account.init();
-
-} catch (accountError) {
-
-error(
-'Account module error:',
-accountError
-);
-
-}
-
-} else {
-
-console.warn(
-'[GEN-Z.AI] account.js belum tersedia'
-);
-
-}
-
-studioComponentsLoaded =
-true;
-
-studioComponentsLoading =
-null;
-
-})().catch(
-function (startupError) {
-
-studioComponentsLoading =
-null;
-
-throw startupError;
-
-}
-);
-
-return studioComponentsLoading;
-
-}
-
-/* =======================================================
-PREPARE STUDIO AFTER LOGIN
-======================================================= */
-
-async function prepareStudio() {
-
-try {
-
-await loadStudioComponents();
-
-} catch (studioError) {
-
-error(
-'Studio component error:',
-studioError
-);
-
-}
-
-/* =====================================================
-ACCOUNT
-===================================================== */
-
-if (
-GENZ.account &&
-typeof GENZ.account.updateUser === 'function'
-) {
-
-try {
-
-GENZ.account.updateUser(
-GENZ.state.user
-);
-
-} catch (updateError) {
-
-error(
-'Account user update error:',
-updateError
-);
-
-}
-
-}
-
-if (
-GENZ.account &&
-typeof GENZ.account.refresh === 'function'
-) {
-
-try {
-
-await GENZ.account.refresh();
-
-} catch (refreshError) {
-
-error(
-'Account refresh error:',
-refreshError
-);
-
-}
-
-}
-
-/* =====================================================
-PROVIDERS
-===================================================== */
-
-if (
-GENZ.providers &&
-typeof GENZ.providers.load === 'function'
-) {
-
-try {
-
-await GENZ.providers.load();
-
-} catch (providerError) {
-
-error(
-'Provider loading error:',
-providerError
-);
-
-}
-
-/* =====================================================
-DO NOT BLOCK LOGIN IF PROVIDER LOAD FAILS
-===================================================== */
-
-}
-
-/* =====================================================
-UPLOAD
-===================================================== */
-
-if (
-GENZ.upload &&
-typeof GENZ.upload.init === 'function'
-) {
-
-try {
-
-GENZ.upload.init();
-
-} catch (uploadError) {
-
-error(
-'Upload module error:',
-uploadError
-);
-
-}
-
-}
-
-/* =====================================================
-GENERATOR
-===================================================== */
-
-if (
-GENZ.generator &&
-typeof GENZ.generator.init === 'function'
-) {
-
-try {
-
-GENZ.generator.init();
-
-} catch (generatorError) {
-
-error(
-'Generator module error:',
-generatorError
-);
-
-}
-
-}
-
-showStudio();
-
-}
-
-/* =======================================================
-AUTH SESSION SYNC
-======================================================= */
-
-async function syncAuth() {
-
-try {
-
-let session =
-null;
-
-if (
-window.GENZ_AUTH &&
-typeof window.GENZ_AUTH.getSession === 'function'
-) {
-
-session =
-await window.GENZ_AUTH.getSession();
-
-} else {
-
-const client =
-window.GENZ_AUTH_CLIENT;
-
-if (
-!client ||
-!client.auth ||
-typeof client.auth.getSession !== 'function'
-) {
-
-console.warn(
-'[GEN-Z.AI] Auth client belum tersedia'
-);
-
-await handleLogout(
-false
-);
-
-return false;
-
-}
-
-const result =
-await client.auth.getSession();
-
-session =
-result?.data?.session ||
-null;
-
-}
-
-if (
-session &&
-session.user
-) {
-
-GENZ.state.loggedIn =
-true;
-
-GENZ.state.user =
-session.user;
-
-await handleLogin(
-session.user,
-false
-);
-
-return true;
-
-}
-
-GENZ.state.loggedIn =
-false;
-
-GENZ.state.user =
-null;
-
-await handleLogout(
-false
-);
-
-return false;
-
-} catch (authError) {
-
-error(
-'Auth sync error:',
-authError
-);
-
-await handleLogout(
-false
-);
-
-return false;
-
-}
-
-}
-
-/* =======================================================
-LOGIN HANDLER
-======================================================= */
-
-async function handleLogin(
-user,
-emitEvent = false
-) {
-
-if (user) {
-
-GENZ.state.loggedIn =
-true;
-
-GENZ.state.user =
-user;
-
-}
-
-if (!GENZ.state.user) {
-
-return;
-
-}
-
-GENZ.state.account = {
-
-...(GENZ.state.account || {}),
-
-isAdmin:
-false,
-
-roleValidated:
-false
-
-};
-
-/* =====================================================
-SHOW APP IMMEDIATELY
-DO NOT WAIT FOR HEAVY MODULES
-===================================================== */
-
-showStudio();
-
-/* =====================================================
-LOAD STUDIO IN BACKGROUND
-===================================================== */
-
-prepareStudio().catch(
-studioError => {
-
-error(
-'Studio preparation error:',
-studioError
-);
-
-}
-);
-
-if (
-emitEvent &&
-typeof GENZ.emit === 'function'
-) {
-
-GENZ.emit(
-'auth-login',
-GENZ.state.user
-);
-
-}
-
-}
-
-/* =======================================================
-LOGOUT HANDLER
-======================================================= */
-
-async function handleLogout(
-emitEvent = false
-) {
-
-GENZ.state.loggedIn =
-false;
-
-GENZ.state.user =
-null;
-
-GENZ.state.account = {
-
-isAdmin:
-false,
-
-roleValidated:
-false
-
-};
-
-if (
-GENZ.video &&
-typeof GENZ.video.stopPolling === 'function'
-) {
-
-try {
-
-GENZ.video.stopPolling();
-
-} catch (_) {}
-
-}
-
-if (
-GENZ.video &&
-typeof GENZ.video.clear === 'function'
-) {
-
-try {
-
-GENZ.video.clear();
-
-} catch (_) {}
-
-}
-
-if (
-GENZ.account &&
-typeof GENZ.account.close === 'function'
-) {
-
-try {
-
-GENZ.account.close();
-
-} catch (_) {}
-
-}
-
-const application =
-$('application-container');
-
-if (application) {
-
-application.classList.add(
-'hidden'
-);
-
-}
-
-const authContainer =
-$('auth-container');
-
-if (authContainer) {
-
-authContainer.classList.remove(
-'hidden'
-);
-
-}
-
-if (
-GENZ.auth &&
-typeof GENZ.auth.showLoggedOutUI === 'function'
-) {
-
-try {
-
-GENZ.auth.showLoggedOutUI();
-
-} catch (_) {}
-
-} else {
-
-const auth =
-$('auth');
-
-if (auth) {
-
-auth.style.display =
-'block';
-
-auth.classList.remove(
-'hidden'
-);
-
-}
-
-}
-
-GENZ.state.currentPage =
-'studio';
-
-const main =
-$('main-container');
-
-const pages =
-$('pageContent');
-
-if (main) {
-
-main.classList.remove(
-'hidden'
-);
-
-}
-
-if (pages) {
-
-pages.classList.add(
-'hidden'
-);
-
-pages.innerHTML =
-'';
-
-}
-
-if (
-GENZ.dashboard &&
-GENZ.dashboard.state
-) {
-
-GENZ.dashboard.state.loaded =
-false;
-
-GENZ.dashboard.state.selectedVideo =
-null;
-
-}
-
-if (
-GENZ.history &&
-GENZ.history.state
-) {
-
-GENZ.history.state.jobs =
-[];
-
-GENZ.history.state.loading =
-false;
-
-GENZ.history.state.selected =
-null;
-
-}
-
-if (
-emitEvent &&
-typeof GENZ.emit === 'function'
-) {
-
-GENZ.emit(
-'auth-logout'
-);
-
-}
-
-}
-
-/* =======================================================
-BIND AUTH EVENTS
-======================================================= */
-
-function bindAuth() {
-
-if (authBound) {
-
-return;
-
-}
-
-authBound =
-true;
-
-window.addEventListener(
-'genz-auth-login',
-function (event) {
-
-const detail =
-event?.detail ||
-{};
-
-const user =
-detail?.user ||
-(
-detail?.email ||
-detail?.id
-? detail
-: GENZ.state.user
-);
-
-if (!user) {
-
-return;
-
-}
-
-handleLogin(
-user,
-false
-).catch(
-authError => {
-
-error(
-'Login handler error:',
-authError
-);
-
-}
-);
-
-}
-);
-
-window.addEventListener(
-'genz-auth-logout',
-function () {
-
-handleLogout(
-false
-).catch(
-authError => {
-
-error(
-'Logout handler error:',
-authError
-);
-
-}
-);
-
-}
-);
-
-}
-
-/* =======================================================
-SHOW STUDIO
-======================================================= */
-
-function showStudio() {
-
-const authContainer =
-$('auth-container');
-
-const application =
-$('application-container');
-
-const main =
-$('main-container');
-
-const pages =
-$('pageContent');
-
-if (authContainer) {
-
-authContainer.classList.add(
-'hidden'
-);
-
-}
-
-const auth =
-$('auth');
-
-if (auth) {
-
-auth.style.display =
-'none';
-
-}
-
-if (application) {
-
-application.classList.remove(
-'hidden'
-);
-
-}
-
-if (pages) {
-
-pages.classList.add(
-'hidden'
-);
-
-}
-
-if (main) {
-
-main.classList.remove(
-'hidden'
-);
-
-}
-
-GENZ.state.currentPage =
-'studio';
-
-const back =
-$('backToStudio');
-
-if (back) {
-
-back.classList.add(
-'hidden'
-);
-
-}
-
-if (
-GENZ.dashboard &&
-typeof GENZ.dashboard.closePreview === 'function'
-) {
-
-try {
-
-GENZ.dashboard.closePreview();
-
-} catch (_) {}
-
-}
-
-}
-
-/* =======================================================
-SHOW PAGE
-======================================================= */
-
-async function showPage(
-page
-) {
-
-if (!page) {
-
-showStudio();
-
-return;
-
-}
-
-if (!isLoggedIn()) {
-
-await handleLogout(
-false
-);
-
-return;
-
-}
-
-await loadStudioComponents();
-
-const main =
-$('main-container');
-
-const pages =
-$('pageContent');
-
-if (!pages) {
-
-error(
-'Element #pageContent tidak ditemukan'
-);
-
-return;
-
-}
-
-if (main) {
-
-main.classList.add(
-'hidden'
-);
-
-}
-
-pages.classList.remove(
-'hidden'
-);
-
-GENZ.state.currentPage =
-page;
-
-const back =
-$('backToStudio');
-
-if (back) {
-
-back.classList.remove(
-'hidden'
-);
-
-}
-
-/* =====================================================
-ROUTING
-===================================================== */
-
-switch (page) {
-
-case 'dashboard':
-
-try {
-
-const dashboard =
-await ensureDashboard();
-
-if (
-dashboard &&
-typeof dashboard.load === 'function'
-) {
-
-await dashboard.load();
-
-} else {
-
-showModuleUnavailable(
-'Dashboard',
-'/js/dashboard.js'
-);
-
-}
-
-} catch (dashboardError) {
-
-error(
-'Dashboard module error:',
-dashboardError
-);
-
-showModuleUnavailable(
-'Dashboard',
-'/js/dashboard.js'
-);
-
-}
-
-break;
-
-case 'profile':
-
-try {
-
-const profile =
-await ensureProfile();
-
-if (
-profile &&
-typeof profile.load === 'function'
-) {
-
-await profile.load();
-
-} else {
-
-showModuleUnavailable(
-'Riwayat Video',
-'/js/profile.js'
-);
-
-}
-
-} catch (profileError) {
-
-error(
-'Profile / History module error:',
-profileError
-);
-
-showModuleUnavailable(
-'Riwayat Video',
-'/js/profile.js'
-);
-
-}
-
-break;
-
-case 'credit':
-
-if (
-GENZ.credit &&
-typeof GENZ.credit.load === 'function'
-) {
-
-try {
-
-await GENZ.credit.load();
-
-} catch (creditError) {
-
-error(
-'Credit module error:',
-creditError
-);
-
-showModuleUnavailable(
-'Credit',
-'/js/credit.js'
-);
-
-}
-
-} else {
-
-showModuleUnavailable(
-'Credit',
-'/js/credit.js'
-);
-
-}
-
-break;
-
-case 'topup':
-
-await showPage(
-'credit'
-);
-
-break;
-
-case 'topup-settings':
-
-if (!isAdmin()) {
-
-showAccessDenied(
-'Akses Top Up Setting hanya untuk Admin / Owner.'
-);
-
-break;
-
-}
-
-try {
-
-const topupSettings =
-await ensureTopupSettings();
-
-if (
-topupSettings &&
-typeof topupSettings.load === 'function'
-) {
-
-await topupSettings.load();
-
-} else {
-
-showModuleUnavailable(
-'Top Up Setting',
-'/js/topup-settings.js'
-);
-
-}
-
-} catch (moduleError) {
-
-error(
-'Top Up Setting module error:',
-moduleError
-);
-
-showModuleUnavailable(
-'Top Up Setting',
-'/js/topup-settings.js'
-);
-
-}
-
-break;
-
-case 'admin':
-
-if (!isAdmin()) {
-
-showAccessDenied(
-'Panel Admin hanya dapat diakses oleh Admin / Owner.'
-);
-
-break;
-
-}
-
-window.location.href =
-'/admin.html';
-
-break;
-
-case 'contact':
-
-if (isAdmin()) {
-
-showAccessDenied(
-'Menu Hub Admin tidak tersedia untuk Admin / Owner.'
-);
-
-break;
-
-}
-
-showContactAdmin();
-
-break;
-
-case 'membership':
-
-if (isAdmin()) {
-
-showAccessDenied(
-'Menu Membership tidak tersedia untuk Admin / Owner.'
-);
-
-break;
-
-}
-
-showMembership();
-
-break;
-
-case 'affiliate':
-
-showAffiliate();
-
-break;
-
-default:
-
-showStudio();
-
-break;
-
-}
-
-}
-
-/* =======================================================
-ACCESS DENIED
-======================================================= */
-
-function showAccessDenied(
-message
-) {
-
-const pages =
-$('pageContent');
-
-if (!pages) {
-
-return;
-
-}
-
-pages.innerHTML = `
-
-<section
-  class="page-card">
-
-  <div
-    class="page-header">
-
-```
-<button
-  type="button"
-  class="back-btn"
-  id="accessDeniedBack">
-
-  ←
-
-</button>
-
-<div>
-
-  <h2>
-    Akses Ditolak
-  </h2>
-
-  <p>
-    ${escapeHtml(
-      message ||
-      'Anda tidak memiliki akses ke halaman ini.'
-    )}
-  </p>
-
-</div>
-```
-
-  </div>
-
-</section>
-
-`;
-
-const back =
-$('accessDeniedBack');
-
-if (back) {
-
-back.addEventListener(
-'click',
-showStudio,
-{
-once: true
-}
-);
-
-}
-
-}
-
-/* =======================================================
-MODULE UNAVAILABLE
-======================================================= */
-
-function showModuleUnavailable(
-moduleName,
-fileName
-) {
-
-const pages =
-$('pageContent');
-
-if (!pages) {
-
-return;
-
-}
-
-pages.innerHTML = `
-
-<section
-  class="page-card">
-
-  <div
-    class="page-header">
-
-```
-<button
-  type="button"
-  class="back-btn"
-  id="moduleUnavailableBack">
-
-  ←
-
-</button>
-
-<div>
-
-  <h2>
-    ${escapeHtml(
-      moduleName
-    )}
-  </h2>
-
-  <p>
-    Modul belum tersedia.
-  </p>
-
-</div>
-```
-
-  </div>
-
-  <div
-    class="contact-admin">
-
-```
-<p>
-  File modul belum dimuat oleh aplikasi.
-</p>
-
-<small>
-  Periksa:
-  ${escapeHtml(
-    fileName
-  )}
-</small>
-```
-
-  </div>
-
-</section>
-
-`;
-
-const back =
-$('moduleUnavailableBack');
-
-if (back) {
-
-back.addEventListener(
-'click',
-showStudio,
-{
-once: true
-}
-);
-
-}
-
-}
-
-/* =======================================================
-CONTACT ADMIN
-======================================================= */
-
-function showContactAdmin() {
-
-const pages =
-$('pageContent');
-
-if (!pages) {
-
-return;
-
-}
-
-pages.innerHTML = `
-
-<section
-  class="page-card">
-
-  <div
-    class="page-header">
-
-```
-<button
-  type="button"
-  class="back-btn"
-  id="contactBack">
-
-  ←
-
-</button>
-
-<div>
-
-  <h2>
-    Chat Admin
-  </h2>
-
-  <p>
-    Hubungi administrator GEN-Z.AI
-  </p>
-
-</div>
-```
-
-  </div>
-
-  <div
-    class="contact-admin">
-
-```
-<p>
-  Silakan hubungi admin untuk
-  bantuan akun, kredit, atau
-  kendala penggunaan GEN-Z.AI.
-</p>
-```
-
-  </div>
-
-</section>
-
-`;
-
-const back =
-$('contactBack');
-
-if (back) {
-
-back.addEventListener(
-'click',
-showStudio,
-{
-once: true
-}
-);
-
-}
-
-}
-
-/* =======================================================
-MEMBERSHIP
-======================================================= */
-
-function showMembership() {
-
-const pages =
-$('pageContent');
-
-if (!pages) {
-
-return;
-
-}
-
-pages.innerHTML = `
-
-<section
-  class="page-card">
-
-  <div
-    class="page-header">
-
-```
-<button
-  type="button"
-  class="back-btn"
-  id="membershipBack">
-
-  ←
-
-</button>
-
-<div>
-
-  <h2>
-    Membership
-  </h2>
-
-  <p>
-    Informasi membership GEN-Z.AI
-  </p>
-
-</div>
-```
-
-  </div>
-
-  <div
-    class="contact-admin">
-
-```
-<p>
-  Halaman membership sedang
-  dipersiapkan.
-</p>
-```
-
-  </div>
-
-</section>
-
-`;
-
-const back =
-$('membershipBack');
-
-if (back) {
-
-back.addEventListener(
-'click',
-showStudio,
-{
-once: true
-}
-);
-
-}
-
-}
-
-/* =======================================================
-AFFILIATE
-======================================================= */
-
-function showAffiliate() {
-
-const pages =
-$('pageContent');
-
-if (!pages) {
-
-return;
-
-}
-
-pages.innerHTML = `
-
-<section
-  class="page-card">
-
-  <div
-    class="page-header">
-
-```
-<button
-  type="button"
-  class="back-btn"
-  id="affiliateBack">
-
-  ←
-
-</button>
-
-<div>
-
-  <h2>
-    Affiliate
-  </h2>
-
-  <p>
-    Program affiliate GEN-Z.AI
-  </p>
-
-</div>
-```
-
-  </div>
-
-  <div
-    class="contact-admin">
-
-```
-<p>
-  Halaman affiliate sedang
-  dipersiapkan.
-</p>
-```
-
-  </div>
-
-</section>
-
-`;
-
-const back =
-$('affiliateBack');
-
-if (back) {
-
-back.addEventListener(
-'click',
-showStudio,
-{
-once: true
-}
-);
-
-}
-
-}
-
-/* =======================================================
-ESCAPE HTML
-======================================================= */
-
-function escapeHtml(
-value
-) {
-
-if (
-GENZ.escapeHtml &&
-typeof GENZ.escapeHtml === 'function'
-) {
-
-return GENZ.escapeHtml(
-String(value ?? '')
-);
-
-}
-
-return String(value ?? '')
-.replace(
-/&/g,
-'&'
-)
-.replace(
-/</g,
-'<'
-)
-.replace(
-/>/g,
-'>'
-)
-.replace(
-/"/g,
-'"'
-)
-.replace(
-/'/g,
-'''
-);
-
-}
-
-/* =======================================================
-ACCOUNT NAVIGATION
-======================================================= */
-
-function bindNavigation() {
-
-if (navigationBound) {
-
-return;
-
-}
-
-navigationBound =
-true;
-
-document.addEventListener(
-'click',
-function (event) {
-
-const target =
-event.target;
-
-if (
-!target ||
-typeof target.closest !== 'function'
-) {
-
-return;
-
-}
-
-const button =
-target.closest(
-'[data-page]'
-);
-
-if (!button) {
-
-return;
-
-}
-
-const page =
-button.dataset.page;
-
-if (!page) {
-
-return;
-
-}
-
-event.preventDefault();
-
-showPage(
-page
-).catch(
-pageError => {
-
-error(
-'Page loading error:',
-pageError
-);
-
-}
-);
-
-}
-);
-
-document.addEventListener(
-'click',
-function (event) {
-
-const target =
-event.target;
-
-if (
-!target ||
-typeof target.closest !== 'function'
-) {
-
-return;
-
-}
-
-const button =
-target.closest(
-'[data-back-studio]'
-);
-
-if (!button) {
-
-return;
-
-}
-
-event.preventDefault();
-
-showStudio();
-
-}
-);
-
-document.addEventListener(
-'click',
-function (event) {
-
-const target =
-event.target;
-
-if (
-!target ||
-typeof target.closest !== 'function'
-) {
-
-return;
-
-}
-
-const button =
-target.closest(
-'#backToStudio'
-);
-
-if (!button) {
-
-return;
-
-}
-
-event.preventDefault();
-
-showStudio();
-
-}
-);
-
-if (
-typeof GENZ.on === 'function'
-) {
-
-GENZ.on(
-'show-studio',
-showStudio
-);
-
-GENZ.on(
-'show-page',
-function (page) {
-
-showPage(
-page
-).catch(
-pageError => {
-
-error(
-'show-page error:',
-pageError
-);
-
-}
-);
-
-}
-);
-
-}
-
-}
-
-/* =======================================================
-START APPLICATION
-======================================================= */
-
-async function start() {
-
-if (started) {
-
-return;
-
-}
-
-log(
-'APPLICATION START'
-);
-
-try {
-
-GENZ.state =
-GENZ.state ||
-{};
-
-GENZ.state.account =
-GENZ.state.account ||
-{
-
-isAdmin:
-false,
-
-roleValidated:
-false
-
-};
-
-GENZ.state.loggedIn =
-false;
-
-GENZ.state.initialized =
-false;
-
-bindNavigation();
-
-bindAuth();
-
-/* =====================================================
-CREATE BASIC APP SHELL IMMEDIATELY
-===================================================== */
-
-const app =
-$('app');
-
-if (!app) {
-
-throw new Error(
-'Element #app tidak ditemukan'
-);
-
-}
-
-app.innerHTML = `
-
-<div
-  id="auth-container">
-</div>
-
-<div
-  id="application-container"
-  class="hidden">
-
-  <div
-    id="header-container">
-  </div>
-
-  <main
-    id="main-container">
-  </main>
-
-  <div
-    id="pageContent"
-    class="hidden">
-  </div>
-
-</div>
-
-`;
-
-/* =====================================================
-AUTH ONLY
-THIS IS THE ONLY COMPONENT WAITED FOR AT STARTUP
-===================================================== */
-
-await loadAuthComponent();
-
-/* =====================================================
-MAKE AUTH AVAILABLE BEFORE SESSION CHECK
-===================================================== */
-
-const application =
-$('application-container');
-
-if (application) {
-
-application.classList.add(
-'hidden'
-);
-
-}
-
-const authContainer =
-$('auth-container');
-
-if (authContainer) {
-
-authContainer.classList.remove(
-'hidden'
-);
-
-}
-
-/* =====================================================
-SESSION CHECK
-===================================================== */
-
-await syncAuth();
-
-started =
-true;
-
-GENZ.state.initialized =
-true;
-
-log(
-'APPLICATION READY'
-);
-
-} catch (startupError) {
-
-GENZ.state.initialized =
-false;
-
-error(
-'APPLICATION START ERROR:',
-startupError
-);
-
-const app =
-$('app');
-
-if (app) {
-
-const errorMessage =
-startupError?.message ||
-'Unknown error';
-
-const safeMessage =
-escapeHtml(
-errorMessage
-);
-
-app.innerHTML = `
-
-<section
-  class="page-card">
-
-  <h2>
-    GEN-Z.AI
-  </h2>
-
-  <p>
-    Aplikasi gagal dimuat.
-  </p>
-
-  <small>
-    ${safeMessage}
-  </small>
-
-</section>
-
-`;
-
-}
-
-}
-
-/* =======================================================
-PUBLIC API
-======================================================= */
-
-GENZ.start =
-start;
-
-GENZ.showStudio =
-showStudio;
-
-GENZ.showPage =
-showPage;
-
-/* =======================================================
-DOM READY
-======================================================= */
-
-if (
-document.readyState === 'loading'
-) {
-
-document.addEventListener(
-'DOMContentLoaded',
-function () {
-
-start().catch(
-startupError => {
-
-error(
-'Unhandled startup error:',
-startupError
-);
-
-}
-);
-
-},
-{
-once: true
-}
-);
-
-} else {
-
-start().catch(
-startupError => {
-
-error(
-'Unhandled startup error:',
-startupError
-);
-
-}
-);
-
-}
+    start();
+  }
 
 })();
