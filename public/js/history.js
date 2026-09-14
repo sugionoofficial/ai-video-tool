@@ -141,38 +141,6 @@
     return "Diproses";
   }
 
-  function providerLabel(provider, job) {
-  const configuredName =
-    String(
-      job?.provider_name ||
-      job?.providerName ||
-      ""
-    ).trim();
-
-  if (configuredName) {
-    return configuredName;
-  }
-
-  const metadata =
-    getMetadata(job);
-
-  const metadataName =
-    String(
-      metadata.provider_name ||
-      metadata.providerName ||
-      ""
-    ).trim();
-
-  if (metadataName) {
-    return metadataName;
-  }
-
-  return (
-    String(provider || "").trim() ||
-    "Provider"
-  );
-}
-
   function getMetadata(job) {
     let metadata =
       job?.metadata;
@@ -197,6 +165,38 @@
     )
       ? metadata
       : {};
+  }
+
+  function providerLabel(provider, job) {
+    const configuredName =
+      String(
+        job?.provider_name ||
+        job?.providerName ||
+        ""
+      ).trim();
+
+    if (configuredName) {
+      return configuredName;
+    }
+
+    const metadata =
+      getMetadata(job);
+
+    const metadataName =
+      String(
+        metadata.provider_name ||
+        metadata.providerName ||
+        ""
+      ).trim();
+
+    if (metadataName) {
+      return metadataName;
+    }
+
+    return (
+      String(provider || "").trim() ||
+      "Provider"
+    );
   }
 
   function getPrompt(job) {
@@ -280,17 +280,88 @@
     }
   }
 
+  /*
+   * Ambil pesan error asli dari backend/provider.
+   * Ini penting agar error ChinaAPI tidak berubah
+   * menjadi "Generation gagal diproses" secara otomatis.
+   */
+  function getRawError(job) {
+    const candidates = [
+      job?.last_error,
+      job?.error,
+      job?.error_message,
+      job?.errorMessage
+    ];
+
+    for (
+      const value of candidates
+    ) {
+      const message =
+        String(value || "").trim();
+
+      if (message) {
+        return message;
+      }
+    }
+
+    const metadata =
+      getMetadata(job);
+
+    const metadataCandidates = [
+      metadata.last_error,
+      metadata.lastError,
+      metadata.error,
+      metadata.error_message,
+      metadata.errorMessage,
+      metadata.message
+    ];
+
+    for (
+      const value of metadataCandidates
+    ) {
+      const message =
+        String(value || "").trim();
+
+      if (message) {
+        return message;
+      }
+    }
+
+    return "";
+  }
+
   function getFriendlyError(job) {
+    const rawOriginal =
+      getRawError(job);
+
     const code =
       String(
-        job?.last_error_code || ""
+        job?.last_error_code ||
+        job?.error_code ||
+        job?.errorCode ||
+        ""
       )
         .trim()
         .toLowerCase();
 
+    /*
+     * Prioritas utama:
+     * jika backend sudah memberikan pesan error,
+     * tampilkan pesan tersebut secara langsung.
+     *
+     * Dengan demikian error seperti:
+     * "Model ChinaAPI ... belum tersedia"
+     * atau
+     * "ChinaAPI gagal membuat video..."
+     * tidak hilang.
+     */
+    if (rawOriginal) {
+      return rawOriginal;
+    }
+
     const raw =
       String(
-        job?.last_error || ""
+        rawOriginal || ""
       )
         .trim()
         .toLowerCase();
@@ -361,17 +432,6 @@
         "oleh provider. Silakan ubah prompt."
       );
     }
-     const detailedError =
-  String(
-    job?.last_error ||
-    ""
-  ).trim();
-
-if (detailedError) {
-  return detailedError;
-}
-
-     
 
     return (
       "Generation gagal diproses. " +
@@ -916,8 +976,8 @@ if (detailedError) {
 
           const provider =
             providerLabel(
-               job.provider,
-               job
+              job.provider,
+              job
             );
 
           const prompt =
@@ -1139,8 +1199,8 @@ if (detailedError) {
           <strong>
             ${escapeHtml(
               providerLabel(
-                 job.provider,
-                 job
+                job.provider,
+                job
               )
             )}
           </strong>
