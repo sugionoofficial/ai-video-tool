@@ -199,6 +199,10 @@ function normalizeModelCredit(
 }
 
 
+/* ============================================================
+CHINAAPI DEFAULT MODEL CREDIT
+============================================================ */
+
 function getChinaApiCreditCost(
   model
 ) {
@@ -226,9 +230,62 @@ function getChinaApiCreditCost(
 }
 
 
+/* ============================================================
+PROVIDER MODEL CREDIT OVERRIDE
+============================================================ */
+
+function getProviderModelCredit(
+  provider,
+  model
+) {
+  const modelId =
+    String(
+      model || ""
+    ).trim();
+
+  if (!modelId) {
+    return null;
+  }
+
+  const configured =
+    provider?.config?.modelCredits;
+
+  if (
+    !configured ||
+    typeof configured !==
+      "object" ||
+    Array.isArray(
+      configured
+    )
+  ) {
+    return null;
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      configured,
+      modelId
+    )
+  ) {
+    return null;
+  }
+
+  return normalizeModelCredit(
+    configured[
+      modelId
+    ]
+  );
+}
+
+
+/* ============================================================
+RESOLVE CREDIT COST
+============================================================ */
+
 function resolveCreditCost(
   adapterId,
   model,
+  provider,
   env
 ) {
   const normalizedAdapter =
@@ -240,6 +297,18 @@ function resolveCreditCost(
     normalizedAdapter ===
     "chinaapi"
   ) {
+    const providerCost =
+      getProviderModelCredit(
+        provider,
+        model
+      );
+
+    if (
+      providerCost !== null
+    ) {
+      return providerCost;
+    }
+
     const modelCost =
       getChinaApiCreditCost(
         model
@@ -255,6 +324,86 @@ function resolveCreditCost(
   return getDefaultCreditCost(
     env
   );
+}
+
+
+/* ============================================================
+RESOLVE DEFAULT MODEL
+============================================================ */
+
+function resolveDefaultModel(
+  adapterId,
+  provider
+) {
+  const normalizedAdapter =
+    normalizeAdapterId(
+      adapterId
+    );
+
+  if (
+    normalizedAdapter !==
+    "chinaapi"
+  ) {
+    return null;
+  }
+
+  const config =
+    provider?.config;
+
+  const configuredModel =
+    normalizeRequestedString(
+      config?.defaultModel
+    );
+
+  if (
+    configuredModel
+  ) {
+    return configuredModel;
+  }
+
+  const configuredModelId =
+    normalizeRequestedString(
+      config?.model
+    );
+
+  if (
+    configuredModelId
+  ) {
+    return configuredModelId;
+  }
+
+  const configuredModelName =
+    normalizeRequestedString(
+      config?.model_id
+    );
+
+  if (
+    configuredModelName
+  ) {
+    return configuredModelName;
+  }
+
+  const info =
+    getAdapterInfo(
+      adapterId
+    );
+
+  const models =
+    Array.isArray(
+      info?.models
+    )
+      ? info.models
+      : [];
+
+  if (
+    models.length
+  ) {
+    return normalizeRequestedString(
+      models[0]
+    );
+  }
+
+  return null;
 }
 
 
@@ -428,6 +577,13 @@ export async function handleGenerate(
       body?.model
     );
 
+  const effectiveModel =
+    requestedModel ||
+    resolveDefaultModel(
+      adapterId,
+      provider
+    );
+
 
   /* ==========================================================
   DURATION
@@ -507,34 +663,26 @@ export async function handleGenerate(
   /* ==========================================================
   CREDIT COST
   ==========================================================
-  
-  PENTING:
-  
-  Untuk ChinaAPI:
-  
-  credit ditentukan berdasarkan MODEL.
-  
-  Contoh:
-  
-  agnes-video-2.5-flash
-  -> credit dari model config
-  
-  doubao-seedance-2-0-mini-260615
-  -> credit dari model config
-  
+
+  Urutan credit:
+
+  1. provider.config.modelCredits
+  2. default credit model ChinaAPI
+  3. GENERATION_CREDIT_COST
+
   User tidak dapat mengirim:
-  
   {
     "credit": 1
   }
-  
+
   untuk memanipulasi biaya.
   ========================================================== */
 
   const cost =
     resolveCreditCost(
       adapterId,
-      requestedModel,
+      effectiveModel,
+      provider,
       env
     );
 
@@ -575,7 +723,7 @@ export async function handleGenerate(
         adapterId,
 
       model:
-        requestedModel,
+        effectiveModel,
 
       duration:
         requestedDuration,
@@ -699,6 +847,10 @@ export async function handleGenerate(
           adapter:
             adapterId,
 
+          model:
+            reservation.model ||
+            effectiveModel,
+
           status:
             reservation.status ||
             "processing"
@@ -730,7 +882,9 @@ export async function handleGenerate(
       prompt,
 
       model:
-        requestedModel,
+        effectiveModel,
+
+      requestedModel,
 
       duration:
         requestedDuration,
@@ -754,7 +908,7 @@ export async function handleGenerate(
       jobId,
       {
         model:
-          requestedModel,
+          effectiveModel,
 
         metadata:
           initialMetadata
@@ -782,9 +936,20 @@ export async function handleGenerate(
     CALL PROVIDER ADAPTER
     ======================================================== */
 
+    const requestBody = {
+      ...body
+    };
+
+    if (
+      effectiveModel
+    ) {
+      requestBody.model =
+        effectiveModel;
+    }
+
     const result =
       await adapter.generate(
-        body,
+        requestBody,
         provider,
         env
       );
@@ -811,24 +976,42 @@ export async function handleGenerate(
     ======================================================== */
 
     const finalModel =
-      requestedModel ||
+      effectiveModel ||
       result.model ||
       null;
 
 
     /* ========================================================
     FINAL CREDIT
-  
-    Untuk keamanan, credit yang disimpan
-    pada metadata adalah hasil server-side.
     ======================================================== */
 
     const finalCreditCost =
       resolveCreditCost(
         adapterId,
         finalModel,
+        provider,
         env
       );
+
+
+    /*
+     * Safety check:
+     *
+     * Credit yang di-reserve harus sama dengan
+     * credit final yang ditentukan server.
+     *
+     * Jika model default provider berbeda dengan
+     * model yang dipakai adapter dan biaya berubah,
+     * jangan biarkan metadata berbeda dari reservation.
+     */
+    if (
+      finalCreditCost !== cost
+    ) {
+      throw new HttpError(
+        "Konfigurasi credit model berubah atau tidak konsisten. Generation dibatalkan agar credit tidak salah.",
+        409
+      );
+    }
 
 
     /* ========================================================
