@@ -1,42 +1,80 @@
 /* =========================================================
    GEN-Z.AI
-   REFERENCE MEDIA + GENERATOR UI FIX
+   REFERENCE MEDIA UPLOAD
 
    File:
-   public/js/upload-fix.js
+   public/js/upload.js
 
    Fungsi:
-   - Menjaga preview reference image tetap terlihat
-   - Menambahkan tombol X untuk menghapus image
-   - Menjaga preview reference video tetap terlihat
-   - Menambahkan tombol X untuk menghapus video
-   - Tidak mengambil alih proses upload
-   - Tidak menangani event change input
-   - Tidak mengubah FileReader
-   - Tidak mengubah proses upload
-   - Provider placeholder bukan provider yang dapat dipilih
-   - Tombol Generate berbentuk oval, hijau, dan tidak full width
-   - Tidak menggunakan polling setInterval agar lebih ringan
+   - Upload reference image
+   - Preview reference image
+   - Mendukung beberapa image
+   - Menyimpan imageData untuk proses generate
+   - Upload reference video
+   - Preview reference video
+   - Menyimpan videoData
+   - Clear image
+   - Clear video
+   - Menjaga kompatibilitas GENZ.state
+   - Tidak mengubah provider/model/capability
 ========================================================= */
 
 (function () {
 
-  'use strict';
+  "use strict";
 
-  window.GENZ =
-    window.GENZ ||
-    {};
 
   const GENZ =
-    window.GENZ;
+    window.GENZ ||
+    (window.GENZ = {});
+
 
   GENZ.upload =
     GENZ.upload ||
     {};
 
+
   GENZ.state =
     GENZ.state ||
     {};
+
+
+  /* =======================================================
+     STATE
+  ======================================================= */
+
+  GENZ.upload.images =
+    Array.isArray(GENZ.upload.images)
+      ? GENZ.upload.images
+      : [];
+
+  GENZ.upload.imageFiles =
+    Array.isArray(GENZ.upload.imageFiles)
+      ? GENZ.upload.imageFiles
+      : [];
+
+  GENZ.upload.imageData =
+    GENZ.upload.imageData ||
+    null;
+
+  GENZ.upload.imageObjectUrls =
+    Array.isArray(GENZ.upload.imageObjectUrls)
+      ? GENZ.upload.imageObjectUrls
+      : [];
+
+  GENZ.upload.videoFiles =
+    Array.isArray(GENZ.upload.videoFiles)
+      ? GENZ.upload.videoFiles
+      : [];
+
+  GENZ.upload.videoData =
+    GENZ.upload.videoData ||
+    null;
+
+  GENZ.upload.videoObjectUrls =
+    Array.isArray(GENZ.upload.videoObjectUrls)
+      ? GENZ.upload.videoObjectUrls
+      : [];
 
 
   /* =======================================================
@@ -50,21 +88,1049 @@
   }
 
 
-  function hasImages() {
+  function text(value) {
+
+    return String(
+      value == null
+        ? ""
+        : value
+    ).trim();
+
+  }
+
+
+  function isImage(file) {
+
+    if (!file) {
+      return false;
+    }
+
+    if (
+      typeof file.type === "string" &&
+      file.type.startsWith("image/")
+    ) {
+
+      return true;
+
+    }
+
+    return /\.(png|jpe?g|webp|heic|heif)$/i
+      .test(
+        file.name || ""
+      );
+
+  }
+
+
+  function isVideo(file) {
+
+    if (!file) {
+      return false;
+    }
+
+    if (
+      typeof file.type === "string" &&
+      file.type.startsWith("video/")
+    ) {
+
+      return true;
+
+    }
+
+    return /\.(mp4|mov|webm)$/i
+      .test(
+        file.name || ""
+      );
+
+  }
+
+
+  function formatFileSize(bytes) {
+
+    const size =
+      Number(bytes) || 0;
+
+    if (size < 1024) {
+      return size + " B";
+    }
+
+    if (size < 1024 * 1024) {
+      return (
+        (size / 1024).toFixed(1) +
+        " KB"
+      );
+    }
+
+    if (size < 1024 * 1024 * 1024) {
+      return (
+        (size / (1024 * 1024)).toFixed(1) +
+        " MB"
+      );
+    }
 
     return (
-      Array.isArray(GENZ.upload.images) &&
-      GENZ.upload.images.length > 0
+      (size / (1024 * 1024 * 1024)).toFixed(1) +
+      " GB"
     );
 
   }
 
 
-  function hasVideos() {
+  function getImageLimit() {
 
-    return (
-      Array.isArray(GENZ.upload.videoFiles) &&
-      GENZ.upload.videoFiles.length > 0
+    const providers =
+      GENZ.providers;
+
+    if (
+      !providers ||
+      !providers.currentProvider
+    ) {
+
+      return 1;
+
+    }
+
+    const provider =
+      providers.currentProvider;
+
+    const modelId =
+      text(
+        get("model")?.value
+      );
+
+    let model = null;
+
+
+    if (
+      Array.isArray(
+        provider.models
+      )
+    ) {
+
+      model =
+        provider.models.find(
+          function (item) {
+
+            return (
+              text(item?.id) ===
+              modelId
+            );
+
+          }
+        );
+
+    }
+
+
+    if (
+      !model &&
+      providers.currentModel
+    ) {
+
+      model =
+        providers.currentModel;
+
+    }
+
+
+    const candidates = [
+
+      model?.reference?.maxImages,
+
+      model?.capabilities?.reference?.maxImages,
+
+      model?.features?.reference?.maxImages,
+
+      model?.maxImages,
+
+      provider?.reference?.maxImages,
+
+      provider?.capabilities?.reference?.maxImages
+
+    ];
+
+
+    for (
+      const value of candidates
+    ) {
+
+      const number =
+        Number(value);
+
+      if (
+        Number.isFinite(number) &&
+        number > 0
+      ) {
+
+        return Math.max(
+          1,
+          Math.floor(number)
+        );
+
+      }
+
+    }
+
+
+    return 1;
+
+  }
+
+
+  /* =======================================================
+     SYNC STATE
+  ======================================================= */
+
+  function syncImageState() {
+
+    GENZ.state.images =
+      GENZ.upload.images;
+
+    GENZ.state.imageFiles =
+      GENZ.upload.imageFiles;
+
+    GENZ.state.imageData =
+      GENZ.upload.imageData;
+
+  }
+
+
+  function syncVideoState() {
+
+    GENZ.state.videoFiles =
+      GENZ.upload.videoFiles;
+
+    GENZ.state.videoData =
+      GENZ.upload.videoData;
+
+  }
+
+
+  /* =======================================================
+     REVOKE IMAGE OBJECT URL
+  ======================================================= */
+
+  function revokeImageUrls() {
+
+    if (
+      !Array.isArray(
+        GENZ.upload.imageObjectUrls
+      )
+    ) {
+
+      GENZ.upload.imageObjectUrls = [];
+
+      return;
+
+    }
+
+
+    GENZ.upload.imageObjectUrls
+      .forEach(
+        function (url) {
+
+          if (!url) {
+            return;
+          }
+
+          try {
+
+            URL.revokeObjectURL(
+              url
+            );
+
+          } catch (_) {}
+
+        }
+      );
+
+
+    GENZ.upload.imageObjectUrls = [];
+
+  }
+
+
+  /* =======================================================
+     REVOKE VIDEO OBJECT URL
+  ======================================================= */
+
+  function revokeVideoUrls() {
+
+    if (
+      !Array.isArray(
+        GENZ.upload.videoObjectUrls
+      )
+    ) {
+
+      GENZ.upload.videoObjectUrls = [];
+
+      return;
+
+    }
+
+
+    GENZ.upload.videoObjectUrls
+      .forEach(
+        function (url) {
+
+          if (!url) {
+            return;
+          }
+
+          try {
+
+            URL.revokeObjectURL(
+              url
+            );
+
+          } catch (_) {}
+
+        }
+      );
+
+
+    GENZ.upload.videoObjectUrls = [];
+
+  }
+
+
+  /* =======================================================
+     IMAGE PREVIEW
+  ======================================================= */
+
+  function renderImagePreview() {
+
+    const preview =
+      get("imagePreview");
+
+    const group =
+      get("imageReferenceGroup");
+
+    const status =
+      get("imageFileStatus");
+
+    if (!preview) {
+      return;
+    }
+
+
+    revokeImageUrls();
+
+
+    preview.innerHTML =
+      "";
+
+
+    const files =
+      Array.isArray(
+        GENZ.upload.imageFiles
+      )
+        ? GENZ.upload.imageFiles
+        : [];
+
+
+    if (!files.length) {
+
+      preview.classList.add(
+        "hidden"
+      );
+
+      preview.style.display =
+        "none";
+
+
+      if (group) {
+
+        group.classList.remove(
+          "has-reference-image"
+        );
+
+      }
+
+
+      if (status) {
+
+        status.textContent =
+          "Tidak ada file dipilih";
+
+      }
+
+
+      return;
+
+    }
+
+
+    preview.classList.remove(
+      "hidden"
+    );
+
+    preview.style.display =
+      "";
+
+
+    if (group) {
+
+      group.classList.add(
+        "has-reference-image"
+      );
+
+    }
+
+
+    const fragment =
+      document.createDocumentFragment();
+
+
+    files.forEach(
+      function (file, index) {
+
+        if (!isImage(file)) {
+          return;
+        }
+
+
+        let objectUrl = null;
+
+
+        try {
+
+          objectUrl =
+            URL.createObjectURL(
+              file
+            );
+
+          GENZ.upload.imageObjectUrls
+            .push(
+              objectUrl
+            );
+
+        } catch (_) {
+
+          objectUrl =
+            null;
+
+        }
+
+
+        const item =
+          document.createElement(
+            "div"
+          );
+
+        item.className =
+          "reference-image-item";
+
+
+        item.style.position =
+          "relative";
+
+        item.style.width =
+          "100%";
+
+        item.style.height =
+          "100%";
+
+        item.style.overflow =
+          "hidden";
+
+        item.style.borderRadius =
+          "12px";
+
+
+        const image =
+          document.createElement(
+            "img"
+          );
+
+
+        image.alt =
+          file.name ||
+          "Reference image";
+
+
+        image.title =
+          file.name ||
+          "Reference image";
+
+
+        image.loading =
+          "eager";
+
+
+        image.decoding =
+          "async";
+
+
+        image.style.width =
+          "100%";
+
+        image.style.height =
+          "100%";
+
+        image.style.display =
+          "block";
+
+        image.style.objectFit =
+          "cover";
+
+
+        if (objectUrl) {
+
+          image.src =
+            objectUrl;
+
+        }
+
+
+        item.appendChild(
+          image
+        );
+
+
+        const remove =
+          document.createElement(
+            "button"
+          );
+
+
+        remove.type =
+          "button";
+
+
+        remove.className =
+          "reference-image-remove";
+
+
+        remove.textContent =
+          "×";
+
+
+        remove.setAttribute(
+          "aria-label",
+          "Hapus " +
+            (
+              file.name ||
+              "reference image"
+            )
+        );
+
+
+        remove.title =
+          "Hapus reference image";
+
+
+        remove.style.position =
+          "absolute";
+
+        remove.style.top =
+          "6px";
+
+        remove.style.right =
+          "6px";
+
+        remove.style.zIndex =
+          "20";
+
+        remove.style.width =
+          "30px";
+
+        remove.style.height =
+          "30px";
+
+        remove.style.minWidth =
+          "30px";
+
+        remove.style.padding =
+          "0";
+
+        remove.style.border =
+          "0";
+
+        remove.style.borderRadius =
+          "50%";
+
+        remove.style.background =
+          "rgba(0,0,0,.78)";
+
+        remove.style.color =
+          "#fff";
+
+        remove.style.fontSize =
+          "20px";
+
+        remove.style.fontWeight =
+          "700";
+
+        remove.style.lineHeight =
+          "30px";
+
+        remove.style.textAlign =
+          "center";
+
+        remove.style.cursor =
+          "pointer";
+
+
+        remove.addEventListener(
+          "click",
+          function (event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+            GENZ.upload.removeImage(
+              index
+            );
+
+          }
+        );
+
+
+        item.appendChild(
+          remove
+        );
+
+
+        fragment.appendChild(
+          item
+        );
+
+      }
+    );
+
+
+    preview.appendChild(
+      fragment
+    );
+
+
+    if (status) {
+
+      if (files.length === 1) {
+
+        status.textContent =
+          files[0].name +
+          " (" +
+          formatFileSize(
+            files[0].size
+          ) +
+          ")";
+
+      } else {
+
+        status.textContent =
+          files.length +
+          " gambar dipilih";
+
+      }
+
+    }
+
+  }
+
+
+  /* =======================================================
+     IMAGE DATA
+  ======================================================= */
+
+  function readImageFiles(
+    files
+  ) {
+
+    return new Promise(
+      function (resolve, reject) {
+
+        const list =
+          Array.from(
+            files || []
+          ).filter(
+            isImage
+          );
+
+
+        if (!list.length) {
+
+          resolve([]);
+
+          return;
+
+        }
+
+
+        const results =
+          new Array(
+            list.length
+          );
+
+
+        let completed =
+          0;
+
+
+        list.forEach(
+          function (file, index) {
+
+            const reader =
+              new FileReader();
+
+
+            reader.onload =
+              function () {
+
+                results[index] =
+                  reader.result;
+
+                completed++;
+
+
+                if (
+                  completed ===
+                  list.length
+                ) {
+
+                  resolve(
+                    results
+                  );
+
+                }
+
+              };
+
+
+            reader.onerror =
+              function () {
+
+                reject(
+                  new Error(
+                    "Gagal membaca file gambar: " +
+                    (
+                      file.name ||
+                      "file"
+                    )
+                  )
+                );
+
+              };
+
+
+            reader.onabort =
+              function () {
+
+                reject(
+                  new Error(
+                    "Pembacaan file gambar dibatalkan."
+                  )
+                );
+
+              };
+
+
+            reader.readAsDataURL(
+              file
+            );
+
+          }
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     SET IMAGE
+  ======================================================= */
+
+  GENZ.upload.setImages =
+    async function (
+      files
+    ) {
+
+      const inputFiles =
+        Array.from(
+          files || []
+        ).filter(
+          isImage
+        );
+
+
+      if (!inputFiles.length) {
+
+        return [];
+
+      }
+
+
+      const limit =
+        getImageLimit();
+
+
+      const existing =
+        Array.isArray(
+          GENZ.upload.imageFiles
+        )
+          ? GENZ.upload.imageFiles
+          : [];
+
+
+      const merged =
+        existing.concat(
+          inputFiles
+        );
+
+
+      const unique =
+        [];
+
+
+      const seen =
+        new Set();
+
+
+      merged.forEach(
+        function (file) {
+
+          const key =
+            [
+              file.name,
+              file.size,
+              file.lastModified,
+              file.type
+            ].join(
+              "::"
+            );
+
+
+          if (
+            seen.has(key)
+          ) {
+
+            return;
+
+          }
+
+
+          seen.add(key);
+
+          unique.push(
+            file
+          );
+
+        }
+      );
+
+
+      const selected =
+        unique.slice(
+          0,
+          limit
+        );
+
+
+      GENZ.upload.imageFiles =
+        selected;
+
+
+      GENZ.upload.images =
+        selected;
+
+
+      try {
+
+        const data =
+          await readImageFiles(
+            selected
+          );
+
+
+        GENZ.upload.imageData =
+          data.length === 1
+            ? data[0]
+            : data;
+
+
+        syncImageState();
+
+        renderImagePreview();
+
+        updateImageHint();
+
+        return selected;
+
+      } catch (error) {
+
+        GENZ.upload.imageFiles =
+          [];
+
+        GENZ.upload.images =
+          [];
+
+        GENZ.upload.imageData =
+          null;
+
+
+        syncImageState();
+
+        renderImagePreview();
+
+
+        throw error;
+
+      }
+
+    };
+
+
+  /* =======================================================
+     IMAGE CHANGE
+  ======================================================= */
+
+  function handleImageChange(
+    event
+  ) {
+
+    const input =
+      event?.target ||
+      get("image");
+
+
+    if (!input) {
+      return;
+    }
+
+
+    const files =
+      Array.from(
+        input.files || []
+      );
+
+
+    if (!files.length) {
+      return;
+    }
+
+
+    const invalid =
+      files.find(
+        function (file) {
+
+          return !isImage(
+            file
+          );
+
+        }
+      );
+
+
+    if (invalid) {
+
+      const status =
+        get(
+          "imageFileStatus"
+        );
+
+      if (status) {
+
+        status.textContent =
+          "Format gambar tidak didukung.";
+
+      }
+
+      input.value =
+        "";
+
+      return;
+
+    }
+
+
+    const limit =
+      getImageLimit();
+
+
+    const existing =
+      Array.isArray(
+        GENZ.upload.imageFiles
+      )
+        ? GENZ.upload.imageFiles
+        : [];
+
+
+    const remaining =
+      Math.max(
+        0,
+        limit -
+          existing.length
+      );
+
+
+    if (
+      remaining === 0
+    ) {
+
+      updateImageHint();
+
+      input.value =
+        "";
+
+      return;
+
+    }
+
+
+    GENZ.upload
+      .setImages(
+        files.slice(
+          0,
+          remaining
+        )
+      )
+      .catch(
+        function (error) {
+
+          console.error(
+            "GEN-Z.AI image upload error:",
+            error
+          );
+
+          const status =
+            get(
+              "imageFileStatus"
+            );
+
+          if (status) {
+
+            status.textContent =
+              error?.message ||
+              "Gagal membaca gambar.";
+
+          }
+
+        }
+      );
+
+
+    /*
+     * Reset value setelah pemrosesan.
+     * Ini memungkinkan user memilih file
+     * yang sama lagi.
+     */
+
+    window.setTimeout(
+      function () {
+
+        try {
+
+          input.value =
+            "";
+
+        } catch (_) {}
+
+      },
+      0
     );
 
   }
@@ -74,367 +1140,208 @@
      REMOVE IMAGE
   ======================================================= */
 
-  function removeImage() {
-
-    if (
-      typeof GENZ.upload.clearImage ===
-      'function'
+  GENZ.upload.removeImage =
+    function (
+      index
     ) {
 
-      GENZ.upload.clearImage();
-
-      return;
-
-    }
-
-    GENZ.upload.images = [];
-    GENZ.upload.imageFiles = [];
-    GENZ.upload.imageData = null;
-
-    GENZ.state.images = [];
-    GENZ.state.imageData = null;
-
-    const input =
-      get('image');
-
-    if (input) {
-
-      input.value = '';
-
-    }
-
-    const preview =
-      get('imagePreview');
-
-    if (preview) {
-
-      preview.innerHTML = '';
-
-      preview.classList.add(
-        'hidden'
-      );
-
-      preview.style.display =
-        'none';
-
-    }
-
-  }
-
-
-  /* =======================================================
-     REMOVE VIDEO
-  ======================================================= */
-
-  function removeVideo() {
-
-    if (
-      typeof GENZ.upload.clearVideo ===
-      'function'
-    ) {
-
-      GENZ.upload.clearVideo();
-
-      return;
-
-    }
-
-    GENZ.upload.videoFiles = [];
-    GENZ.upload.videoData = null;
-    GENZ.upload.videoObjectUrls = [];
-
-    GENZ.state.videoFiles = [];
-    GENZ.state.videoData = null;
-
-    const input =
-      get('referenceVideo');
-
-    if (input) {
-
-      input.value = '';
-
-    }
-
-    const video =
-      get('referenceVideoPreview');
-
-    if (video) {
-
-      try {
-
-        video.pause();
-
-      } catch (_) {}
-
-      video.removeAttribute(
-        'src'
-      );
-
-      try {
-
-        video.load();
-
-      } catch (_) {}
-
-    }
-
-    const preview =
-      get('videoPreview');
-
-    if (preview) {
-
-      preview.classList.add(
-        'hidden'
-      );
-
-      preview.style.display =
-        'none';
-
-    }
-
-  }
-
-
-  /* =======================================================
-     CREATE REMOVE BUTTON
-  ======================================================= */
-
-  function createRemoveButton(
-    className,
-    label,
-    handler
-  ) {
-
-    const button =
-      document.createElement(
-        'button'
-      );
-
-    button.type =
-      'button';
-
-    button.className =
-      className;
-
-    button.textContent =
-      '×';
-
-    button.setAttribute(
-      'aria-label',
-      label
-    );
-
-    button.setAttribute(
-      'title',
-      label
-    );
-
-    button.style.position =
-      'absolute';
-
-    button.style.top =
-      '6px';
-
-    button.style.right =
-      '6px';
-
-    button.style.zIndex =
-      '1000';
-
-    button.style.width =
-      '32px';
-
-    button.style.height =
-      '32px';
-
-    button.style.minWidth =
-      '32px';
-
-    button.style.minHeight =
-      '32px';
-
-    button.style.padding =
-      '0';
-
-    button.style.margin =
-      '0';
-
-    button.style.border =
-      '0';
-
-    button.style.borderRadius =
-      '50%';
-
-    button.style.background =
-      'rgba(0,0,0,0.8)';
-
-    button.style.color =
-      '#fff';
-
-    button.style.fontSize =
-      '22px';
-
-    button.style.fontWeight =
-      '700';
-
-    button.style.lineHeight =
-      '32px';
-
-    button.style.textAlign =
-      'center';
-
-    button.style.cursor =
-      'pointer';
-
-    button.style.display =
-      'flex';
-
-    button.style.alignItems =
-      'center';
-
-    button.style.justifyContent =
-      'center';
-
-    button.addEventListener(
-      'click',
-      function (event) {
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        handler();
+      const files =
+        Array.isArray(
+          GENZ.upload.imageFiles
+        )
+          ? GENZ.upload.imageFiles
+          : [];
+
+
+      if (
+        index == null ||
+        index < 0 ||
+        index >= files.length
+      ) {
+
+        return;
 
       }
-    );
-
-    return button;
-
-  }
 
 
-  /* =======================================================
-     IMAGE GROUP
-  ======================================================= */
-
-  function keepImageGroupVisible() {
-
-    const group =
-      get('imageReferenceGroup');
-
-    if (
-      !group ||
-      !hasImages()
-    ) {
-
-      return;
-
-    }
-
-    group.classList.remove(
-      'hidden'
-    );
-
-    group.style.removeProperty(
-      'display'
-    );
-
-    group.removeAttribute(
-      'aria-hidden'
-    );
-
-  }
-
-
-  /* =======================================================
-     IMAGE PREVIEW
-  ======================================================= */
-
-  function ensureImageButton() {
-
-    const preview =
-      get('imagePreview');
-
-    if (
-      !preview ||
-      !hasImages()
-    ) {
-
-      return;
-
-    }
-
-    preview.classList.remove(
-      'hidden'
-    );
-
-    preview.style.removeProperty(
-      'display'
-    );
-
-    if (
-      getComputedStyle(
-        preview
-      ).position === 'static'
-    ) {
-
-      preview.style.position =
-        'relative';
-
-    }
-
-    if (
-      preview.querySelector(
-        '.reference-image-remove-all'
-      )
-    ) {
-
-      return;
-
-    }
-
-    const button =
-      createRemoveButton(
-        'reference-image-remove-all',
-        'Hapus reference image',
-        removeImage
+      files.splice(
+        index,
+        1
       );
 
-    preview.appendChild(
-      button
-    );
 
-  }
+      GENZ.upload.imageFiles =
+        files;
+
+      GENZ.upload.images =
+        files;
+
+
+      if (!files.length) {
+
+        GENZ.upload.imageData =
+          null;
+
+        syncImageState();
+
+        renderImagePreview();
+
+        updateImageHint();
+
+        return;
+
+      }
+
+
+      readImageFiles(
+        files
+      )
+        .then(
+          function (data) {
+
+            GENZ.upload.imageData =
+              data.length === 1
+                ? data[0]
+                : data;
+
+            syncImageState();
+
+            renderImagePreview();
+
+            updateImageHint();
+
+          }
+        )
+        .catch(
+          function (error) {
+
+            console.error(
+              "GEN-Z.AI image rebuild error:",
+              error
+            );
+
+          }
+        );
+
+    };
 
 
   /* =======================================================
-     VIDEO GROUP
+     CLEAR IMAGE
   ======================================================= */
 
-  function keepVideoGroupVisible() {
+  GENZ.upload.clearImage =
+    function () {
 
-    const group =
-      get('videoReferenceGroup');
+      revokeImageUrls();
 
-    if (
-      !group ||
-      !hasVideos()
-    ) {
+
+      GENZ.upload.images =
+        [];
+
+      GENZ.upload.imageFiles =
+        [];
+
+      GENZ.upload.imageData =
+        null;
+
+
+      syncImageState();
+
+
+      const input =
+        get("image");
+
+
+      if (input) {
+
+        try {
+
+          input.value =
+            "";
+
+        } catch (_) {}
+
+      }
+
+
+      renderImagePreview();
+
+      updateImageHint();
+
+    };
+
+
+  /* =======================================================
+     IMAGE HINT
+  ======================================================= */
+
+  function updateImageHint() {
+
+    const hint =
+      get(
+        "imageReferenceHint"
+      );
+
+
+    if (!hint) {
+      return;
+    }
+
+
+    const limit =
+      getImageLimit();
+
+
+    const count =
+      Array.isArray(
+        GENZ.upload.imageFiles
+      )
+        ? GENZ.upload.imageFiles.length
+        : 0;
+
+
+    if (!count) {
+
+      hint.textContent =
+        "Pilih gambar reference.";
 
       return;
 
     }
 
-    group.classList.remove(
-      'hidden'
-    );
 
-    group.style.removeProperty(
-      'display'
-    );
+    if (
+      limit <= 1
+    ) {
 
-    group.removeAttribute(
-      'aria-hidden'
-    );
+      hint.textContent =
+        "1 gambar reference dipilih.";
+
+      return;
+
+    }
+
+
+    if (
+      count >= limit
+    ) {
+
+      hint.textContent =
+        "Maksimal " +
+        limit +
+        " gambar reference.";
+
+      return;
+
+    }
+
+
+    hint.textContent =
+      count +
+      "/" +
+      limit +
+      " gambar reference dipilih.";
 
   }
 
@@ -443,326 +1350,216 @@
      VIDEO PREVIEW
   ======================================================= */
 
-  function ensureVideoButton() {
+  function renderVideoPreview() {
 
     const preview =
-      get('videoPreview');
+      get(
+        "videoPreview"
+      );
 
-    if (
-      !preview ||
-      !hasVideos()
-    ) {
+    const video =
+      get(
+        "referenceVideoPreview"
+      );
+
+    const status =
+      get(
+        "videoFileStatus"
+      );
+
+
+    if (!preview) {
+      return;
+    }
+
+
+    revokeVideoUrls();
+
+
+    const file =
+      GENZ.upload.videoFiles?.[0] ||
+      null;
+
+
+    if (!file) {
+
+      preview.classList.add(
+        "hidden"
+      );
+
+      preview.style.display =
+        "none";
+
+
+      if (video) {
+
+        try {
+
+          video.pause();
+
+        } catch (_) {}
+
+        video.removeAttribute(
+          "src"
+        );
+
+        try {
+
+          video.load();
+
+        } catch (_) {}
+
+      }
+
+
+      if (status) {
+
+        status.textContent =
+          "Tidak ada video dipilih";
+
+      }
+
 
       return;
 
     }
+
 
     preview.classList.remove(
-      'hidden'
+      "hidden"
     );
 
-    preview.style.removeProperty(
-      'display'
-    );
+    preview.style.display =
+      "";
 
-    if (
-      getComputedStyle(
-        preview
-      ).position === 'static'
-    ) {
 
-      preview.style.position =
-        'relative';
+    if (video) {
+
+      let objectUrl =
+        null;
+
+
+      try {
+
+        objectUrl =
+          URL.createObjectURL(
+            file
+          );
+
+        GENZ.upload.videoObjectUrls
+          .push(
+            objectUrl
+          );
+
+      } catch (_) {}
+
+
+      if (objectUrl) {
+
+        video.src =
+          objectUrl;
+
+        video.controls =
+          true;
+
+        video.muted =
+          true;
+
+        video.playsInline =
+          true;
+
+        try {
+
+          video.load();
+
+        } catch (_) {}
+
+      }
 
     }
 
-    if (
-      preview.querySelector(
-        '.reference-video-remove-all'
-      )
-    ) {
 
-      return;
+    if (status) {
+
+      status.textContent =
+        file.name +
+        " (" +
+        formatFileSize(
+          file.size
+        ) +
+        ")";
 
     }
-
-    const button =
-      createRemoveButton(
-        'reference-video-remove-all',
-        'Hapus reference video',
-        removeVideo
-      );
-
-    preview.appendChild(
-      button
-    );
 
   }
 
 
   /* =======================================================
-     PROVIDER PLACEHOLDER FIX
+     VIDEO DATA
   ======================================================= */
 
-  function fixProviderPlaceholder() {
+  function readVideoFile(
+    file
+  ) {
 
-    const provider =
-      get('provider');
+    return new Promise(
+      function (
+        resolve,
+        reject
+      ) {
 
-    if (!provider) {
+        if (!file) {
 
-      return;
-
-    }
-
-    const options =
-      Array.from(
-        provider.options || []
-      );
-
-    if (!options.length) {
-
-      return;
-
-    }
-
-    const placeholder =
-      options.find(
-        function (option) {
-
-          return option.value === '';
-
-        }
-      );
-
-    if (!placeholder) {
-
-      return;
-
-    }
-
-    placeholder.disabled =
-      true;
-
-    placeholder.setAttribute(
-      'aria-hidden',
-      'true'
-    );
-
-  }
-
-
-  /* =======================================================
-     GENERATE BUTTON
-  ======================================================= */
-
-  function fixGenerateButton() {
-
-    const buttons =
-      document.querySelectorAll(
-        '#generateBtn, .generate-btn, [data-generate-button]'
-      );
-
-    if (!buttons.length) {
-
-      return;
-
-    }
-
-    buttons.forEach(
-      function (button) {
-
-        if (!button) {
+          resolve(
+            null
+          );
 
           return;
 
         }
 
-        /*
-         * Ukuran tombol sengaja dibuat compact.
-         * Tidak lagi full width.
-         */
 
-        button.style.setProperty(
-          'width',
-          '220px',
-          'important'
+        const reader =
+          new FileReader();
+
+
+        reader.onload =
+          function () {
+
+            resolve(
+              reader.result
+            );
+
+          };
+
+
+        reader.onerror =
+          function () {
+
+            reject(
+              new Error(
+                "Gagal membaca file video."
+              )
+            );
+
+          };
+
+
+        reader.onabort =
+          function () {
+
+            reject(
+              new Error(
+                "Pembacaan video dibatalkan."
+              )
+            );
+
+          };
+
+
+        reader.readAsDataURL(
+          file
         );
-
-        button.style.setProperty(
-          'min-width',
-          '220px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'max-width',
-          '220px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'height',
-          '48px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'min-height',
-          '48px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'max-height',
-          '48px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'padding',
-          '0 24px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'margin',
-          '18px auto 0',
-          'important'
-        );
-
-        button.style.setProperty(
-          'display',
-          'block',
-          'important'
-        );
-
-        button.style.setProperty(
-          'flex',
-          '0 0 auto',
-          'important'
-        );
-
-        button.style.setProperty(
-          'align-self',
-          'center',
-          'important'
-        );
-
-        button.style.setProperty(
-          'box-sizing',
-          'border-box',
-          'important'
-        );
-
-        button.style.setProperty(
-          'background',
-          '#198754',
-          'important'
-        );
-
-        button.style.setProperty(
-          'background-color',
-          '#198754',
-          'important'
-        );
-
-        button.style.setProperty(
-          'color',
-          '#fff',
-          'important'
-        );
-
-        button.style.setProperty(
-          'border',
-          '0',
-          'important'
-        );
-
-        button.style.setProperty(
-          'border-radius',
-          '999px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'box-shadow',
-          '0 8px 20px rgba(25,135,84,.22)',
-          'important'
-        );
-
-        button.style.setProperty(
-          'font-size',
-          '15px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'font-weight',
-          '700',
-          'important'
-        );
-
-        button.style.setProperty(
-          'line-height',
-          '48px',
-          'important'
-        );
-
-        button.style.setProperty(
-          'text-align',
-          'center',
-          'important'
-        );
-
-        button.style.setProperty(
-          'cursor',
-          button.disabled
-            ? 'not-allowed'
-            : 'pointer',
-          'important'
-        );
-
-        /*
-         * Tetap hijau ketika disabled,
-         * hanya dibuat sedikit transparan.
-         */
-
-        button.style.setProperty(
-          'opacity',
-          button.disabled
-            ? '0.55'
-            : '1',
-          'important'
-        );
-
-        /*
-         * Responsive untuk layar kecil.
-         */
-
-        if (
-          window.innerWidth <= 480
-        ) {
-
-          button.style.setProperty(
-            'width',
-            'min(220px, calc(100% - 32px))',
-            'important'
-          );
-
-          button.style.setProperty(
-            'min-width',
-            'min(220px, calc(100% - 32px))',
-            'important'
-          );
-
-          button.style.setProperty(
-            'max-width',
-            'calc(100% - 32px)',
-            'important'
-          );
-
-        }
 
       }
     );
@@ -771,56 +1568,229 @@
 
 
   /* =======================================================
-     REFRESH
+     SET VIDEO
   ======================================================= */
 
-  function refresh() {
+  GENZ.upload.setVideo =
+    async function (
+      file
+    ) {
 
-    if (hasImages()) {
+      if (
+        !file ||
+        !isVideo(file)
+      ) {
 
-      keepImageGroupVisible();
-      ensureImageButton();
+        throw new Error(
+          "File video tidak didukung."
+        );
 
-    }
+      }
 
-    if (hasVideos()) {
 
-      keepVideoGroupVisible();
-      ensureVideoButton();
+      GENZ.upload.videoFiles =
+        [file];
 
-    }
 
-    fixProviderPlaceholder();
-    fixGenerateButton();
+      GENZ.upload.videoData =
+        await readVideoFile(
+          file
+        );
 
-  }
+
+      syncVideoState();
+
+      renderVideoPreview();
+
+
+      return file;
+
+    };
 
 
   /* =======================================================
-     SCHEDULE REFRESH
+     VIDEO CHANGE
   ======================================================= */
 
-  let refreshScheduled =
-    false;
+  function handleVideoChange(
+    event
+  ) {
 
-  function scheduleRefresh() {
+    const input =
+      event?.target ||
+      get(
+        "referenceVideo"
+      );
 
-    if (refreshScheduled) {
+
+    if (!input) {
+      return;
+    }
+
+
+    const file =
+      input.files?.[0] ||
+      null;
+
+
+    if (!file) {
+      return;
+    }
+
+
+    if (!isVideo(file)) {
+
+      const status =
+        get(
+          "videoFileStatus"
+        );
+
+      if (status) {
+
+        status.textContent =
+          "Format video tidak didukung.";
+
+      }
+
+      input.value =
+        "";
 
       return;
 
     }
 
-    refreshScheduled =
-      true;
 
-    window.requestAnimationFrame(
+    GENZ.upload
+      .setVideo(
+        file
+      )
+      .catch(
+        function (error) {
+
+          console.error(
+            "GEN-Z.AI video upload error:",
+            error
+          );
+
+          const status =
+            get(
+              "videoFileStatus"
+            );
+
+          if (status) {
+
+            status.textContent =
+              error?.message ||
+              "Gagal membaca video.";
+
+          }
+
+        }
+      );
+
+
+    window.setTimeout(
       function () {
 
-        refreshScheduled =
-          false;
+        try {
 
-        refresh();
+          input.value =
+            "";
+
+        } catch (_) {}
+
+      },
+      0
+    );
+
+  }
+
+
+  /* =======================================================
+     CLEAR VIDEO
+  ======================================================= */
+
+  GENZ.upload.clearVideo =
+    function () {
+
+      revokeVideoUrls();
+
+
+      GENZ.upload.videoFiles =
+        [];
+
+      GENZ.upload.videoData =
+        null;
+
+
+      syncVideoState();
+
+
+      const input =
+        get(
+          "referenceVideo"
+        );
+
+
+      if (input) {
+
+        try {
+
+          input.value =
+            "";
+
+        } catch (_) {}
+
+      }
+
+
+      renderVideoPreview();
+
+    };
+
+
+  /* =======================================================
+     BIND IMAGE INPUT
+  ======================================================= */
+
+  function bindImageInput() {
+
+    const input =
+      get("image");
+
+
+    if (!input) {
+      return;
+    }
+
+
+    if (
+      input.dataset
+        .genzUploadBound ===
+      "true"
+    ) {
+
+      return;
+
+    }
+
+
+    input.addEventListener(
+      "change",
+      handleImageChange
+    );
+
+
+    input.dataset
+      .genzUploadBound =
+      "true";
+
+
+    input.addEventListener(
+      "cancel",
+      function () {
+
+        updateImageHint();
 
       }
     );
@@ -829,138 +1799,240 @@
 
 
   /* =======================================================
-     OBSERVE IMAGE PREVIEW
+     BIND VIDEO INPUT
   ======================================================= */
 
-  function observeImagePreview() {
+  function bindVideoInput() {
 
-    const preview =
-      get('imagePreview');
+    const input =
+      get(
+        "referenceVideo"
+      );
 
-    if (!preview) {
+
+    if (!input) {
+      return;
+    }
+
+
+    if (
+      input.dataset
+        .genzUploadBound ===
+      "true"
+    ) {
 
       return;
 
     }
 
-    const observer =
-      new MutationObserver(
-        function () {
 
-          if (hasImages()) {
+    input.addEventListener(
+      "change",
+      handleVideoChange
+    );
 
-            ensureImageButton();
 
-          }
+    input.dataset
+      .genzUploadBound =
+      "true";
+
+
+    input.addEventListener(
+      "cancel",
+      function () {
+
+        return;
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     BIND ADD TILE
+  ======================================================= */
+
+  function bindAddTiles() {
+
+    const imageTile =
+      get(
+        "imageAddTile"
+      );
+
+    const imageInput =
+      get(
+        "image"
+      );
+
+
+    if (
+      imageTile &&
+      imageInput &&
+      imageTile.dataset
+        .genzUploadTileBound !==
+        "true"
+    ) {
+
+      imageTile.addEventListener(
+        "click",
+        function (event) {
+
+          event.preventDefault();
+
+          event.stopPropagation();
+
+          imageInput.click();
 
         }
       );
 
-    observer.observe(
-      preview,
+
+      imageTile.dataset
+        .genzUploadTileBound =
+        "true";
+
+    }
+
+
+    const videoTile =
+      get(
+        "videoAddTile"
+      );
+
+    const videoInput =
+      get(
+        "referenceVideo"
+      );
+
+
+    if (
+      videoTile &&
+      videoInput &&
+      videoTile.dataset
+        .genzUploadTileBound !==
+        "true"
+    ) {
+
+      videoTile.addEventListener(
+        "click",
+        function (event) {
+
+          event.preventDefault();
+
+          event.stopPropagation();
+
+          videoInput.click();
+
+        }
+      );
+
+
+      videoTile.dataset
+        .genzUploadTileBound =
+        "true";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     INIT
+  ======================================================= */
+
+  function init() {
+
+    bindImageInput();
+
+    bindVideoInput();
+
+    bindAddTiles();
+
+    updateImageHint();
+
+    renderImagePreview();
+
+    renderVideoPreview();
+
+    syncImageState();
+
+    syncVideoState();
+
+  }
+
+
+  /* =======================================================
+     PUBLIC INIT
+  ======================================================= */
+
+  GENZ.upload.init =
+    init;
+
+
+  /* =======================================================
+     DOM READY
+  ======================================================= */
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      init,
       {
-        childList: true,
-        subtree: true
+        once: true
       }
     );
+
+  } else {
+
+    init();
 
   }
 
 
   /* =======================================================
-     OBSERVE VIDEO PREVIEW
+     DYNAMIC COMPONENT SUPPORT
   ======================================================= */
 
-  function observeVideoPreview() {
+  let observerStarted =
+    false;
 
-    const preview =
-      get('videoPreview');
 
-    if (!preview) {
+  function startObserver() {
+
+    if (
+      observerStarted ||
+      !document.body ||
+      typeof MutationObserver ===
+        "undefined"
+    ) {
 
       return;
 
     }
 
-    const observer =
-      new MutationObserver(
-        function () {
 
-          if (hasVideos()) {
+    observerStarted =
+      true;
 
-            ensureVideoButton();
-
-          }
-
-        }
-      );
-
-    observer.observe(
-      preview,
-      {
-        childList: true,
-        subtree: true
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     OBSERVE PROVIDER
-  ======================================================= */
-
-  function observeProviderSelect() {
-
-    const provider =
-      get('provider');
-
-    if (!provider) {
-
-      return;
-
-    }
 
     const observer =
       new MutationObserver(
         function () {
 
-          scheduleRefresh();
+          bindImageInput();
+
+          bindVideoInput();
+
+          bindAddTiles();
 
         }
       );
 
-    observer.observe(
-      provider,
-      {
-        childList: true,
-        subtree: true
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     OBSERVE GENERATOR AREA
-  ======================================================= */
-
-  function observeGeneratorArea() {
-
-    if (!document.body) {
-
-      return;
-
-    }
-
-    const observer =
-      new MutationObserver(
-        function () {
-
-          scheduleRefresh();
-
-        }
-      );
 
     observer.observe(
       document.body,
@@ -973,109 +2045,14 @@
   }
 
 
-  /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function bindEvents() {
-
-    const events = [
-
-      'genz-image-change',
-      'genz-image-removed',
-      'genz-upload-complete',
-      'genz-video-reference-change',
-      'genz-video-reference-removed',
-      'genz-provider-change',
-      'genz-providers-loaded'
-
-    ];
-
-    events.forEach(
-      function (eventName) {
-
-        document.addEventListener(
-          eventName,
-          function () {
-
-            scheduleRefresh();
-
-          }
-        );
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     WINDOW RESIZE
-  ======================================================= */
-
-  function bindResize() {
-
-    let resizeTimer =
-      null;
-
-    window.addEventListener(
-      'resize',
-      function () {
-
-        clearTimeout(
-          resizeTimer
-        );
-
-        resizeTimer =
-          setTimeout(
-            function () {
-
-              fixGenerateButton();
-
-            },
-            100
-          );
-
-      },
-      {
-        passive: true
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     INIT
-  ======================================================= */
-
-  function init() {
-
-    bindEvents();
-
-    observeImagePreview();
-
-    observeVideoPreview();
-
-    observeProviderSelect();
-
-    observeGeneratorArea();
-
-    bindResize();
-
-    refresh();
-
-  }
-
-
   if (
     document.readyState ===
-    'loading'
+    "loading"
   ) {
 
     document.addEventListener(
-      'DOMContentLoaded',
-      init,
+      "DOMContentLoaded",
+      startObserver,
       {
         once: true
       }
@@ -1083,8 +2060,25 @@
 
   } else {
 
-    init();
+    startObserver();
 
   }
+
+
+  /* =======================================================
+     WINDOW EVENTS
+  ======================================================= */
+
+  window.addEventListener(
+    "beforeunload",
+    function () {
+
+      revokeImageUrls();
+
+      revokeVideoUrls();
+
+    }
+  );
+
 
 })();
