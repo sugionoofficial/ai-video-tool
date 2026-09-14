@@ -30,8 +30,8 @@
             margin-top:8px;
             padding:10px 12px;
             border-radius:10px;
-            background:rgba(127,127,127,.08);
-            border:1px solid rgba(127,127,127,.14);
+            background:rgba(25,135,84,.08);
+            border:1px solid rgba(25,135,84,.18);
             font-size:13px;
             line-height:1.5;
           "
@@ -45,7 +45,9 @@
             id="modelCreditDiscount"
             style="
               margin-top:3px;
-              opacity:.85;
+              color:#198754;
+              font-weight:700;
+              opacity:1;
             "
           ></div>
 
@@ -219,62 +221,50 @@
 
         <textarea
           id="prompt"
-          rows="4"
-          placeholder="Enter you want"
+          rows="5"
+          placeholder="Describe the video you want to create..."
         ></textarea>
 
       </div>
 
 
       <!-- =====================================================
-           SETTINGS
+           OPTIONS
       ====================================================== -->
 
-      <div class="settings-grid">
+      <div class="generator-options">
 
-        <div class="setting-field">
-
+        <div class="form-group">
           <label for="ratio">
-            Ratio
+            ASPECT RATIO
           </label>
 
           <select id="ratio">
-            <option value="">
-              Pilih
-            </option>
+            <option value="">Pilih aspect ratio</option>
           </select>
-
         </div>
 
 
-        <div class="setting-field">
-
+        <div class="form-group">
           <label for="duration">
-            Duration
+            DURATION
           </label>
 
           <select id="duration">
-            <option value="">
-              Pilih
-            </option>
+            <option value="">Pilih durasi</option>
           </select>
-
         </div>
 
-      </div>
 
+        <div class="form-group">
+          <label for="resolution">
+            RESOLUTION
+          </label>
 
-      <div class="setting-field resolution-field">
-
-        <label for="resolution">
-          Resolution
-        </label>
-
-        <select id="resolution">
-          <option value="">
-            Pilih
-          </option>
-        </select>
+          <select id="resolution">
+            <option value="">Pilih resolusi</option>
+          </select>
+        </div>
 
       </div>
 
@@ -284,49 +274,50 @@
       ====================================================== -->
 
       <button
-        id="generateVideo"
+        id="generateBtn"
         type="button"
-        class="generate-btn"
+        data-generate-button
+        disabled
       >
         Generate Video
       </button>
 
 
+      <!-- =====================================================
+           RESULT
+      ====================================================== -->
+
       <div
-        id="status"
-        class="generator-status"
-        aria-live="polite"
-      ></div>
+        id="result"
+        class="generator-result"
+      >
+
+        <div
+          id="resultLoading"
+          class="result-loading hidden"
+        >
+          <div class="loading-spinner"></div>
+          <span>Generating video...</span>
+        </div>
+
+
+        <div
+          id="resultVideoContainer"
+          class="result-video-container hidden"
+        >
+
+          <video
+            id="resultVideo"
+            controls
+            playsinline
+            preload="metadata"
+          ></video>
+
+        </div>
+
+      </div>
 
     </div>
-
-
-    <!-- =======================================================
-         RESULT
-    ======================================================== -->
-
-    <section
-      id="videoResult"
-      class="video-result hidden"
-    >
-
-      <video
-        id="video"
-        controls
-        playsinline
-      ></video>
-
-
-      <a
-        id="downloadVideo"
-        class="download-btn"
-        href="#"
-        download="gen-z-ai-video.mp4"
-      >
-        Download Video
-      </a>
-
-    </section>
 
   </div>
 </section>
