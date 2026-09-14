@@ -1,44 +1,35 @@
 /* =========================================================
 GEN-Z.AI
-REFERENCE MEDIA FIX
+REFERENCE MEDIA UI FIX
 
 File:
 public/js/upload-fix.js
 
-Fungsi:
+CATATAN:
+File ini TIDAK mengambil alih proses upload.
+upload.js tetap menjadi pemilik state dan event upload.
 
-* Menjaga reference image tetap tampil.
-* Menjaga reference video tetap tampil.
-* Tombol hapus image selalu tersedia.
-* Tombol hapus video selalu tersedia.
-* Sinkronisasi state image/video.
-* Tidak menghapus reference saat provider/model refresh.
+Fungsi file ini hanya:
+
+* menjaga preview image tetap terlihat
+* menambahkan tombol hapus image
+* menjaga preview video tetap terlihat
+* menambahkan tombol hapus video
+* tidak mengubah FileReader / File / upload state
   ========================================================= */
 
 (function () {
 
 'use strict';
 
-window.GENZ = window.GENZ || {};
+window.GENZ =
+window.GENZ || {};
 
-const GENZ = window.GENZ;
-
-GENZ.state =
-GENZ.state || {};
+const GENZ =
+window.GENZ;
 
 GENZ.upload =
 GENZ.upload || {};
-
-const MAX_IMAGE_BYTES =
-12 * 1024 * 1024;
-
-const IMAGE_TYPES = [
-'image/png',
-'image/jpeg',
-'image/webp',
-'image/heic',
-'image/heif'
-];
 
 function get(id) {
 
@@ -50,263 +41,64 @@ return document.getElementById(
 
 }
 
-function getImageLimit() {
+function hasImages() {
 
 ```
-const provider =
-  GENZ.providers &&
-  GENZ.providers.currentProvider;
-
-const model =
-  get('model');
-
-const modelId =
-  model
-    ? String(
-        model.value || ''
-      ).trim()
-    : '';
-
-if (
-  !provider ||
-  !modelId
-) {
-
-  return 1;
-
-}
-
-const capabilities =
-  provider.capabilities || {};
-
-const constraints =
-  capabilities.constraints || {};
-
-const rules =
-  constraints[modelId];
-
-if (!rules) {
-
-  return 1;
-
-}
-
-if (
-  rules.maxReferenceImages ===
-    null ||
-  rules.maxReferenceImages ===
-    undefined
-) {
-
-  return Infinity;
-
-}
-
-const limit =
-  Number(
-    rules.maxReferenceImages
-  );
-
-return Number.isFinite(limit)
-  ? Math.max(0, limit)
-  : 1;
-```
-
-}
-
-function setImageStatus() {
-
-```
-const status =
-  get('imageFileStatus');
-
-if (!status) {
-
-  return;
-
-}
-
-const images =
+return (
   Array.isArray(
     GENZ.upload.images
-  )
-    ? GENZ.upload.images
-    : [];
-
-if (!images.length) {
-
-  status.textContent =
-    'Tidak ada file dipilih';
-
-  status.classList.remove(
-    'has-file'
-  );
-
-  return;
-
-}
-
-const limit =
-  getImageLimit();
-
-const suffix =
-  Number.isFinite(limit)
-    ? ` (${images.length}/${limit})`
-    : ` (${images.length})`;
-
-status.textContent =
-  `${images.length} reference image dipilih${suffix}`;
-
-status.classList.add(
-  'has-file'
+  ) &&
+  GENZ.upload.images.length > 0
 );
 ```
 
 }
 
-function createRemoveButton(
-label,
-onClick
-) {
+function hasVideos() {
 
 ```
-const button =
-  document.createElement(
-    'button'
-  );
-
-button.type =
-  'button';
-
-button.className =
-  'reference-remove-btn';
-
-button.textContent =
-  '×';
-
-button.setAttribute(
-  'aria-label',
-  label
-);
-
-button.title =
-  label;
-
-button.style.position =
-  'absolute';
-
-button.style.top =
-  '6px';
-
-button.style.right =
-  '6px';
-
-button.style.zIndex =
-  '20';
-
-button.style.width =
-  '30px';
-
-button.style.height =
-  '30px';
-
-button.style.padding =
-  '0';
-
-button.style.border =
-  '0';
-
-button.style.borderRadius =
-  '50%';
-
-button.style.background =
-  'rgba(0,0,0,0.75)';
-
-button.style.color =
-  '#fff';
-
-button.style.fontSize =
-  '22px';
-
-button.style.lineHeight =
-  '30px';
-
-button.style.textAlign =
-  'center';
-
-button.style.cursor =
-  'pointer';
-
-button.addEventListener(
-  'click',
-  function (event) {
-
-    event.preventDefault();
-
-    event.stopPropagation();
-
-    onClick();
-
-  }
-);
-
-return button;
-```
-
-}
-
-function removeImage(
-index
-) {
-
-```
-const images =
+return (
   Array.isArray(
-    GENZ.upload.images
-  )
-    ? GENZ.upload.images
-    : [];
+    GENZ.upload.videoFiles
+  ) &&
+  GENZ.upload.videoFiles.length > 0
+);
+```
 
-const files =
-  Array.isArray(
-    GENZ.upload.imageFiles
-  )
-    ? GENZ.upload.imageFiles
-    : [];
+}
 
+function removeImage() {
+
+```
 if (
-  index < 0 ||
-  index >= images.length
+  GENZ.upload &&
+  typeof GENZ.upload.clearImage ===
+    'function'
 ) {
+
+  GENZ.upload.clearImage();
 
   return;
 
 }
-
-images.splice(
-  index,
-  1
-);
-
-files.splice(
-  index,
-  1
-);
 
 GENZ.upload.images =
-  images;
+  [];
 
 GENZ.upload.imageFiles =
-  files;
+  [];
 
 GENZ.upload.imageData =
-  images[0] || null;
+  null;
+
+GENZ.state =
+  GENZ.state || {};
 
 GENZ.state.images =
-  [...images];
+  [];
 
 GENZ.state.imageData =
-  images[0] || null;
+  null;
 
 const input =
   get('image');
@@ -318,63 +110,13 @@ if (input) {
 
 }
 
-renderImagePreview();
-
-setImageStatus();
-
-document.dispatchEvent(
-  new CustomEvent(
-    'genz-image-removed',
-    {
-      detail: {
-        index,
-        images:
-          [...images]
-      }
-    }
-  )
-);
-
-document.dispatchEvent(
-  new CustomEvent(
-    'genz-image-change',
-    {
-      detail: {
-        images:
-          [...images],
-        files:
-          [...files]
-      }
-    }
-  )
-);
-```
-
-}
-
-function renderImagePreview() {
-
-```
 const preview =
   get('imagePreview');
 
-if (!preview) {
+if (preview) {
 
-  return;
-
-}
-
-preview.innerHTML =
-  '';
-
-const images =
-  Array.isArray(
-    GENZ.upload.images
-  )
-    ? GENZ.upload.images
-    : [];
-
-if (!images.length) {
+  preview.innerHTML =
+    '';
 
   preview.classList.add(
     'hidden'
@@ -383,368 +125,7 @@ if (!images.length) {
   preview.style.display =
     'none';
 
-  return;
-
 }
-
-preview.classList.remove(
-  'hidden'
-);
-
-preview.style.display =
-  '';
-
-images.forEach(
-  function (
-    src,
-    index
-  ) {
-
-    const wrapper =
-      document.createElement(
-        'div'
-      );
-
-    wrapper.className =
-      'reference-image-item';
-
-    wrapper.style.position =
-      'relative';
-
-    wrapper.style.width =
-      '100%';
-
-    wrapper.style.height =
-      '100%';
-
-    const image =
-      document.createElement(
-        'img'
-      );
-
-    image.src =
-      src;
-
-    image.alt =
-      `Reference image ${index + 1}`;
-
-    image.style.width =
-      '100%';
-
-    image.style.height =
-      '100%';
-
-    image.style.objectFit =
-      'cover';
-
-    image.style.display =
-      'block';
-
-    image.style.borderRadius =
-      'inherit';
-
-    wrapper.appendChild(
-      image
-    );
-
-    const remove =
-      createRemoveButton(
-        `Hapus reference image ${index + 1}`,
-        function () {
-
-          removeImage(
-            index
-          );
-
-        }
-      );
-
-    wrapper.appendChild(
-      remove
-    );
-
-    preview.appendChild(
-      wrapper
-    );
-
-  }
-);
-```
-
-}
-
-function keepImageVisible() {
-
-```
-const input =
-  get('image');
-
-const group =
-  get('imageReferenceGroup');
-
-const hasImage =
-  Boolean(
-    GENZ.state.imageData ||
-    GENZ.upload.imageData ||
-    (
-      Array.isArray(
-        GENZ.upload.images
-      ) &&
-      GENZ.upload.images.length
-    )
-  );
-
-if (
-  !input ||
-  !hasImage
-) {
-
-  return;
-
-}
-
-input.disabled =
-  false;
-
-input.removeAttribute(
-  'aria-disabled'
-);
-
-if (group) {
-
-  group.classList.remove(
-    'hidden'
-  );
-
-  group.style.removeProperty(
-    'display'
-  );
-
-  group.removeAttribute(
-    'aria-hidden'
-  );
-
-}
-
-renderImagePreview();
-
-setImageStatus();
-```
-
-}
-
-function readFile(
-file
-) {
-
-```
-return new Promise(
-  function (resolve) {
-
-    const reader =
-      new FileReader();
-
-    reader.onload =
-      function () {
-
-        resolve(
-          reader.result || ''
-        );
-
-      };
-
-    reader.onerror =
-      function () {
-
-        resolve(
-          ''
-        );
-
-      };
-
-    reader.readAsDataURL(
-      file
-    );
-
-  }
-);
-```
-
-}
-
-async function handleImageChange(
-event
-) {
-
-```
-const input =
-  event.target;
-
-if (
-  !input ||
-  input.id !== 'image'
-) {
-
-  return;
-
-}
-
-event.preventDefault();
-
-event.stopImmediatePropagation();
-
-const files =
-  Array.from(
-    input.files || []
-  );
-
-if (!files.length) {
-
-  return;
-
-}
-
-let limit =
-  getImageLimit();
-
-if (
-  !Number.isFinite(limit) ||
-  limit <= 0
-) {
-
-  limit = 1;
-
-}
-
-const selected =
-  files.slice(
-    0,
-    limit
-  );
-
-const data =
-  [];
-
-const validFiles =
-  [];
-
-for (
-  const file
-  of selected
-) {
-
-  if (
-    !IMAGE_TYPES.includes(
-      file.type
-    )
-  ) {
-
-    continue;
-
-  }
-
-  if (
-    file.size >
-    MAX_IMAGE_BYTES
-  ) {
-
-    continue;
-
-  }
-
-  const result =
-    await readFile(
-      file
-    );
-
-  if (!result) {
-
-    continue;
-
-  }
-
-  data.push(
-    result
-  );
-
-  validFiles.push(
-    file
-  );
-
-}
-
-if (!data.length) {
-
-  return;
-
-}
-
-GENZ.upload.images =
-  data;
-
-GENZ.upload.imageFiles =
-  validFiles;
-
-GENZ.upload.imageData =
-  data[0];
-
-GENZ.state.images =
-  [...data];
-
-GENZ.state.imageData =
-  data[0];
-
-renderImagePreview();
-
-setImageStatus();
-
-keepImageVisible();
-
-document.dispatchEvent(
-  new CustomEvent(
-    'genz-image-change',
-    {
-      detail: {
-        images:
-          [...data],
-        files:
-          [...validFiles]
-      }
-    }
-  )
-);
-
-document.dispatchEvent(
-  new CustomEvent(
-    'genz-upload-complete',
-    {
-      detail: {
-        images:
-          [...data]
-      }
-    }
-  )
-);
-
-setTimeout(
-  keepImageVisible,
-  0
-);
-
-setTimeout(
-  keepImageVisible,
-  100
-);
-
-setTimeout(
-  keepImageVisible,
-  300
-);
-
-setTimeout(
-  keepImageVisible,
-  750
-);
 ```
 
 }
@@ -770,6 +151,9 @@ GENZ.upload.videoFiles =
 GENZ.upload.videoData =
   null;
 
+GENZ.state =
+  GENZ.state || {};
+
 GENZ.state.videoFiles =
   [];
 
@@ -777,7 +161,9 @@ GENZ.state.videoData =
   null;
 
 const input =
-  get('referenceVideo');
+  get(
+    'referenceVideo'
+  );
 
 if (input) {
 
@@ -804,7 +190,9 @@ if (video) {
 }
 
 const preview =
-  get('videoPreview');
+  get(
+    'videoPreview'
+  );
 
 if (preview) {
 
@@ -816,44 +204,126 @@ if (preview) {
     'none';
 
 }
-
-document.dispatchEvent(
-  new CustomEvent(
-    'genz-video-reference-removed'
-  )
-);
 ```
 
 }
 
-function ensureVideoRemoveButton() {
+function createButton(
+className,
+label,
+handler
+) {
+
+```
+const button =
+  document.createElement(
+    'button'
+  );
+
+button.type =
+  'button';
+
+button.className =
+  className;
+
+button.textContent =
+  '×';
+
+button.setAttribute(
+  'aria-label',
+  label
+);
+
+button.setAttribute(
+  'title',
+  label
+);
+
+button.style.position =
+  'absolute';
+
+button.style.top =
+  '8px';
+
+button.style.right =
+  '8px';
+
+button.style.zIndex =
+  '999';
+
+button.style.width =
+  '32px';
+
+button.style.height =
+  '32px';
+
+button.style.minWidth =
+  '32px';
+
+button.style.minHeight =
+  '32px';
+
+button.style.padding =
+  '0';
+
+button.style.margin =
+  '0';
+
+button.style.border =
+  'none';
+
+button.style.borderRadius =
+  '50%';
+
+button.style.background =
+  'rgba(0, 0, 0, 0.78)';
+
+button.style.color =
+  '#ffffff';
+
+button.style.fontSize =
+  '22px';
+
+button.style.fontWeight =
+  '700';
+
+button.style.lineHeight =
+  '32px';
+
+button.style.textAlign =
+  'center';
+
+button.style.cursor =
+  'pointer';
+
+button.addEventListener(
+  'click',
+  function (event) {
+
+    event.preventDefault();
+
+    event.stopPropagation();
+
+    handler();
+
+  }
+);
+
+return button;
+```
+
+}
+
+function ensureImageButton() {
 
 ```
 const preview =
-  get('videoPreview');
-
-const video =
-  get(
-    'referenceVideoPreview'
-  );
+  get('imagePreview');
 
 if (
   !preview ||
-  !video
+  !hasImages()
 ) {
-
-  return;
-
-}
-
-const files =
-  Array.isArray(
-    GENZ.upload.videoFiles
-  )
-    ? GENZ.upload.videoFiles
-    : [];
-
-if (!files.length) {
 
   return;
 
@@ -865,17 +335,6 @@ preview.classList.remove(
 
 preview.style.display =
   '';
-
-const existing =
-  preview.querySelector(
-    '.reference-video-remove-btn'
-  );
-
-if (existing) {
-
-  return;
-
-}
 
 if (
   getComputedStyle(
@@ -889,34 +348,137 @@ if (
 
 }
 
-const remove =
-  createRemoveButton(
-    'Hapus reference video',
-    removeVideo
+/*
+ * Jangan membuat tombol per thumbnail.
+ * Satu tombol × menghapus seluruh
+ * reference image.
+ */
+
+let button =
+  preview.querySelector(
+    '.reference-image-remove-all'
   );
 
-remove.classList.add(
-  'reference-video-remove-btn'
-);
+if (button) {
+
+  return;
+
+}
+
+button =
+  createButton(
+    'reference-image-remove-all',
+    'Hapus reference image',
+    removeImage
+  );
 
 preview.appendChild(
-  remove
+  button
 );
 ```
 
 }
 
-function keepVideoVisible() {
+function ensureVideoButton() {
 
 ```
-const files =
-  Array.isArray(
-    GENZ.upload.videoFiles
-  )
-    ? GENZ.upload.videoFiles
-    : [];
+const preview =
+  get(
+    'videoPreview'
+  );
 
-if (!files.length) {
+if (
+  !preview ||
+  !hasVideos()
+) {
+
+  return;
+
+}
+
+preview.classList.remove(
+  'hidden'
+);
+
+preview.style.display =
+  '';
+
+if (
+  getComputedStyle(
+    preview
+  ).position ===
+  'static'
+) {
+
+  preview.style.position =
+    'relative';
+
+}
+
+let button =
+  preview.querySelector(
+    '.reference-video-remove-all'
+  );
+
+if (button) {
+
+  return;
+
+}
+
+button =
+  createButton(
+    'reference-video-remove-all',
+    'Hapus reference video',
+    removeVideo
+  );
+
+preview.appendChild(
+  button
+);
+```
+
+}
+
+function ensureImageGroup() {
+
+```
+if (!hasImages()) {
+
+  return;
+
+}
+
+const group =
+  get(
+    'imageReferenceGroup'
+  );
+
+if (!group) {
+
+  return;
+
+}
+
+group.classList.remove(
+  'hidden'
+);
+
+group.style.removeProperty(
+  'display'
+);
+
+group.removeAttribute(
+  'aria-hidden'
+);
+```
+
+}
+
+function ensureVideoGroup() {
+
+```
+if (!hasVideos()) {
 
   return;
 
@@ -927,111 +489,23 @@ const group =
     'videoReferenceGroup'
   );
 
-const input =
-  get(
-    'referenceVideo'
-  );
+if (!group) {
 
-if (input) {
-
-  input.disabled =
-    false;
-
-  input.removeAttribute(
-    'aria-disabled'
-  );
+  return;
 
 }
 
-if (group) {
-
-  group.classList.remove(
-    'hidden'
-  );
-
-  group.style.removeProperty(
-    'display'
-  );
-
-  group.removeAttribute(
-    'aria-hidden'
-  );
-
-}
-
-ensureVideoRemoveButton();
-```
-
-}
-
-function bindImageChange() {
-
-```
-document.addEventListener(
-  'change',
-  function (event) {
-
-    if (
-      event.target &&
-      event.target.id === 'image'
-    ) {
-
-      handleImageChange(
-        event
-      );
-
-    }
-
-  },
-  true
+group.classList.remove(
+  'hidden'
 );
-```
 
-}
+group.style.removeProperty(
+  'display'
+);
 
-function bindRemoveButtons() {
-
-```
-const imageRemove =
-  get(
-    'imageRemove'
-  );
-
-if (
-  imageRemove &&
-  imageRemove.dataset.bound !==
-    'true'
-) {
-
-  imageRemove.dataset.bound =
-    'true';
-
-  imageRemove.addEventListener(
-    'click',
-    function (event) {
-
-      event.preventDefault();
-
-      event.stopPropagation();
-
-      if (
-        GENZ.upload &&
-        typeof GENZ.upload.clearImage ===
-          'function'
-      ) {
-
-        GENZ.upload.clearImage();
-
-      } else {
-
-        removeImage(0);
-
-      }
-
-    }
-  );
-
-}
+group.removeAttribute(
+  'aria-hidden'
+);
 ```
 
 }
@@ -1039,33 +513,177 @@ if (
 function refresh() {
 
 ```
-keepImageVisible();
+if (hasImages()) {
 
-keepVideoVisible();
+  ensureImageGroup();
 
-bindRemoveButtons();
+  ensureImageButton();
 
-setImageStatus();
+}
+
+if (hasVideos()) {
+
+  ensureVideoGroup();
+
+  ensureVideoButton();
+
+}
 ```
 
 }
 
-function bind() {
+function observePreview() {
 
 ```
-bindImageChange();
+const imagePreview =
+  get(
+    'imagePreview'
+  );
 
-bindRemoveButtons();
+const videoPreview =
+  get(
+    'videoPreview'
+  );
+
+if (imagePreview) {
+
+  const imageObserver =
+    new MutationObserver(
+      function () {
+
+        if (hasImages()) {
+
+          ensureImageButton();
+
+        }
+
+      }
+    );
+
+  imageObserver.observe(
+    imagePreview,
+    {
+      childList: true,
+      subtree: true
+    }
+  );
+
+}
+
+if (videoPreview) {
+
+  const videoObserver =
+    new MutationObserver(
+      function () {
+
+        if (hasVideos()) {
+
+          ensureVideoButton();
+
+        }
+
+      }
+    );
+
+  videoObserver.observe(
+    videoPreview,
+    {
+      childList: true,
+      subtree: true
+    }
+  );
+
+}
+```
+
+}
+
+function bindEvents() {
+
+```
+document.addEventListener(
+  'genz-image-change',
+  function () {
+
+    setTimeout(
+      refresh,
+      0
+    );
+
+  }
+);
+
+document.addEventListener(
+  'genz-upload-complete',
+  function () {
+
+    setTimeout(
+      refresh,
+      0
+    );
+
+  }
+);
+
+document.addEventListener(
+  'genz-video-reference-change',
+  function () {
+
+    setTimeout(
+      refresh,
+      0
+    );
+
+  }
+);
+
+document.addEventListener(
+  'genz-provider-change',
+  function () {
+
+    setTimeout(
+      refresh,
+      0
+    );
+
+  }
+);
+
+document.addEventListener(
+  'genz-providers-loaded',
+  function () {
+
+    setTimeout(
+      refresh,
+      0
+    );
+
+  }
+);
+```
+
+}
+
+function init() {
+
+```
+bindEvents();
+
+observePreview();
 
 refresh();
 
+/*
+ * upload.js dapat merender ulang preview
+ * setelah provider/model berubah.
+ *
+ * Interval hanya melakukan pemeriksaan
+ * UI dan TIDAK mengubah state upload.
+ */
+
 setInterval(
-  function () {
-
-    refresh();
-
-  },
-  1000
+  refresh,
+  500
 );
 ```
 
@@ -1079,7 +697,7 @@ document.readyState ===
 ```
 document.addEventListener(
   'DOMContentLoaded',
-  bind,
+  init,
   {
     once: true
   }
@@ -1089,7 +707,7 @@ document.addEventListener(
 } else {
 
 ```
-bind();
+init();
 ```
 
 }
