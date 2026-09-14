@@ -1128,7 +1128,8 @@
           <strong>
             ${escapeHtml(
               providerLabel(
-                job.provider
+                 job.provider,
+                 job
               )
             )}
           </strong>
