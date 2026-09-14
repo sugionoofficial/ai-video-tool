@@ -3,8 +3,12 @@
 
   const state = {
     bound: false,
+    providerElement: null,
+    modelElement: null,
     observer: null,
-    timer: null
+    appObserver: null,
+    retryTimer: null,
+    updateTimer: null
   };
 
   function get(id) {
@@ -472,9 +476,27 @@
             discount
           ) +
           '%';
+
+        discountElement.style.color =
+          '#198754';
+
+        discountElement.style.fontWeight =
+          '700';
+
+        discountElement.style.opacity =
+          '1';
       } else {
         discountElement.textContent =
           'Diskon: 0%';
+
+        discountElement.style.color =
+          '';
+
+        discountElement.style.fontWeight =
+          '';
+
+        discountElement.style.opacity =
+          '';
       }
     }
 
@@ -538,7 +560,24 @@
     );
   }
 
-  function bind() {
+  function scheduleUpdate() {
+    if (state.updateTimer) {
+      window.clearTimeout(
+        state.updateTimer
+      );
+    }
+
+    state.updateTimer =
+      window.setTimeout(
+        function () {
+          state.updateTimer = null;
+          update();
+        },
+        50
+      );
+  }
+
+  function bindElements() {
     const provider =
       get('provider');
 
@@ -552,41 +591,47 @@
       return false;
     }
 
-    if (!state.bound) {
-      state.bound = true;
-
-      provider.addEventListener(
-        'change',
-        function () {
-          window.setTimeout(
-            update,
-            0
-          );
-        }
-      );
-
-      model.addEventListener(
-        'change',
-        function () {
-          window.setTimeout(
-            update,
-            0
-          );
-        }
-      );
-    }
+    const elementsChanged =
+      state.providerElement !== provider ||
+      state.modelElement !== model;
 
     if (
-      !state.observer &&
-      window.MutationObserver
+      !elementsChanged &&
+      state.bound
     ) {
+      scheduleUpdate();
+      return true;
+    }
+
+    if (state.observer) {
+      state.observer.disconnect();
+      state.observer = null;
+    }
+
+    state.providerElement =
+      provider;
+
+    state.modelElement =
+      model;
+
+    state.bound =
+      true;
+
+    provider.addEventListener(
+      'change',
+      scheduleUpdate
+    );
+
+    model.addEventListener(
+      'change',
+      scheduleUpdate
+    );
+
+    if (window.MutationObserver) {
       state.observer =
         new MutationObserver(
           function () {
-            window.setTimeout(
-              update,
-              0
-            );
+            scheduleUpdate();
           }
         );
 
@@ -599,37 +644,100 @@
       );
     }
 
-    update();
+    scheduleUpdate();
 
     return true;
   }
 
-  function start() {
-    bind();
-
-    if (state.timer) {
-      window.clearInterval(
-        state.timer
+  function stopRetry() {
+    if (state.retryTimer) {
+      window.clearTimeout(
+        state.retryTimer
       );
+
+      state.retryTimer = null;
+    }
+  }
+
+  function retryBind(attempt) {
+    if (
+      bindElements()
+    ) {
+      stopRetry();
+      return;
     }
 
-    state.timer =
-      window.setInterval(
+    if (attempt >= 30) {
+      stopRetry();
+      return;
+    }
+
+    state.retryTimer =
+      window.setTimeout(
         function () {
-          bind();
-          update();
+          state.retryTimer = null;
+          retryBind(attempt + 1);
         },
-        1000
+        250
       );
   }
 
-  function destroy() {
-    if (state.timer) {
-      window.clearInterval(
-        state.timer
+  function observeApp() {
+    if (
+      state.appObserver ||
+      !window.MutationObserver
+    ) {
+      return;
+    }
+
+    const app =
+      get('app');
+
+    if (!app) {
+      return;
+    }
+
+    state.appObserver =
+      new MutationObserver(
+        function () {
+          const provider =
+            get('provider');
+
+          const model =
+            get('model');
+
+          if (
+            provider !== state.providerElement ||
+            model !== state.modelElement
+          ) {
+            state.bound = false;
+            retryBind(0);
+          }
+        }
       );
 
-      state.timer = null;
+    state.appObserver.observe(
+      app,
+      {
+        childList: true
+      }
+    );
+  }
+
+  function start() {
+    observeApp();
+    retryBind(0);
+  }
+
+  function destroy() {
+    stopRetry();
+
+    if (state.updateTimer) {
+      window.clearTimeout(
+        state.updateTimer
+      );
+
+      state.updateTimer = null;
     }
 
     if (state.observer) {
@@ -637,6 +745,13 @@
       state.observer = null;
     }
 
+    if (state.appObserver) {
+      state.appObserver.disconnect();
+      state.appObserver = null;
+    }
+
+    state.providerElement = null;
+    state.modelElement = null;
     state.bound = false;
   }
 
