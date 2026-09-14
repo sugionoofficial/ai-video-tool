@@ -14,6 +14,7 @@
    - Reference image tidak dihapus saat refresh/sinkronisasi
    - Model object dinormalisasi menjadi model ID
    - Model credit/discount/enabled tetap tersedia
+   - Capability model/provider lebih fleksibel
    ========================================================= */
 
 (function () {
@@ -72,28 +73,58 @@
   }
 
 
+  function getArrayValue(source, keys) {
+
+    if (
+      !source ||
+      typeof source !== 'object'
+    ) {
+      return [];
+    }
+
+    for (const key of keys) {
+
+      if (
+        Array.isArray(source[key]) &&
+        source[key].length
+      ) {
+        return source[key];
+      }
+
+    }
+
+    return [];
+  }
+
+
+  function findObjectValue(source, keys) {
+
+    if (
+      !source ||
+      typeof source !== 'object'
+    ) {
+      return null;
+    }
+
+    for (const key of keys) {
+
+      if (
+        source[key] &&
+        typeof source[key] === 'object'
+      ) {
+        return source[key];
+      }
+
+    }
+
+    return null;
+  }
+
+
   /*
    * =====================================================
    * MODEL NORMALIZER
    * =====================================================
-   *
-   * Adapter dapat mengembalikan:
-   *
-   * [
-   *   "model-a",
-   *   "model-b"
-   * ]
-   *
-   * atau:
-   *
-   * [
-   *   {
-   *     id: "model-a",
-   *     name: "Model A"
-   *   }
-   * ]
-   *
-   * UI membutuhkan ID string.
    */
 
   function getModelId(model) {
@@ -311,6 +342,7 @@
     if (!provider) {
       return {
         models: [],
+        modelMetadata: {},
         durations: [],
         aspects: [],
         resolutions: [],
@@ -349,45 +381,107 @@
         rawModels
       );
 
-    const durations =
-      Array.isArray(source.durations)
-        ? source.durations
-        : (
-            Array.isArray(provider.durations)
-              ? provider.durations
-              : []
-          );
+    let durations =
+      getArrayValue(
+        source,
+        [
+          'durations',
+          'duration',
+          'supportedDurations',
+          'supportedDuration'
+        ]
+      );
 
-    const aspects =
-      Array.isArray(source.aspects)
-        ? source.aspects
-        : (
-            Array.isArray(provider.aspects)
-              ? provider.aspects
-              : []
-          );
+    if (!durations.length) {
 
-    const resolutions =
-      Array.isArray(source.resolutions)
-        ? source.resolutions
-        : (
-            Array.isArray(provider.resolutions)
-              ? provider.resolutions
-              : []
-          );
+      durations =
+        getArrayValue(
+          provider,
+          [
+            'durations',
+            'duration',
+            'supportedDurations',
+            'supportedDuration'
+          ]
+        );
+
+    }
+
+    let aspects =
+      getArrayValue(
+        source,
+        [
+          'aspects',
+          'aspect',
+          'aspectRatios',
+          'aspectRatio',
+          'ratios',
+          'supportedAspects',
+          'supportedAspectRatios'
+        ]
+      );
+
+    if (!aspects.length) {
+
+      aspects =
+        getArrayValue(
+          provider,
+          [
+            'aspects',
+            'aspect',
+            'aspectRatios',
+            'aspectRatio',
+            'ratios',
+            'supportedAspects',
+            'supportedAspectRatios'
+          ]
+        );
+
+    }
+
+    let resolutions =
+      getArrayValue(
+        source,
+        [
+          'resolutions',
+          'resolution',
+          'supportedResolutions',
+          'supportedResolution'
+        ]
+      );
+
+    if (!resolutions.length) {
+
+      resolutions =
+        getArrayValue(
+          provider,
+          [
+            'resolutions',
+            'resolution',
+            'supportedResolutions',
+            'supportedResolution'
+          ]
+        );
+
+    }
 
     const constraints =
       source.constraints &&
       typeof source.constraints === 'object'
         ? source.constraints
-        : {};
+        : (
+            provider.constraints &&
+            typeof provider.constraints === 'object'
+              ? provider.constraints
+              : {}
+          );
 
     return {
       models: cloneArray(models),
       modelMetadata: modelMetadata,
-      durations: cloneArray(durations),
-      aspects: cloneArray(aspects),
-      resolutions: cloneArray(resolutions),
+      durations: uniqueArray(durations),
+      aspects: uniqueArray(aspects),
+      resolutions: uniqueArray(resolutions),
       constraints: constraints
     };
   }
@@ -395,6 +489,58 @@
 
   function getEffectiveCapabilities(provider) {
     return normalizeCapabilities(provider);
+  }
+
+
+  /* =======================================================
+     MODEL METADATA
+  ======================================================= */
+
+  function getModelMetadata(
+    provider,
+    model
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(
+        provider
+      );
+
+    const metadata =
+      capabilities.modelMetadata || {};
+
+    const direct =
+      metadata[model];
+
+    if (
+      direct &&
+      typeof direct === 'object'
+    ) {
+      return direct;
+    }
+
+    const normalized =
+      normalizeId(model);
+
+    const key =
+      Object.keys(metadata).find(
+        function (item) {
+          return (
+            normalizeId(item) ===
+            normalized
+          );
+        }
+      );
+
+    if (
+      key !== undefined &&
+      metadata[key] &&
+      typeof metadata[key] === 'object'
+    ) {
+      return metadata[key];
+    }
+
+    return {};
   }
 
 
@@ -475,7 +621,10 @@
     const key =
       Object.keys(map).find(
         function (item) {
-          return normalizeId(item) === normalized;
+          return (
+            normalizeId(item) ===
+            normalized
+          );
         }
       );
 
@@ -619,13 +768,58 @@
     const constraints =
       capabilities.constraints || {};
 
-    return (
-      constraints[model] ||
-      constraints[
-        normalizeId(model)
-      ] ||
-      null
-    );
+    const direct =
+      constraints[model];
+
+    if (
+      direct &&
+      typeof direct === 'object'
+    ) {
+      return direct;
+    }
+
+    const normalized =
+      normalizeId(model);
+
+    const key =
+      Object.keys(constraints).find(
+        function (item) {
+          return (
+            normalizeId(item) ===
+            normalized
+          );
+        }
+      );
+
+    if (
+      key !== undefined &&
+      constraints[key] &&
+      typeof constraints[key] === 'object'
+    ) {
+      return constraints[key];
+    }
+
+    const metadata =
+      getModelMetadata(
+        provider,
+        model
+      );
+
+    if (
+      metadata.constraints &&
+      typeof metadata.constraints === 'object'
+    ) {
+      return metadata.constraints;
+    }
+
+    if (
+      metadata.capabilities &&
+      typeof metadata.capabilities === 'object'
+    ) {
+      return metadata.capabilities;
+    }
+
+    return metadata;
   }
 
 
@@ -644,9 +838,27 @@
       return null;
     }
 
-    return (
-      rules.imageReferenceSupported === true
-    );
+    if (
+      rules.imageReferenceSupported === true ||
+      rules.image_reference_supported === true ||
+      rules.supportsImage === true ||
+      rules.supports_image === true ||
+      rules.imageInput === true ||
+      rules.image_input === true
+    ) {
+      return true;
+    }
+
+    if (
+      rules.imageReferenceSupported === false ||
+      rules.image_reference_supported === false ||
+      rules.supportsImage === false ||
+      rules.supports_image === false
+    ) {
+      return false;
+    }
+
+    return null;
   }
 
 
@@ -677,10 +889,295 @@
         model
       ) === true
     ) {
-      return rules.imageToVideo || null;
+
+      return (
+        rules.imageToVideo ||
+        rules.image_to_video ||
+        rules.image2video ||
+        rules.image ||
+        null
+      );
     }
 
-    return rules.textToVideo || null;
+    return (
+      rules.textToVideo ||
+      rules.text_to_video ||
+      rules.text2video ||
+      rules.text ||
+      null
+    );
+  }
+
+
+  /* =======================================================
+     NORMALIZE MODE DATA
+  ======================================================= */
+
+  function extractDurationList(
+    modeRules
+  ) {
+
+    if (!modeRules) {
+      return [];
+    }
+
+    if (
+      Array.isArray(modeRules)
+    ) {
+
+      return uniqueArray(
+        modeRules
+          .map(function (item) {
+
+            if (
+              item &&
+              typeof item === 'object'
+            ) {
+
+              return (
+                item.duration ??
+                item.seconds ??
+                item.value
+              );
+
+            }
+
+            return item;
+          })
+          .filter(function (item) {
+            return (
+              item !== undefined &&
+              item !== null &&
+              text(item) !== ''
+            );
+          })
+      );
+    }
+
+    if (
+      typeof modeRules !== 'object'
+    ) {
+      return [];
+    }
+
+    const direct =
+      getArrayValue(
+        modeRules,
+        [
+          'durations',
+          'duration',
+          'supportedDurations',
+          'supportedDuration'
+        ]
+      );
+
+    if (direct.length) {
+      return uniqueArray(direct);
+    }
+
+    return uniqueArray(
+      Object.keys(modeRules)
+        .filter(function (value) {
+
+          const normalized =
+            value
+              .toLowerCase()
+              .replace(
+                /seconds?/g,
+                ''
+              )
+              .trim();
+
+          return (
+            /^\d+(?:\.\d+)?$/.test(
+              normalized
+            )
+          );
+
+        })
+        .map(function (value) {
+
+          const normalized =
+            value
+              .toLowerCase()
+              .replace(
+                /seconds?/g,
+                ''
+              )
+              .trim();
+
+          return Number(
+            normalized
+          );
+
+        })
+        .filter(function (value) {
+          return Number.isFinite(value);
+        })
+    );
+  }
+
+
+  function getDurationRule(
+    modeRules,
+    duration
+  ) {
+
+    if (!modeRules) {
+      return null;
+    }
+
+    const numeric =
+      Number(duration);
+
+    if (
+      !Number.isFinite(numeric)
+    ) {
+      return null;
+    }
+
+    const candidates = [
+      String(numeric),
+      String(numeric) + 's',
+      String(numeric) + 'sec',
+      String(numeric) + 'secs',
+      String(numeric) + 'second',
+      String(numeric) + 'seconds'
+    ];
+
+    if (
+      typeof modeRules !== 'object' ||
+      Array.isArray(modeRules)
+    ) {
+
+      return null;
+    }
+
+    for (
+      const key of candidates
+    ) {
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          modeRules,
+          key
+        )
+      ) {
+
+        return modeRules[key];
+
+      }
+
+    }
+
+    const matchingKey =
+      Object.keys(modeRules).find(
+        function (key) {
+
+          const normalized =
+            key
+              .toLowerCase()
+              .replace(
+                /seconds?/g,
+                ''
+              )
+              .trim();
+
+          return (
+            Number(normalized) ===
+            numeric
+          );
+
+        }
+      );
+
+    if (
+      matchingKey !== undefined
+    ) {
+      return modeRules[matchingKey];
+    }
+
+    return null;
+  }
+
+
+  function extractResolutions(
+    rule
+  ) {
+
+    if (!rule) {
+      return [];
+    }
+
+    if (
+      Array.isArray(rule)
+    ) {
+
+      return uniqueArray(
+        rule
+      );
+    }
+
+    if (
+      typeof rule === 'object'
+    ) {
+
+      return uniqueArray(
+        getArrayValue(
+          rule,
+          [
+            'resolutions',
+            'resolution',
+            'supportedResolutions',
+            'supportedResolution'
+          ]
+        )
+      );
+
+    }
+
+    return [];
+  }
+
+
+  function extractAspects(
+    source
+  ) {
+
+    if (!source) {
+      return [];
+    }
+
+    if (
+      Array.isArray(source)
+    ) {
+      return uniqueArray(
+        source
+      );
+    }
+
+    if (
+      typeof source === 'object'
+    ) {
+
+      return uniqueArray(
+        getArrayValue(
+          source,
+          [
+            'aspects',
+            'aspect',
+            'aspectRatios',
+            'aspectRatio',
+            'ratios',
+            'supportedAspects',
+            'supportedAspectRatios'
+          ]
+        )
+      );
+
+    }
+
+    return [];
   }
 
 
@@ -706,20 +1203,44 @@
         hasImage
       );
 
-    if (!modeRules) {
-      return cloneArray(
-        capabilities.durations
+    const modeDurations =
+      extractDurationList(
+        modeRules
+      );
+
+    if (
+      modeDurations.length
+    ) {
+      return modeDurations;
+    }
+
+    const metadata =
+      getModelMetadata(
+        provider,
+        model
+      );
+
+    const modelDurations =
+      getArrayValue(
+        metadata,
+        [
+          'durations',
+          'duration',
+          'supportedDurations',
+          'supportedDuration'
+        ]
+      );
+
+    if (
+      modelDurations.length
+    ) {
+      return uniqueArray(
+        modelDurations
       );
     }
 
-    return uniqueArray(
-      Object.keys(modeRules)
-        .map(function (value) {
-          return Number(value);
-        })
-        .filter(function (value) {
-          return Number.isFinite(value);
-        })
+    return cloneArray(
+      capabilities.durations
     );
   }
 
@@ -747,25 +1268,68 @@
         hasImage
       );
 
-    if (!modeRules) {
+    const durationRule =
+      getDurationRule(
+        modeRules,
+        duration
+      );
+
+    const mappedResolutions =
+      extractResolutions(
+        durationRule
+      );
+
+    if (
+      mappedResolutions.length
+    ) {
+      return mappedResolutions;
+    }
+
+    const metadata =
+      getModelMetadata(
+        provider,
+        model
+      );
+
+    const modelResolutions =
+      getArrayValue(
+        metadata,
+        [
+          'resolutions',
+          'resolution',
+          'supportedResolutions',
+          'supportedResolution'
+        ]
+      );
+
+    if (
+      modelResolutions.length
+    ) {
+      return uniqueArray(
+        modelResolutions
+      );
+    }
+
+    /*
+     * PENTING:
+     * Jika model memiliki modeRules tetapi
+     * duration tertentu tidak mempunyai mapping
+     * resolution, jangan langsung mengembalikan [].
+     *
+     * Gunakan capability resolution provider sebagai
+     * fallback supaya dropdown tidak menjadi
+     * "Tidak tersedia".
+     */
+
+    if (
+      capabilities.resolutions.length
+    ) {
       return cloneArray(
         capabilities.resolutions
       );
     }
 
-    const key =
-      String(Number(duration));
-
-    const allowed =
-      modeRules[key];
-
-    if (!Array.isArray(allowed)) {
-      return [];
-    }
-
-    return uniqueArray(
-      allowed
-    );
+    return [];
   }
 
 
@@ -818,6 +1382,7 @@
         previous &&
         list.includes(previous)
       ) {
+
         element.value =
           previous;
 
@@ -830,6 +1395,7 @@
           element.value
         )
       ) {
+
         element.value =
           list[0];
       }
@@ -1060,8 +1626,10 @@
       element.value !==
       next
     ) {
+
       element.value =
         next;
+
     }
   }
 
@@ -1123,16 +1691,41 @@
     provider
   ) {
 
-    const allowed =
+    const capabilities =
       getEffectiveCapabilities(
         provider
-      )
-        .aspects
+      );
+
+    let allowed =
+      capabilities.aspects
         .map(
           function (value) {
             return String(value);
           }
         );
+
+    const model =
+      text(
+        $('model')?.value
+      );
+
+    if (
+      !allowed.length &&
+      model
+    ) {
+
+      const metadata =
+        getModelMetadata(
+          provider,
+          model
+        );
+
+      allowed =
+        extractAspects(
+          metadata
+        );
+
+    }
 
     [
       $('ratio'),
@@ -1477,9 +2070,18 @@
       )
     ) {
 
+      const capabilities =
+        getEffectiveCapabilities(
+          provider
+        );
+
+      const fallback =
+        capabilities.resolutions;
+
       return setOptions(
         'resolution',
-        []
+        fallback,
+        preferredResolution
       );
     }
 
@@ -1532,7 +2134,9 @@
         provider &&
         model &&
         duration &&
-        resolution
+        resolution &&
+        duration !== 'Tidak tersedia' &&
+        resolution !== 'Tidak tersedia'
       );
 
     buttons.forEach(
@@ -1548,6 +2152,7 @@
 
           button.disabled =
             !enabled;
+
         }
 
       }
@@ -1682,10 +2287,27 @@
          ASPECT
       =================================================== */
 
-      const aspects =
+      const capabilities =
         getEffectiveCapabilities(
           provider
-        ).aspects;
+        );
+
+      let aspects =
+        capabilities.aspects;
+
+      if (
+        !aspects.length
+      ) {
+
+        aspects =
+          extractAspects(
+            getModelMetadata(
+              provider,
+              model
+            )
+          );
+
+      }
 
       setOptions(
         'ratio',
@@ -1727,10 +2349,32 @@
         hasImage
       ) {
 
+        const allowedDurations =
+          getAllowedDurations(
+            provider,
+            model,
+            hasImage
+          );
+
+        const preferredImageDuration =
+          allowedDurations.includes(
+            '8'
+          )
+            ? '8'
+            : (
+                allowedDurations.includes(
+                  '8.0'
+                )
+                  ? '8.0'
+                  : undefined
+              );
+
         duration =
           applyDurationRules(
             provider,
-            '8'
+            preferredImageDuration !== undefined
+              ? preferredImageDuration
+              : previousDuration
           );
       }
 
@@ -1741,6 +2385,7 @@
           text(
             $('duration')?.value
           );
+
       }
 
 
@@ -1761,6 +2406,7 @@
           applyResolutionRules(
             provider
           );
+
       }
 
 
@@ -1814,6 +2460,7 @@
               allowedDurations,
               compatibleDuration
             );
+
         }
       }
 
@@ -1933,7 +2580,9 @@
         scheduleRefresh(
           changedField || ''
         );
+
       }
+
     }
   }
 
@@ -2129,6 +2778,12 @@
         ? 'Pilih AI Engine'
         : 'Tidak ada AI Engine';
 
+    placeholder.disabled =
+      providers.length > 0;
+
+    placeholder.selected =
+      !previous;
+
     fragment.appendChild(
       placeholder
     );
@@ -2176,6 +2831,7 @@
 
       element.value =
         previous;
+
     }
   }
 
@@ -2301,6 +2957,7 @@
             ) ===
             normalized
           );
+
         }
       ) ||
       null
@@ -2378,6 +3035,7 @@
           'HTTP ' +
           response.status
         );
+
       }
 
       const data =
@@ -2392,6 +3050,7 @@
         throw new Error(
           'Format response provider tidak valid.'
         );
+
       }
 
       return data.providers;
@@ -2458,6 +3117,7 @@
                   provider.id
                 ) === requested
               );
+
             }
           );
 
@@ -2716,7 +3376,9 @@
           scheduleRefresh(
             'image'
           );
+
         }
+
       },
       true
     );
@@ -2870,6 +3532,7 @@
   } else {
 
     initialize();
+
   }
 
 })();
