@@ -12,9 +12,6 @@
    - Provider/model/duration/resolution tetap sinkron
    - imageReferenceSupported tetap eksplisit
    - Reference image tidak dihapus saat refresh/sinkronisasi
-   - Model object dinormalisasi menjadi model ID
-   - Model credit/discount/enabled tetap tersedia
-   - Capability model/provider lebih fleksibel
    ========================================================= */
 
 (function () {
@@ -73,243 +70,6 @@
   }
 
 
-  function getArrayValue(source, keys) {
-
-    if (
-      !source ||
-      typeof source !== 'object'
-    ) {
-      return [];
-    }
-
-    for (const key of keys) {
-
-      if (
-        Array.isArray(source[key]) &&
-        source[key].length
-      ) {
-        return source[key];
-      }
-
-    }
-
-    return [];
-  }
-
-
-  function findObjectValue(source, keys) {
-
-    if (
-      !source ||
-      typeof source !== 'object'
-    ) {
-      return null;
-    }
-
-    for (const key of keys) {
-
-      if (
-        source[key] &&
-        typeof source[key] === 'object'
-      ) {
-        return source[key];
-      }
-
-    }
-
-    return null;
-  }
-
-
-  /*
-   * =====================================================
-   * MODEL NORMALIZER
-   * =====================================================
-   */
-
-  function getModelId(model) {
-
-    if (
-      model === null ||
-      model === undefined
-    ) {
-      return '';
-    }
-
-    if (
-      typeof model === 'string' ||
-      typeof model === 'number'
-    ) {
-      return text(model);
-    }
-
-    if (
-      typeof model === 'object'
-    ) {
-
-      return text(
-        model.id ||
-        model.model ||
-        model.modelId ||
-        model.slug ||
-        model.name
-      );
-
-    }
-
-    return '';
-  }
-
-
-  function getModelName(model) {
-
-    if (
-      model === null ||
-      model === undefined
-    ) {
-      return '';
-    }
-
-    if (
-      typeof model === 'string' ||
-      typeof model === 'number'
-    ) {
-      return text(model);
-    }
-
-    if (
-      typeof model === 'object'
-    ) {
-
-      return text(
-        model.name ||
-        model.label ||
-        model.displayName ||
-        model.id ||
-        model.model ||
-        model.modelId ||
-        model.slug
-      );
-
-    }
-
-    return '';
-  }
-
-
-  function normalizeModels(value) {
-
-    if (!Array.isArray(value)) {
-      return [];
-    }
-
-    const result = [];
-    const seen = new Set();
-
-    value.forEach(function (model) {
-
-      const id =
-        getModelId(model);
-
-      if (!id) {
-        return;
-      }
-
-      const normalized =
-        normalizeId(id);
-
-      if (!normalized) {
-        return;
-      }
-
-      if (seen.has(id)) {
-        return;
-      }
-
-      seen.add(id);
-
-      result.push(id);
-
-    });
-
-    return result;
-  }
-
-
-  function getModelMetadataMap(value) {
-
-    if (!Array.isArray(value)) {
-      return {};
-    }
-
-    const result = {};
-
-    value.forEach(function (model) {
-
-      const id =
-        getModelId(model);
-
-      if (!id) {
-        return;
-      }
-
-      if (
-        typeof model === 'object' &&
-        model !== null
-      ) {
-
-        result[id] = {
-          id: id,
-          name:
-            getModelName(model),
-          ...model
-        };
-
-      } else {
-
-        result[id] = {
-          id: id,
-          name: id
-        };
-
-      }
-
-    });
-
-    return result;
-  }
-
-
-  function normalizeModelMap(value) {
-
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      Array.isArray(value)
-    ) {
-      return {};
-    }
-
-    const result = {};
-
-    Object.keys(value).forEach(function (key) {
-
-      const normalizedKey =
-        text(key);
-
-      if (!normalizedKey) {
-        return;
-      }
-
-      result[normalizedKey] =
-        value[key];
-
-    });
-
-    return result;
-  }
-
-
   function scheduleRefresh(changedField) {
 
     if (refreshTimer !== null) {
@@ -342,7 +102,6 @@
     if (!provider) {
       return {
         models: [],
-        modelMetadata: {},
         durations: [],
         aspects: [],
         resolutions: [],
@@ -362,7 +121,7 @@
               : {}
           );
 
-    const rawModels =
+    const models =
       Array.isArray(source.models)
         ? source.models
         : (
@@ -371,117 +130,44 @@
               : []
           );
 
-    const models =
-      normalizeModels(
-        rawModels
-      );
+    const durations =
+      Array.isArray(source.durations)
+        ? source.durations
+        : (
+            Array.isArray(provider.durations)
+              ? provider.durations
+              : []
+          );
 
-    const modelMetadata =
-      getModelMetadataMap(
-        rawModels
-      );
+    const aspects =
+      Array.isArray(source.aspects)
+        ? source.aspects
+        : (
+            Array.isArray(provider.aspects)
+              ? provider.aspects
+              : []
+          );
 
-    let durations =
-      getArrayValue(
-        source,
-        [
-          'durations',
-          'duration',
-          'supportedDurations',
-          'supportedDuration'
-        ]
-      );
-
-    if (!durations.length) {
-
-      durations =
-        getArrayValue(
-          provider,
-          [
-            'durations',
-            'duration',
-            'supportedDurations',
-            'supportedDuration'
-          ]
-        );
-
-    }
-
-    let aspects =
-      getArrayValue(
-        source,
-        [
-          'aspects',
-          'aspect',
-          'aspectRatios',
-          'aspectRatio',
-          'ratios',
-          'supportedAspects',
-          'supportedAspectRatios'
-        ]
-      );
-
-    if (!aspects.length) {
-
-      aspects =
-        getArrayValue(
-          provider,
-          [
-            'aspects',
-            'aspect',
-            'aspectRatios',
-            'aspectRatio',
-            'ratios',
-            'supportedAspects',
-            'supportedAspectRatios'
-          ]
-        );
-
-    }
-
-    let resolutions =
-      getArrayValue(
-        source,
-        [
-          'resolutions',
-          'resolution',
-          'supportedResolutions',
-          'supportedResolution'
-        ]
-      );
-
-    if (!resolutions.length) {
-
-      resolutions =
-        getArrayValue(
-          provider,
-          [
-            'resolutions',
-            'resolution',
-            'supportedResolutions',
-            'supportedResolution'
-          ]
-        );
-
-    }
+    const resolutions =
+      Array.isArray(source.resolutions)
+        ? source.resolutions
+        : (
+            Array.isArray(provider.resolutions)
+              ? provider.resolutions
+              : []
+          );
 
     const constraints =
       source.constraints &&
       typeof source.constraints === 'object'
         ? source.constraints
-        : (
-            provider.constraints &&
-            typeof provider.constraints === 'object'
-              ? provider.constraints
-              : {}
-          );
+        : {};
 
     return {
       models: cloneArray(models),
-      modelMetadata: modelMetadata,
-      durations: uniqueArray(durations),
-      aspects: uniqueArray(aspects),
-      resolutions: uniqueArray(resolutions),
+      durations: cloneArray(durations),
+      aspects: cloneArray(aspects),
+      resolutions: cloneArray(resolutions),
       constraints: constraints
     };
   }
@@ -489,198 +175,6 @@
 
   function getEffectiveCapabilities(provider) {
     return normalizeCapabilities(provider);
-  }
-
-
-  /* =======================================================
-     MODEL METADATA
-  ======================================================= */
-
-  function getModelMetadata(
-    provider,
-    model
-  ) {
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-    const metadata =
-      capabilities.modelMetadata || {};
-
-    const direct =
-      metadata[model];
-
-    if (
-      direct &&
-      typeof direct === 'object'
-    ) {
-      return direct;
-    }
-
-    const normalized =
-      normalizeId(model);
-
-    const key =
-      Object.keys(metadata).find(
-        function (item) {
-          return (
-            normalizeId(item) ===
-            normalized
-          );
-        }
-      );
-
-    if (
-      key !== undefined &&
-      metadata[key] &&
-      typeof metadata[key] === 'object'
-    ) {
-      return metadata[key];
-    }
-
-    return {};
-  }
-
-
-  /* =======================================================
-     MODEL PRICING
-  ======================================================= */
-
-  function getModelCredits(provider) {
-
-    if (!provider) {
-      return {};
-    }
-
-    return normalizeModelMap(
-      provider.modelCredits ||
-      provider.config?.modelCredits ||
-      {}
-    );
-  }
-
-
-  function getModelDiscounts(provider) {
-
-    if (!provider) {
-      return {};
-    }
-
-    return normalizeModelMap(
-      provider.modelDiscounts ||
-      provider.config?.modelDiscounts ||
-      {}
-    );
-  }
-
-
-  function getModelEnabled(provider) {
-
-    if (!provider) {
-      return {};
-    }
-
-    return normalizeModelMap(
-      provider.modelEnabled ||
-      provider.config?.modelEnabled ||
-      {}
-    );
-  }
-
-
-  function getMapValue(
-    map,
-    modelId
-  ) {
-
-    if (
-      !map ||
-      typeof map !== 'object'
-    ) {
-      return undefined;
-    }
-
-    const direct =
-      text(modelId);
-
-    if (
-      direct &&
-      Object.prototype.hasOwnProperty.call(
-        map,
-        direct
-      )
-    ) {
-      return map[direct];
-    }
-
-    const normalized =
-      normalizeId(modelId);
-
-    const key =
-      Object.keys(map).find(
-        function (item) {
-          return (
-            normalizeId(item) ===
-            normalized
-          );
-        }
-      );
-
-    return key !== undefined
-      ? map[key]
-      : undefined;
-  }
-
-
-  function isModelEnabled(
-    provider,
-    modelId
-  ) {
-
-    const configured =
-      getMapValue(
-        getModelEnabled(provider),
-        modelId
-      );
-
-    if (
-      configured === undefined ||
-      configured === null
-    ) {
-      return true;
-    }
-
-    if (
-      configured === false ||
-      configured === 0 ||
-      configured === 'false'
-    ) {
-      return false;
-    }
-
-    return true;
-  }
-
-
-  function getVisibleModels(provider) {
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-    return capabilities.models.filter(
-      function (modelId) {
-
-        return isModelEnabled(
-          provider,
-          modelId
-        );
-
-      }
-    );
   }
 
 
@@ -745,9 +239,17 @@
     const fileStatus = $('imageFileStatus');
 
     if (fileStatus) {
-      fileStatus.textContent =
-        'Tidak ada file dipilih';
+      fileStatus.textContent = 'Tidak ada file dipilih';
     }
+
+    /*
+     * Jangan panggil GENZ.upload.clear().
+     *
+     * Fungsi tersebut berpotensi mengirim event upload
+     * yang kemudian memanggil scheduleRefresh() lagi.
+     *
+     * State dan DOM sudah dibersihkan langsung di atas.
+     */
   }
 
 
@@ -755,78 +257,33 @@
      MODEL RULES
   ======================================================= */
 
-  function getModelRules(
-    provider,
-    model
-  ) {
+  function getModelRules(provider, model) {
 
     const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
+      getEffectiveCapabilities(provider);
 
     const constraints =
       capabilities.constraints || {};
 
-    const direct =
-      constraints[model];
-
-    if (
-      direct &&
-      typeof direct === 'object'
-    ) {
-      return direct;
-    }
-
-    const normalized =
-      normalizeId(model);
-
-    const key =
-      Object.keys(constraints).find(
-        function (item) {
-          return (
-            normalizeId(item) ===
-            normalized
-          );
-        }
-      );
-
-    if (
-      key !== undefined &&
-      constraints[key] &&
-      typeof constraints[key] === 'object'
-    ) {
-      return constraints[key];
-    }
-
-    const metadata =
-      getModelMetadata(
-        provider,
-        model
-      );
-
-    if (
-      metadata.constraints &&
-      typeof metadata.constraints === 'object'
-    ) {
-      return metadata.constraints;
-    }
-
-    if (
-      metadata.capabilities &&
-      typeof metadata.capabilities === 'object'
-    ) {
-      return metadata.capabilities;
-    }
-
-    return metadata;
+    return constraints[model] || null;
   }
 
 
-  function modelSupportsImage(
-    provider,
-    model
-  ) {
+  /*
+   * Return value:
+   *
+   * true  = model secara eksplisit mendukung image
+   * false = model secara eksplisit tidak mendukung image
+   * null  = rule/model belum diketahui
+   *
+   * Penting:
+   * null TIDAK boleh dianggap false.
+   *
+   * Saat provider sedang refresh/sinkronisasi,
+   * capability dapat sementara belum tersedia.
+   * Reference image harus tetap dipertahankan.
+   */
+  function modelSupportsImage(provider, model) {
 
     const rules =
       getModelRules(
@@ -838,27 +295,9 @@
       return null;
     }
 
-    if (
-      rules.imageReferenceSupported === true ||
-      rules.image_reference_supported === true ||
-      rules.supportsImage === true ||
-      rules.supports_image === true ||
-      rules.imageInput === true ||
-      rules.image_input === true
-    ) {
-      return true;
-    }
-
-    if (
-      rules.imageReferenceSupported === false ||
-      rules.image_reference_supported === false ||
-      rules.supportsImage === false ||
-      rules.supports_image === false
-    ) {
-      return false;
-    }
-
-    return null;
+    return (
+      rules.imageReferenceSupported === true
+    );
   }
 
 
@@ -889,295 +328,10 @@
         model
       ) === true
     ) {
-
-      return (
-        rules.imageToVideo ||
-        rules.image_to_video ||
-        rules.image2video ||
-        rules.image ||
-        null
-      );
+      return rules.imageToVideo || null;
     }
 
-    return (
-      rules.textToVideo ||
-      rules.text_to_video ||
-      rules.text2video ||
-      rules.text ||
-      null
-    );
-  }
-
-
-  /* =======================================================
-     NORMALIZE MODE DATA
-  ======================================================= */
-
-  function extractDurationList(
-    modeRules
-  ) {
-
-    if (!modeRules) {
-      return [];
-    }
-
-    if (
-      Array.isArray(modeRules)
-    ) {
-
-      return uniqueArray(
-        modeRules
-          .map(function (item) {
-
-            if (
-              item &&
-              typeof item === 'object'
-            ) {
-
-              return (
-                item.duration ??
-                item.seconds ??
-                item.value
-              );
-
-            }
-
-            return item;
-          })
-          .filter(function (item) {
-            return (
-              item !== undefined &&
-              item !== null &&
-              text(item) !== ''
-            );
-          })
-      );
-    }
-
-    if (
-      typeof modeRules !== 'object'
-    ) {
-      return [];
-    }
-
-    const direct =
-      getArrayValue(
-        modeRules,
-        [
-          'durations',
-          'duration',
-          'supportedDurations',
-          'supportedDuration'
-        ]
-      );
-
-    if (direct.length) {
-      return uniqueArray(direct);
-    }
-
-    return uniqueArray(
-      Object.keys(modeRules)
-        .filter(function (value) {
-
-          const normalized =
-            value
-              .toLowerCase()
-              .replace(
-                /seconds?/g,
-                ''
-              )
-              .trim();
-
-          return (
-            /^\d+(?:\.\d+)?$/.test(
-              normalized
-            )
-          );
-
-        })
-        .map(function (value) {
-
-          const normalized =
-            value
-              .toLowerCase()
-              .replace(
-                /seconds?/g,
-                ''
-              )
-              .trim();
-
-          return Number(
-            normalized
-          );
-
-        })
-        .filter(function (value) {
-          return Number.isFinite(value);
-        })
-    );
-  }
-
-
-  function getDurationRule(
-    modeRules,
-    duration
-  ) {
-
-    if (!modeRules) {
-      return null;
-    }
-
-    const numeric =
-      Number(duration);
-
-    if (
-      !Number.isFinite(numeric)
-    ) {
-      return null;
-    }
-
-    const candidates = [
-      String(numeric),
-      String(numeric) + 's',
-      String(numeric) + 'sec',
-      String(numeric) + 'secs',
-      String(numeric) + 'second',
-      String(numeric) + 'seconds'
-    ];
-
-    if (
-      typeof modeRules !== 'object' ||
-      Array.isArray(modeRules)
-    ) {
-
-      return null;
-    }
-
-    for (
-      const key of candidates
-    ) {
-
-      if (
-        Object.prototype.hasOwnProperty.call(
-          modeRules,
-          key
-        )
-      ) {
-
-        return modeRules[key];
-
-      }
-
-    }
-
-    const matchingKey =
-      Object.keys(modeRules).find(
-        function (key) {
-
-          const normalized =
-            key
-              .toLowerCase()
-              .replace(
-                /seconds?/g,
-                ''
-              )
-              .trim();
-
-          return (
-            Number(normalized) ===
-            numeric
-          );
-
-        }
-      );
-
-    if (
-      matchingKey !== undefined
-    ) {
-      return modeRules[matchingKey];
-    }
-
-    return null;
-  }
-
-
-  function extractResolutions(
-    rule
-  ) {
-
-    if (!rule) {
-      return [];
-    }
-
-    if (
-      Array.isArray(rule)
-    ) {
-
-      return uniqueArray(
-        rule
-      );
-    }
-
-    if (
-      typeof rule === 'object'
-    ) {
-
-      return uniqueArray(
-        getArrayValue(
-          rule,
-          [
-            'resolutions',
-            'resolution',
-            'supportedResolutions',
-            'supportedResolution'
-          ]
-        )
-      );
-
-    }
-
-    return [];
-  }
-
-
-  function extractAspects(
-    source
-  ) {
-
-    if (!source) {
-      return [];
-    }
-
-    if (
-      Array.isArray(source)
-    ) {
-      return uniqueArray(
-        source
-      );
-    }
-
-    if (
-      typeof source === 'object'
-    ) {
-
-      return uniqueArray(
-        getArrayValue(
-          source,
-          [
-            'aspects',
-            'aspect',
-            'aspectRatios',
-            'aspectRatio',
-            'ratios',
-            'supportedAspects',
-            'supportedAspectRatios'
-          ]
-        )
-      );
-
-    }
-
-    return [];
+    return rules.textToVideo || null;
   }
 
 
@@ -1192,9 +346,7 @@
   ) {
 
     const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
+      getEffectiveCapabilities(provider);
 
     const modeRules =
       getModeRules(
@@ -1203,44 +355,20 @@
         hasImage
       );
 
-    const modeDurations =
-      extractDurationList(
-        modeRules
-      );
-
-    if (
-      modeDurations.length
-    ) {
-      return modeDurations;
-    }
-
-    const metadata =
-      getModelMetadata(
-        provider,
-        model
-      );
-
-    const modelDurations =
-      getArrayValue(
-        metadata,
-        [
-          'durations',
-          'duration',
-          'supportedDurations',
-          'supportedDuration'
-        ]
-      );
-
-    if (
-      modelDurations.length
-    ) {
-      return uniqueArray(
-        modelDurations
+    if (!modeRules) {
+      return cloneArray(
+        capabilities.durations
       );
     }
 
-    return cloneArray(
-      capabilities.durations
+    return uniqueArray(
+      Object.keys(modeRules)
+        .map(function (value) {
+          return Number(value);
+        })
+        .filter(function (value) {
+          return Number.isFinite(value);
+        })
     );
   }
 
@@ -1257,9 +385,7 @@
   ) {
 
     const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
+      getEffectiveCapabilities(provider);
 
     const modeRules =
       getModeRules(
@@ -1268,68 +394,23 @@
         hasImage
       );
 
-    const durationRule =
-      getDurationRule(
-        modeRules,
-        duration
-      );
-
-    const mappedResolutions =
-      extractResolutions(
-        durationRule
-      );
-
-    if (
-      mappedResolutions.length
-    ) {
-      return mappedResolutions;
-    }
-
-    const metadata =
-      getModelMetadata(
-        provider,
-        model
-      );
-
-    const modelResolutions =
-      getArrayValue(
-        metadata,
-        [
-          'resolutions',
-          'resolution',
-          'supportedResolutions',
-          'supportedResolution'
-        ]
-      );
-
-    if (
-      modelResolutions.length
-    ) {
-      return uniqueArray(
-        modelResolutions
-      );
-    }
-
-    /*
-     * PENTING:
-     * Jika model memiliki modeRules tetapi
-     * duration tertentu tidak mempunyai mapping
-     * resolution, jangan langsung mengembalikan [].
-     *
-     * Gunakan capability resolution provider sebagai
-     * fallback supaya dropdown tidak menjadi
-     * "Tidak tersedia".
-     */
-
-    if (
-      capabilities.resolutions.length
-    ) {
+    if (!modeRules) {
       return cloneArray(
         capabilities.resolutions
       );
     }
 
-    return [];
+    const key =
+      String(Number(duration));
+
+    const allowed =
+      modeRules[key];
+
+    if (!Array.isArray(allowed)) {
+      return [];
+    }
+
+    return uniqueArray(allowed);
   }
 
 
@@ -1359,10 +440,13 @@
           : element.value
       );
 
+    /*
+     * Jangan rebuild DOM jika option sama.
+     * Ini mengurangi kerja browser dan mencegah
+     * select berkedip saat realtime refresh.
+     */
     const current =
-      Array.from(
-        element.options
-      ).map(
+      Array.from(element.options).map(
         function (option) {
           return option.value;
         }
@@ -1370,11 +454,9 @@
 
     const same =
       current.length === list.length &&
-      current.every(
-        function (value, index) {
-          return value === list[index];
-        }
-      );
+      current.every(function (value, index) {
+        return value === list[index];
+      });
 
     if (same) {
 
@@ -1382,27 +464,18 @@
         previous &&
         list.includes(previous)
       ) {
-
-        element.value =
-          previous;
-
+        element.value = previous;
         return previous;
       }
 
       if (
         list.length &&
-        !list.includes(
-          element.value
-        )
+        !list.includes(element.value)
       ) {
-
-        element.value =
-          list[0];
+        element.value = list[0];
       }
 
-      return text(
-        element.value
-      );
+      return text(element.value);
     }
 
     element.innerHTML = '';
@@ -1410,18 +483,12 @@
     if (!list.length) {
 
       const option =
-        document.createElement(
-          'option'
-        );
+        document.createElement('option');
 
       option.value = '';
+      option.textContent = 'Tidak tersedia';
 
-      option.textContent =
-        'Tidak tersedia';
-
-      element.appendChild(
-        option
-      );
+      element.appendChild(option);
 
       return '';
     }
@@ -1429,207 +496,47 @@
     const fragment =
       document.createDocumentFragment();
 
-    list.forEach(
-      function (value) {
+    list.forEach(function (value) {
 
-        const option =
-          document.createElement(
-            'option'
-          );
+      const option =
+        document.createElement('option');
 
-        option.value =
-          String(value);
+      option.value = String(value);
+      option.textContent = String(value);
 
-        option.textContent =
-          String(value);
+      fragment.appendChild(option);
 
-        fragment.appendChild(
-          option
-        );
+    });
 
-      }
-    );
-
-    element.appendChild(
-      fragment
-    );
+    element.appendChild(fragment);
 
     if (
       previous &&
       list.includes(previous)
     ) {
-
-      element.value =
-        previous;
-
+      element.value = previous;
       return previous;
     }
 
-    element.value =
-      list[0];
+    element.value = list[0];
 
     return list[0];
   }
 
 
-  function setModelOptions(
-    provider,
-    preferredValue
-  ) {
+  function setValue(id, value) {
 
-    const element =
-      $('model');
-
-    if (!element) {
-      return '';
-    }
-
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-    const models =
-      getVisibleModels(
-        provider
-      );
-
-    const previous =
-      text(
-        preferredValue !== undefined
-          ? preferredValue
-          : element.value
-      );
-
-    const current =
-      Array.from(
-        element.options
-      ).map(
-        function (option) {
-          return option.value;
-        }
-      );
-
-    const same =
-      current.length === models.length &&
-      current.every(
-        function (value, index) {
-          return value === models[index];
-        }
-      );
-
-    if (!same) {
-
-      element.innerHTML = '';
-
-      if (!models.length) {
-
-        const option =
-          document.createElement(
-            'option'
-          );
-
-        option.value = '';
-
-        option.textContent =
-          'Tidak tersedia';
-
-        element.appendChild(
-          option
-        );
-
-      } else {
-
-        const fragment =
-          document.createDocumentFragment();
-
-        models.forEach(
-          function (modelId) {
-
-            const option =
-              document.createElement(
-                'option'
-              );
-
-            const metadata =
-              capabilities.modelMetadata?.[
-                modelId
-              ] || {};
-
-            option.value =
-              modelId;
-
-            option.textContent =
-              text(
-                metadata.name ||
-                metadata.label ||
-                metadata.displayName ||
-                modelId
-              );
-
-            fragment.appendChild(
-              option
-            );
-
-          }
-        );
-
-        element.appendChild(
-          fragment
-        );
-      }
-    }
-
-    if (
-      previous &&
-      models.includes(previous)
-    ) {
-
-      element.value =
-        previous;
-
-      return previous;
-    }
-
-    if (models.length) {
-
-      element.value =
-        models[0];
-
-      return models[0];
-    }
-
-    element.value = '';
-
-    return '';
-  }
-
-
-  function setValue(
-    id,
-    value
-  ) {
-
-    const element =
-      $(id);
+    const element = $(id);
 
     if (!element) {
       return;
     }
 
     const next =
-      String(
-        value ?? ''
-      );
+      String(value ?? '');
 
-    if (
-      element.value !==
-      next
-    ) {
-
-      element.value =
-        next;
-
+    if (element.value !== next) {
+      element.value = next;
     }
   }
 
@@ -1638,46 +545,34 @@
      VALID MODEL
   ======================================================= */
 
-  function ensureValidModel(
-    provider
-  ) {
+  function ensureValidModel(provider) {
 
-    const model =
-      $('model');
+    const model = $('model');
 
     if (!model) {
       return '';
     }
 
     const allowed =
-      getVisibleModels(
-        provider
-      );
+      getEffectiveCapabilities(provider)
+        .models
+        .map(function (value) {
+          return String(value);
+        });
 
     if (!allowed.length) {
-
-      model.value =
-        '';
-
+      model.value = '';
       return '';
     }
 
     const current =
-      text(
-        model.value
-      );
+      text(model.value);
 
-    if (
-      allowed.includes(
-        current
-      )
-    ) {
-
+    if (allowed.includes(current)) {
       return current;
     }
 
-    model.value =
-      allowed[0];
+    model.value = allowed[0];
 
     return allowed[0];
   }
@@ -1687,76 +582,38 @@
      VALID ASPECT
   ======================================================= */
 
-  function ensureValidAspect(
-    provider
-  ) {
+  function ensureValidAspect(provider) {
 
-    const capabilities =
-      getEffectiveCapabilities(
-        provider
-      );
-
-    let allowed =
-      capabilities.aspects
-        .map(
-          function (value) {
-            return String(value);
-          }
-        );
-
-    const model =
-      text(
-        $('model')?.value
-      );
-
-    if (
-      !allowed.length &&
-      model
-    ) {
-
-      const metadata =
-        getModelMetadata(
-          provider,
-          model
-        );
-
-      allowed =
-        extractAspects(
-          metadata
-        );
-
-    }
+    const allowed =
+      getEffectiveCapabilities(provider)
+        .aspects
+        .map(function (value) {
+          return String(value);
+        });
 
     [
       $('ratio'),
       $('aspect')
-    ].forEach(
-      function (element) {
+    ].forEach(function (element) {
 
-        if (!element) {
-          return;
-        }
-
-        if (!allowed.length) {
-
-          element.value =
-            '';
-
-          return;
-        }
-
-        if (
-          !allowed.includes(
-            text(element.value)
-          )
-        ) {
-
-          element.value =
-            allowed[0];
-        }
-
+      if (!element) {
+        return;
       }
-    );
+
+      if (!allowed.length) {
+        element.value = '';
+        return;
+      }
+
+      if (
+        !allowed.includes(
+          text(element.value)
+        )
+      ) {
+        element.value = allowed[0];
+      }
+
+    });
   }
 
 
@@ -1833,19 +690,21 @@
     }
 
     const model =
-      text(
-        $('model')?.value
-      );
+      text($('model')?.value);
 
     const imageGroup =
       findReferenceImageGroup(
         imageInput
       );
 
+    /*
+     * Belum ada model.
+     *
+     * Jangan pernah menghapus image.
+     */
     if (!model) {
 
-      imageInput.disabled =
-        false;
+      imageInput.disabled = false;
 
       imageInput.removeAttribute(
         'aria-disabled'
@@ -1853,9 +712,7 @@
 
       if (imageGroup) {
 
-        imageGroup.classList.remove(
-          'hidden'
-        );
+        imageGroup.classList.remove('hidden');
 
         imageGroup.style.setProperty(
           'display',
@@ -1879,13 +736,22 @@
 
 
     /*
-     * UNKNOWN
+     * =====================================================
+     * UNKNOWN / BELUM SIAP
+     * =====================================================
+     *
+     * Ini bagian paling penting.
+     *
+     * Ketika provider/model baru saja berubah atau
+     * capabilities belum lengkap, supported bisa null.
+     *
+     * Jangan disable input.
+     * Jangan hide preview.
+     * Jangan clear image.
      */
-
     if (supported === null) {
 
-      imageInput.disabled =
-        false;
+      imageInput.disabled = false;
 
       imageInput.removeAttribute(
         'aria-disabled'
@@ -1893,9 +759,7 @@
 
       if (imageGroup) {
 
-        imageGroup.classList.remove(
-          'hidden'
-        );
+        imageGroup.classList.remove('hidden');
 
         imageGroup.style.setProperty(
           'display',
@@ -1913,16 +777,21 @@
 
 
     /*
-     * NOT SUPPORTED
+     * =====================================================
+     * MODEL TIDAK MENDUKUNG IMAGE
+     * =====================================================
+     *
+     * UI boleh disembunyikan, tetapi imageData TIDAK
+     * boleh dihapus.
+     *
+     * Dengan begitu saat user kembali ke model yang
+     * mendukung reference image, gambar masih tersedia.
      */
-
     if (supported === false) {
 
       if (imageGroup) {
 
-        imageGroup.classList.add(
-          'hidden'
-        );
+        imageGroup.classList.add('hidden');
 
         imageGroup.style.setProperty(
           'display',
@@ -1936,27 +805,41 @@
         );
       }
 
-      imageInput.disabled =
-        true;
+      imageInput.disabled = true;
 
       imageInput.setAttribute(
         'aria-disabled',
         'true'
       );
 
+      /*
+       * JANGAN panggil clearImageReference() di sini.
+       *
+       * Sebelumnya kode melakukan:
+       *
+       * if (hasImageReference()) {
+       *   clearImageReference();
+       * }
+       *
+       * Hal tersebut menyebabkan reference image hilang
+       * ketika refresh provider/model terjadi.
+       *
+       * Image sekarang dipertahankan.
+       */
+
       return;
     }
 
 
     /*
-     * SUPPORTED
+     * =====================================================
+     * MODEL MENDUKUNG IMAGE
+     * =====================================================
      */
 
     if (imageGroup) {
 
-      imageGroup.classList.remove(
-        'hidden'
-      );
+      imageGroup.classList.remove('hidden');
 
       imageGroup.style.setProperty(
         'display',
@@ -1969,8 +852,7 @@
       );
     }
 
-    imageInput.disabled =
-      false;
+    imageInput.disabled = false;
 
     imageInput.removeAttribute(
       'aria-disabled'
@@ -1982,14 +864,10 @@
      MODEL RULES
   ======================================================= */
 
-  function applyModelRules(
-    provider
-  ) {
+  function applyModelRules(provider) {
 
     const model =
-      ensureValidModel(
-        provider
-      );
+      ensureValidModel(provider);
 
     if (!model) {
 
@@ -2018,9 +896,7 @@
   ) {
 
     const model =
-      text(
-        $('model')?.value
-      );
+      text($('model')?.value);
 
     if (!model) {
       return '';
@@ -2051,37 +927,20 @@
   ) {
 
     const model =
-      text(
-        $('model')?.value
-      );
+      text($('model')?.value);
 
     if (!model) {
       return '';
     }
 
     const duration =
-      Number(
-        $('duration')?.value
-      );
+      Number($('duration')?.value);
 
-    if (
-      !Number.isFinite(
-        duration
-      )
-    ) {
-
-      const capabilities =
-        getEffectiveCapabilities(
-          provider
-        );
-
-      const fallback =
-        capabilities.resolutions;
+    if (!Number.isFinite(duration)) {
 
       return setOptions(
         'resolution',
-        fallback,
-        preferredResolution
+        []
       );
     }
 
@@ -2115,48 +974,36 @@
       );
 
     const model =
-      text(
-        $('model')?.value
-      );
+      text($('model')?.value);
 
     const duration =
-      text(
-        $('duration')?.value
-      );
+      text($('duration')?.value);
 
     const resolution =
-      text(
-        $('resolution')?.value
-      );
+      text($('resolution')?.value);
 
     const enabled =
       Boolean(
         provider &&
         model &&
         duration &&
-        resolution &&
-        duration !== 'Tidak tersedia' &&
-        resolution !== 'Tidak tersedia'
+        resolution
       );
 
-    buttons.forEach(
-      function (button) {
+    buttons.forEach(function (button) {
 
-        if (
-          button.id ===
-            'generateBtn' ||
-          button.hasAttribute(
-            'data-generate-button'
-          )
-        ) {
-
-          button.disabled =
-            !enabled;
-
-        }
-
+      /*
+       * Jangan disable seluruh form.
+       * Hanya tombol generate yang relevan.
+       */
+      if (
+        button.id === 'generateBtn' ||
+        button.hasAttribute('data-generate-button')
+      ) {
+        button.disabled = !enabled;
       }
-    );
+
+    });
   }
 
 
@@ -2168,31 +1015,25 @@
       .querySelectorAll(
         '[data-provider]'
       )
-      .forEach(
-        function (button) {
+      .forEach(function (button) {
 
-          const active =
-            normalizeId(
-              button.dataset.provider
-            ) ===
-            normalizeId(
-              providerId
-            );
-
-          button.classList.toggle(
-            'active',
-            active
+        const active =
+          normalizeId(
+            button.dataset.provider
+          ) === normalizeId(
+            providerId
           );
 
-          button.setAttribute(
-            'aria-selected',
-            active
-              ? 'true'
-              : 'false'
-          );
+        button.classList.toggle(
+          'active',
+          active
+        );
 
-        }
-      );
+        button.setAttribute(
+          'aria-selected',
+          active ? 'true' : 'false'
+        );
+      });
   }
 
 
@@ -2205,10 +1046,7 @@
   ) {
 
     if (refreshRunning) {
-
-      refreshQueued =
-        true;
-
+      refreshQueued = true;
       return;
     }
 
@@ -2219,43 +1057,33 @@
       return;
     }
 
-    refreshRunning =
-      true;
+    refreshRunning = true;
 
     try {
 
       const previousModel =
-        text(
-          $('model')?.value
-        );
+        text($('model')?.value);
 
       const previousDuration =
-        text(
-          $('duration')?.value
-        );
+        text($('duration')?.value);
 
       const previousResolution =
-        text(
-          $('resolution')?.value
-        );
+        text($('resolution')?.value);
 
       const previousRatio =
-        text(
-          $('ratio')?.value
-        );
+        text($('ratio')?.value);
 
       const previousAspect =
-        text(
-          $('aspect')?.value
-        );
+        text($('aspect')?.value);
 
 
       /* ===================================================
          MODEL
       =================================================== */
 
-      setModelOptions(
-        provider,
+      setOptions(
+        'model',
+        getEffectiveCapabilities(provider).models,
         previousModel
       );
 
@@ -2287,27 +1115,10 @@
          ASPECT
       =================================================== */
 
-      const capabilities =
+      const aspects =
         getEffectiveCapabilities(
           provider
-        );
-
-      let aspects =
-        capabilities.aspects;
-
-      if (
-        !aspects.length
-      ) {
-
-        aspects =
-          extractAspects(
-            getModelMetadata(
-              provider,
-              model
-            )
-          );
-
-      }
+        ).aspects;
 
       setOptions(
         'ratio',
@@ -2349,43 +1160,17 @@
         hasImage
       ) {
 
-        const allowedDurations =
-          getAllowedDurations(
-            provider,
-            model,
-            hasImage
-          );
-
-        const preferredImageDuration =
-          allowedDurations.includes(
-            '8'
-          )
-            ? '8'
-            : (
-                allowedDurations.includes(
-                  '8.0'
-                )
-                  ? '8.0'
-                  : undefined
-              );
-
         duration =
           applyDurationRules(
             provider,
-            preferredImageDuration !== undefined
-              ? preferredImageDuration
-              : previousDuration
+            '8'
           );
       }
 
 
       if (!duration) {
-
         duration =
-          text(
-            $('duration')?.value
-          );
-
+          text($('duration')?.value);
       }
 
 
@@ -2400,13 +1185,16 @@
         );
 
 
+      /*
+       * Jika resolution yang lama tidak kompatibel,
+       * pilih resolution pertama yang valid.
+       */
       if (!resolution) {
 
         resolution =
           applyResolutionRules(
             provider
           );
-
       }
 
 
@@ -2415,8 +1203,7 @@
       =================================================== */
 
       if (
-        changedField ===
-        'resolution'
+        changedField === 'resolution'
       ) {
 
         const selectedResolution =
@@ -2450,8 +1237,7 @@
           );
 
         if (
-          compatibleDuration !==
-          undefined
+          compatibleDuration !== undefined
         ) {
 
           duration =
@@ -2460,7 +1246,6 @@
               allowedDurations,
               compatibleDuration
             );
-
         }
       }
 
@@ -2472,9 +1257,7 @@
       resolution =
         applyResolutionRules(
           provider,
-          text(
-            $('resolution')?.value
-          )
+          text($('resolution')?.value)
         );
 
 
@@ -2486,9 +1269,7 @@
         provider.id;
 
       GENZ.state.model =
-        text(
-          $('model')?.value
-        );
+        text($('model')?.value);
 
       GENZ.state.duration =
         Number(
@@ -2507,36 +1288,16 @@
         );
 
 
-      /* ===================================================
-         PRICING STATE
-      =================================================== */
-
-      const selectedModel =
-        text(
-          $('model')?.value
-        );
-
-      const modelCredits =
-        getModelCredits(
-          provider
-        );
-
-      const modelDiscounts =
-        getModelDiscounts(
-          provider
-        );
-
-      GENZ.state.modelCredit =
-        getMapValue(
-          modelCredits,
-          selectedModel
-        );
-
-      GENZ.state.modelDiscount =
-        getMapValue(
-          modelDiscounts,
-          selectedModel
-        );
+      /*
+       * Jangan sentuh:
+       *
+       * GENZ.state.imageData
+       * GENZ.upload.imageData
+       *
+       * selama refresh provider.
+       *
+       * Reference image dikelola oleh upload.js.
+       */
 
 
       /* ===================================================
@@ -2551,38 +1312,18 @@
         provider.id
       );
 
-
-      /*
-       * Beri tahu UI credit bahwa provider/model
-       * sudah berubah.
-       */
-
-      if (
-        GENZ.modelCreditUI &&
-        typeof GENZ.modelCreditUI.update ===
-          'function'
-      ) {
-
-        GENZ.modelCreditUI.update();
-
-      }
-
     } finally {
 
-      refreshRunning =
-        false;
+      refreshRunning = false;
 
       if (refreshQueued) {
 
-        refreshQueued =
-          false;
+        refreshQueued = false;
 
         scheduleRefresh(
           changedField || ''
         );
-
       }
-
     }
   }
 
@@ -2644,8 +1385,7 @@
             id: provider.id,
             name: provider.name,
             adapter:
-              provider.adapter ||
-              null,
+              provider.adapter || null,
             capabilities:
               getEffectiveCapabilities(
                 provider
@@ -2677,36 +1417,28 @@
     const fragment =
       document.createDocumentFragment();
 
-    providers.forEach(
-      function (provider) {
+    providers.forEach(function (provider) {
 
-        const button =
-          document.createElement(
-            'button'
-          );
-
-        button.type =
-          'button';
-
-        button.className =
-          'provider-button';
-
-        button.dataset.provider =
-          provider.id;
-
-        button.textContent =
-          provider.name ||
-          provider.id;
-
-        fragment.appendChild(
-          button
+      const button =
+        document.createElement(
+          'button'
         );
-      }
-    );
 
-    container.innerHTML =
-      '';
+      button.type = 'button';
+      button.className = 'provider-button';
+      button.dataset.provider =
+        provider.id;
 
+      button.textContent =
+        provider.name ||
+        provider.id;
+
+      fragment.appendChild(
+        button
+      );
+    });
+
+    container.innerHTML = '';
     container.appendChild(
       fragment
     );
@@ -2758,9 +1490,7 @@
     }
 
     const previous =
-      text(
-        element.value
-      );
+      text(element.value);
 
     const fragment =
       document.createDocumentFragment();
@@ -2770,47 +1500,37 @@
         'option'
       );
 
-    placeholder.value =
-      '';
+    placeholder.value = '';
 
     placeholder.textContent =
       providers.length
         ? 'Pilih AI Engine'
         : 'Tidak ada AI Engine';
 
-    placeholder.disabled =
-      providers.length > 0;
-
-    placeholder.selected =
-      !previous;
-
     fragment.appendChild(
       placeholder
     );
 
-    providers.forEach(
-      function (provider) {
+    providers.forEach(function (provider) {
 
-        const option =
-          document.createElement(
-            'option'
-          );
-
-        option.value =
-          provider.id;
-
-        option.textContent =
-          provider.name ||
-          provider.id;
-
-        fragment.appendChild(
-          option
+      const option =
+        document.createElement(
+          'option'
         );
-      }
-    );
 
-    element.innerHTML =
-      '';
+      option.value =
+        provider.id;
+
+      option.textContent =
+        provider.name ||
+        provider.id;
+
+      fragment.appendChild(
+        option
+      );
+    });
+
+    element.innerHTML = '';
 
     element.appendChild(
       fragment
@@ -2818,20 +1538,11 @@
 
     if (
       previous &&
-      providers.some(
-        function (provider) {
-          return (
-            String(
-              provider.id
-            ) === previous
-          );
-        }
-      )
+      providers.some(function (provider) {
+        return String(provider.id) === previous;
+      })
     ) {
-
-      element.value =
-        previous;
-
+      element.value = previous;
     }
   }
 
@@ -2849,84 +1560,45 @@
     }
 
     return list
-      .filter(
-        function (provider) {
+      .filter(function (provider) {
 
-          if (!provider) {
-            return false;
-          }
+        if (!provider) {
+          return false;
+        }
 
-          if (
-            provider.enabled ===
-            false
-          ) {
-            return false;
-          }
+        if (provider.enabled === false) {
+          return false;
+        }
 
-          return Boolean(
+        return Boolean(
+          provider.id ||
+          provider.name
+        );
+      })
+      .map(function (provider) {
+
+        const id =
+          text(
             provider.id ||
             provider.name
           );
-        }
-      )
-      .map(
-        function (provider) {
 
-          const id =
-            text(
-              provider.id ||
-              provider.name
-            );
+        const name =
+          text(
+            provider.name ||
+            id
+          );
 
-          const name =
-            text(
-              provider.name ||
-              id
-            );
-
-          const capabilities =
+        return {
+          ...provider,
+          id: id,
+          name: name,
+          capabilities:
             normalizeCapabilities(
               provider
-            );
-
-          return {
-            ...provider,
-
-            id:
-              id,
-
-            name:
-              name,
-
-            capabilities:
-              capabilities,
-
-            models:
-              capabilities.models,
-
-            modelCredits:
-              normalizeModelMap(
-                provider.modelCredits ||
-                provider.config?.modelCredits ||
-                {}
-              ),
-
-            modelDiscounts:
-              normalizeModelMap(
-                provider.modelDiscounts ||
-                provider.config?.modelDiscounts ||
-                {}
-              ),
-
-            modelEnabled:
-              normalizeModelMap(
-                provider.modelEnabled ||
-                provider.config?.modelEnabled ||
-                {}
-              )
-          };
-        }
-      );
+            )
+        };
+      });
   }
 
 
@@ -2939,8 +1611,7 @@
   ) {
 
     const providers =
-      GENZ.providers.list ||
-      [];
+      GENZ.providers.list || [];
 
     const normalized =
       normalizeId(
@@ -2954,13 +1625,10 @@
           return (
             normalizeId(
               provider.id
-            ) ===
-            normalized
+            ) === normalized
           );
-
         }
-      ) ||
-      null
+      ) || null
     );
   }
 
@@ -3016,12 +1684,8 @@
         await fetch(
           '/api/providers',
           {
-            method:
-              'GET',
-
-            credentials:
-              'include',
-
+            method: 'GET',
+            credentials: 'include',
             headers: {
               Accept:
                 'application/json'
@@ -3035,7 +1699,6 @@
           'HTTP ' +
           response.status
         );
-
       }
 
       const data =
@@ -3050,7 +1713,6 @@
         throw new Error(
           'Format response provider tidak valid.'
         );
-
       }
 
       return data.providers;
@@ -3117,14 +1779,12 @@
                   provider.id
                 ) === requested
               );
-
             }
           );
 
         if (!selected) {
           selected =
-            providers[0] ||
-            null;
+            providers[0] || null;
         }
 
         if (selected) {
@@ -3143,11 +1803,9 @@
 
         } else {
 
-          GENZ.state.provider =
-            null;
+          GENZ.state.provider = null;
 
-          GENZ.providers.current =
-            null;
+          GENZ.providers.current = null;
 
           GENZ.providers.currentProvider =
             null;
@@ -3198,11 +1856,8 @@
             'genz-providers-loaded',
             {
               detail: {
-                providers:
-                  providers,
-
-                count:
-                  providers.length
+                providers: providers,
+                count: providers.length
               }
             }
           )
@@ -3218,8 +1873,7 @@
 
     } finally {
 
-      providersLoading =
-        null;
+      providersLoading = null;
     }
   }
 
@@ -3256,11 +1910,9 @@
 
         if (!providerId) {
 
-          GENZ.state.provider =
-            null;
+          GENZ.state.provider = null;
 
-          GENZ.providers.current =
-            null;
+          GENZ.providers.current = null;
 
           GENZ.providers.currentProvider =
             null;
@@ -3287,16 +1939,14 @@
   function bindCapabilityListeners() {
 
     if (
-      document.documentElement
-        .dataset
+      document.documentElement.dataset
         .providerCapabilityListenersAttached ===
       'true'
     ) {
       return;
     }
 
-    document.documentElement
-      .dataset
+    document.documentElement.dataset
       .providerCapabilityListenersAttached =
       'true';
 
@@ -3312,44 +1962,30 @@
           return;
         }
 
-        switch (
-          target.id
-        ) {
+        switch (target.id) {
 
           case 'model':
-            scheduleRefresh(
-              'model'
-            );
+            scheduleRefresh('model');
             break;
 
           case 'duration':
-            scheduleRefresh(
-              'duration'
-            );
+            scheduleRefresh('duration');
             break;
 
           case 'resolution':
-            scheduleRefresh(
-              'resolution'
-            );
+            scheduleRefresh('resolution');
             break;
 
           case 'ratio':
-            scheduleRefresh(
-              'ratio'
-            );
+            scheduleRefresh('ratio');
             break;
 
           case 'aspect':
-            scheduleRefresh(
-              'aspect'
-            );
+            scheduleRefresh('aspect');
             break;
 
           case 'image':
-            scheduleRefresh(
-              'image'
-            );
+            scheduleRefresh('image');
             break;
 
           default:
@@ -3369,16 +2005,10 @@
 
         if (
           target &&
-          target.id ===
-            'image'
+          target.id === 'image'
         ) {
-
-          scheduleRefresh(
-            'image'
-          );
-
+          scheduleRefresh('image');
         }
-
       },
       true
     );
@@ -3390,22 +2020,16 @@
       'genz-image-upload',
       'genz-upload-complete',
       'genz-image-removed'
-    ].forEach(
-      function (eventName) {
+    ].forEach(function (eventName) {
 
-        document.addEventListener(
-          eventName,
-          function () {
+      document.addEventListener(
+        eventName,
+        function () {
+          scheduleRefresh('image');
+        }
+      );
 
-            scheduleRefresh(
-              'image'
-            );
-
-          }
-        );
-
-      }
-    );
+    });
   }
 
 
@@ -3430,57 +2054,10 @@
 
       const provider =
         providerId
-          ? findProvider(
-              providerId
-            )
+          ? findProvider(providerId)
           : GENZ.providers.currentProvider;
 
       return getEffectiveCapabilities(
-        provider
-      );
-    };
-
-  GENZ.providers.getModelCredits =
-    function (providerId) {
-
-      const provider =
-        providerId
-          ? findProvider(
-              providerId
-            )
-          : GENZ.providers.currentProvider;
-
-      return getModelCredits(
-        provider
-      );
-    };
-
-  GENZ.providers.getModelDiscounts =
-    function (providerId) {
-
-      const provider =
-        providerId
-          ? findProvider(
-              providerId
-            )
-          : GENZ.providers.currentProvider;
-
-      return getModelDiscounts(
-        provider
-      );
-    };
-
-  GENZ.providers.getModelEnabled =
-    function (providerId) {
-
-      const provider =
-        providerId
-          ? findProvider(
-              providerId
-            )
-          : GENZ.providers.currentProvider;
-
-      return getModelEnabled(
         provider
       );
     };
@@ -3513,6 +2090,11 @@
 
     await loadProviders();
 
+    /*
+     * Tidak ada lagi refresh tambahan 300 ms.
+     * Provider sudah selesai dimuat dan disinkronkan
+     * pada loadProviders().
+     */
   }
 
 
@@ -3532,7 +2114,6 @@
   } else {
 
     initialize();
-
   }
 
 })();
