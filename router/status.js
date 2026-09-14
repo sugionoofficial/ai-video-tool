@@ -30,24 +30,20 @@ import {
 
 
 /* ============================================================
-GEN-Z.AI
-STATUS ROUTER
+   GEN-Z.AI
+   STATUS ROUTER
 ============================================================ */
 
 const MAX_EXTERNAL_ID_LENGTH = 512;
 
 
 /* ============================================================
-HELPERS
+   HELPERS
 ============================================================ */
 
-function normalizeExternalId(
-  value
-) {
+function normalizeExternalId(value) {
   const id =
-    String(
-      value ?? ""
-    ).trim();
+    String(value ?? "").trim();
 
   if (!id) {
     throw new HttpError(
@@ -56,10 +52,7 @@ function normalizeExternalId(
     );
   }
 
-  if (
-    id.length >
-    MAX_EXTERNAL_ID_LENGTH
-  ) {
+  if (id.length > MAX_EXTERNAL_ID_LENGTH) {
     throw new HttpError(
       "ID proses video terlalu panjang.",
       400
@@ -70,21 +63,21 @@ function normalizeExternalId(
 }
 
 
-function normalizeStatus(
-  value
-) {
-  return String(
-    value || ""
-  )
+function normalizeStatus(value) {
+  return String(value || "")
     .trim()
     .toLowerCase();
 }
 
 
-function buildProxyUrl(
-  provider,
-  jobId
-) {
+function normalizeAdapter(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+
+function buildProxyUrl(provider, jobId) {
   return (
     `/api/video?provider=${encodeURIComponent(
       provider
@@ -95,9 +88,7 @@ function buildProxyUrl(
 }
 
 
-function safeMetadata(
-  value
-) {
+function safeMetadata(value) {
   return (
     value &&
     typeof value === "object" &&
@@ -111,7 +102,7 @@ function safeMetadata(
 
 
 /* ============================================================
-MAIN STATUS HANDLER
+   MAIN STATUS HANDLER
 ============================================================ */
 
 export async function handleStatus(
@@ -126,7 +117,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  CONTENT TYPE
+     CONTENT TYPE
   ========================================================== */
 
   requireJsonContentType(
@@ -135,7 +126,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  REQUEST BODY
+     REQUEST BODY
   ========================================================== */
 
   const body =
@@ -156,7 +147,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  PROVIDER
+     PROVIDER ID
   ========================================================== */
 
   const id =
@@ -173,7 +164,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  EXTERNAL PROCESS ID
+     EXTERNAL PROCESS ID
   ========================================================== */
 
   const externalId =
@@ -185,7 +176,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  LOAD JOB
+     LOAD JOB
   ========================================================== */
 
   const job =
@@ -205,16 +196,44 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  FINAL JOB SHORT-CIRCUIT
-  ==========================================================
-  
-  Jangan panggil provider lagi jika job sudah final.
+     JOB METADATA
+  ========================================================== */
 
-  Ini mencegah:
-  - polling provider yang tidak diperlukan
-  - duplicate event
-  - duplicate update
-  - pemakaian API provider berlebihan
+  const jobMetadata =
+    safeMetadata(
+      job.metadata
+    );
+
+
+  /* ==========================================================
+     ADAPTER DARI JOB
+     ==========================================================
+
+     PENTING:
+
+     Job harus tetap menggunakan adapter yang dipakai
+     ketika generation dibuat.
+
+     Jangan selalu mengambil adapter terbaru dari
+     tabel providers karena konfigurasi provider dapat
+     berubah setelah job dibuat.
+
+     Prioritas:
+       1. job.metadata.adapter
+       2. provider.adapter
+  ========================================================== */
+
+  const jobAdapterId =
+    normalizeAdapter(
+      jobMetadata.adapter
+    );
+
+
+  /* ==========================================================
+     FINAL JOB SHORT-CIRCUIT
+  ==========================================================
+
+     Jangan panggil provider lagi jika job sudah final.
   ========================================================== */
 
   const currentStatus =
@@ -223,14 +242,20 @@ export async function handleStatus(
     );
 
 
+  /* ==========================================================
+     COMPLETED SHORT-CIRCUIT
+  ========================================================== */
+
   if (
     currentStatus ===
     "completed"
   ) {
-    const metadata =
-      safeMetadata(
-        job.metadata
-      );
+    const adapterId =
+      jobAdapterId ||
+      normalizeAdapter(
+        job.adapter
+      ) ||
+      null;
 
     const proxyUrl =
       buildProxyUrl(
@@ -247,10 +272,7 @@ export async function handleStatus(
           id,
 
         adapter:
-          String(
-            metadata.adapter ||
-            ""
-          ).trim().toLowerCase(),
+          adapterId,
 
         status:
           "completed",
@@ -261,19 +283,19 @@ export async function handleStatus(
 
         model:
           job.model ||
-          metadata.model ||
+          jobMetadata.model ||
           null,
 
         duration:
-          metadata.duration ??
+          jobMetadata.duration ??
           null,
 
         aspectRatio:
-          metadata.aspectRatio ||
+          jobMetadata.aspectRatio ||
           null,
 
         resolution:
-          metadata.resolution ||
+          jobMetadata.resolution ||
           null
       },
       200,
@@ -282,14 +304,20 @@ export async function handleStatus(
   }
 
 
+  /* ==========================================================
+     FAILED SHORT-CIRCUIT
+  ========================================================== */
+
   if (
     currentStatus ===
     "failed"
   ) {
-    const metadata =
-      safeMetadata(
-        job.metadata
-      );
+    const adapterId =
+      jobAdapterId ||
+      normalizeAdapter(
+        job.adapter
+      ) ||
+      null;
 
     return json(
       {
@@ -300,10 +328,7 @@ export async function handleStatus(
           id,
 
         adapter:
-          String(
-            metadata.adapter ||
-            ""
-          ).trim().toLowerCase(),
+          adapterId,
 
         status:
           "failed",
@@ -323,7 +348,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  LOAD PROVIDER
+     LOAD PROVIDER
   ========================================================== */
 
   const provider =
@@ -342,16 +367,28 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  RESOLVE ADAPTER
+     RESOLVE ADAPTER
+  ==========================================================
+
+     Gunakan adapter yang tersimpan pada JOB terlebih dahulu.
+
+     Ini penting jika provider diubah:
+       ByteDance -> adapter lama
+       ChinaAPI  -> adapter chinaapi
+
+     Job lama tidak boleh tiba-tiba berpindah adapter
+     hanya karena nama/provider configuration berubah.
   ========================================================== */
 
+  const providerAdapterId =
+    normalizeAdapter(
+      provider?.adapter
+    );
+
   const adapterId =
-    String(
-      provider?.adapter ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
+    jobAdapterId ||
+    providerAdapterId;
+
 
   if (!adapterId) {
     throw new HttpError(
@@ -360,6 +397,10 @@ export async function handleStatus(
     );
   }
 
+
+  /* ==========================================================
+     RESOLVE ADAPTER REGISTRY
+  ========================================================== */
 
   let adapter;
 
@@ -389,7 +430,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  CALL PROVIDER ADAPTER
+     CALL PROVIDER ADAPTER
   ========================================================== */
 
   const result =
@@ -401,7 +442,8 @@ export async function handleStatus(
 
   if (
     !result ||
-    typeof result !== "object"
+    typeof result !== "object" ||
+    Array.isArray(result)
   ) {
     throw new HttpError(
       "Provider tidak mengembalikan status yang valid.",
@@ -410,11 +452,33 @@ export async function handleStatus(
   }
 
 
+  /* ==========================================================
+     NORMALIZE PROVIDER STATUS
+  ========================================================== */
+
   const providerStatus =
     normalizeStatus(
       result.status
     );
 
+
+  if (!providerStatus) {
+    throw new HttpError(
+      "Provider tidak mengembalikan status proses.",
+      502
+    );
+  }
+
+
+  /* ==========================================================
+     FORCE INTERNAL PROVIDER IDENTITY
+  ==========================================================
+
+     Provider ID berasal dari job/request yang sudah
+     divalidasi.
+
+     Provider Name tidak boleh menggantikan Provider ID.
+  ========================================================== */
 
   result.provider =
     id;
@@ -424,7 +488,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  COMPLETED
+     COMPLETED
   ========================================================== */
 
   if (
@@ -437,15 +501,20 @@ export async function handleStatus(
         job.id
       );
 
-    const previousMetadata =
+    const resultMetadata =
       safeMetadata(
-        job.metadata
+        result
       );
 
-    const nextMetadata = {
-      ...previousMetadata,
 
-      ...result,
+    /* ========================================================
+       MERGE METADATA
+    ======================================================== */
+
+    const nextMetadata = {
+      ...jobMetadata,
+
+      ...resultMetadata,
 
       provider:
         id,
@@ -453,40 +522,49 @@ export async function handleStatus(
       adapter:
         adapterId,
 
+      providerStatus:
+        "completed",
+
       prompt:
-        previousMetadata.prompt ||
+        jobMetadata.prompt ||
         result.prompt ||
         null,
 
       model:
-        previousMetadata.model ||
+        jobMetadata.model ||
         result.model ||
         job.model ||
         null,
 
       duration:
-        previousMetadata.duration ??
+        jobMetadata.duration ??
         result.duration ??
         null,
 
       aspectRatio:
-        previousMetadata.aspectRatio ||
+        jobMetadata.aspectRatio ||
         result.aspectRatio ||
         null,
 
       resolution:
-        previousMetadata.resolution ||
+        jobMetadata.resolution ||
         result.resolution ||
         null
     };
 
 
     /* ========================================================
-    PROVIDER FILE ID
+       PROVIDER FILE ID
     ======================================================== */
 
     if (
-      result.fileId
+      result.fileId !==
+        undefined &&
+      result.fileId !==
+        null &&
+      String(
+        result.fileId
+      ).trim()
     ) {
       nextMetadata.provider_file_id =
         String(
@@ -496,7 +574,26 @@ export async function handleStatus(
 
 
     /* ========================================================
-    UPDATE JOB
+       VIDEO URL
+    ========================================================
+
+       Prioritas:
+       1. URL dari provider
+       2. URL yang sudah tersimpan
+       3. proxy internal
+    ======================================================== */
+
+    const videoUrl =
+      String(
+        result.videoUrl ||
+        job.video_url ||
+        ""
+      ).trim() ||
+      proxyUrl;
+
+
+    /* ========================================================
+       UPDATE JOB
     ======================================================== */
 
     await updateJob(
@@ -515,8 +612,7 @@ export async function handleStatus(
           null,
 
         video_url:
-          result.videoUrl ||
-          proxyUrl,
+          videoUrl,
 
         model:
           nextMetadata.model,
@@ -529,7 +625,7 @@ export async function handleStatus(
 
 
     /* ========================================================
-    COMPLETED EVENT
+       COMPLETED EVENT
     ======================================================== */
 
     await recordJobEvent(
@@ -550,9 +646,15 @@ export async function handleStatus(
     );
 
 
+    /* ========================================================
+       RESPONSE CLEANUP
+    ======================================================== */
+
     result.videoUrl =
-      result.videoUrl ||
-      proxyUrl;
+      videoUrl;
+
+    result.status =
+      "completed";
 
     delete result.fileId;
 
@@ -571,7 +673,10 @@ export async function handleStatus(
         ...result,
 
         status:
-          "completed"
+          "completed",
+
+        videoUrl:
+          videoUrl
       },
       200,
       env
@@ -580,27 +685,48 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  FAILED
+     FAILED
   ========================================================== */
 
   if (
     providerStatus ===
     "failed"
   ) {
-    const previousMetadata =
-      safeMetadata(
-        job.metadata
+    const failureMessage =
+      String(
+        result.error ||
+        result.message ||
+        "Provider reported failure"
+      ).slice(
+        0,
+        1000
       );
 
+
+    const failureCode =
+      String(
+        result.errorCode ||
+        result.code ||
+        "provider_failed"
+      ).slice(
+        0,
+        200
+      );
+
+
     const failureMetadata = {
-      ...previousMetadata,
+      ...jobMetadata,
 
       provider:
         id,
 
       adapter:
-        adapterId
+        adapterId,
+
+      providerStatus:
+        "failed"
     };
+
 
     const alreadyFailed =
       normalizeStatus(
@@ -608,6 +734,10 @@ export async function handleStatus(
       ) ===
       "failed";
 
+
+    /* ========================================================
+       UPDATE FAILED JOB
+    ======================================================== */
 
     await updateJob(
       job.id,
@@ -619,16 +749,10 @@ export async function handleStatus(
           "failed",
 
         last_error:
-          String(
-            result.error ||
-            "Provider reported failure"
-          ).slice(
-            0,
-            1000
-          ),
+          failureMessage,
 
         last_error_code:
-          "provider_failed",
+          failureCode,
 
         metadata:
           failureMetadata
@@ -636,6 +760,10 @@ export async function handleStatus(
       env
     );
 
+
+    /* ========================================================
+       FAILED EVENT
+    ======================================================== */
 
     await recordJobEvent(
       job.id,
@@ -646,16 +774,10 @@ export async function handleStatus(
           "failed",
 
         errorCode:
-          "provider_failed",
+          failureCode,
 
         message:
-          String(
-            result.error ||
-            "Provider reported failure"
-          ).slice(
-            0,
-            1000
-          ),
+          failureMessage,
 
         metadata:
           failureMetadata
@@ -664,17 +786,15 @@ export async function handleStatus(
     );
 
 
-    /*
-     * Refund hanya dilakukan jika job belum
-     * sebelumnya berstatus failed.
-     *
-     * RPC refund_video_job tetap harus bersifat
-     * idempotent di database sebagai perlindungan
-     * terhadap dua polling bersamaan.
-     */
-    if (
-      !alreadyFailed
-    ) {
+    /* ========================================================
+       REFUND
+    ========================================================
+
+       Database RPC tetap menjadi perlindungan utama
+       terhadap refund ganda.
+    ======================================================== */
+
+    if (!alreadyFailed) {
       await refundJob(
         job.id,
         env
@@ -696,6 +816,10 @@ export async function handleStatus(
     }
 
 
+    /* ========================================================
+       RESPONSE
+    ======================================================== */
+
     return json(
       {
         jobId:
@@ -711,16 +835,10 @@ export async function handleStatus(
           "failed",
 
         error:
-          String(
-            result.error ||
-            "Provider reported failure"
-          ).slice(
-            0,
-            1000
-          ),
+          failureMessage,
 
         errorCode:
-          "provider_failed"
+          failureCode
       },
       200,
       env
@@ -729,7 +847,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  PROCESSING
+     PROCESSING
   ========================================================== */
 
   const currentAttempt =
@@ -749,18 +867,84 @@ export async function handleStatus(
       : 1;
 
 
+  /* ==========================================================
+     PROVIDER STATUS UNTUK METADATA
+  ========================================================== */
+
+  const normalizedProviderStatus =
+    providerStatus ||
+    normalizeStatus(
+      result.providerStatus
+    ) ||
+    "processing";
+
+
+  /* ==========================================================
+     PROCESSING METADATA
+  ========================================================== */
+
   const processingMetadata = {
+    ...jobMetadata,
+
     ...safeMetadata(
-      job.metadata
+      result
     ),
 
     provider:
       id,
 
     adapter:
-      adapterId
+      adapterId,
+
+    providerStatus:
+      normalizedProviderStatus,
+
+    model:
+      jobMetadata.model ||
+      result.model ||
+      job.model ||
+      null,
+
+    duration:
+      jobMetadata.duration ??
+      result.duration ??
+      null,
+
+    aspectRatio:
+      jobMetadata.aspectRatio ||
+      result.aspectRatio ||
+      null,
+
+    resolution:
+      jobMetadata.resolution ||
+      result.resolution ||
+      null
   };
 
+
+  /* ==========================================================
+     PROVIDER FILE ID
+  ========================================================== */
+
+  if (
+    result.fileId !==
+      undefined &&
+    result.fileId !==
+      null &&
+    String(
+      result.fileId
+    ).trim()
+  ) {
+    processingMetadata.provider_file_id =
+      String(
+        result.fileId
+      ).trim();
+  }
+
+
+  /* ==========================================================
+     UPDATE PROCESSING JOB
+  ========================================================== */
 
   await updateJob(
     job.id,
@@ -769,7 +953,7 @@ export async function handleStatus(
         nextAttempt,
 
       provider_status:
-        "processing",
+        normalizedProviderStatus,
 
       metadata:
         processingMetadata
@@ -778,13 +962,17 @@ export async function handleStatus(
   );
 
 
+  /* ==========================================================
+     PROCESSING EVENT
+  ========================================================== */
+
   await recordJobEvent(
     job.id,
     user.id,
     "poll_processing",
     {
       providerStatus:
-        "processing",
+        normalizedProviderStatus,
 
       message:
         "Provider still processing",
@@ -797,7 +985,7 @@ export async function handleStatus(
 
 
   /* ==========================================================
-  RESPONSE
+     RESPONSE
   ========================================================== */
 
   return json(
@@ -814,7 +1002,13 @@ export async function handleStatus(
       status:
         "processing",
 
-      ...result
+      providerStatus:
+        normalizedProviderStatus,
+
+      ...result,
+
+      status:
+        "processing"
     },
     200,
     env
