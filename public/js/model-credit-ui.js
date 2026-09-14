@@ -5,10 +5,9 @@
     bound: false,
     providerElement: null,
     modelElement: null,
-    observer: null,
-    appObserver: null,
+    updateTimer: null,
     retryTimer: null,
-    updateTimer: null
+    appObserver: null
   };
 
   function get(id) {
@@ -48,12 +47,15 @@
   }
 
   function getCurrentProvider() {
-    if (
+    const providers =
       window.GENZ &&
-      window.GENZ.providers &&
-      window.GENZ.providers.currentProvider
+      window.GENZ.providers;
+
+    if (
+      providers &&
+      providers.currentProvider
     ) {
-      return window.GENZ.providers.currentProvider;
+      return providers.currentProvider;
     }
 
     if (
@@ -68,16 +70,17 @@
   }
 
   function getProviderFromList(providerId) {
-    if (
-      !window.GENZ ||
-      !window.GENZ.providers
-    ) {
+    const providers =
+      window.GENZ &&
+      window.GENZ.providers;
+
+    if (!providers) {
       return null;
     }
 
     const list =
-      Array.isArray(window.GENZ.providers.list)
-        ? window.GENZ.providers.list
+      Array.isArray(providers.list)
+        ? providers.list
         : [];
 
     const normalized =
@@ -182,7 +185,10 @@
     const key =
       Object.keys(map).find(
         function (item) {
-          return normalizeId(item) === normalized;
+          return (
+            normalizeId(item) ===
+            normalized
+          );
         }
       );
 
@@ -223,8 +229,10 @@
             typeof model === 'string' ||
             typeof model === 'number'
           ) {
-            return normalizeId(model) ===
-              normalizeId(modelId);
+            return (
+              normalizeId(model) ===
+              normalizeId(modelId)
+            );
           }
 
           return normalizeId(
@@ -245,21 +253,25 @@
   }
 
   function getBaseCredit(provider, modelId) {
-    if (
+    const stateCredit =
       window.GENZ &&
-      window.GENZ.state &&
-      window.GENZ.state.modelCredit !== undefined &&
-      window.GENZ.state.modelCredit !== null &&
-      window.GENZ.state.modelCredit !== ''
+      window.GENZ.state
+        ? window.GENZ.state.modelCredit
+        : undefined;
+
+    if (
+      stateCredit !== undefined &&
+      stateCredit !== null &&
+      stateCredit !== ''
     ) {
-      const stateCredit =
+      const value =
         toNumber(
-          window.GENZ.state.modelCredit,
+          stateCredit,
           0
         );
 
-      if (stateCredit > 0) {
-        return stateCredit;
+      if (value > 0) {
+        return value;
       }
     }
 
@@ -282,7 +294,10 @@
     ) {
       return Math.max(
         1,
-        toNumber(configured, 1)
+        toNumber(
+          configured,
+          1
+        )
       );
     }
 
@@ -308,7 +323,10 @@
         ) {
           return Math.max(
             1,
-            toNumber(value, 1)
+            toNumber(
+              value,
+              1
+            )
           );
         }
       }
@@ -318,24 +336,25 @@
   }
 
   function getDiscount(provider, modelId) {
-    if (
+    const stateDiscount =
       window.GENZ &&
-      window.GENZ.state &&
-      window.GENZ.state.modelDiscount !== undefined &&
-      window.GENZ.state.modelDiscount !== null &&
-      window.GENZ.state.modelDiscount !== ''
-    ) {
-      const stateDiscount =
-        toNumber(
-          window.GENZ.state.modelDiscount,
-          0
-        );
+      window.GENZ.state
+        ? window.GENZ.state.modelDiscount
+        : undefined;
 
+    if (
+      stateDiscount !== undefined &&
+      stateDiscount !== null &&
+      stateDiscount !== ''
+    ) {
       return Math.min(
         100,
         Math.max(
           0,
-          stateDiscount
+          toNumber(
+            stateDiscount,
+            0
+          )
         )
       );
     }
@@ -361,7 +380,10 @@
         100,
         Math.max(
           0,
-          toNumber(configured, 0)
+          toNumber(
+            configured,
+            0
+          )
         )
       );
     }
@@ -389,7 +411,10 @@
             100,
             Math.max(
               0,
-              toNumber(value, 0)
+              toNumber(
+                value,
+                0
+              )
             )
           );
         }
@@ -475,13 +500,6 @@
           discount
         ) +
         '%';
-
-      /*
-       * Paksa warna diskon hijau.
-       * !important digunakan agar stylesheet
-       * global tidak mengubahnya kembali
-       * menjadi abu-abu.
-       */
 
       discountElement.style.setProperty(
         'color',
@@ -575,7 +593,7 @@
           state.updateTimer = null;
           update();
         },
-        50
+        30
       );
   }
 
@@ -593,21 +611,31 @@
       return false;
     }
 
-    const elementsChanged =
-      state.providerElement !== provider ||
-      state.modelElement !== model;
-
     if (
-      !elementsChanged &&
+      state.providerElement === provider &&
+      state.modelElement === model &&
       state.bound
     ) {
       scheduleUpdate();
       return true;
     }
 
-    if (state.observer) {
-      state.observer.disconnect();
-      state.observer = null;
+    if (
+      state.providerElement
+    ) {
+      state.providerElement.removeEventListener(
+        'change',
+        scheduleUpdate
+      );
+    }
+
+    if (
+      state.modelElement
+    ) {
+      state.modelElement.removeEventListener(
+        'change',
+        scheduleUpdate
+      );
     }
 
     state.providerElement =
@@ -628,23 +656,6 @@
       'change',
       scheduleUpdate
     );
-
-    if (window.MutationObserver) {
-      state.observer =
-        new MutationObserver(
-          function () {
-            scheduleUpdate();
-          }
-        );
-
-      state.observer.observe(
-        model,
-        {
-          childList: true,
-          subtree: true
-        }
-      );
-    }
 
     scheduleUpdate();
 
@@ -669,7 +680,9 @@
       return;
     }
 
-    if (attempt >= 30) {
+    if (
+      attempt >= 20
+    ) {
       stopRetry();
       return;
     }
@@ -678,7 +691,9 @@
       window.setTimeout(
         function () {
           state.retryTimer = null;
-          retryBind(attempt + 1);
+          retryBind(
+            attempt + 1
+          );
         },
         250
       );
@@ -709,8 +724,10 @@
             get('model');
 
           if (
-            provider !== state.providerElement ||
-            model !== state.modelElement
+            provider !==
+              state.providerElement ||
+            model !==
+              state.modelElement
           ) {
             state.bound = false;
             retryBind(0);
@@ -742,28 +759,48 @@
       state.updateTimer = null;
     }
 
-    if (state.observer) {
-      state.observer.disconnect();
-      state.observer = null;
+    if (
+      state.providerElement
+    ) {
+      state.providerElement.removeEventListener(
+        'change',
+        scheduleUpdate
+      );
     }
 
-    if (state.appObserver) {
+    if (
+      state.modelElement
+    ) {
+      state.modelElement.removeEventListener(
+        'change',
+        scheduleUpdate
+      );
+    }
+
+    if (
+      state.appObserver
+    ) {
       state.appObserver.disconnect();
       state.appObserver = null;
     }
 
-    state.providerElement = null;
-    state.modelElement = null;
-    state.bound = false;
+    state.providerElement =
+      null;
+
+    state.modelElement =
+      null;
+
+    state.bound =
+      false;
   }
 
   window.GENZ =
     window.GENZ || {};
 
   window.GENZ.modelCreditUI = {
-    update: update,
-    start: start,
-    destroy: destroy
+    update,
+    start,
+    destroy
   };
 
   if (
