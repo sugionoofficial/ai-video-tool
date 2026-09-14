@@ -224,6 +224,115 @@ export async function historyApi(
       ? rows
       : [];
 
+    /*
+   * Ambil nama provider berdasarkan Provider ID.
+   *
+   * provider tetap digunakan sebagai ID internal.
+   * provider_name hanya untuk tampilan UI.
+   */
+  const providerIds = [
+    ...new Set(
+      jobs
+        .map(
+          job =>
+            String(
+              job?.provider || ""
+            )
+              .trim()
+              .toLowerCase()
+        )
+        .filter(Boolean)
+    )
+  ];
+
+  const providerNames = {};
+
+  if (providerIds.length) {
+    const providerFilter =
+      providerIds
+        .map(
+          id =>
+            `"${id.replace(/"/g, '\\"')}"`
+        )
+        .join(",");
+
+    const providerResponse =
+      await sb(
+        `/rest/v1/providers` +
+          `?id=in.(${encodeURIComponent(
+            providerFilter
+          )})` +
+          `&select=id,name`,
+        {
+          headers: {
+            Accept:
+              "application/json"
+          }
+        },
+        env
+      );
+
+    if (providerResponse.ok) {
+      const providerRows =
+        await safeJson(
+          providerResponse
+        );
+
+      if (
+        Array.isArray(
+          providerRows
+        )
+      ) {
+        providerRows.forEach(
+          provider => {
+            const id =
+              String(
+                provider?.id || ""
+              )
+                .trim()
+                .toLowerCase();
+
+            const name =
+              String(
+                provider?.name || ""
+              ).trim();
+
+            if (
+              id &&
+              name
+            ) {
+              providerNames[id] =
+                name;
+            }
+          }
+        );
+      }
+    }
+  }
+
+  /*
+   * Tambahkan nama provider hanya
+   * untuk kebutuhan tampilan History.
+   *
+   * provider tetap tidak berubah.
+   */
+  jobs.forEach(
+    job => {
+      const providerId =
+        String(
+          job?.provider || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      job.provider_name =
+        providerNames[
+          providerId
+        ] ||
+        "";
+    }
+  );
+
 
   const contentRange =
     response.headers.get(
