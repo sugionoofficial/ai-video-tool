@@ -1004,32 +1004,6 @@ export async function handleGenerate(
 
   /* ==========================================================
   CREDIT PRICING
-  ==========================================================
-
-  Urutan credit dasar:
-
-  1. provider.config.modelCredits
-  2. default credit model ChinaAPI
-  3. GENERATION_CREDIT_COST
-
-  Setelah credit dasar ditemukan:
-
-  creditCost =
-    ceil(
-      baseCredit *
-      (100 - modelDiscount) /
-      100
-    )
-
-  Minimum credit tetap 1.
-
-  User tidak dapat mengirim:
-
-  {
-    "credit": 1
-  }
-
-  untuk memanipulasi biaya.
   ========================================================== */
 
   const pricing =
@@ -1413,11 +1387,6 @@ export async function handleGenerate(
      *
      * Credit yang di-reserve harus sama dengan
      * credit final yang ditentukan server.
-     *
-     * Jika model default provider berbeda dengan
-     * model yang dipakai adapter atau konfigurasi
-     * credit/diskon berubah, generation dibatalkan
-     * agar credit tidak salah.
      */
     if (
       finalCreditCost !== cost ||
