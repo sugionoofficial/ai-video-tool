@@ -769,7 +769,7 @@ export async function router(
 
       const res =
         await sb(
-          "/rest/v1/providers?enabled=eq.true&select=id,name,adapter,enabled,api_key&order=name.asc",
+          "/rest/v1/providers?enabled=eq.true&select=id,name,adapter,enabled,api_key,config&order=name.asc",
           {
             headers: {
               Accept:
