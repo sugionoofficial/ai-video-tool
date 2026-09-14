@@ -13,6 +13,7 @@
   let lastSessionUserId = null;
   let logoutInProgress = false;
   let configPromise = null;
+  let passwordToggleObserver = null;
 
   /* =========================================================
      HELPER
@@ -184,6 +185,76 @@
      PASSWORD
      ========================================================= */
 
+  function updatePasswordToggleUI() {
+
+    const password = $('password');
+    const toggle = $('togglePassword');
+
+    if (!password || !toggle) {
+      return;
+    }
+
+    const showing =
+      password.type === 'text';
+
+    const openIcon =
+      toggle.querySelector('.eye-open');
+
+    const closedIcon =
+      toggle.querySelector('.eye-closed');
+
+    if (openIcon) {
+
+      openIcon.style.display =
+        showing
+          ? 'none'
+          : '';
+
+      openIcon.setAttribute(
+        'aria-hidden',
+        showing
+          ? 'true'
+          : 'false'
+      );
+    }
+
+    if (closedIcon) {
+
+      closedIcon.style.display =
+        showing
+          ? ''
+          : 'none';
+
+      closedIcon.setAttribute(
+        'aria-hidden',
+        showing
+          ? 'false'
+          : 'true'
+      );
+    }
+
+    toggle.setAttribute(
+      'aria-label',
+      showing
+        ? 'Sembunyikan password'
+        : 'Tampilkan password'
+    );
+
+    toggle.setAttribute(
+      'aria-pressed',
+      showing
+        ? 'true'
+        : 'false'
+    );
+
+    toggle.setAttribute(
+      'title',
+      showing
+        ? 'Sembunyikan password'
+        : 'Tampilkan password'
+    );
+  }
+
   function togglePassword() {
 
     const password = $('password');
@@ -196,23 +267,140 @@
     const showing =
       password.type === 'text';
 
-    password.type =
-      showing
-        ? 'password'
-        : 'text';
+    try {
 
-    toggle.setAttribute(
-      'aria-label',
-      showing
-        ? 'Tampilkan password'
-        : 'Sembunyikan password'
+      password.type =
+        showing
+          ? 'password'
+          : 'text';
+
+    } catch (err) {
+
+      error(
+        'Password toggle error:',
+        err
+      );
+
+      return;
+    }
+
+    updatePasswordToggleUI();
+
+    if (password.type === 'text') {
+
+      try {
+        password.focus();
+
+        const length =
+          password.value.length;
+
+        password.setSelectionRange(
+          length,
+          length
+        );
+
+      } catch (_) {}
+
+    }
+  }
+
+  function bindPasswordToggle() {
+
+    const toggle = $('togglePassword');
+
+    if (!toggle) {
+      return false;
+    }
+
+    if (
+      toggle.dataset.genzPasswordToggleBound === 'true'
+    ) {
+      updatePasswordToggleUI();
+      return true;
+    }
+
+    toggle.dataset.genzPasswordToggleBound =
+      'true';
+
+    toggle.addEventListener(
+      'click',
+      function (event) {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (toggle.disabled) {
+          return;
+        }
+
+        togglePassword();
+      },
+      false
     );
 
-    toggle.setAttribute(
-      'aria-pressed',
-      showing
-        ? 'false'
-        : 'true'
+    toggle.addEventListener(
+      'pointerdown',
+      function (event) {
+
+        if (toggle.disabled) {
+          return;
+        }
+
+        event.stopPropagation();
+      },
+      false
+    );
+
+    toggle.addEventListener(
+      'keydown',
+      function (event) {
+
+        if (
+          event.key !== 'Enter' &&
+          event.key !== ' '
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!toggle.disabled) {
+          togglePassword();
+        }
+      },
+      false
+    );
+
+    updatePasswordToggleUI();
+
+    return true;
+  }
+
+  function setupPasswordToggleObserver() {
+
+    bindPasswordToggle();
+
+    if (
+      passwordToggleObserver ||
+      typeof MutationObserver === 'undefined'
+    ) {
+      return;
+    }
+
+    passwordToggleObserver =
+      new MutationObserver(
+        function () {
+          bindPasswordToggle();
+        }
+      );
+
+    passwordToggleObserver.observe(
+      document.body,
+      {
+        childList: true,
+        subtree: true
+      }
     );
   }
 
@@ -544,6 +732,8 @@
       authPage.classList.remove('hidden');
       authPage.style.removeProperty('display');
     }
+
+    bindPasswordToggle();
   }
 
   /* =========================================================
@@ -963,7 +1153,7 @@
 
         const target =
           event.target?.closest?.(
-            '#login, #register, #forgotPassword, #logout, #togglePassword'
+            '#login, #register, #forgotPassword, #logout'
           );
 
         if (!target) {
@@ -998,17 +1188,6 @@
 
           if (!target.disabled) {
             forgotPassword();
-          }
-
-          return;
-        }
-
-        if (target.id === 'togglePassword') {
-
-          event.preventDefault();
-
-          if (!target.disabled) {
-            togglePassword();
           }
 
           return;
@@ -1146,6 +1325,8 @@
 
         setupDelegatedEvents();
 
+        setupPasswordToggleObserver();
+
         try {
 
           const client =
@@ -1185,6 +1366,8 @@
             showLoggedOutUI();
           }
 
+          bindPasswordToggle();
+
         } catch (err) {
 
           error(
@@ -1197,6 +1380,8 @@
             'Sistem login gagal diinisialisasi.',
             'error'
           );
+
+          bindPasswordToggle();
         }
 
       })();
