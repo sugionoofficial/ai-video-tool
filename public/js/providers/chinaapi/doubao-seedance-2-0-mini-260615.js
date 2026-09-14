@@ -28,21 +28,8 @@ const MODEL_CONFIG = {
 
   credits: {
 
-    // Default credit.
-    //
-    // Nilai ini nantinya dapat diubah
-    // melalui Admin > Providers.
-
     default:
       2,
-
-    // Credit berdasarkan durasi.
-    //
-    // Untuk sementara seluruh durasi menggunakan
-    // nilai default model.
-    //
-    // Struktur ini sengaja dipisahkan agar nantinya
-    // admin dapat menentukan harga berbeda per durasi.
 
     duration: {
 
@@ -61,8 +48,6 @@ const MODEL_CONFIG = {
 
     },
 
-    // Credit berdasarkan mode.
-
     mode: {
 
       text:
@@ -72,8 +57,6 @@ const MODEL_CONFIG = {
         2
 
     },
-
-    // Credit berdasarkan resolusi.
 
     resolution: {
 
@@ -616,15 +599,20 @@ function buildPayload(
     String(
       options.aspectRatio ||
       options.aspect ||
+      options.ratio ||
       "16:9"
     ).trim();
 
 
-  const resolution =
+  const resolutionInput =
     String(
       options.resolution ||
       "720P"
     ).trim();
+
+
+  const resolution =
+    resolutionInput.toLowerCase();
 
 
   const prompt =
@@ -654,14 +642,14 @@ function buildPayload(
       : [];
 
 
-  const mode =
-    (
-      referenceImages.length ||
-      referenceVideos.length
-    )
-      ? "reference"
-      : "text";
+  const hasReferences =
+    referenceImages.length > 0 ||
+    referenceVideos.length > 0;
 
+
+  // ==========================================================
+  // BASE PAYLOAD
+  // ==========================================================
 
   const payload = {
 
@@ -688,11 +676,126 @@ function buildPayload(
 
 
   // ==========================================================
-  // IMAGE REFERENCES
+  // IMPORTANT
+  //
+  // Seedance 2.0 Mini reference mode harus memakai
+  // metadata.content dengan role yang jelas.
+  //
+  // Tanpa role:
+  // - image dapat dianggap sebagai first frame
+  // - aspect ratio dapat mengikuti gambar
+  // - ratio yang dipilih user dapat tidak dihormati
+  //
+  // Dengan role reference_image/reference_video:
+  // - input diperlakukan sebagai reference
+  // - metadata.ratio tetap menjadi output ratio
   // ==========================================================
 
   if (
-    referenceImages.length
+    hasReferences
+  ) {
+
+    const content = [];
+
+
+    referenceImages
+      .slice(
+        0,
+        MODEL_CONFIG.reference.maxImages
+      )
+      .forEach(
+        image => {
+
+          if (
+            typeof image !==
+              "string" ||
+            !image.trim()
+          ) {
+            return;
+          }
+
+
+          content.push({
+
+            type:
+              "image_url",
+
+            image_url: {
+
+              url:
+                image.trim()
+
+            },
+
+            role:
+              "reference_image"
+
+          });
+
+        }
+      );
+
+
+    referenceVideos
+      .slice(
+        0,
+        MODEL_CONFIG.reference.maxVideos
+      )
+      .forEach(
+        video => {
+
+          if (
+            typeof video !==
+              "string" ||
+            !video.trim()
+          ) {
+            return;
+          }
+
+
+          content.push({
+
+            type:
+              "video_url",
+
+            video_url: {
+
+              url:
+                video.trim()
+
+            },
+
+            role:
+              "reference_video"
+
+          });
+
+        }
+      );
+
+
+    if (
+      content.length > 0
+    ) {
+
+      payload.metadata.content =
+        content;
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // FALLBACK FOR IMAGE REFERENCES
+  //
+  // Jika tidak ada video reference, tetap kirim images.
+  // Ini menjaga kompatibilitas gateway ChinaAPI yang
+  // menerima images sebagai shortcut reference input.
+  // ==========================================================
+
+  if (
+    referenceImages.length > 0
   ) {
 
     payload.images =
@@ -705,11 +808,11 @@ function buildPayload(
 
 
   // ==========================================================
-  // VIDEO REFERENCES
+  // FALLBACK FOR VIDEO REFERENCES
   // ==========================================================
 
   if (
-    referenceVideos.length
+    referenceVideos.length > 0
   ) {
 
     payload.video_urls =
@@ -721,13 +824,23 @@ function buildPayload(
   }
 
 
-  return {
+  // ==========================================================
+  // HARD FORCE
+  //
+  // Jangan biarkan ratio kembali menjadi adaptive/default.
+  // ==========================================================
 
-    payload,
+  payload.metadata =
+    payload.metadata || {};
 
-    mode
+  payload.metadata.ratio =
+    aspectRatio;
 
-  };
+  payload.metadata.resolution =
+    resolution;
+
+
+  return payload;
 
 }
 
