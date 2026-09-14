@@ -127,6 +127,55 @@ function normalizeDuration(
 
 
 /* ============================================================
+NORMALIZE GENERATION STATUS
+============================================================ */
+
+function normalizeGenerationStatus(
+  value
+) {
+  const normalized =
+    String(
+      value ||
+      "processing"
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    [
+      "completed",
+      "complete",
+      "succeeded",
+      "success",
+      "finished",
+      "done"
+    ].includes(
+      normalized
+    )
+  ) {
+    return "completed";
+  }
+
+  if (
+    [
+      "failed",
+      "failure",
+      "error",
+      "cancelled",
+      "canceled",
+      "rejected"
+    ].includes(
+      normalized
+    )
+  ) {
+    return "failed";
+  }
+
+  return "processing";
+}
+
+
+/* ============================================================
 DEFAULT CREDIT
 ============================================================ */
 
@@ -1388,6 +1437,7 @@ export async function handleGenerate(
      * Credit yang di-reserve harus sama dengan
      * credit final yang ditentukan server.
      */
+
     if (
       finalCreditCost !== cost ||
       finalCreditBase !== baseCredit ||
@@ -1447,39 +1497,173 @@ export async function handleGenerate(
 
 
     /* ========================================================
+    NORMALIZE RESULT STATUS
+    ======================================================== */
+
+    const finalStatus =
+      normalizeGenerationStatus(
+        result.status
+      );
+
+
+    /* ========================================================
     UPDATE JOB
     ======================================================== */
 
-    await updateJob(
-      jobId,
-      {
-        external_id:
-          result.externalId,
+    /*
+     * Database lifecycle:
+     *
+     * reserved
+     *    ↓
+     * processing
+     *    ↓
+     * completed
+     *
+     * Tidak boleh langsung:
+     *
+     * reserved → completed
+     *
+     * karena trigger database menolak transisi tersebut.
+     */
 
-        status:
-          result.status ||
-          "processing",
+    if (
+      finalStatus ===
+      "completed"
+    ) {
+      /*
+       * STEP 1
+       *
+       * Pindahkan job dari reserved
+       * menjadi processing terlebih dahulu.
+       */
 
-        attempt_count:
-          1,
+      await updateJob(
+        jobId,
+        {
+          external_id:
+            result.externalId,
 
-        provider_status:
-          result.status ||
-          "processing",
+          status:
+            "processing",
 
-        last_error:
-          null,
+          attempt_count:
+            1,
 
-        last_error_code:
-          null,
+          provider_status:
+            "completed",
 
-        model:
-          finalModel,
+          last_error:
+            null,
 
-        metadata
-      },
-      env
-    );
+          last_error_code:
+            null,
+
+          model:
+            finalModel,
+
+          metadata
+        },
+        env
+      );
+
+
+      /*
+       * STEP 2
+       *
+       * Provider sudah selesai.
+       * Simpan video_url langsung jika tersedia.
+       */
+
+      await updateJob(
+        jobId,
+        {
+          status:
+            "completed",
+
+          provider_status:
+            "completed",
+
+          video_url:
+            result.videoUrl ||
+            null,
+
+          last_error:
+            null,
+
+          last_error_code:
+            null,
+
+          model:
+            finalModel,
+
+          metadata
+        },
+        env
+      );
+
+    } else {
+      /*
+       * PROCESSING / FAILED
+       *
+       * Untuk processing, reserved boleh
+       * berubah langsung menjadi processing.
+       *
+       * Untuk failed, reserved → failed juga
+       * diperbolehkan oleh lifecycle database.
+       */
+
+      await updateJob(
+        jobId,
+        {
+          external_id:
+            result.externalId,
+
+          status:
+            finalStatus,
+
+          attempt_count:
+            1,
+
+          provider_status:
+            finalStatus,
+
+          last_error:
+            finalStatus ===
+            "failed"
+              ? (
+                  result.error ||
+                  result.message ||
+                  "Provider generation failed"
+                )
+              : null,
+
+          last_error_code:
+            finalStatus ===
+            "failed"
+              ? String(
+                  result.errorCode ||
+                  result.code ||
+                  "provider_error"
+                )
+              : null,
+
+          video_url:
+            finalStatus ===
+            "completed"
+              ? (
+                  result.videoUrl ||
+                  null
+                )
+              : null,
+
+          model:
+            finalModel,
+
+          metadata
+        },
+        env
+      );
+    }
 
 
     /* ========================================================
@@ -1492,11 +1676,13 @@ export async function handleGenerate(
       "provider_submitted",
       {
         providerStatus:
-          result.status ||
-          "processing",
+          finalStatus,
 
         message:
-          "Provider accepted generation request",
+          finalStatus ===
+          "completed"
+            ? "Provider completed generation immediately"
+            : "Provider accepted generation request",
 
         metadata
       },
@@ -1525,6 +1711,9 @@ export async function handleGenerate(
 
         model:
           finalModel,
+
+        status:
+          finalStatus,
 
         creditBase:
           finalCreditBase,
