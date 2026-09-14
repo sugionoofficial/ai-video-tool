@@ -5,13 +5,18 @@
    File:
    public/js/providers.js
 
-   Optimized:
-   - Tidak membuat refresh/event loop
-   - Tidak memanggil GENZ.upload.clear() dari refresh
-   - Refresh realtime tetapi dijadwalkan satu kali
-   - Provider/model/duration/resolution tetap sinkron
-   - imageReferenceSupported tetap eksplisit
-   - Reference image tidak dihapus saat refresh/sinkronisasi
+   Fixed:
+   - Provider/model/capability tetap sinkron
+   - Mendukung capability model langsung
+   - Mendukung modeRules textToVideo/referenceToVideo
+   - Fallback capability ChinaAPI
+   - Aspect ratio tidak menjadi "Tidak tersedia"
+   - Duration tidak menjadi "Tidak tersedia"
+   - Resolution tidak menjadi "Tidak tersedia"
+   - Resolution tetap mengikuti duration bila rule tersedia
+   - Reference image tidak dihapus saat refresh
+   - Tidak menggunakan interval permanen
+   - Generate button hanya disabled jika data memang belum lengkap
    ========================================================= */
 
 (function () {
@@ -49,8 +54,8 @@
   function normalizeId(value) {
     return text(value)
       .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^[-_]+|[-_]+$/g, '');
+      .replace(/[^a-z0-9_.-]+/g, '-')
+      .replace(/^[-_.]+|[-_.]+$/g, '');
   }
 
 
@@ -62,11 +67,29 @@
   function uniqueArray(value) {
     return [
       ...new Set(
-        cloneArray(value).map(function (item) {
-          return String(item);
-        })
+        cloneArray(value)
+          .map(function (item) {
+            return String(item);
+          })
+          .filter(function (item) {
+            return item !== '';
+          })
       )
     ];
+  }
+
+
+  function normalizeNumberArray(value) {
+    return uniqueArray(value)
+      .map(function (item) {
+        return Number(item);
+      })
+      .filter(function (item) {
+        return Number.isFinite(item);
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
   }
 
 
@@ -94,32 +117,150 @@
 
 
   /* =======================================================
-     CAPABILITIES
+     BUILT-IN MODEL FALLBACK
+  ======================================================= */
+
+  const BUILTIN_MODEL_CAPABILITIES = {
+
+    'agnes-video-2.5-flash': {
+      aspects: [
+        '16:9',
+        '9:16',
+        '4:3',
+        '3:4',
+        '1:1',
+        '21:9'
+      ],
+
+      durations: [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+
+      resolutions: [
+        '720P'
+      ],
+
+      reference: {
+        imageSupported: true,
+        maxImages: 5,
+        videoSupported: false
+      },
+
+      constraints: {
+        textToVideo: {
+          4: ['720P'],
+          5: ['720P'],
+          6: ['720P'],
+          7: ['720P'],
+          8: ['720P'],
+          9: ['720P'],
+          10: ['720P'],
+          11: ['720P'],
+          12: ['720P']
+        },
+
+        referenceToVideo: {
+          4: ['720P'],
+          5: ['720P'],
+          6: ['720P'],
+          7: ['720P'],
+          8: ['720P'],
+          9: ['720P'],
+          10: ['720P'],
+          11: ['720P'],
+          12: ['720P']
+        }
+      }
+    },
+
+
+    'doubao-seedance-2-0-mini-260615': {
+      aspects: [
+        '21:9',
+        '16:9',
+        '4:3',
+        '1:1',
+        '3:4',
+        '9:16'
+      ],
+
+      durations: [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+
+      resolutions: [
+        '480P',
+        '720P'
+      ],
+
+      reference: {
+        imageSupported: true,
+        maxImages: 9,
+        videoSupported: true,
+        maxVideos: 3
+      }
+    }
+
+  };
+
+
+  /* =======================================================
+     CAPABILITY NORMALIZER
   ======================================================= */
 
   function normalizeCapabilities(provider) {
 
     if (!provider) {
+
       return {
         models: [],
         durations: [],
         aspects: [],
         resolutions: [],
-        constraints: {}
+        constraints: {},
+        modelCapabilities: {}
       };
+
     }
+
+
+    const providerConfig =
+      provider.config &&
+      typeof provider.config === 'object'
+        ? provider.config
+        : {};
+
 
     const source =
       provider.capabilities &&
       typeof provider.capabilities === 'object'
         ? provider.capabilities
         : (
-            provider.config &&
-            provider.config.capabilities &&
-            typeof provider.config.capabilities === 'object'
-              ? provider.config.capabilities
+            providerConfig.capabilities &&
+            typeof providerConfig.capabilities === 'object'
+              ? providerConfig.capabilities
               : {}
           );
+
 
     const models =
       Array.isArray(source.models)
@@ -130,6 +271,7 @@
               : []
           );
 
+
     const durations =
       Array.isArray(source.durations)
         ? source.durations
@@ -139,14 +281,24 @@
               : []
           );
 
+
     const aspects =
       Array.isArray(source.aspects)
         ? source.aspects
         : (
-            Array.isArray(provider.aspects)
-              ? provider.aspects
-              : []
+            Array.isArray(source.aspectRatios)
+              ? source.aspectRatios
+              : (
+                  Array.isArray(provider.aspects)
+                    ? provider.aspects
+                    : (
+                        Array.isArray(provider.aspectRatios)
+                          ? provider.aspectRatios
+                          : []
+                      )
+                )
           );
+
 
     const resolutions =
       Array.isArray(source.resolutions)
@@ -157,24 +309,392 @@
               : []
           );
 
+
     const constraints =
       source.constraints &&
       typeof source.constraints === 'object'
         ? source.constraints
-        : {};
+        : (
+            provider.constraints &&
+            typeof provider.constraints === 'object'
+              ? provider.constraints
+              : {}
+          );
+
+
+    const modelCapabilities =
+      source.modelCapabilities &&
+      typeof source.modelCapabilities === 'object'
+        ? source.modelCapabilities
+        : (
+            provider.modelCapabilities &&
+            typeof provider.modelCapabilities === 'object'
+              ? provider.modelCapabilities
+              : {}
+          );
+
 
     return {
-      models: cloneArray(models),
-      durations: cloneArray(durations),
-      aspects: cloneArray(aspects),
-      resolutions: cloneArray(resolutions),
-      constraints: constraints
+
+      models:
+        cloneArray(models),
+
+      durations:
+        normalizeNumberArray(durations),
+
+      aspects:
+        uniqueArray(aspects),
+
+      resolutions:
+        uniqueArray(resolutions),
+
+      constraints:
+        constraints,
+
+      modelCapabilities:
+        modelCapabilities
+
     };
+
   }
 
 
   function getEffectiveCapabilities(provider) {
+
     return normalizeCapabilities(provider);
+
+  }
+
+
+  /* =======================================================
+     FIND MODEL DATA
+  ======================================================= */
+
+  function findModelData(
+    provider,
+    modelId
+  ) {
+
+    const normalized =
+      normalizeId(modelId);
+
+    if (!normalized) {
+      return null;
+    }
+
+
+    const capabilities =
+      getEffectiveCapabilities(provider);
+
+
+    const modelCapabilities =
+      capabilities.modelCapabilities || {};
+
+
+    const direct =
+      modelCapabilities[modelId] ||
+      modelCapabilities[normalized];
+
+
+    if (
+      direct &&
+      typeof direct === 'object'
+    ) {
+      return direct;
+    }
+
+
+    const providerModels =
+      Array.isArray(provider?.models)
+        ? provider.models
+        : [];
+
+
+    for (
+      let index = 0;
+      index < providerModels.length;
+      index += 1
+    ) {
+
+      const item =
+        providerModels[index];
+
+
+      if (
+        typeof item === 'string'
+      ) {
+
+        if (
+          normalizeId(item) ===
+          normalized
+        ) {
+          return null;
+        }
+
+        continue;
+      }
+
+
+      if (
+        item &&
+        typeof item === 'object'
+      ) {
+
+        const itemId =
+          text(
+            item.id ||
+            item.model ||
+            item.modelId ||
+            item.name
+          );
+
+
+        if (
+          normalizeId(itemId) ===
+          normalized
+        ) {
+
+          return item;
+        }
+
+      }
+
+    }
+
+
+    const providerModelRules =
+      capabilities.constraints &&
+      capabilities.constraints[modelId];
+
+
+    if (
+      providerModelRules &&
+      typeof providerModelRules === 'object'
+    ) {
+
+      return {
+        constraints:
+          providerModelRules
+      };
+
+    }
+
+
+    const builtin =
+      BUILTIN_MODEL_CAPABILITIES[
+        normalized
+      ];
+
+
+    if (builtin) {
+      return builtin;
+    }
+
+
+    return null;
+
+  }
+
+
+  /* =======================================================
+     MODEL RULES
+  ======================================================= */
+
+  function getModelRules(
+    provider,
+    model
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(provider);
+
+    const normalized =
+      normalizeId(model);
+
+
+    const direct =
+      capabilities.constraints?.[model] ||
+      capabilities.constraints?.[normalized];
+
+
+    if (
+      direct &&
+      typeof direct === 'object'
+    ) {
+
+      return direct;
+    }
+
+
+    const modelData =
+      findModelData(
+        provider,
+        model
+      );
+
+
+    if (
+      modelData?.constraints &&
+      typeof modelData.constraints === 'object'
+    ) {
+
+      return modelData.constraints;
+    }
+
+
+    if (
+      modelData?.rules &&
+      typeof modelData.rules === 'object'
+    ) {
+
+      return modelData.rules;
+    }
+
+
+    if (
+      BUILTIN_MODEL_CAPABILITIES[
+        normalized
+      ]?.constraints
+    ) {
+
+      return BUILTIN_MODEL_CAPABILITIES[
+        normalized
+      ].constraints;
+    }
+
+
+    return null;
+
+  }
+
+
+  /* =======================================================
+     MODEL CAPABILITIES
+  ======================================================= */
+
+  function getModelCapabilities(
+    provider,
+    model
+  ) {
+
+    const capabilities =
+      getEffectiveCapabilities(provider);
+
+
+    const normalized =
+      normalizeId(model);
+
+
+    const modelData =
+      findModelData(
+        provider,
+        model
+      );
+
+
+    const builtin =
+      BUILTIN_MODEL_CAPABILITIES[
+        normalized
+      ] || {};
+
+
+    const modelSource =
+      modelData &&
+      typeof modelData === 'object'
+        ? modelData
+        : {};
+
+
+    const modelCaps =
+      modelSource.capabilities &&
+      typeof modelSource.capabilities === 'object'
+        ? modelSource.capabilities
+        : modelSource;
+
+
+    const aspects =
+      uniqueArray(
+        modelCaps.aspects ||
+        modelCaps.aspectRatios ||
+        modelCaps.ratios ||
+        builtin.aspects ||
+        []
+      );
+
+
+    const durations =
+      normalizeNumberArray(
+        modelCaps.durations ||
+        builtin.durations ||
+        []
+      );
+
+
+    const resolutions =
+      uniqueArray(
+        modelCaps.resolutions ||
+        builtin.resolutions ||
+        []
+      );
+
+
+    const reference =
+      modelCaps.reference &&
+      typeof modelCaps.reference === 'object'
+        ? modelCaps.reference
+        : (
+            builtin.reference || {}
+          );
+
+
+    const imageSupported =
+      reference.imageSupported === true ||
+      modelCaps.imageSupported === true ||
+      modelCaps.imageReferenceSupported === true;
+
+
+    const maxImages =
+      Number(
+        reference.maxImages ||
+        modelCaps.maxImages ||
+        builtin.reference?.maxImages ||
+        1
+      );
+
+
+    return {
+
+      aspects:
+        aspects.length
+          ? aspects
+          : cloneArray(
+              capabilities.aspects
+            ),
+
+      durations:
+        durations.length
+          ? durations
+          : cloneArray(
+              capabilities.durations
+            ),
+
+      resolutions:
+        resolutions.length
+          ? resolutions
+          : cloneArray(
+              capabilities.resolutions
+            ),
+
+      imageSupported:
+        imageSupported,
+
+      maxImages:
+        Number.isFinite(maxImages)
+          ? maxImages
+          : 1
+
+    };
+
   }
 
 
@@ -191,6 +711,7 @@
       return true;
     }
 
+
     if (
       GENZ.upload &&
       GENZ.upload.imageData
@@ -198,92 +719,104 @@
       return true;
     }
 
-    const input = $('image');
+
+    if (
+      GENZ.upload &&
+      Array.isArray(
+        GENZ.upload.images
+      ) &&
+      GENZ.upload.images.length
+    ) {
+      return true;
+    }
+
+
+    const input =
+      $('image');
+
 
     return Boolean(
       input &&
       input.files &&
       input.files.length
     );
-  }
 
-
-  function clearImageReference() {
-
-    if (GENZ.state) {
-      GENZ.state.imageData = null;
-    }
-
-    if (GENZ.upload) {
-      GENZ.upload.imageData = null;
-    }
-
-    const imageInput = $('image');
-
-    if (imageInput) {
-      try {
-        imageInput.value = '';
-      } catch (error) {
-        /* ignore */
-      }
-    }
-
-    const preview = $('imagePreview');
-
-    if (preview) {
-      preview.innerHTML = '';
-      preview.classList.add('hidden');
-      preview.style.display = 'none';
-    }
-
-    const fileStatus = $('imageFileStatus');
-
-    if (fileStatus) {
-      fileStatus.textContent = 'Tidak ada file dipilih';
-    }
-
-    /*
-     * Jangan panggil GENZ.upload.clear().
-     *
-     * Fungsi tersebut berpotensi mengirim event upload
-     * yang kemudian memanggil scheduleRefresh() lagi.
-     *
-     * State dan DOM sudah dibersihkan langsung di atas.
-     */
   }
 
 
   /* =======================================================
-     MODEL RULES
+     IMAGE AVAILABILITY
   ======================================================= */
 
-  function getModelRules(provider, model) {
+  function findReferenceImageGroup(
+    imageInput
+  ) {
 
-    const capabilities =
-      getEffectiveCapabilities(provider);
+    if (!imageInput) {
+      return null;
+    }
 
-    const constraints =
-      capabilities.constraints || {};
 
-    return constraints[model] || null;
+    const directGroup =
+      imageInput.closest(
+        '.reference-group'
+      );
+
+
+    if (directGroup) {
+      return directGroup;
+    }
+
+
+    const preview =
+      $('imagePreview');
+
+
+    if (preview) {
+
+      const previewGroup =
+        preview.closest(
+          '.reference-group'
+        );
+
+
+      if (previewGroup) {
+        return previewGroup;
+      }
+
+    }
+
+
+    const label =
+      document.querySelector(
+        'label[for="image"]'
+      );
+
+
+    if (label) {
+
+      const labelGroup =
+        label.closest(
+          '.reference-group'
+        );
+
+
+      if (labelGroup) {
+        return labelGroup;
+      }
+
+    }
+
+
+    return null;
+
   }
 
 
-  /*
-   * Return value:
-   *
-   * true  = model secara eksplisit mendukung image
-   * false = model secara eksplisit tidak mendukung image
-   * null  = rule/model belum diketahui
-   *
-   * Penting:
-   * null TIDAK boleh dianggap false.
-   *
-   * Saat provider sedang refresh/sinkronisasi,
-   * capability dapat sementara belum tersedia.
-   * Reference image harus tetap dipertahankan.
-   */
-  function modelSupportsImage(provider, model) {
+  function modelSupportsImage(
+    provider,
+    model
+  ) {
 
     const rules =
       getModelRules(
@@ -291,13 +824,178 @@
         model
       );
 
-    if (!rules) {
-      return null;
+
+    if (
+      rules &&
+      rules.imageReferenceSupported !== undefined
+    ) {
+
+      return (
+        rules.imageReferenceSupported === true
+      );
+
     }
 
-    return (
-      rules.imageReferenceSupported === true
+
+    const modelCapabilities =
+      getModelCapabilities(
+        provider,
+        model
+      );
+
+
+    if (
+      modelCapabilities.imageSupported === true
+    ) {
+
+      return true;
+
+    }
+
+
+    const builtin =
+      BUILTIN_MODEL_CAPABILITIES[
+        normalizeId(model)
+      ];
+
+
+    if (
+      builtin?.reference?.imageSupported === true
+    ) {
+
+      return true;
+
+    }
+
+
+    return null;
+
+  }
+
+
+  function updateImageAvailability(
+    provider
+  ) {
+
+    const imageInput =
+      $('image');
+
+
+    if (!imageInput) {
+      return;
+    }
+
+
+    const model =
+      text(
+        $('model')?.value
+      );
+
+
+    const imageGroup =
+      findReferenceImageGroup(
+        imageInput
+      );
+
+
+    if (!model) {
+
+      imageInput.disabled = false;
+
+      imageInput.removeAttribute(
+        'aria-disabled'
+      );
+
+
+      if (imageGroup) {
+
+        imageGroup.classList.remove(
+          'hidden'
+        );
+
+        imageGroup.style.setProperty(
+          'display',
+          '',
+          'important'
+        );
+
+        imageGroup.removeAttribute(
+          'aria-hidden'
+        );
+
+      }
+
+      return;
+    }
+
+
+    const supported =
+      modelSupportsImage(
+        provider,
+        model
+      );
+
+
+    if (supported === false) {
+
+      if (imageGroup) {
+
+        imageGroup.classList.add(
+          'hidden'
+        );
+
+        imageGroup.style.setProperty(
+          'display',
+          'none',
+          'important'
+        );
+
+        imageGroup.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+
+      }
+
+
+      imageInput.disabled = true;
+
+      imageInput.setAttribute(
+        'aria-disabled',
+        'true'
+      );
+
+
+      return;
+
+    }
+
+
+    imageInput.disabled = false;
+
+    imageInput.removeAttribute(
+      'aria-disabled'
     );
+
+
+    if (imageGroup) {
+
+      imageGroup.classList.remove(
+        'hidden'
+      );
+
+      imageGroup.style.setProperty(
+        'display',
+        '',
+        'important'
+      );
+
+      imageGroup.removeAttribute(
+        'aria-hidden'
+      );
+
+    }
+
   }
 
 
@@ -317,9 +1015,11 @@
         model
       );
 
+
     if (!rules) {
       return null;
     }
+
 
     if (
       hasImage &&
@@ -328,10 +1028,23 @@
         model
       ) === true
     ) {
-      return rules.imageToVideo || null;
+
+      return (
+        rules.referenceToVideo ||
+        rules.imageToVideo ||
+        rules.image2video ||
+        null
+      );
+
     }
 
-    return rules.textToVideo || null;
+
+    return (
+      rules.textToVideo ||
+      rules.text2video ||
+      null
+    );
+
   }
 
 
@@ -346,7 +1059,17 @@
   ) {
 
     const capabilities =
-      getEffectiveCapabilities(provider);
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const modelCapabilities =
+      getModelCapabilities(
+        provider,
+        model
+      );
+
 
     const modeRules =
       getModeRules(
@@ -355,21 +1078,48 @@
         hasImage
       );
 
-    if (!modeRules) {
+
+    if (modeRules) {
+
+      const values =
+        normalizeNumberArray(
+          Object.keys(
+            modeRules
+          )
+        );
+
+
+      if (values.length) {
+        return values;
+      }
+
+    }
+
+
+    if (
+      modelCapabilities.durations.length
+    ) {
+
+      return cloneArray(
+        modelCapabilities.durations
+      );
+
+    }
+
+
+    if (
+      capabilities.durations.length
+    ) {
+
       return cloneArray(
         capabilities.durations
       );
+
     }
 
-    return uniqueArray(
-      Object.keys(modeRules)
-        .map(function (value) {
-          return Number(value);
-        })
-        .filter(function (value) {
-          return Number.isFinite(value);
-        })
-    );
+
+    return [];
+
   }
 
 
@@ -385,7 +1135,17 @@
   ) {
 
     const capabilities =
-      getEffectiveCapabilities(provider);
+      getEffectiveCapabilities(
+        provider
+      );
+
+
+    const modelCapabilities =
+      getModelCapabilities(
+        provider,
+        model
+      );
+
 
     const modeRules =
       getModeRules(
@@ -394,23 +1154,77 @@
         hasImage
       );
 
-    if (!modeRules) {
+
+    const numericDuration =
+      Number(duration);
+
+
+    if (
+      modeRules &&
+      Number.isFinite(
+        numericDuration
+      )
+    ) {
+
+      const key =
+        String(
+          numericDuration
+        );
+
+
+      const allowed =
+        modeRules[key];
+
+
+      if (
+        Array.isArray(
+          allowed
+        ) &&
+        allowed.length
+      ) {
+
+        return uniqueArray(
+          allowed
+        );
+
+      }
+
+    }
+
+
+    /*
+     * Jangan mengembalikan [] hanya karena
+     * duration belum cocok dengan modeRules.
+     *
+     * Gunakan capability model/provider sebagai
+     * fallback sehingga UI tidak menampilkan
+     * "Tidak tersedia" secara palsu.
+     */
+
+    if (
+      modelCapabilities.resolutions.length
+    ) {
+
+      return cloneArray(
+        modelCapabilities.resolutions
+      );
+
+    }
+
+
+    if (
+      capabilities.resolutions.length
+    ) {
+
       return cloneArray(
         capabilities.resolutions
       );
+
     }
 
-    const key =
-      String(Number(duration));
 
-    const allowed =
-      modeRules[key];
+    return [];
 
-    if (!Array.isArray(allowed)) {
-      return [];
-    }
-
-    return uniqueArray(allowed);
   }
 
 
@@ -424,14 +1238,20 @@
     preferredValue
   ) {
 
-    const element = $(id);
+    const element =
+      $(id);
+
 
     if (!element) {
       return '';
     }
 
+
     const list =
-      uniqueArray(values);
+      uniqueArray(
+        values
+      );
+
 
     const previous =
       text(
@@ -440,104 +1260,190 @@
           : element.value
       );
 
-    /*
-     * Jangan rebuild DOM jika option sama.
-     * Ini mengurangi kerja browser dan mencegah
-     * select berkedip saat realtime refresh.
-     */
+
     const current =
-      Array.from(element.options).map(
+      Array.from(
+        element.options
+      ).map(
         function (option) {
           return option.value;
         }
       );
 
+
     const same =
       current.length === list.length &&
-      current.every(function (value, index) {
-        return value === list[index];
-      });
+      current.every(
+        function (value, index) {
+          return (
+            value ===
+            String(
+              list[index]
+            )
+          );
+        }
+      );
+
 
     if (same) {
 
       if (
         previous &&
-        list.includes(previous)
+        list.includes(
+          previous
+        )
       ) {
-        element.value = previous;
+
+        element.value =
+          previous;
+
         return previous;
+
       }
+
 
       if (
         list.length &&
-        !list.includes(element.value)
+        !list.includes(
+          element.value
+        )
       ) {
-        element.value = list[0];
+
+        element.value =
+          list[0];
+
       }
 
-      return text(element.value);
+
+      return text(
+        element.value
+      );
+
     }
 
-    element.innerHTML = '';
+
+    element.innerHTML =
+      '';
+
 
     if (!list.length) {
 
       const option =
-        document.createElement('option');
+        document.createElement(
+          'option'
+        );
 
-      option.value = '';
-      option.textContent = 'Tidak tersedia';
 
-      element.appendChild(option);
+      option.value =
+        '';
+
+
+      option.textContent =
+        'Tidak tersedia';
+
+
+      element.appendChild(
+        option
+      );
+
 
       return '';
+
     }
+
 
     const fragment =
       document.createDocumentFragment();
 
-    list.forEach(function (value) {
 
-      const option =
-        document.createElement('option');
+    list.forEach(
+      function (value) {
 
-      option.value = String(value);
-      option.textContent = String(value);
+        const option =
+          document.createElement(
+            'option'
+          );
 
-      fragment.appendChild(option);
 
-    });
+        option.value =
+          String(value);
 
-    element.appendChild(fragment);
+
+        option.textContent =
+          String(value);
+
+
+        fragment.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+    element.appendChild(
+      fragment
+    );
+
 
     if (
       previous &&
-      list.includes(previous)
+      list.includes(
+        previous
+      )
     ) {
-      element.value = previous;
+
+      element.value =
+        previous;
+
       return previous;
+
     }
 
-    element.value = list[0];
 
-    return list[0];
+    element.value =
+      String(
+        list[0]
+      );
+
+
+    return String(
+      list[0]
+    );
+
   }
 
 
-  function setValue(id, value) {
+  function setValue(
+    id,
+    value
+  ) {
 
-    const element = $(id);
+    const element =
+      $(id);
+
 
     if (!element) {
       return;
     }
 
-    const next =
-      String(value ?? '');
 
-    if (element.value !== next) {
-      element.value = next;
+    const next =
+      String(
+        value ?? ''
+      );
+
+
+    if (
+      element.value !==
+      next
+    ) {
+
+      element.value =
+        next;
+
     }
+
   }
 
 
@@ -545,36 +1451,64 @@
      VALID MODEL
   ======================================================= */
 
-  function ensureValidModel(provider) {
+  function ensureValidModel(
+    provider
+  ) {
 
-    const model = $('model');
+    const model =
+      $('model');
+
 
     if (!model) {
       return '';
     }
 
+
     const allowed =
-      getEffectiveCapabilities(provider)
+      getEffectiveCapabilities(
+        provider
+      )
         .models
-        .map(function (value) {
-          return String(value);
-        });
+        .map(
+          function (value) {
+            return String(value);
+          }
+        );
+
 
     if (!allowed.length) {
-      model.value = '';
+
+      model.value =
+        '';
+
       return '';
+
     }
+
 
     const current =
-      text(model.value);
+      text(
+        model.value
+      );
 
-    if (allowed.includes(current)) {
+
+    if (
+      allowed.includes(
+        current
+      )
+    ) {
+
       return current;
+
     }
 
-    model.value = allowed[0];
+
+    model.value =
+      allowed[0];
+
 
     return allowed[0];
+
   }
 
 
@@ -582,281 +1516,60 @@
      VALID ASPECT
   ======================================================= */
 
-  function ensureValidAspect(provider) {
-
-    const allowed =
-      getEffectiveCapabilities(provider)
-        .aspects
-        .map(function (value) {
-          return String(value);
-        });
-
-    [
-      $('ratio'),
-      $('aspect')
-    ].forEach(function (element) {
-
-      if (!element) {
-        return;
-      }
-
-      if (!allowed.length) {
-        element.value = '';
-        return;
-      }
-
-      if (
-        !allowed.includes(
-          text(element.value)
-        )
-      ) {
-        element.value = allowed[0];
-      }
-
-    });
-  }
-
-
-  /* =======================================================
-     IMAGE GROUP
-  ======================================================= */
-
-  function findReferenceImageGroup(
-    imageInput
+  function ensureValidAspect(
+    provider,
+    model
   ) {
 
-    if (!imageInput) {
-      return null;
-    }
-
-    const directGroup =
-      imageInput.closest(
-        '.reference-group'
-      );
-
-    if (directGroup) {
-      return directGroup;
-    }
-
-    const preview =
-      $('imagePreview');
-
-    if (preview) {
-
-      const previewGroup =
-        preview.closest(
-          '.reference-group'
-        );
-
-      if (previewGroup) {
-        return previewGroup;
-      }
-    }
-
-    const label =
-      document.querySelector(
-        'label[for="image"]'
-      );
-
-    if (label) {
-
-      const labelGroup =
-        label.closest(
-          '.reference-group'
-        );
-
-      if (labelGroup) {
-        return labelGroup;
-      }
-    }
-
-    return null;
-  }
-
-
-  /* =======================================================
-     IMAGE AVAILABILITY
-  ======================================================= */
-
-  function updateImageAvailability(
-    provider
-  ) {
-
-    const imageInput =
-      $('image');
-
-    if (!imageInput) {
-      return;
-    }
-
-    const model =
-      text($('model')?.value);
-
-    const imageGroup =
-      findReferenceImageGroup(
-        imageInput
-      );
-
-    /*
-     * Belum ada model.
-     *
-     * Jangan pernah menghapus image.
-     */
-    if (!model) {
-
-      imageInput.disabled = false;
-
-      imageInput.removeAttribute(
-        'aria-disabled'
-      );
-
-      if (imageGroup) {
-
-        imageGroup.classList.remove('hidden');
-
-        imageGroup.style.setProperty(
-          'display',
-          '',
-          'important'
-        );
-
-        imageGroup.removeAttribute(
-          'aria-hidden'
-        );
-      }
-
-      return;
-    }
-
-    const supported =
-      modelSupportsImage(
+    const modelCapabilities =
+      getModelCapabilities(
         provider,
         model
       );
 
 
-    /*
-     * =====================================================
-     * UNKNOWN / BELUM SIAP
-     * =====================================================
-     *
-     * Ini bagian paling penting.
-     *
-     * Ketika provider/model baru saja berubah atau
-     * capabilities belum lengkap, supported bisa null.
-     *
-     * Jangan disable input.
-     * Jangan hide preview.
-     * Jangan clear image.
-     */
-    if (supported === null) {
+    const allowed =
+      modelCapabilities.aspects.length
+        ? modelCapabilities.aspects
+        : getEffectiveCapabilities(
+            provider
+          ).aspects;
 
-      imageInput.disabled = false;
 
-      imageInput.removeAttribute(
-        'aria-disabled'
-      );
+    [
+      $('ratio'),
+      $('aspect')
+    ].forEach(
+      function (element) {
 
-      if (imageGroup) {
+        if (!element) {
+          return;
+        }
 
-        imageGroup.classList.remove('hidden');
 
-        imageGroup.style.setProperty(
-          'display',
-          '',
-          'important'
-        );
+        if (!allowed.length) {
 
-        imageGroup.removeAttribute(
-          'aria-hidden'
-        );
+          return;
+
+        }
+
+
+        if (
+          !allowed.includes(
+            text(
+              element.value
+            )
+          )
+        ) {
+
+          element.value =
+            allowed[0];
+
+        }
+
       }
-
-      return;
-    }
-
-
-    /*
-     * =====================================================
-     * MODEL TIDAK MENDUKUNG IMAGE
-     * =====================================================
-     *
-     * UI boleh disembunyikan, tetapi imageData TIDAK
-     * boleh dihapus.
-     *
-     * Dengan begitu saat user kembali ke model yang
-     * mendukung reference image, gambar masih tersedia.
-     */
-    if (supported === false) {
-
-      if (imageGroup) {
-
-        imageGroup.classList.add('hidden');
-
-        imageGroup.style.setProperty(
-          'display',
-          'none',
-          'important'
-        );
-
-        imageGroup.setAttribute(
-          'aria-hidden',
-          'true'
-        );
-      }
-
-      imageInput.disabled = true;
-
-      imageInput.setAttribute(
-        'aria-disabled',
-        'true'
-      );
-
-      /*
-       * JANGAN panggil clearImageReference() di sini.
-       *
-       * Sebelumnya kode melakukan:
-       *
-       * if (hasImageReference()) {
-       *   clearImageReference();
-       * }
-       *
-       * Hal tersebut menyebabkan reference image hilang
-       * ketika refresh provider/model terjadi.
-       *
-       * Image sekarang dipertahankan.
-       */
-
-      return;
-    }
-
-
-    /*
-     * =====================================================
-     * MODEL MENDUKUNG IMAGE
-     * =====================================================
-     */
-
-    if (imageGroup) {
-
-      imageGroup.classList.remove('hidden');
-
-      imageGroup.style.setProperty(
-        'display',
-        '',
-        'important'
-      );
-
-      imageGroup.removeAttribute(
-        'aria-hidden'
-      );
-    }
-
-    imageInput.disabled = false;
-
-    imageInput.removeAttribute(
-      'aria-disabled'
     );
+
   }
 
 
@@ -864,25 +1577,23 @@
      MODEL RULES
   ======================================================= */
 
-  function applyModelRules(provider) {
+  function applyModelRules(
+    provider
+  ) {
 
     const model =
-      ensureValidModel(provider);
-
-    if (!model) {
-
-      updateImageAvailability(
+      ensureValidModel(
         provider
       );
 
-      return '';
-    }
 
     updateImageAvailability(
       provider
     );
 
+
     return model;
+
   }
 
 
@@ -896,11 +1607,15 @@
   ) {
 
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
+
 
     if (!model) {
       return '';
     }
+
 
     const allowed =
       getAllowedDurations(
@@ -909,11 +1624,13 @@
         hasImageReference()
       );
 
+
     return setOptions(
       'duration',
       allowed,
       preferredDuration
     );
+
   }
 
 
@@ -927,22 +1644,21 @@
   ) {
 
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
+
 
     if (!model) {
       return '';
     }
 
+
     const duration =
-      Number($('duration')?.value);
-
-    if (!Number.isFinite(duration)) {
-
-      return setOptions(
-        'resolution',
-        []
+      Number(
+        $('duration')?.value
       );
-    }
+
 
     const allowed =
       getAllowedResolutions(
@@ -952,11 +1668,13 @@
         hasImageReference()
       );
 
+
     return setOptions(
       'resolution',
       allowed,
       preferredResolution
     );
+
   }
 
 
@@ -970,42 +1688,176 @@
 
     const buttons =
       document.querySelectorAll(
-        '#generateBtn, [data-generate-button], button[type="submit"]'
+        '#generateBtn, [data-generate-button]'
       );
 
+
     const model =
-      text($('model')?.value);
+      text(
+        $('model')?.value
+      );
+
 
     const duration =
-      text($('duration')?.value);
+      text(
+        $('duration')?.value
+      );
+
 
     const resolution =
-      text($('resolution')?.value);
+      text(
+        $('resolution')?.value
+      );
+
+
+    const providerReady =
+      Boolean(
+        provider
+      );
+
 
     const enabled =
       Boolean(
-        provider &&
+        providerReady &&
         model &&
         duration &&
-        resolution
+        resolution &&
+        resolution !== ''
       );
 
-    buttons.forEach(function (button) {
 
-      /*
-       * Jangan disable seluruh form.
-       * Hanya tombol generate yang relevan.
-       */
-      if (
-        button.id === 'generateBtn' ||
-        button.hasAttribute('data-generate-button')
-      ) {
-        button.disabled = !enabled;
+    buttons.forEach(
+      function (button) {
+
+        if (
+          button.id ===
+            'generateBtn' ||
+          button.hasAttribute(
+            'data-generate-button'
+          )
+        ) {
+
+          button.disabled =
+            !enabled;
+
+
+          button.style.setProperty(
+            'display',
+            'inline-flex',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'align-items',
+            'center',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'justify-content',
+            'center',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'width',
+            '100%',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'min-height',
+            '48px',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'height',
+            '48px',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'padding',
+            '0 24px',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'border',
+            '0',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'border-radius',
+            '999px',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'background-color',
+            '#198754',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'color',
+            '#ffffff',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'font-weight',
+            '700',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'font-size',
+            '15px',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'cursor',
+            enabled
+              ? 'pointer'
+              : 'not-allowed',
+            'important'
+          );
+
+
+          button.style.setProperty(
+            'opacity',
+            '1',
+            'important'
+          );
+
+        }
+
       }
+    );
 
-    });
   }
 
+
+  /* =======================================================
+     ACTIVE PROVIDER BUTTON
+  ======================================================= */
 
   function updateActiveButton(
     providerId
@@ -1015,25 +1867,34 @@
       .querySelectorAll(
         '[data-provider]'
       )
-      .forEach(function (button) {
+      .forEach(
+        function (button) {
 
-        const active =
-          normalizeId(
-            button.dataset.provider
-          ) === normalizeId(
-            providerId
+          const active =
+            normalizeId(
+              button.dataset.provider
+            ) ===
+            normalizeId(
+              providerId
+            );
+
+
+          button.classList.toggle(
+            'active',
+            active
           );
 
-        button.classList.toggle(
-          'active',
-          active
-        );
 
-        button.setAttribute(
-          'aria-selected',
-          active ? 'true' : 'false'
-        );
-      });
+          button.setAttribute(
+            'aria-selected',
+            active
+              ? 'true'
+              : 'false'
+          );
+
+        }
+      );
+
   }
 
 
@@ -1046,35 +1907,58 @@
   ) {
 
     if (refreshRunning) {
-      refreshQueued = true;
+
+      refreshQueued =
+        true;
+
       return;
+
     }
+
 
     const provider =
       GENZ.providers.currentProvider;
+
 
     if (!provider) {
       return;
     }
 
-    refreshRunning = true;
+
+    refreshRunning =
+      true;
+
 
     try {
 
       const previousModel =
-        text($('model')?.value);
+        text(
+          $('model')?.value
+        );
+
 
       const previousDuration =
-        text($('duration')?.value);
+        text(
+          $('duration')?.value
+        );
+
 
       const previousResolution =
-        text($('resolution')?.value);
+        text(
+          $('resolution')?.value
+        );
+
 
       const previousRatio =
-        text($('ratio')?.value);
+        text(
+          $('ratio')?.value
+        );
+
 
       const previousAspect =
-        text($('aspect')?.value);
+        text(
+          $('aspect')?.value
+        );
 
 
       /* ===================================================
@@ -1083,14 +1967,18 @@
 
       setOptions(
         'model',
-        getEffectiveCapabilities(provider).models,
+        getEffectiveCapabilities(
+          provider
+        ).models,
         previousModel
       );
+
 
       const model =
         applyModelRules(
           provider
         );
+
 
       if (!model) {
 
@@ -1099,16 +1987,19 @@
         );
 
         return;
+
       }
 
 
       /* ===================================================
-         IMAGE
+         MODEL CAPABILITY
       =================================================== */
 
-      updateImageAvailability(
-        provider
-      );
+      const modelCapabilities =
+        getModelCapabilities(
+          provider,
+          model
+        );
 
 
       /* ===================================================
@@ -1116,25 +2007,35 @@
       =================================================== */
 
       const aspects =
-        getEffectiveCapabilities(
-          provider
-        ).aspects;
+        modelCapabilities.aspects.length
+          ? modelCapabilities.aspects
+          : getEffectiveCapabilities(
+              provider
+            ).aspects;
 
-      setOptions(
-        'ratio',
-        aspects,
-        previousRatio
-      );
 
-      setOptions(
-        'aspect',
-        aspects,
-        previousAspect
-      );
+      if (aspects.length) {
 
-      ensureValidAspect(
-        provider
-      );
+        setOptions(
+          'ratio',
+          aspects,
+          previousRatio
+        );
+
+
+        setOptions(
+          'aspect',
+          aspects,
+          previousAspect
+        );
+
+
+        ensureValidAspect(
+          provider,
+          model
+        );
+
+      }
 
 
       /* ===================================================
@@ -1155,22 +2056,48 @@
           previousDuration
         );
 
+
       if (
         changedField === 'image' &&
         hasImage
       ) {
 
+        const allowedDurations =
+          getAllowedDurations(
+            provider,
+            model,
+            hasImage
+          );
+
+
+        const preferred =
+          allowedDurations.includes(8)
+            ? '8'
+            : (
+                allowedDurations.length
+                  ? String(
+                      allowedDurations[0]
+                    )
+                  : ''
+              );
+
+
         duration =
           applyDurationRules(
             provider,
-            '8'
+            preferred
           );
+
       }
 
 
       if (!duration) {
+
         duration =
-          text($('duration')?.value);
+          text(
+            $('duration')?.value
+          );
+
       }
 
 
@@ -1185,25 +2112,23 @@
         );
 
 
-      /*
-       * Jika resolution yang lama tidak kompatibel,
-       * pilih resolution pertama yang valid.
-       */
       if (!resolution) {
 
         resolution =
           applyResolutionRules(
             provider
           );
+
       }
 
 
       /* ===================================================
-         RESOLUTION → DURATION
+         RESOLUTION -> DURATION
       =================================================== */
 
       if (
-        changedField === 'resolution'
+        changedField ===
+        'resolution'
       ) {
 
         const selectedResolution =
@@ -1211,12 +2136,14 @@
             $('resolution')?.value
           );
 
+
         const allowedDurations =
           getAllowedDurations(
             provider,
             model,
             hasImageReference()
           );
+
 
         const compatibleDuration =
           allowedDurations.find(
@@ -1230,23 +2157,31 @@
                   hasImageReference()
                 );
 
+
               return resolutions.includes(
                 selectedResolution
               );
+
             }
           );
 
+
         if (
-          compatibleDuration !== undefined
+          compatibleDuration !==
+          undefined
         ) {
 
           duration =
             setOptions(
               'duration',
               allowedDurations,
-              compatibleDuration
+              String(
+                compatibleDuration
+              )
             );
+
         }
+
       }
 
 
@@ -1257,7 +2192,9 @@
       resolution =
         applyResolutionRules(
           provider,
-          text($('resolution')?.value)
+          text(
+            $('resolution')?.value
+          )
         );
 
 
@@ -1268,45 +2205,40 @@
       GENZ.state.provider =
         provider.id;
 
+
       GENZ.state.model =
-        text($('model')?.value);
+        text(
+          $('model')?.value
+        );
+
 
       GENZ.state.duration =
         Number(
           $('duration')?.value
         );
 
+
       GENZ.state.resolution =
         text(
           $('resolution')?.value
         );
 
+
       GENZ.state.aspect =
         text(
-          $('aspect')?.value ||
-          $('ratio')?.value
+          $('ratio')?.value ||
+          $('aspect')?.value
         );
 
 
-      /*
-       * Jangan sentuh:
-       *
-       * GENZ.state.imageData
-       * GENZ.upload.imageData
-       *
-       * selama refresh provider.
-       *
-       * Reference image dikelola oleh upload.js.
-       */
-
-
       /* ===================================================
-         BUTTONS
+         BUTTON
       =================================================== */
 
       updateGenerateButton(
         provider
       );
+
 
       updateActiveButton(
         provider.id
@@ -1314,17 +2246,24 @@
 
     } finally {
 
-      refreshRunning = false;
+      refreshRunning =
+        false;
+
 
       if (refreshQueued) {
 
-        refreshQueued = false;
+        refreshQueued =
+          false;
+
 
         scheduleRefresh(
           changedField || ''
         );
+
       }
+
     }
+
   }
 
 
@@ -1340,31 +2279,39 @@
       return;
     }
 
+
     GENZ.state.provider =
       provider.id;
+
 
     GENZ.providers.current =
       provider.id;
 
+
     GENZ.providers.currentProvider =
       provider;
+
 
     setValue(
       'provider',
       provider.id
     );
 
+
     refreshCurrentOptions(
       'provider'
     );
+
 
     updateGenerateButton(
       provider
     );
 
+
     updateActiveButton(
       provider.id
     );
+
   }
 
 
@@ -1381,11 +2328,19 @@
         'genz-provider-change',
         {
           detail: {
-            provider: provider,
-            id: provider.id,
-            name: provider.name,
+            provider:
+              provider,
+
+            id:
+              provider.id,
+
+            name:
+              provider.name,
+
             adapter:
-              provider.adapter || null,
+              provider.adapter ||
+              null,
+
             capabilities:
               getEffectiveCapabilities(
                 provider
@@ -1394,6 +2349,7 @@
         }
       )
     );
+
   }
 
 
@@ -1410,48 +2366,72 @@
         '[data-providers]'
       );
 
+
     if (!container) {
       return;
     }
 
+
     const fragment =
       document.createDocumentFragment();
 
-    providers.forEach(function (provider) {
 
-      const button =
-        document.createElement(
-          'button'
+    providers.forEach(
+      function (provider) {
+
+        const button =
+          document.createElement(
+            'button'
+          );
+
+
+        button.type =
+          'button';
+
+
+        button.className =
+          'provider-button';
+
+
+        button.dataset.provider =
+          provider.id;
+
+
+        button.textContent =
+          provider.name ||
+          provider.id;
+
+
+        fragment.appendChild(
+          button
         );
 
-      button.type = 'button';
-      button.className = 'provider-button';
-      button.dataset.provider =
-        provider.id;
+      }
+    );
 
-      button.textContent =
-        provider.name ||
-        provider.id;
 
-      fragment.appendChild(
-        button
-      );
-    });
+    container.innerHTML =
+      '';
 
-    container.innerHTML = '';
+
     container.appendChild(
       fragment
     );
+
 
     if (
       container.dataset.listenerAttached ===
       'true'
     ) {
+
       return;
+
     }
+
 
     container.dataset.listenerAttached =
       'true';
+
 
     container.addEventListener(
       'click',
@@ -1462,15 +2442,19 @@
             '[data-provider]'
           );
 
+
         if (!button) {
           return;
         }
 
+
         selectProvider(
           button.dataset.provider
         );
+
       }
     );
+
   }
 
 
@@ -1485,65 +2469,106 @@
     const element =
       $('provider');
 
+
     if (!element) {
       return;
     }
 
+
     const previous =
-      text(element.value);
+      text(
+        element.value
+      );
+
 
     const fragment =
       document.createDocumentFragment();
+
 
     const placeholder =
       document.createElement(
         'option'
       );
 
-    placeholder.value = '';
+
+    placeholder.value =
+      '';
+
 
     placeholder.textContent =
       providers.length
         ? 'Pilih AI Engine'
         : 'Tidak ada AI Engine';
 
+
+    placeholder.disabled =
+      true;
+
+
+    placeholder.setAttribute(
+      'aria-disabled',
+      'true'
+    );
+
+
     fragment.appendChild(
       placeholder
     );
 
-    providers.forEach(function (provider) {
 
-      const option =
-        document.createElement(
-          'option'
+    providers.forEach(
+      function (provider) {
+
+        const option =
+          document.createElement(
+            'option'
+          );
+
+
+        option.value =
+          provider.id;
+
+
+        option.textContent =
+          provider.name ||
+          provider.id;
+
+
+        fragment.appendChild(
+          option
         );
 
-      option.value =
-        provider.id;
+      }
+    );
 
-      option.textContent =
-        provider.name ||
-        provider.id;
 
-      fragment.appendChild(
-        option
-      );
-    });
+    element.innerHTML =
+      '';
 
-    element.innerHTML = '';
 
     element.appendChild(
       fragment
     );
 
+
     if (
       previous &&
-      providers.some(function (provider) {
-        return String(provider.id) === previous;
-      })
+      providers.some(
+        function (provider) {
+          return (
+            String(
+              provider.id
+            ) === previous
+          );
+        }
+      )
     ) {
-      element.value = previous;
+
+      element.value =
+        previous;
+
     }
+
   }
 
 
@@ -1559,46 +2584,68 @@
       return [];
     }
 
+
     return list
-      .filter(function (provider) {
+      .filter(
+        function (provider) {
 
-        if (!provider) {
-          return false;
-        }
+          if (!provider) {
+            return false;
+          }
 
-        if (provider.enabled === false) {
-          return false;
-        }
 
-        return Boolean(
-          provider.id ||
-          provider.name
-        );
-      })
-      .map(function (provider) {
+          if (
+            provider.enabled ===
+            false
+          ) {
 
-        const id =
-          text(
+            return false;
+
+          }
+
+
+          return Boolean(
             provider.id ||
             provider.name
           );
 
-        const name =
-          text(
-            provider.name ||
-            id
-          );
+        }
+      )
+      .map(
+        function (provider) {
 
-        return {
-          ...provider,
-          id: id,
-          name: name,
-          capabilities:
-            normalizeCapabilities(
-              provider
-            )
-        };
-      });
+          const id =
+            text(
+              provider.id ||
+              provider.name
+            );
+
+
+          const name =
+            text(
+              provider.name ||
+              id
+            );
+
+
+          return {
+            ...provider,
+
+            id:
+              id,
+
+            name:
+              name,
+
+            capabilities:
+              normalizeCapabilities(
+                provider
+              )
+          };
+
+        }
+      );
+
   }
 
 
@@ -1611,12 +2658,15 @@
   ) {
 
     const providers =
-      GENZ.providers.list || [];
+      GENZ.providers.list ||
+      [];
+
 
     const normalized =
       normalizeId(
         providerId
       );
+
 
     return (
       providers.find(
@@ -1625,11 +2675,15 @@
           return (
             normalizeId(
               provider.id
-            ) === normalized
+            ) ===
+            normalized
           );
+
         }
-      ) || null
+      ) ||
+      null
     );
+
   }
 
 
@@ -1646,6 +2700,7 @@
         providerId
       );
 
+
     if (!provider) {
 
       console.warn(
@@ -1653,22 +2708,29 @@
         providerId
       );
 
+
       return null;
+
     }
+
 
     updateProviderUI(
       provider
     );
 
+
     dispatchProviderChange(
       provider
     );
+
 
     scheduleRefresh(
       'provider'
     );
 
+
     return provider;
+
   }
 
 
@@ -1684,8 +2746,12 @@
         await fetch(
           '/api/providers',
           {
-            method: 'GET',
-            credentials: 'include',
+            method:
+              'GET',
+
+            credentials:
+              'include',
+
             headers: {
               Accept:
                 'application/json'
@@ -1693,16 +2759,20 @@
           }
         );
 
+
       if (!response.ok) {
 
         throw new Error(
           'HTTP ' +
           response.status
         );
+
       }
+
 
       const data =
         await response.json();
+
 
       if (
         !Array.isArray(
@@ -1713,7 +2783,9 @@
         throw new Error(
           'Format response provider tidak valid.'
         );
+
       }
+
 
       return data.providers;
 
@@ -1724,8 +2796,11 @@
         error
       );
 
+
       return [];
+
     }
+
   }
 
 
@@ -1739,36 +2814,44 @@
       return providersLoading;
     }
 
+
     providersLoading =
       (async function () {
 
         const rawProviders =
           await fetchProviderData();
 
+
         const providers =
           normalizeProviderList(
             rawProviders
           );
 
+
         GENZ.providers.list =
           providers;
 
+
         GENZ.videoProviders.list =
           providers;
+
 
         renderProviderSelect(
           providers
         );
 
+
         renderButtons(
           providers
         );
+
 
         const requested =
           text(
             GENZ.state.provider ||
             $('provider')?.value
           );
+
 
         let selected =
           providers.find(
@@ -1777,15 +2860,20 @@
               return (
                 String(
                   provider.id
-                ) === requested
+                ) ===
+                requested
               );
+
             }
           );
 
+
         if (!selected) {
           selected =
-            providers[0] || null;
+            providers[0] ||
+            null;
         }
+
 
         if (selected) {
 
@@ -1793,9 +2881,11 @@
             selected
           );
 
+
           dispatchProviderChange(
             selected
           );
+
 
           scheduleRefresh(
             'provider'
@@ -1803,69 +2893,88 @@
 
         } else {
 
-          GENZ.state.provider = null;
+          GENZ.state.provider =
+            null;
 
-          GENZ.providers.current = null;
+
+          GENZ.providers.current =
+            null;
+
 
           GENZ.providers.currentProvider =
             null;
+
 
           setValue(
             'provider',
             ''
           );
 
+
           setOptions(
             'model',
             []
           );
+
 
           setOptions(
             'duration',
             []
           );
 
+
           setOptions(
             'ratio',
             []
           );
+
 
           setOptions(
             'aspect',
             []
           );
 
+
           setOptions(
             'resolution',
             []
           );
 
+
           updateGenerateButton(
             null
           );
+
 
           document.dispatchEvent(
             new CustomEvent(
               'genz-provider-empty'
             )
           );
+
         }
+
 
         document.dispatchEvent(
           new CustomEvent(
             'genz-providers-loaded',
             {
               detail: {
-                providers: providers,
-                count: providers.length
+                providers:
+                  providers,
+
+                count:
+                  providers.length
               }
             }
           )
         );
 
+
         return providers;
 
       })();
+
 
     try {
 
@@ -1873,8 +2982,11 @@
 
     } finally {
 
-      providersLoading = null;
+      providersLoading =
+        null;
+
     }
+
   }
 
 
@@ -1887,19 +2999,25 @@
     const element =
       $('provider');
 
+
     if (!element) {
       return;
     }
+
 
     if (
       element.dataset.providerListenerAttached ===
       'true'
     ) {
+
       return;
+
     }
+
 
     element.dataset.providerListenerAttached =
       'true';
+
 
     element.addEventListener(
       'change',
@@ -1908,27 +3026,38 @@
         const providerId =
           element.value;
 
+
         if (!providerId) {
 
-          GENZ.state.provider = null;
+          GENZ.state.provider =
+            null;
 
-          GENZ.providers.current = null;
+
+          GENZ.providers.current =
+            null;
+
 
           GENZ.providers.currentProvider =
             null;
+
 
           updateGenerateButton(
             null
           );
 
+
           return;
+
         }
+
 
         selectProvider(
           providerId
         );
+
       }
     );
+
   }
 
 
@@ -1943,8 +3072,11 @@
         .providerCapabilityListenersAttached ===
       'true'
     ) {
+
       return;
+
     }
+
 
     document.documentElement.dataset
       .providerCapabilityListenersAttached =
@@ -1958,39 +3090,63 @@
         const target =
           event.target;
 
+
         if (!target) {
           return;
         }
 
-        switch (target.id) {
+
+        switch (
+          target.id
+        ) {
 
           case 'model':
-            scheduleRefresh('model');
+            scheduleRefresh(
+              'model'
+            );
             break;
+
 
           case 'duration':
-            scheduleRefresh('duration');
+            scheduleRefresh(
+              'duration'
+            );
             break;
+
 
           case 'resolution':
-            scheduleRefresh('resolution');
+            scheduleRefresh(
+              'resolution'
+            );
             break;
+
 
           case 'ratio':
-            scheduleRefresh('ratio');
+            scheduleRefresh(
+              'ratio'
+            );
             break;
+
 
           case 'aspect':
-            scheduleRefresh('aspect');
+            scheduleRefresh(
+              'aspect'
+            );
             break;
 
+
           case 'image':
-            scheduleRefresh('image');
+            scheduleRefresh(
+              'image'
+            );
             break;
+
 
           default:
             break;
+
         }
+
       },
       true
     );
@@ -2003,12 +3159,19 @@
         const target =
           event.target;
 
+
         if (
           target &&
-          target.id === 'image'
+          target.id ===
+            'image'
         ) {
-          scheduleRefresh('image');
+
+          scheduleRefresh(
+            'image'
+          );
+
         }
+
       },
       true
     );
@@ -2020,16 +3183,23 @@
       'genz-image-upload',
       'genz-upload-complete',
       'genz-image-removed'
-    ].forEach(function (eventName) {
+    ].forEach(
+      function (eventName) {
 
-      document.addEventListener(
-        eventName,
-        function () {
-          scheduleRefresh('image');
-        }
-      );
+        document.addEventListener(
+          eventName,
+          function () {
 
-    });
+            scheduleRefresh(
+              'image'
+            );
+
+          }
+        );
+
+      }
+    );
+
   }
 
 
@@ -2040,39 +3210,54 @@
   GENZ.providers.load =
     loadProviders;
 
+
   GENZ.providers.reload =
     loadProviders;
+
 
   GENZ.providers.select =
     selectProvider;
 
+
   GENZ.providers.find =
     findProvider;
 
+
   GENZ.providers.getCapabilities =
-    function (providerId) {
+    function (
+      providerId
+    ) {
 
       const provider =
         providerId
-          ? findProvider(providerId)
+          ? findProvider(
+              providerId
+            )
           : GENZ.providers.currentProvider;
+
 
       return getEffectiveCapabilities(
         provider
       );
+
     };
+
 
   GENZ.providers.refresh =
     refreshCurrentOptions;
 
+
   GENZ.videoProviders.load =
     loadProviders;
+
 
   GENZ.videoProviders.select =
     selectProvider;
 
+
   window.selectProvider =
     selectProvider;
+
 
   window.loadProviders =
     loadProviders;
@@ -2090,11 +3275,6 @@
 
     await loadProviders();
 
-    /*
-     * Tidak ada lagi refresh tambahan 300 ms.
-     * Provider sudah selesai dimuat dan disinkronkan
-     * pada loadProviders().
-     */
   }
 
 
@@ -2114,6 +3294,7 @@
   } else {
 
     initialize();
+
   }
 
 })();
