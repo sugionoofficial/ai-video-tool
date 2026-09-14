@@ -124,13 +124,32 @@
 
 
   /*
-   * Mengambil ID dari option yang sedang dipilih.
+   * =======================================================
+   * STRICT PROVIDER ID LOCK
+   *
+   * Provider ID HARUS berasal dari metadata option.
+   *
+   * TIDAK BOLEH:
+   *   - menggunakan Provider Name
+   *   - menggunakan textContent
+   *   - menggunakan select.value sebagai fallback
    *
    * Prioritas:
-   *   data-provider-id
-   *   value
+   *   1. data-provider-id
+   *   2. data-id
    *
-   * Provider Name tidak pernah digunakan.
+   * Dengan demikian:
+   *
+   * Provider Name : ByteDance
+   * Provider ID   : 8tqwkm
+   * Adapter       : chinaapi
+   *
+   * hasil fungsi:
+   *   8tqwkm
+   *
+   * BUKAN:
+   *   ByteDance
+   * =======================================================
    */
 
   function getSelectedProviderId() {
@@ -146,11 +165,87 @@
       element.selectedOptions &&
       element.selectedOptions[0];
 
-    return text(
-      option?.dataset?.providerId ||
-      element.value ||
-      ''
-    );
+    if (!option) {
+
+      console.warn(
+        '[GEN-Z.AI] Provider option tidak ditemukan.'
+      );
+
+      return '';
+
+    }
+
+    const providerId =
+      text(
+        option.dataset?.providerId ||
+        option.dataset?.id ||
+        ''
+      );
+
+
+    if (!providerId) {
+
+      console.error(
+        '[GEN-Z.AI] Provider ID tidak ditemukan pada option terpilih.',
+        {
+          optionValue:
+            text(option.value),
+
+          providerName:
+            text(option.dataset?.providerName),
+
+          adapter:
+            text(option.dataset?.adapter)
+        }
+      );
+
+      return '';
+
+    }
+
+
+    const providerName =
+      text(
+        option.dataset?.providerName ||
+        ''
+      );
+
+
+    /*
+     * Pengaman tambahan.
+     *
+     * Jika ID ternyata sama dengan Name,
+     * jangan teruskan request.
+     */
+
+    if (
+      providerName &&
+      normalizeId(providerId) ===
+      normalizeId(providerName)
+    ) {
+
+      console.error(
+        '[GEN-Z.AI] Provider Identity Error: Provider ID sama dengan Provider Name.',
+        {
+          providerId:
+            providerId,
+
+          providerName:
+            providerName,
+
+          adapter:
+            text(
+              option.dataset?.adapter
+            )
+        }
+      );
+
+      return '';
+
+    }
+
+
+    return providerId;
 
   }
 
@@ -2574,6 +2669,10 @@
     }
 
 
+    /*
+     * Ambil ID lama SEBELUM option lama
+     * dihancurkan.
+     */
     const previous =
       getSelectedProviderId();
 
@@ -2643,11 +2742,11 @@
          * =================================================
          * PROVIDER IDENTITY LOCK
          *
-         * value      = Provider ID
-         * data-id    = Provider ID
-         * data-provider-id = Provider ID
-         * data-name  = Provider Name
-         * data-adapter = Adapter
+         * value              = Provider ID
+         * data-id            = Provider ID
+         * data-provider-id   = Provider ID
+         * data-provider-name = Provider Name
+         * data-adapter       = Adapter
          *
          * Provider Name TIDAK PERNAH
          * menjadi value.
@@ -3304,8 +3403,15 @@
       function () {
 
         /*
-         * Ambil Provider ID langsung
-         * dari option terpilih.
+         * =================================================
+         * STRICT ID LOCK
+         *
+         * Jangan gunakan:
+         *
+         * element.value
+         *
+         * Gunakan hanya metadata option.
+         * =================================================
          */
 
         const providerId =
