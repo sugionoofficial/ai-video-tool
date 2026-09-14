@@ -6,82 +6,48 @@
    public/js/upload-fix.js
 
    Fungsi:
-   - Menjaga preview reference image tetap terlihat
-   - Menambahkan tombol X untuk menghapus image
-   - Menjaga preview reference video tetap terlihat
-   - Menambahkan tombol X untuk menghapus video
+   - Menjaga preview reference image
+   - Menjaga preview reference video
+   - Tombol X untuk menghapus reference
    - Tidak mengambil alih proses upload
-   - Tidak menangani event change input
-   - Tidak mengubah FileReader
-   - Tidak mengubah proses upload
-   - Provider placeholder bukan provider yang dapat dipilih
-   - Mengambil fallback capability dari provider adapter
-   - Menjaga aspect ratio, duration dan resolution tetap tersedia
-   - Mengurangi polling berat
+   - Memperbaiki capability Aspect Ratio
+   - Memperbaiki Duration
+   - Memperbaiki Resolution
+   - Mendukung langsung registry model ChinaAPI
+   - Tidak memakai polling 1 detik
 ========================================================= */
 
 (function () {
 
   'use strict';
 
-  window.GENZ =
-    window.GENZ ||
-    {};
+  window.GENZ = window.GENZ || {};
 
-  const GENZ =
-    window.GENZ;
+  const GENZ = window.GENZ;
 
-  GENZ.upload =
-    GENZ.upload ||
-    {};
+  GENZ.upload = GENZ.upload || {};
+  GENZ.state = GENZ.state || {};
 
-  GENZ.state =
-    GENZ.state ||
-    {};
+  let refreshFrame = null;
+  let refreshRunning = false;
 
 
   /* =======================================================
-     HELPER
+     DOM
   ======================================================= */
 
   function get(id) {
-
-    return document.getElementById(
-      id
-    );
-
+    return document.getElementById(id);
   }
 
 
-  function hasImages() {
+  /* =======================================================
+     NORMALIZE
+  ======================================================= */
 
-    return (
-      Array.isArray(
-        GENZ.upload.images
-      ) &&
-      GENZ.upload.images.length > 0
-    );
+  function normalizeProvider(value) {
 
-  }
-
-
-  function hasVideos() {
-
-    return (
-      Array.isArray(
-        GENZ.upload.videoFiles
-      ) &&
-      GENZ.upload.videoFiles.length > 0
-    );
-
-  }
-
-
-  function normalizeProviderId(value) {
-
-    return String(
-      value || ''
-    )
+    return String(value || '')
       .trim()
       .toLowerCase()
       .replace(/[_\s]+/g, '-')
@@ -90,14 +56,19 @@
   }
 
 
+  function normalizeModel(value) {
+
+    return String(value || '')
+      .trim()
+      .toLowerCase();
+
+  }
+
+
   function normalizeArray(value) {
 
-    if (
-      !Array.isArray(value)
-    ) {
-
+    if (!Array.isArray(value)) {
       return [];
-
     }
 
     return [
@@ -109,9 +80,7 @@
               item === null ||
               item === undefined
             ) {
-
               return '';
-
             }
 
             if (
@@ -123,15 +92,14 @@
                 item.value ||
                 item.name ||
                 item.label ||
+                item.model ||
                 item.duration ||
                 ''
               ).trim();
 
             }
 
-            return String(
-              item
-            ).trim();
+            return String(item).trim();
 
           })
           .filter(Boolean)
@@ -141,23 +109,26 @@
   }
 
 
-  function getCurrentProviderId() {
+  /* =======================================================
+     CURRENT PROVIDER
+  ======================================================= */
 
-    const provider =
-      get('provider');
+  function getCurrentProvider() {
+
+    const element = get('provider');
 
     if (
-      provider &&
-      provider.value
+      element &&
+      element.value
     ) {
 
-      return normalizeProviderId(
-        provider.value
+      return normalizeProvider(
+        element.value
       );
 
     }
 
-    return normalizeProviderId(
+    return normalizeProvider(
       GENZ.state.provider ||
       GENZ.state.providerId ||
       ''
@@ -166,18 +137,21 @@
   }
 
 
-  function getCurrentModelId() {
+  /* =======================================================
+     CURRENT MODEL
+  ======================================================= */
 
-    const model =
-      get('model');
+  function getCurrentModel() {
+
+    const element = get('model');
 
     if (
-      model &&
-      model.value
+      element &&
+      element.value
     ) {
 
       return String(
-        model.value
+        element.value
       ).trim();
 
     }
@@ -191,17 +165,77 @@
   }
 
 
-  function getAdapterInfo() {
+  /* =======================================================
+     CHINAAPI DIRECT MODEL INFO
+  ======================================================= */
 
-    const providerId =
-      getCurrentProviderId();
+  function getChinaApiModelInfo() {
+
+    const provider =
+      getCurrentProvider();
+
+    const model =
+      getCurrentModel();
 
     if (
-      !providerId
+      provider !== 'chinaapi' ||
+      !model
     ) {
 
       return null;
 
+    }
+
+
+    const registry =
+      window.GENZ_CHINAAPI_MODELS;
+
+    if (
+      !registry ||
+      typeof registry.getModelInfo !==
+        'function'
+    ) {
+
+      return null;
+
+    }
+
+
+    try {
+
+      const info =
+        registry.getModelInfo(
+          model
+        );
+
+      if (
+        info &&
+        typeof info === 'object' &&
+        info.supported !== false
+      ) {
+
+        return info;
+
+      }
+
+    } catch (_) {}
+
+    return null;
+
+  }
+
+
+  /* =======================================================
+     GENERIC ADAPTER INFO
+  ======================================================= */
+
+  function getAdapterInfo() {
+
+    const provider =
+      getCurrentProvider();
+
+    if (!provider) {
+      return null;
     }
 
 
@@ -223,7 +257,7 @@
 
       const info =
         registry.getAdapterInfo(
-          providerId
+          provider
         );
 
       if (
@@ -242,16 +276,22 @@
   }
 
 
-  function getModelInfo(
+  /* =======================================================
+     GENERIC MODEL INFO
+  ======================================================= */
+
+  function getGenericModelInfo(
     adapterInfo
   ) {
 
-    const modelId =
-      getCurrentModelId();
+    const model =
+      normalizeModel(
+        getCurrentModel()
+      );
 
     if (
       !adapterInfo ||
-      !modelId
+      !model
     ) {
 
       return null;
@@ -267,32 +307,21 @@
         : [];
 
 
-    const normalizedModelId =
-      String(
-        modelId
-      )
-        .trim()
-        .toLowerCase();
-
-
     for (
-      const model of models
+      const item of models
     ) {
 
       if (
-        typeof model ===
-        'string'
+        typeof item === 'string'
       ) {
 
         if (
+          normalizeModel(item) ===
           model
-            .trim()
-            .toLowerCase() ===
-          normalizedModelId
         ) {
 
           return {
-            id: model
+            id: item
           };
 
         }
@@ -303,9 +332,8 @@
 
 
       if (
-        !model ||
-        typeof model !==
-          'object'
+        !item ||
+        typeof item !== 'object'
       ) {
 
         continue;
@@ -314,23 +342,20 @@
 
 
       const id =
-        String(
-          model.id ||
-          model.model ||
-          model.modelId ||
-          model.slug ||
+        normalizeModel(
+          item.id ||
+          item.model ||
+          item.modelId ||
+          item.slug ||
           ''
-        )
-          .trim()
-          .toLowerCase();
+        );
 
 
       if (
-        id ===
-        normalizedModelId
+        id === model
       ) {
 
-        return model;
+        return item;
 
       }
 
@@ -342,22 +367,133 @@
   }
 
 
+  /* =======================================================
+     CAPABILITY EXTRACTION
+  ======================================================= */
+
   function getCapabilities() {
+
+    const provider =
+      getCurrentProvider();
+
+    const model =
+      getCurrentModel();
+
+
+    if (
+      !provider ||
+      !model
+    ) {
+
+      return {
+        durations: [],
+        aspects: [],
+        resolutions: []
+      };
+
+    }
+
+
+    /*
+     * =====================================================
+     * CHINAAPI
+     *
+     * Ambil langsung dari registry model.
+     * Ini adalah sumber capability yang sebenarnya.
+     * =====================================================
+     */
+
+    if (
+      provider === 'chinaapi'
+    ) {
+
+      const modelInfo =
+        getChinaApiModelInfo();
+
+
+      if (modelInfo) {
+
+        const info =
+          modelInfo.info &&
+          typeof modelInfo.info ===
+            'object'
+            ? modelInfo.info
+            : {};
+
+
+        const capabilities =
+          modelInfo.capabilities &&
+          typeof modelInfo.capabilities ===
+            'object'
+            ? modelInfo.capabilities
+            : {};
+
+
+        return {
+
+          durations:
+            normalizeArray(
+              capabilities.durations
+            ).length
+              ? normalizeArray(
+                  capabilities.durations
+                )
+              : normalizeArray(
+                  info.durations
+                ),
+
+          aspects:
+            normalizeArray(
+              capabilities.aspects
+            ).length
+              ? normalizeArray(
+                  capabilities.aspects
+                )
+              : normalizeArray(
+                  info.aspects
+                ),
+
+          resolutions:
+            normalizeArray(
+              capabilities.resolutions
+            ).length
+              ? normalizeArray(
+                  capabilities.resolutions
+                )
+              : normalizeArray(
+                  info.resolutions
+                )
+
+        };
+
+      }
+
+    }
+
+
+    /*
+     * =====================================================
+     * PROVIDER LAIN
+     * =====================================================
+     */
 
     const adapterInfo =
       getAdapterInfo();
 
-    if (
-      !adapterInfo
-    ) {
 
-      return {};
+    if (!adapterInfo) {
+
+      return {
+        durations: [],
+        aspects: [],
+        resolutions: []
+      };
 
     }
 
 
     const modelInfo =
-      getModelInfo(
+      getGenericModelInfo(
         adapterInfo
       );
 
@@ -380,12 +516,6 @@
 
 
     return {
-
-      provider:
-        providerCapabilities,
-
-      model:
-        modelCapabilities,
 
       durations:
         normalizeArray(
@@ -444,67 +574,144 @@
 
 
   /* =======================================================
-     SET SELECT OPTIONS
+     OPTIONS
   ======================================================= */
 
-  function setCapabilityOptions(
+  function getExistingValues(select) {
+
+    if (!select) {
+      return [];
+    }
+
+    return Array.from(
+      select.options
+    ).map(function (option) {
+
+      return String(
+        option.value
+      );
+
+    });
+
+  }
+
+
+  function sameValues(
+    current,
+    next
+  ) {
+
+    if (
+      current.length !==
+      next.length
+    ) {
+
+      return false;
+
+    }
+
+
+    return current.every(
+      function (value, index) {
+
+        return (
+          String(value) ===
+          String(next[index])
+        );
+
+      }
+    );
+
+  }
+
+
+  function setOptions(
     select,
     values,
     placeholder
   ) {
 
-    if (
-      !select
-    ) {
-
-      return false;
-
+    if (!select) {
+      return;
     }
 
 
-    const normalized =
+    const list =
       normalizeArray(
         values
       );
 
 
+    if (!list.length) {
+      return;
+    }
+
+
+    const currentValues =
+      getExistingValues(
+        select
+      );
+
+
+    /*
+     * Jika provider.js sudah mempunyai
+     * option yang sama, jangan rebuild.
+     */
+
+    const expectedValues = [
+      '',
+      ...list.map(function (value) {
+
+        return String(value);
+
+      })
+    ];
+
+
     if (
-      !normalized.length
+      sameValues(
+        currentValues,
+        expectedValues
+      )
     ) {
 
-      return false;
+      select.dataset.capabilityReady =
+        'true';
+
+      return;
 
     }
 
 
-    const currentValue =
+    const previous =
       String(
-        select.value ||
-        ''
+        select.value || ''
       ).trim();
 
 
-    const fragment =
-      document.createDocumentFragment();
+    select.replaceChildren();
 
 
-    const firstOption =
+    const placeholderOption =
       document.createElement(
         'option'
       );
 
-    firstOption.value =
+    placeholderOption.value =
       '';
 
-    firstOption.textContent =
+    placeholderOption.textContent =
       placeholder;
 
-    fragment.appendChild(
-      firstOption
+    placeholderOption.disabled =
+      false;
+
+    select.appendChild(
+      placeholderOption
     );
 
 
-    normalized.forEach(
+    list.forEach(
       function (value) {
 
         const option =
@@ -513,16 +720,12 @@
           );
 
         option.value =
-          String(
-            value
-          );
+          String(value);
 
         option.textContent =
-          String(
-            value
-          );
+          String(value);
 
-        fragment.appendChild(
+        select.appendChild(
           option
         );
 
@@ -530,19 +733,14 @@
     );
 
 
-    select.replaceChildren(
-      fragment
-    );
-
-
     if (
-      currentValue &&
-      normalized.some(
+      previous &&
+      list.some(
         function (value) {
 
           return (
             String(value) ===
-            currentValue
+            previous
           );
 
         }
@@ -550,198 +748,212 @@
     ) {
 
       select.value =
-        currentValue;
+        previous;
+
+    } else if (
+      list.length === 1
+    ) {
+
+      select.value =
+        String(
+          list[0]
+        );
 
     } else {
 
-      const stateValue =
-        String(
-          select.dataset.lastValue ||
-          ''
-        ).trim();
-
-      if (
-        stateValue &&
-        normalized.some(
-          function (value) {
-
-            return (
-              String(value) ===
-              stateValue
-            );
-
-          }
-        )
-      ) {
-
-        select.value =
-          stateValue;
-
-      } else if (
-        normalized.length ===
-        1
-      ) {
-
-        select.value =
-          String(
-            normalized[0]
-          );
-
-      } else {
-
-        select.value =
-          '';
-
-      }
+      select.value =
+        '';
 
     }
 
 
-    select.dataset.capabilityFallback =
+    select.dataset.capabilityReady =
       'true';
-
-    return true;
 
   }
 
 
   /* =======================================================
-     CAPABILITY FALLBACK
+     DURATION SORT
+  ======================================================= */
+
+  function sortDurations(
+    values
+  ) {
+
+    return normalizeArray(
+      values
+    ).sort(
+      function (a, b) {
+
+        const numberA =
+          Number(a);
+
+        const numberB =
+          Number(b);
+
+
+        if (
+          Number.isFinite(
+            numberA
+          ) &&
+          Number.isFinite(
+            numberB
+          )
+        ) {
+
+          return (
+            numberA -
+            numberB
+          );
+
+        }
+
+
+        return String(a)
+          .localeCompare(
+            String(b)
+          );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     FIX GENERATOR CAPABILITIES
   ======================================================= */
 
   function fixGeneratorCapabilities() {
 
-    const provider =
-      getCurrentProviderId();
-
-    const model =
-      getCurrentModelId();
-
-
-    if (
-      !provider ||
-      !model
-    ) {
-
+    if (refreshRunning) {
       return;
-
     }
 
 
-    const capabilities =
-      getCapabilities();
+    refreshRunning =
+      true;
 
 
-    if (
-      !capabilities
-    ) {
+    try {
 
-      return;
+      const provider =
+        getCurrentProvider();
 
-    }
-
-
-    const ratio =
-      get('ratio');
-
-    const duration =
-      get('duration');
-
-    const resolution =
-      get('resolution');
+      const model =
+        getCurrentModel();
 
 
-    /*
-     * Aspect ratio
-     */
+      if (
+        !provider ||
+        !model
+      ) {
 
-    if (
-      ratio &&
-      capabilities.aspects.length
-    ) {
+        return;
 
-      setCapabilityOptions(
-        ratio,
-        capabilities.aspects,
-        'Pilih aspect ratio'
-      );
-
-    }
+      }
 
 
-    /*
-     * Duration
-     */
-
-    if (
-      duration &&
-      capabilities.durations.length
-    ) {
-
-      const values =
-        capabilities.durations
-          .map(function (value) {
-
-            const number =
-              Number(
-                value
-              );
-
-            return Number.isFinite(
-              number
-            )
-              ? number
-              : value;
-
-          })
-          .sort(function (a, b) {
-
-            const na =
-              Number(a);
-
-            const nb =
-              Number(b);
-
-            if (
-              Number.isFinite(na) &&
-              Number.isFinite(nb)
-            ) {
-
-              return na - nb;
-
-            }
-
-            return String(a)
-              .localeCompare(
-                String(b)
-              );
-
-          });
+      const capabilities =
+        getCapabilities();
 
 
-      setCapabilityOptions(
-        duration,
-        values,
-        'Pilih durasi'
-      );
+      const ratio =
+        get('ratio');
 
-    }
+      const duration =
+        get('duration');
+
+      const resolution =
+        get('resolution');
 
 
-    /*
-     * Resolution
-     */
+      /*
+       * Aspect Ratio
+       */
 
-    if (
-      resolution &&
-      capabilities.resolutions.length
-    ) {
+      if (
+        ratio &&
+        capabilities.aspects.length
+      ) {
 
-      setCapabilityOptions(
-        resolution,
-        capabilities.resolutions,
-        'Pilih resolusi'
-      );
+        setOptions(
+          ratio,
+          capabilities.aspects,
+          'Pilih aspect ratio'
+        );
+
+      }
+
+
+      /*
+       * Duration
+       */
+
+      if (
+        duration &&
+        capabilities.durations.length
+      ) {
+
+        setOptions(
+          duration,
+          sortDurations(
+            capabilities.durations
+          ),
+          'Pilih durasi'
+        );
+
+      }
+
+
+      /*
+       * Resolution
+       */
+
+      if (
+        resolution &&
+        capabilities.resolutions.length
+      ) {
+
+        setOptions(
+          resolution,
+          capabilities.resolutions,
+          'Pilih resolusi'
+        );
+
+      }
+
+
+      /*
+       * Simpan capability di state
+       * supaya generator lain dapat
+       * membaca data yang sama.
+       */
+
+      GENZ.state.capabilities =
+        GENZ.state.capabilities ||
+        {};
+
+      GENZ.state.capabilities.provider =
+        provider;
+
+      GENZ.state.capabilities.model =
+        model;
+
+      GENZ.state.capabilities.durations =
+        capabilities.durations;
+
+      GENZ.state.capabilities.aspects =
+        capabilities.aspects;
+
+      GENZ.state.capabilities.resolutions =
+        capabilities.resolutions;
+
+    } finally {
+
+      refreshRunning =
+        false;
 
     }
 
@@ -767,13 +979,10 @@
 
 
     GENZ.upload.images = [];
-
     GENZ.upload.imageFiles = [];
-
     GENZ.upload.imageData = null;
 
     GENZ.state.images = [];
-
     GENZ.state.imageData = null;
 
 
@@ -782,7 +991,9 @@
 
     if (input) {
 
-      input.value = '';
+      try {
+        input.value = '';
+      } catch (_) {}
 
     }
 
@@ -825,15 +1036,11 @@
 
 
     GENZ.upload.videoFiles = [];
-
     GENZ.upload.videoData = null;
-
-    GENZ.upload.videoObjectUrls =
-      [];
+    GENZ.upload.videoObjectUrls = [];
 
 
     GENZ.state.videoFiles = [];
-
     GENZ.state.videoData = null;
 
 
@@ -842,7 +1049,9 @@
 
     if (input) {
 
-      input.value = '';
+      try {
+        input.value = '';
+      } catch (_) {}
 
     }
 
@@ -855,9 +1064,7 @@
     if (video) {
 
       try {
-
         video.pause();
-
       } catch (_) {}
 
       video.removeAttribute(
@@ -865,9 +1072,7 @@
       );
 
       try {
-
         video.load();
-
       } catch (_) {}
 
     }
@@ -891,11 +1096,10 @@
 
 
   /* =======================================================
-     CREATE REMOVE BUTTON
+     REMOVE BUTTON
   ======================================================= */
 
   function createRemoveButton(
-    className,
     label,
     handler
   ) {
@@ -907,9 +1111,6 @@
 
     button.type =
       'button';
-
-    button.className =
-      className;
 
     button.textContent =
       '×';
@@ -923,6 +1124,9 @@
       'title',
       label
     );
+
+    button.dataset.genzRemove =
+      'true';
 
 
     button.style.position =
@@ -962,7 +1166,7 @@
       '50%';
 
     button.style.background =
-      'rgba(0,0,0,0.8)';
+      'rgba(0,0,0,.8)';
 
     button.style.color =
       '#fff';
@@ -975,9 +1179,6 @@
 
     button.style.lineHeight =
       '32px';
-
-    button.style.textAlign =
-      'center';
 
     button.style.cursor =
       'pointer';
@@ -997,7 +1198,6 @@
       function (event) {
 
         event.preventDefault();
-
         event.stopPropagation();
 
         handler();
@@ -1012,59 +1212,36 @@
 
 
   /* =======================================================
-     IMAGE GROUP
-  ======================================================= */
-
-  function keepImageGroupVisible() {
-
-    const group =
-      get(
-        'imageReferenceGroup'
-      );
-
-    if (
-      !group ||
-      !hasImages()
-    ) {
-
-      return;
-
-    }
-
-
-    group.classList.remove(
-      'hidden'
-    );
-
-    group.style.removeProperty(
-      'display'
-    );
-
-    group.removeAttribute(
-      'aria-hidden'
-    );
-
-  }
-
-
-  /* =======================================================
      IMAGE PREVIEW
   ======================================================= */
 
-  function ensureImageButton() {
+  function fixImagePreview() {
 
     const preview =
-      get(
-        'imagePreview'
+      get('imagePreview');
+
+    if (!preview) {
+      return;
+    }
+
+
+    const hasImage =
+      (
+        Array.isArray(
+          GENZ.upload.images
+        ) &&
+        GENZ.upload.images.length > 0
+      ) ||
+      Boolean(
+        GENZ.upload.imageData
+      ) ||
+      Boolean(
+        GENZ.state.imageData
       );
 
-    if (
-      !preview ||
-      !hasImages()
-    ) {
 
+    if (!hasImage) {
       return;
-
     }
 
 
@@ -1072,83 +1249,48 @@
       'hidden'
     );
 
-    preview.style.removeProperty(
-      'display'
-    );
+    preview.style.display =
+      '';
 
+
+    const parent =
+      preview.parentElement;
 
     if (
-      getComputedStyle(
-        preview
-      ).position === 'static'
+      parent &&
+      getComputedStyle(parent)
+        .position === 'static'
     ) {
 
-      preview.style.position =
+      parent.style.position =
         'relative';
 
     }
 
 
-    let button =
-      preview.querySelector(
-        '.reference-image-remove-all'
-      );
-
-
-    if (button) {
-
-      return;
-
-    }
-
-
-    button =
-      createRemoveButton(
-        'reference-image-remove-all',
-        'Hapus reference image',
-        removeImage
-      );
-
-
-    preview.appendChild(
-      button
-    );
-
-  }
-
-
-  /* =======================================================
-     VIDEO GROUP
-  ======================================================= */
-
-  function keepVideoGroupVisible() {
-
-    const group =
-      get(
-        'videoReferenceGroup'
-      );
-
     if (
-      !group ||
-      !hasVideos()
+      !preview.querySelector(
+        '[data-genz-remove="image"]'
+      )
     ) {
 
-      return;
+      const button =
+        createRemoveButton(
+          'Hapus reference image',
+          removeImage
+        );
+
+      button.dataset.genzRemove =
+        'image';
+
+      preview.style.position =
+        'relative';
+
+      preview.appendChild(
+        button
+      );
 
     }
-
-
-    group.classList.remove(
-      'hidden'
-    );
-
-    group.style.removeProperty(
-      'display'
-    );
-
-    group.removeAttribute(
-      'aria-hidden'
-    );
 
   }
 
@@ -1157,20 +1299,33 @@
      VIDEO PREVIEW
   ======================================================= */
 
-  function ensureVideoButton() {
+  function fixVideoPreview() {
 
     const preview =
-      get(
-        'videoPreview'
+      get('videoPreview');
+
+    if (!preview) {
+      return;
+    }
+
+
+    const hasVideo =
+      (
+        Array.isArray(
+          GENZ.upload.videoFiles
+        ) &&
+        GENZ.upload.videoFiles.length > 0
+      ) ||
+      Boolean(
+        GENZ.upload.videoData
+      ) ||
+      Boolean(
+        GENZ.state.videoData
       );
 
-    if (
-      !preview ||
-      !hasVideos()
-    ) {
 
+    if (!hasVideo) {
       return;
-
     }
 
 
@@ -1178,53 +1333,40 @@
       'hidden'
     );
 
-    preview.style.removeProperty(
-      'display'
-    );
+    preview.style.display =
+      '';
+
+
+    preview.style.position =
+      'relative';
 
 
     if (
-      getComputedStyle(
-        preview
-      ).position === 'static'
+      !preview.querySelector(
+        '[data-genz-remove="video"]'
+      )
     ) {
 
-      preview.style.position =
-        'relative';
+      const button =
+        createRemoveButton(
+          'Hapus reference video',
+          removeVideo
+        );
 
-    }
+      button.dataset.genzRemove =
+        'video';
 
-
-    let button =
-      preview.querySelector(
-        '.reference-video-remove-all'
+      preview.appendChild(
+        button
       );
 
-
-    if (button) {
-
-      return;
-
     }
-
-
-    button =
-      createRemoveButton(
-        'reference-video-remove-all',
-        'Hapus reference video',
-        removeVideo
-      );
-
-
-    preview.appendChild(
-      button
-    );
 
   }
 
 
   /* =======================================================
-     PROVIDER PLACEHOLDER FIX
+     PROVIDER PLACEHOLDER
   ======================================================= */
 
   function fixProviderPlaceholder() {
@@ -1233,58 +1375,29 @@
       get('provider');
 
     if (!provider) {
-
       return;
-
     }
 
 
-    const options =
-      Array.from(
-        provider.options || []
-      );
-
-    if (!options.length) {
-
-      return;
-
-    }
-
-
-    const placeholder =
-      options.find(
-        function (option) {
-
-          return (
-            option.value === ''
-          );
-
-        }
-      );
-
-
-    if (!placeholder) {
-
-      return;
-
-    }
-
-
-    placeholder.disabled =
-      true;
-
-    placeholder.setAttribute(
-      'aria-hidden',
-      'true'
-    );
+    const first =
+      provider.options &&
+      provider.options.length
+        ? provider.options[0]
+        : null;
 
 
     if (
-      !provider.value
+      first &&
+      String(
+        first.value || ''
+      ) === ''
     ) {
 
-      provider.value =
-        '';
+      first.disabled =
+        true;
+
+      first.hidden =
+        false;
 
     }
 
@@ -1292,310 +1405,199 @@
 
 
   /* =======================================================
-     GENERATE BUTTON SIZE FIX
+     GENERATE BUTTON
   ======================================================= */
 
   function fixGenerateButton() {
 
-    const buttons =
-      document.querySelectorAll(
-        '#generateBtn, .generate-btn, [data-generate-button]'
-      );
+    const button =
+      get('generateBtn');
 
-
-    if (!buttons.length) {
-
+    if (!button) {
       return;
-
     }
 
 
-    buttons.forEach(
-      function (button) {
+    button.style.width =
+      '220px';
 
-        if (!button) {
+    button.style.minWidth =
+      '220px';
 
-          return;
+    button.style.maxWidth =
+      '220px';
 
-        }
+    button.style.height =
+      '48px';
 
+    button.style.minHeight =
+      '48px';
 
-        /*
-         * Tombol Generate dibuat oval,
-         * tidak terlalu lebar.
-         */
+    button.style.borderRadius =
+      '999px';
 
-        button.style.width =
-          '220px';
+    button.style.background =
+      '#198754';
 
-        button.style.minWidth =
-          '220px';
+    button.style.color =
+      '#fff';
 
-        button.style.maxWidth =
-          '220px';
+    button.style.border =
+      '0';
 
-        button.style.height =
-          '48px';
+    button.style.fontWeight =
+      '700';
 
-        button.style.minHeight =
-          '48px';
+    button.style.cursor =
+      button.disabled
+        ? 'not-allowed'
+        : 'pointer';
 
-        button.style.boxSizing =
-          'border-box';
-
-        button.style.display =
-          'block';
-
-        button.style.flex =
-          '0 0 220px';
-
-        button.style.alignSelf =
-          'center';
-
-        button.style.marginLeft =
-          'auto';
-
-        button.style.marginRight =
-          'auto';
-
-        button.style.borderRadius =
-          '999px';
-
-        button.style.background =
-          '#198754';
-
-        button.style.color =
-          '#fff';
-
-        button.style.border =
-          '0';
-
-        button.style.cursor =
-          'pointer';
-
-        button.style.fontWeight =
-          '700';
-
-        button.style.transition =
-          'opacity .15s ease, transform .15s ease';
-
-
-        if (
-          button.disabled
-        ) {
-
-          button.style.opacity =
-            '0.55';
-
-        } else {
-
-          button.style.opacity =
-            '1';
-
-        }
-
-      }
-    );
+    button.style.opacity =
+      button.disabled
+        ? '.55'
+        : '1';
 
   }
 
 
   /* =======================================================
-     UI FIX
+     REFRESH
   ======================================================= */
 
-  function refreshGeneratorUI() {
-
-    fixProviderPlaceholder();
+  function refresh() {
 
     fixGeneratorCapabilities();
+
+    fixImagePreview();
+
+    fixVideoPreview();
+
+    fixProviderPlaceholder();
 
     fixGenerateButton();
 
   }
 
 
-  /* =======================================================
-     REFRESH UI
-  ======================================================= */
+  function scheduleRefresh() {
 
-  function refresh() {
-
-    if (hasImages()) {
-
-      keepImageGroupVisible();
-
-      ensureImageButton();
-
-    }
-
-
-    if (hasVideos()) {
-
-      keepVideoGroupVisible();
-
-      ensureVideoButton();
-
-    }
-
-
-    refreshGeneratorUI();
-
-  }
-
-
-  /* =======================================================
-     OBSERVE IMAGE PREVIEW
-  ======================================================= */
-
-  function observeImagePreview() {
-
-    const preview =
-      get(
-        'imagePreview'
-      );
-
-    if (!preview) {
+    if (
+      refreshFrame !== null
+    ) {
 
       return;
 
     }
 
 
-    const observer =
-      new MutationObserver(
+    refreshFrame =
+      window.requestAnimationFrame(
         function () {
 
-          if (hasImages()) {
+          refreshFrame =
+            null;
 
-            ensureImageButton();
-
-          }
+          refresh();
 
         }
       );
-
-
-    observer.observe(
-      preview,
-      {
-        childList: true,
-        subtree: true
-      }
-    );
 
   }
 
 
   /* =======================================================
-     OBSERVE VIDEO PREVIEW
+     CHANGE EVENTS
   ======================================================= */
 
-  function observeVideoPreview() {
+  document.addEventListener(
+    'change',
+    function (event) {
 
-    const preview =
-      get(
-        'videoPreview'
-      );
+      const target =
+        event.target;
 
-    if (!preview) {
+      if (!target) {
+        return;
+      }
+
+
+      if (
+        target.id ===
+        'provider' ||
+        target.id ===
+        'model' ||
+        target.id ===
+        'duration' ||
+        target.id ===
+        'ratio' ||
+        target.id ===
+        'resolution'
+      ) {
+
+        scheduleRefresh();
+
+      }
+
+    },
+    true
+  );
+
+
+  /* =======================================================
+     DOM OBSERVER
+  ======================================================= */
+
+  function observeGenerator() {
+
+    if (
+      typeof MutationObserver !==
+      'function'
+    ) {
 
       return;
 
     }
 
-
-    const observer =
-      new MutationObserver(
-        function () {
-
-          if (hasVideos()) {
-
-            ensureVideoButton();
-
-          }
-
-        }
-      );
-
-
-    observer.observe(
-      preview,
-      {
-        childList: true,
-        subtree: true
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     OBSERVE PROVIDER SELECT
-  ======================================================= */
-
-  function observeProviderSelect() {
-
-    const provider =
-      get('provider');
-
-    if (!provider) {
-
-      return;
-
-    }
-
-
-    const observer =
-      new MutationObserver(
-        function () {
-
-          fixProviderPlaceholder();
-
-          fixGeneratorCapabilities();
-
-          fixGenerateButton();
-
-        }
-      );
-
-
-    observer.observe(
-      provider,
-      {
-        childList: true,
-        subtree: true
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     OBSERVE GENERATOR AREA
-  ======================================================= */
-
-  function observeGeneratorArea() {
 
     const root =
       document.body;
 
     if (!root) {
-
       return;
-
     }
 
 
     const observer =
       new MutationObserver(
-        function () {
+        function (mutations) {
 
-          fixProviderPlaceholder();
+          let relevant =
+            false;
 
-          fixGeneratorCapabilities();
 
-          fixGenerateButton();
+          for (
+            const mutation of mutations
+          ) {
+
+            if (
+              mutation.type ===
+              'childList'
+            ) {
+
+              relevant =
+                true;
+
+              break;
+
+            }
+
+          }
+
+
+          if (relevant) {
+            scheduleRefresh();
+          }
 
         }
       );
@@ -1613,98 +1615,29 @@
 
 
   /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function bindEvents() {
-
-    const events = [
-
-      'genz-image-change',
-
-      'genz-image-removed',
-
-      'genz-upload-complete',
-
-      'genz-video-reference-change',
-
-      'genz-video-reference-removed',
-
-      'genz-provider-change',
-
-      'genz-providers-loaded',
-
-      'change'
-
-    ];
-
-
-    events.forEach(
-      function (eventName) {
-
-        document.addEventListener(
-          eventName,
-          function (event) {
-
-            if (
-              eventName ===
-              'change'
-            ) {
-
-              const target =
-                event.target;
-
-              if (
-                !target ||
-                !target.id ||
-                ![
-                  'provider',
-                  'model',
-                  'ratio',
-                  'duration',
-                  'resolution'
-                ].includes(
-                  target.id
-                )
-              ) {
-
-                return;
-
-              }
-
-            }
-
-
-            requestAnimationFrame(
-              refresh
-            );
-
-          }
-        );
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
      INIT
   ======================================================= */
 
   function init() {
 
-    bindEvents();
-
-    observeImagePreview();
-
-    observeVideoPreview();
-
-    observeProviderSelect();
-
-    observeGeneratorArea();
-
     refresh();
+
+    observeGenerator();
+
+    setTimeout(
+      scheduleRefresh,
+      100
+    );
+
+    setTimeout(
+      scheduleRefresh,
+      500
+    );
+
+    setTimeout(
+      scheduleRefresh,
+      1200
+    );
 
   }
 
