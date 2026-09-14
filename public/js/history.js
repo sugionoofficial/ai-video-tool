@@ -361,6 +361,17 @@
         "oleh provider. Silakan ubah prompt."
       );
     }
+     const detailedError =
+  String(
+    job?.last_error ||
+    ""
+  ).trim();
+
+if (detailedError) {
+  return detailedError;
+}
+
+     
 
     return (
       "Generation gagal diproses. " +
