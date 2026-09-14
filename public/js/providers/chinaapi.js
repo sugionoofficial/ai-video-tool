@@ -167,39 +167,46 @@ function getErrorMessage(
   data,
   fallback
 ) {
-  if (
-    typeof data?.error ===
-    "string"
+  const candidates = [
+    data?.error,
+    data?.message,
+    data?.fail_reason,
+    data?.data?.error,
+    data?.data?.message,
+    data?.data?.fail_reason,
+    data?.details?.message
+  ];
+
+  for (
+    const value of candidates
   ) {
-    return data.error;
+    if (
+      typeof value === "string" &&
+      value.trim()
+    ) {
+      return value.trim();
+    }
   }
 
   if (
     data?.error &&
     typeof data.error.message ===
-    "string"
+      "string"
   ) {
     return data.error.message;
   }
 
   if (
-    data?.error &&
-    typeof data.error.code ===
-    "string"
+    data?.data?.error &&
+    typeof data.data.error.message ===
+      "string"
   ) {
-    return data.error.code;
-  }
-
-  if (
-    typeof data?.message ===
-    "string"
-  ) {
-    return data.message;
+    return data.data.error.message;
   }
 
   if (
     typeof data?.raw ===
-    "string"
+      "string"
   ) {
     return data.raw.slice(
       0,
@@ -234,14 +241,19 @@ function getVideoUrl(
   data
 ) {
   const candidates = [
-    data?.metadata?.url,
-    data?.metadata?.video_url,
-    data?.url,
+    data?.result_url,
     data?.video_url,
+    data?.url,
+
+    data?.data?.result_url,
+    data?.data?.video_url,
+    data?.data?.url,
+
     data?.output?.url,
     data?.output?.video_url,
-    data?.data?.result_url,
-    data?.data?.url
+
+    data?.metadata?.url,
+    data?.metadata?.video_url
   ];
 
   for (
@@ -254,6 +266,67 @@ function getVideoUrl(
       value.trim()
     ) {
       return value.trim();
+    }
+  }
+
+  return "";
+}
+
+
+// ============================================================
+// TASK ID
+// ============================================================
+
+function getExternalId(
+  data
+) {
+  /*
+  ChinaAPI dapat mengembalikan beberapa ID.
+
+  Contoh response aktual:
+
+  {
+    "id": 568,
+    "task_id": "task_Z5xFF...",
+    "data": {
+      "id": "task_qivhheb...",
+      "url": "https://..."
+    }
+  }
+
+  ID yang digunakan endpoint:
+
+  GET /v1/videos/{taskId}
+
+  adalah data.id.
+
+  Karena itu data.data.id harus diprioritaskan.
+  */
+
+  const candidates = [
+    data?.data?.id,
+    data?.data?.task_id,
+    data?.data?.video_id,
+
+    data?.video_id,
+    data?.taskId,
+    data?.task_id,
+
+    data?.videoId
+  ];
+
+  for (
+    const value
+    of candidates
+  ) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      String(value).trim()
+    ) {
+      return String(
+        value
+      ).trim();
     }
   }
 
@@ -498,12 +571,9 @@ export async function generate(
   };
 
 
-  // ----------------------------------------------------------
-  // Reference image
-  //
-  // upload.js menyimpan imageData sebagai Data URL.
-  // Kita teruskan ke ChinaAPI melalui field images.
-  // ----------------------------------------------------------
+  // ==========================================================
+  // REFERENCE IMAGE
+  // ==========================================================
 
   if (
     referenceImages.length
@@ -572,6 +642,7 @@ export async function generate(
       ),
       response.status,
       data?.error?.code ||
+      data?.data?.error?.code ||
       "provider_error"
     );
   }
@@ -582,27 +653,75 @@ export async function generate(
   // ==========================================================
 
   const externalId =
-    data?.video_id ||
-    data?.id ||
-    data?.task_id ||
-    data?.taskId ||
-    data?.videoId;
+    getExternalId(
+      data
+    );
 
-  if (
-    externalId ===
-      undefined ||
-    externalId ===
-      null ||
-    String(
-      externalId
-    ).trim() ===
-      ""
-  ) {
+  if (!externalId) {
     throw providerError(
-      "ChinaAPI tidak mengembalikan task ID.",
+      "ChinaAPI tidak mengembalikan task ID video.",
       502,
       "missing_task_id"
     );
+  }
+
+
+  // ==========================================================
+  // INSTANT RESULT
+  // ==========================================================
+
+  const initialStatus =
+    normalizeStatus(
+      data?.status ||
+      data?.state ||
+      data?.data?.status
+    );
+
+  const initialVideoUrl =
+    getVideoUrl(
+      data
+    );
+
+  if (
+    [
+      "completed",
+      "complete",
+      "succeeded",
+      "success",
+      "finished"
+    ].includes(
+      initialStatus
+    ) &&
+    initialVideoUrl
+  ) {
+    return {
+      externalId,
+
+      provider:
+        ID,
+
+      adapter:
+        ID,
+
+      status:
+        "completed",
+
+      videoUrl:
+        initialVideoUrl,
+
+      model,
+
+      duration,
+
+      aspectRatio,
+
+      resolution,
+
+      mode,
+
+      referenceImageCount:
+        referenceImages.length
+    };
   }
 
 
@@ -611,10 +730,7 @@ export async function generate(
   // ==========================================================
 
   return {
-    externalId:
-      String(
-        externalId
-      ),
+    externalId,
 
     provider:
       ID,
@@ -713,6 +829,7 @@ export async function status(
       ),
       response.status,
       data?.error?.code ||
+      data?.data?.error?.code ||
       "status_error"
     );
   }
@@ -726,7 +843,8 @@ export async function status(
     normalizeStatus(
       data?.status ||
       data?.state ||
-      data?.data?.status
+      data?.data?.status ||
+      data?.data?.state
     );
 
 
@@ -761,8 +879,9 @@ export async function status(
       error:
         getErrorMessage(
           data,
+          data?.fail_reason ||
           data?.data?.fail_reason ||
-            "ChinaAPI video generation gagal."
+          "ChinaAPI video generation gagal."
         ),
 
       errorCode:
@@ -833,6 +952,7 @@ export async function status(
       model:
         data?.model ||
         data?.data?.model ||
+        data?.properties?.origin_model_name ||
         MODEL_ID
     };
   }
