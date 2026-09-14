@@ -6,8 +6,8 @@
    public/js/providers.js
 
    Provider Identity Rule:
-   - provider.id     = IDENTITAS TETAP / BACKEND ID
-   - provider.name   = NAMA TAMPILAN
+   - provider.id      = IDENTITAS TETAP / BACKEND ID
+   - provider.name    = NAMA TAMPILAN
    - provider.adapter = ADAPTER BACKEND
    - Provider Name TIDAK PERNAH menjadi Provider ID
    ========================================================= */
@@ -44,6 +44,14 @@
   }
 
 
+  /*
+   * Normalisasi identifier internal.
+   *
+   * CATATAN:
+   * Normalisasi hanya digunakan untuk pencocokan.
+   * ID asli dari backend tetap disimpan sebagai ID provider.
+   */
+
   function normalizeId(value) {
     return text(value)
       .toLowerCase()
@@ -51,6 +59,14 @@
       .replace(/^[-_.]+|[-_.]+$/g, '');
   }
 
+
+  /*
+   * Provider ID hanya boleh berasal dari:
+   *   provider.id
+   *   provider.providerId
+   *
+   * Provider Name SENGAJA tidak digunakan sebagai fallback.
+   */
 
   function getProviderId(provider) {
 
@@ -66,6 +82,10 @@
 
   }
 
+
+  /*
+   * Provider Name hanya untuk tampilan.
+   */
 
   function getProviderName(provider) {
 
@@ -85,8 +105,60 @@
   }
 
 
+  /*
+   * Provider Adapter hanya untuk backend.
+   */
+
+  function getProviderAdapter(provider) {
+
+    if (!provider) {
+      return '';
+    }
+
+    return text(
+      provider.adapter ||
+      ''
+    );
+
+  }
+
+
+  /*
+   * Mengambil ID dari option yang sedang dipilih.
+   *
+   * Prioritas:
+   *   data-provider-id
+   *   value
+   *
+   * Provider Name tidak pernah digunakan.
+   */
+
+  function getSelectedProviderId() {
+
+    const element =
+      $('provider');
+
+    if (!element) {
+      return '';
+    }
+
+    const option =
+      element.selectedOptions &&
+      element.selectedOptions[0];
+
+    return text(
+      option?.dataset?.providerId ||
+      element.value ||
+      ''
+    );
+
+  }
+
+
   function cloneArray(value) {
-    return Array.isArray(value) ? [...value] : [];
+    return Array.isArray(value)
+      ? [...value]
+      : [];
   }
 
 
@@ -392,9 +464,7 @@
 
 
   function getEffectiveCapabilities(provider) {
-
     return normalizeCapabilities(provider);
-
   }
 
 
@@ -432,9 +502,7 @@
       direct &&
       typeof direct === 'object'
     ) {
-
       return direct;
-
     }
 
 
@@ -462,13 +530,10 @@
           normalizeId(item) ===
           normalized
         ) {
-
           return null;
-
         }
 
         continue;
-
       }
 
 
@@ -490,9 +555,7 @@
           normalizeId(itemId) ===
           normalized
         ) {
-
           return item;
-
         }
 
       }
@@ -562,9 +625,7 @@
       direct &&
       typeof direct === 'object'
     ) {
-
       return direct;
-
     }
 
 
@@ -579,9 +640,7 @@
       modelData?.constraints &&
       typeof modelData.constraints === 'object'
     ) {
-
       return modelData.constraints;
-
     }
 
 
@@ -589,9 +648,7 @@
       modelData?.rules &&
       typeof modelData.rules === 'object'
     ) {
-
       return modelData.rules;
-
     }
 
 
@@ -892,9 +949,7 @@
     if (
       modelCapabilities.imageSupported === true
     ) {
-
       return true;
-
     }
 
 
@@ -907,9 +962,7 @@
     if (
       builtin?.reference?.imageSupported === true
     ) {
-
       return true;
-
     }
 
 
@@ -2353,7 +2406,7 @@
               getProviderName(provider),
 
             adapter:
-              provider.adapter ||
+              getProviderAdapter(provider) ||
               null,
 
             capabilities:
@@ -2418,6 +2471,9 @@
           'provider-button';
 
 
+        /*
+         * Provider identity
+         */
         button.dataset.provider =
           providerId;
 
@@ -2426,8 +2482,22 @@
           providerId;
 
 
+        /*
+         * Provider adapter
+         */
+        button.dataset.adapter =
+          getProviderAdapter(
+            provider
+          );
+
+
+        /*
+         * Display name only
+         */
         button.textContent =
-          getProviderName(provider);
+          getProviderName(
+            provider
+          );
 
 
         fragment.appendChild(
@@ -2505,9 +2575,7 @@
 
 
     const previous =
-      text(
-        element.value
-      );
+      getSelectedProviderId();
 
 
     const fragment =
@@ -2556,6 +2624,10 @@
           getProviderName(provider);
 
 
+        const providerAdapter =
+          getProviderAdapter(provider);
+
+
         if (!providerId) {
           return;
         }
@@ -2568,16 +2640,25 @@
 
 
         /*
-         * PENTING:
+         * =================================================
+         * PROVIDER IDENTITY LOCK
          *
-         * value = Provider ID
-         * text  = Provider Name
+         * value      = Provider ID
+         * data-id    = Provider ID
+         * data-provider-id = Provider ID
+         * data-name  = Provider Name
+         * data-adapter = Adapter
          *
-         * Nama provider tidak pernah
-         * digunakan sebagai identity.
+         * Provider Name TIDAK PERNAH
+         * menjadi value.
+         * =================================================
          */
 
         option.value =
+          providerId;
+
+
+        option.dataset.id =
           providerId;
 
 
@@ -2587,6 +2668,10 @@
 
         option.dataset.providerName =
           providerName;
+
+
+        option.dataset.adapter =
+          providerAdapter;
 
 
         option.textContent =
@@ -2610,6 +2695,11 @@
     );
 
 
+    /*
+     * Restore provider berdasarkan ID.
+     * Tidak pernah berdasarkan Name.
+     */
+
     const selected =
       providers.find(
         function (provider) {
@@ -2630,7 +2720,9 @@
     if (selected) {
 
       element.value =
-        getProviderId(selected);
+        getProviderId(
+          selected
+        );
 
     } else if (providers.length) {
 
@@ -2684,11 +2776,19 @@
 
 
         /*
-         * Provider ID WAJIB berasal
-         * dari provider.id/providerId.
+         * =================================================
+         * IDENTITY RULE
          *
-         * Jangan pernah menggunakan
-         * provider.name sebagai ID.
+         * ID WAJIB berasal dari backend.
+         *
+         * JANGAN:
+         *
+         * provider.id ||
+         * provider.name
+         *
+         * Karena jika nama berubah,
+         * identity provider ikut berubah.
+         * =================================================
          */
 
         const id =
@@ -2700,7 +2800,7 @@
         if (!id) {
 
           console.warn(
-            '[GEN-Z.AI] Provider diabaikan karena tidak memiliki ID:',
+            '[GEN-Z.AI] Provider diabaikan karena tidak memiliki Provider ID:',
             provider
           );
 
@@ -2715,28 +2815,70 @@
           );
 
 
+        const adapter =
+          getProviderAdapter(
+            provider
+          );
+
+
         const normalizedProvider = {
 
           ...provider,
 
+          /*
+           * BACKEND ID
+           */
           id:
             id,
 
+          /*
+           * DISPLAY NAME
+           */
           name:
             name,
 
+          /*
+           * BACKEND ADAPTER
+           */
           adapter:
-            text(
-              provider.adapter ||
-              ''
-            ),
+            adapter,
 
+          /*
+           * CAPABILITIES
+           */
           capabilities:
             normalizeCapabilities(
               provider
             )
 
         };
+
+
+        /*
+         * Diagnostic ringan.
+         * Tidak mengubah data provider.
+         */
+
+        if (
+          name &&
+          name !== id
+        ) {
+
+          console.debug(
+            '[GEN-Z.AI] Provider mapping:',
+            {
+              id:
+                id,
+
+              name:
+                name,
+
+              adapter:
+                adapter
+            }
+          );
+
+        }
 
 
         result.push(
@@ -2807,13 +2949,31 @@
 
     /*
      * providerId harus berupa ID.
-     * Nama provider tidak diterima
-     * sebagai identity.
+     *
+     * Provider Name tidak pernah
+     * digunakan sebagai identity.
      */
+
+    const normalizedProviderId =
+      normalizeId(
+        providerId
+      );
+
+
+    if (!normalizedProviderId) {
+
+      console.warn(
+        '[GEN-Z.AI] Provider ID kosong.'
+      );
+
+      return null;
+
+    }
+
 
     const provider =
       findProvider(
-        providerId
+        normalizedProviderId
       );
 
 
@@ -2821,7 +2981,7 @@
 
       console.warn(
         '[GEN-Z.AI] Provider ID tidak ditemukan:',
-        providerId
+        normalizedProviderId
       );
 
 
@@ -2965,7 +3125,7 @@
         const requested =
           text(
             GENZ.state.provider ||
-            $('provider')?.value
+            getSelectedProviderId()
           );
 
 
@@ -3144,13 +3304,12 @@
       function () {
 
         /*
-         * element.value = PROVIDER ID
+         * Ambil Provider ID langsung
+         * dari option terpilih.
          */
 
         const providerId =
-          text(
-            element.value
-          );
+          getSelectedProviderId();
 
 
         if (!providerId) {
