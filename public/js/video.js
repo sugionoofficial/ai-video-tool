@@ -1,31 +1,22 @@
 /* =====================================================
    PROVIDER ID RESOLVER
-   Provider Name = tampilan
+   Provider Name = tampilan UI
    Provider ID   = nilai yang dikirim ke backend
 ===================================================== */
 
 function resolveProviderId(select) {
   if (!select) return "";
 
-  const option =
-    select.selectedOptions?.[0];
+  const option = select.selectedOptions?.[0];
 
-  /*
-   * Prioritas:
-   * 1. data-provider-id pada option
-   * 2. data-id pada option
-   * 3. data-provider-id pada select
-   * 4. data-id pada select
-   * 5. value select
-   */
-  const id =
+  const providerId =
     text(option?.dataset?.providerId) ||
     text(option?.dataset?.id) ||
     text(select.dataset?.providerId) ||
     text(select.dataset?.id) ||
     text(select.value);
 
-  return id.trim().toLowerCase();
+  return providerId.trim().toLowerCase();
 }
 
 
@@ -34,64 +25,40 @@ function resolveProviderId(select) {
 ===================================================== */
 
 function buildGenerateBody() {
-
-  const providerSelect =
-    $("provider");
-
-  const modelSelect =
-    $("model");
-
-  const promptInput =
-    $("prompt");
-
-  const ratioSelect =
-    $("ratio");
-
-  const durationSelect =
-    $("duration");
-
-  const resolutionSelect =
-    $("resolution");
-
+  const providerSelect = $("provider");
+  const modelSelect = $("model");
+  const promptInput = $("prompt");
+  const ratioSelect = $("ratio");
+  const durationSelect = $("duration");
+  const resolutionSelect = $("resolution");
 
   /*
-   * PENTING:
-   * Jangan menggunakan Provider Name sebagai ID.
+   * WAJIB menggunakan Provider ID.
+   *
+   * Contoh:
+   * ID   : chinaapi
+   * Name : ByteDance
+   *
+   * Request:
+   * provider = "chinaapi"
    */
   const provider =
-    resolveProviderId(
-      providerSelect
-    );
-
+    resolveProviderId(providerSelect);
 
   const model =
-    text(
-      modelSelect?.value
-    );
-
+    text(modelSelect?.value);
 
   const prompt =
-    text(
-      promptInput?.value
-    );
-
+    text(promptInput?.value);
 
   const ratio =
-    text(
-      ratioSelect?.value
-    );
-
+    text(ratioSelect?.value);
 
   const duration =
-    text(
-      durationSelect?.value
-    );
-
+    text(durationSelect?.value);
 
   const resolution =
-    text(
-      resolutionSelect?.value
-    );
+    text(resolutionSelect?.value);
 
 
   /* =========================
@@ -99,47 +66,33 @@ function buildGenerateBody() {
   ========================= */
 
   if (!provider) {
-
     throw new Error(
       "Provider belum dipilih."
     );
-
   }
 
-
   if (!model) {
-
     throw new Error(
       "Model belum dipilih."
     );
-
   }
 
-
   if (!prompt) {
-
     throw new Error(
       "Prompt wajib diisi."
     );
-
   }
 
-
   if (prompt.length < 3) {
-
     throw new Error(
       "Prompt minimal 3 karakter."
     );
-
   }
 
-
   if (prompt.length > 2000) {
-
     throw new Error(
       "Prompt maksimal 2000 karakter."
     );
-
   }
 
 
@@ -148,49 +101,22 @@ function buildGenerateBody() {
   ========================= */
 
   const body = {
-
-    /*
-     * Backend menerima Provider ID.
-     *
-     * Contoh:
-     * chinaapi
-     *
-     * BUKAN:
-     * ByteDance
-     */
-    provider:
-      provider,
-
-    model:
-      model,
-
-    prompt:
-      prompt
-
+    provider: provider,
+    model: model,
+    prompt: prompt
   };
 
 
   if (ratio) {
-
-    body.aspectRatio =
-      ratio;
-
+    body.aspectRatio = ratio;
   }
-
 
   if (duration) {
-
-    body.duration =
-      duration;
-
+    body.duration = duration;
   }
 
-
   if (resolution) {
-
-    body.resolution =
-      resolution;
-
+    body.resolution = resolution;
   }
 
 
@@ -202,10 +128,8 @@ function buildGenerateBody() {
     getImageData();
 
   if (imageData) {
-
     body.imageData =
       imageData;
-
   }
 
 
@@ -225,5 +149,4 @@ function buildGenerateBody() {
 
 
   return body;
-
 }
