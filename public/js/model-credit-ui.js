@@ -7,7 +7,7 @@
     modelElement: null,
     updateTimer: null,
     retryTimer: null,
-    appObserver: null
+    providers: []
   };
 
   function get(id) {
@@ -46,87 +46,92 @@
       : '';
   }
 
+  function normalizeProviderList(list) {
+    if (!Array.isArray(list)) {
+      return [];
+    }
+
+    return list.filter(function (provider) {
+      return Boolean(
+        provider &&
+        (
+          provider.id ||
+          provider.name ||
+          provider.slug
+        )
+      );
+    });
+  }
+
+  function findProvider(providerId) {
+    const normalized = normalizeId(providerId);
+
+    if (!normalized) {
+      return null;
+    }
+
+    const providers =
+      Array.isArray(state.providers)
+        ? state.providers
+        : [];
+
+    const found = providers.find(function (provider) {
+      return normalizeId(
+        provider?.id ||
+        provider?.provider ||
+        provider?.name ||
+        provider?.slug
+      ) === normalized;
+    });
+
+    if (found) {
+      return found;
+    }
+
+    const genzProviders =
+      window.GENZ &&
+      window.GENZ.providers;
+
+    const list =
+      Array.isArray(genzProviders?.list)
+        ? genzProviders.list
+        : [];
+
+    return list.find(function (provider) {
+      return normalizeId(
+        provider?.id ||
+        provider?.provider ||
+        provider?.name ||
+        provider?.slug
+      ) === normalized;
+    }) || null;
+  }
+
   function getCurrentProvider() {
+    const providerId = getProviderId();
+
+    const direct =
+      findProvider(providerId);
+
+    if (direct) {
+      return direct;
+    }
+
     const providers =
       window.GENZ &&
       window.GENZ.providers;
 
-    if (
-      providers &&
-      providers.currentProvider
-    ) {
+    if (providers?.currentProvider) {
       return providers.currentProvider;
     }
 
     if (
-      window.GENZ &&
-      window.GENZ.state &&
-      window.GENZ.state.currentProvider
+      window.GENZ?.state?.currentProvider
     ) {
       return window.GENZ.state.currentProvider;
     }
 
     return null;
-  }
-
-  function getProviderFromList(providerId) {
-    const providers =
-      window.GENZ &&
-      window.GENZ.providers;
-
-    if (!providers) {
-      return null;
-    }
-
-    const list =
-      Array.isArray(providers.list)
-        ? providers.list
-        : [];
-
-    const normalized =
-      normalizeId(providerId);
-
-    return list.find(function (provider) {
-      if (!provider) {
-        return false;
-      }
-
-      return normalizeId(
-        provider.id ||
-        provider.provider ||
-        provider.name ||
-        provider.slug
-      ) === normalized;
-    }) || null;
-  }
-
-  function getProvider() {
-    const providerId =
-      getProviderId();
-
-    const current =
-      getCurrentProvider();
-
-    if (current) {
-      const currentId =
-        normalizeId(
-          current.id ||
-          current.provider ||
-          current.name ||
-          current.slug
-        );
-
-      if (
-        !providerId ||
-        currentId === normalizeId(providerId)
-      ) {
-        return current;
-      }
-    }
-
-    return getProviderFromList(
-      providerId
-    );
   }
 
   function getMap(provider, name) {
@@ -183,14 +188,12 @@
       normalizeId(modelId);
 
     const key =
-      Object.keys(map).find(
-        function (item) {
-          return (
-            normalizeId(item) ===
-            normalized
-          );
-        }
-      );
+      Object.keys(map).find(function (item) {
+        return (
+          normalizeId(item) ===
+          normalized
+        );
+      });
 
     return key !== undefined
       ? map[key]
@@ -205,13 +208,17 @@
       return null;
     }
 
-    const candidates = [
+    const sources = [
       provider.models,
-      provider.capabilities &&
-      provider.capabilities.models
+      provider.capabilities?.models,
+      provider.config?.models,
+      provider.config?.capabilities?.models
     ];
 
-    for (const models of candidates) {
+    const normalized =
+      normalizeId(modelId);
+
+    for (const models of sources) {
       if (!Array.isArray(models)) {
         continue;
       }
@@ -231,7 +238,7 @@
           ) {
             return (
               normalizeId(model) ===
-              normalizeId(modelId)
+              normalized
             );
           }
 
@@ -241,7 +248,7 @@
             model.modelId ||
             model.slug ||
             model.name
-          ) === normalizeId(modelId);
+          ) === normalized;
         });
 
       if (found) {
@@ -253,27 +260,15 @@
   }
 
   function getBaseCredit(provider, modelId) {
-    const stateCredit =
-      window.GENZ &&
-      window.GENZ.state
-        ? window.GENZ.state.modelCredit
-        : undefined;
-
-    if (
-      stateCredit !== undefined &&
-      stateCredit !== null &&
-      stateCredit !== ''
-    ) {
-      const value =
-        toNumber(
-          stateCredit,
-          0
-        );
-
-      if (value > 0) {
-        return value;
-      }
-    }
+    /*
+     * PENTING:
+     * Nilai dari Admin Provider harus menjadi
+     * sumber utama.
+     *
+     * Jangan menggunakan GENZ.state.modelCredit
+     * terlebih dahulu karena state tersebut dapat
+     * berisi nilai lama/default.
+     */
 
     const modelCredits =
       getMap(
@@ -332,32 +327,37 @@
       }
     }
 
+    /*
+     * Fallback terakhir hanya jika provider
+     * memang belum memiliki konfigurasi credit.
+     */
+    const stateCredit =
+      window.GENZ?.state?.modelCredit;
+
+    if (
+      stateCredit !== undefined &&
+      stateCredit !== null &&
+      stateCredit !== ''
+    ) {
+      const value =
+        toNumber(
+          stateCredit,
+          0
+        );
+
+      if (value > 0) {
+        return value;
+      }
+    }
+
     return 1;
   }
 
   function getDiscount(provider, modelId) {
-    const stateDiscount =
-      window.GENZ &&
-      window.GENZ.state
-        ? window.GENZ.state.modelDiscount
-        : undefined;
-
-    if (
-      stateDiscount !== undefined &&
-      stateDiscount !== null &&
-      stateDiscount !== ''
-    ) {
-      return Math.min(
-        100,
-        Math.max(
-          0,
-          toNumber(
-            stateDiscount,
-            0
-          )
-        )
-      );
-    }
+    /*
+     * Sama seperti credit:
+     * Admin Provider menjadi sumber utama.
+     */
 
     const discounts =
       getMap(
@@ -419,6 +419,26 @@
           );
         }
       }
+    }
+
+    const stateDiscount =
+      window.GENZ?.state?.modelDiscount;
+
+    if (
+      stateDiscount !== undefined &&
+      stateDiscount !== null &&
+      stateDiscount !== ''
+    ) {
+      return Math.min(
+        100,
+        Math.max(
+          0,
+          toNumber(
+            stateDiscount,
+            0
+          )
+        )
+      );
     }
 
     return 0;
@@ -548,7 +568,7 @@
     }
 
     const provider =
-      getProvider();
+      getCurrentProvider();
 
     if (!provider) {
       hide();
@@ -597,6 +617,48 @@
       );
   }
 
+  async function loadProvidersDirectly() {
+    try {
+      const response =
+        await fetch(
+          '/api/providers',
+          {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              Accept:
+                'application/json'
+            }
+          }
+        );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data =
+        await response.json();
+
+      if (
+        Array.isArray(
+          data?.providers
+        )
+      ) {
+        state.providers =
+          normalizeProviderList(
+            data.providers
+          );
+
+        scheduleUpdate();
+      }
+    } catch (error) {
+      console.warn(
+        '[GEN-Z.AI] Gagal sinkronisasi credit provider:',
+        error
+      );
+    }
+  }
+
   function bindElements() {
     const provider =
       get('provider');
@@ -620,18 +682,14 @@
       return true;
     }
 
-    if (
-      state.providerElement
-    ) {
+    if (state.providerElement) {
       state.providerElement.removeEventListener(
         'change',
         scheduleUpdate
       );
     }
 
-    if (
-      state.modelElement
-    ) {
+    if (state.modelElement) {
       state.modelElement.removeEventListener(
         'change',
         scheduleUpdate
@@ -681,7 +739,7 @@
     }
 
     if (
-      attempt >= 20
+      attempt >= 30
     ) {
       stopRetry();
       return;
@@ -691,6 +749,7 @@
       window.setTimeout(
         function () {
           state.retryTimer = null;
+
           retryBind(
             attempt + 1
           );
@@ -699,108 +758,92 @@
       );
   }
 
-  function observeApp() {
-    if (
-      state.appObserver ||
-      !window.MutationObserver
-    ) {
-      return;
-    }
+  function bindProviderEvents() {
+    document.addEventListener(
+      'genz-providers-loaded',
+      function (event) {
+        const providers =
+          event?.detail?.providers;
 
-    const app =
-      get('app');
+        if (
+          Array.isArray(providers)
+        ) {
+          state.providers =
+            normalizeProviderList(
+              providers
+            );
+        }
 
-    if (!app) {
-      return;
-    }
+        scheduleUpdate();
+      }
+    );
 
-    state.appObserver =
-      new MutationObserver(
-        function () {
-          const provider =
-            get('provider');
+    document.addEventListener(
+      'genz-provider-change',
+      function (event) {
+        const provider =
+          event?.detail?.provider;
 
-          const model =
-            get('model');
+        if (provider) {
+          const exists =
+            state.providers.some(
+              function (item) {
+                return normalizeId(
+                  item?.id
+                ) === normalizeId(
+                  provider?.id
+                );
+              }
+            );
 
-          if (
-            provider !==
-              state.providerElement ||
-            model !==
-              state.modelElement
-          ) {
-            state.bound = false;
-            retryBind(0);
+          if (!exists) {
+            state.providers.push(
+              provider
+            );
           }
         }
-      );
 
-    state.appObserver.observe(
-      app,
-      {
-        childList: true
+        scheduleUpdate();
       }
+    );
+
+    document.addEventListener(
+      'genz-model-change',
+      scheduleUpdate
     );
   }
 
-  function start() {
-    observeApp();
-    retryBind(0);
+  function initialize() {
+    bindProviderEvents();
+
+    if (
+      !bindElements()
+    ) {
+      retryBind(0);
+    }
+
+    loadProvidersDirectly();
+
+    window.setTimeout(
+      function () {
+        loadProvidersDirectly();
+        scheduleUpdate();
+      },
+      1000
+    );
+
+    window.setTimeout(
+      function () {
+        loadProvidersDirectly();
+        scheduleUpdate();
+      },
+      3000
+    );
   }
 
-  function destroy() {
-    stopRetry();
-
-    if (state.updateTimer) {
-      window.clearTimeout(
-        state.updateTimer
-      );
-
-      state.updateTimer = null;
-    }
-
-    if (
-      state.providerElement
-    ) {
-      state.providerElement.removeEventListener(
-        'change',
-        scheduleUpdate
-      );
-    }
-
-    if (
-      state.modelElement
-    ) {
-      state.modelElement.removeEventListener(
-        'change',
-        scheduleUpdate
-      );
-    }
-
-    if (
-      state.appObserver
-    ) {
-      state.appObserver.disconnect();
-      state.appObserver = null;
-    }
-
-    state.providerElement =
-      null;
-
-    state.modelElement =
-      null;
-
-    state.bound =
-      false;
-  }
-
-  window.GENZ =
-    window.GENZ || {};
-
-  window.GENZ.modelCreditUI = {
+  window.GENZ_MODEL_CREDIT_UI = {
     update,
-    start,
-    destroy
+    refresh: loadProvidersDirectly
   };
 
   if (
@@ -809,12 +852,12 @@
   ) {
     document.addEventListener(
       'DOMContentLoaded',
-      start,
+      initialize,
       {
         once: true
       }
     );
   } else {
-    start();
+    initialize();
   }
 })();
