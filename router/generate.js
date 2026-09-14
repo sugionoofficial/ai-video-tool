@@ -26,6 +26,10 @@ import {
 } from "../providers/index.js";
 
 import {
+  getCredits as getChinaApiModelCredits
+} from "../public/js/providers/chinaapi/index.js";
+
+import {
   reserveJob
 } from "../jobs/jobs.js";
 
@@ -121,7 +125,11 @@ function normalizeDuration(
 }
 
 
-function getCreditCost(
+/* ============================================================
+DEFAULT CREDIT
+============================================================ */
+
+function getDefaultCreditCost(
   env
 ) {
   const raw =
@@ -159,6 +167,94 @@ function getCreditCost(
   }
 
   return cost;
+}
+
+
+/* ============================================================
+MODEL CREDIT
+============================================================ */
+
+function normalizeModelCredit(
+  value
+) {
+  const cost =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      cost
+    ) ||
+    !Number.isInteger(
+      cost
+    ) ||
+    cost < 1 ||
+    cost > MAX_CREDIT_COST
+  ) {
+    return null;
+  }
+
+  return cost;
+}
+
+
+function getChinaApiCreditCost(
+  model
+) {
+  const modelId =
+    String(
+      model || ""
+    ).trim();
+
+  if (!modelId) {
+    return null;
+  }
+
+  try {
+    const cost =
+      getChinaApiModelCredits(
+        modelId
+      );
+
+    return normalizeModelCredit(
+      cost
+    );
+  } catch {
+    return null;
+  }
+}
+
+
+function resolveCreditCost(
+  adapterId,
+  model,
+  env
+) {
+  const normalizedAdapter =
+    normalizeAdapterId(
+      adapterId
+    );
+
+  if (
+    normalizedAdapter ===
+    "chinaapi"
+  ) {
+    const modelCost =
+      getChinaApiCreditCost(
+        model
+      );
+
+    if (
+      modelCost !== null
+    ) {
+      return modelCost;
+    }
+  }
+
+  return getDefaultCreditCost(
+    env
+  );
 }
 
 
@@ -261,18 +357,6 @@ export async function handleGenerate(
 
   /* ==========================================================
   RESOLVE ADAPTER
-
-  Provider ID dan Adapter ID adalah dua hal berbeda.
-
-  Contoh:
-
-  provider.id      = google-veo-production
-  provider.adapter = veo
-
-  provider.id      = kling-main
-  provider.adapter = kling
-
-  Registry hanya menerima adapter ID.
   ========================================================== */
 
   const adapterId =
@@ -422,10 +506,35 @@ export async function handleGenerate(
 
   /* ==========================================================
   CREDIT COST
+  ==========================================================
+  
+  PENTING:
+  
+  Untuk ChinaAPI:
+  
+  credit ditentukan berdasarkan MODEL.
+  
+  Contoh:
+  
+  agnes-video-2.5-flash
+  -> credit dari model config
+  
+  doubao-seedance-2-0-mini-260615
+  -> credit dari model config
+  
+  User tidak dapat mengirim:
+  
+  {
+    "credit": 1
+  }
+  
+  untuk memanipulasi biaya.
   ========================================================== */
 
   const cost =
-    getCreditCost(
+    resolveCreditCost(
+      adapterId,
+      requestedModel,
       env
     );
 
@@ -482,7 +591,21 @@ export async function handleGenerate(
       imageData:
         Boolean(
           body.imageData
+        ),
+
+      images:
+        Array.isArray(
+          body.images
         )
+          ? body.images.length
+          : 0,
+
+      videos:
+        Array.isArray(
+          body.videos
+        )
+          ? body.videos.length
+          : 0
     });
 
   const digest =
@@ -616,7 +739,10 @@ export async function handleGenerate(
         requestedAspectRatio,
 
       resolution:
-        requestedResolution
+        requestedResolution,
+
+      creditCost:
+        cost
     };
 
 
@@ -681,6 +807,31 @@ export async function handleGenerate(
 
 
     /* ========================================================
+    FINAL MODEL
+    ======================================================== */
+
+    const finalModel =
+      requestedModel ||
+      result.model ||
+      null;
+
+
+    /* ========================================================
+    FINAL CREDIT
+  
+    Untuk keamanan, credit yang disimpan
+    pada metadata adalah hasil server-side.
+    ======================================================== */
+
+    const finalCreditCost =
+      resolveCreditCost(
+        adapterId,
+        finalModel,
+        env
+      );
+
+
+    /* ========================================================
     FINAL METADATA
     ======================================================== */
 
@@ -698,18 +849,25 @@ export async function handleGenerate(
       prompt,
 
       model:
-        requestedModel ||
-        result.model ||
-        null,
+        finalModel,
 
       duration:
-        requestedDuration,
+        requestedDuration ??
+        result.duration ??
+        null,
 
       aspectRatio:
-        requestedAspectRatio,
+        requestedAspectRatio ||
+        result.aspectRatio ||
+        null,
 
       resolution:
-        requestedResolution
+        requestedResolution ||
+        result.resolution ||
+        null,
+
+      creditCost:
+        finalCreditCost
     };
 
 
@@ -741,9 +899,7 @@ export async function handleGenerate(
           null,
 
         model:
-          requestedModel ||
-          result.model ||
-          null,
+          finalModel,
 
         metadata
       },
@@ -791,6 +947,12 @@ export async function handleGenerate(
 
         adapter:
           adapterId,
+
+        model:
+          finalModel,
+
+        creditCost:
+          finalCreditCost,
 
         creditsRemaining:
           reservation.credits_remaining
