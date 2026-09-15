@@ -33,8 +33,45 @@ const REFERENCE_BUCKET =
 // ============================================================
 
 function buildCapabilities() {
-  const models =
+  /*
+   * getModelsInfo() mengembalikan ARRAY OBJECT MODEL.
+   *
+   * Contoh:
+   * [
+   *   {
+   *     id: "agnes-video-2.5-flash",
+   *     name: "Agnes Video 2.5 Flash"
+   *   },
+   *   ...
+   * ]
+   *
+   * Frontend membutuhkan capabilities.models berupa
+   * ARRAY STRING ID MODEL, bukan object.
+   *
+   * Karena itu metadata dan daftar ID dipisahkan.
+   */
+
+  const modelInfo =
     getModelsInfo();
+
+  const models =
+    Array.isArray(
+      modelInfo
+    )
+      ? modelInfo
+          .map(
+            model =>
+              String(
+                model?.id ||
+                model?.model ||
+                model?.modelId ||
+                ""
+              ).trim()
+          )
+          .filter(
+            Boolean
+          )
+      : [];
 
   const durations =
     new Set();
@@ -45,113 +82,129 @@ function buildCapabilities() {
   const resolutions =
     new Set();
 
-  models.forEach(
-    model => {
-      const info =
-        model?.info ||
-        model?.config ||
-        model ||
-        {};
+  /*
+   * Gunakan modelInfo untuk membaca metadata.
+   * Jangan gunakan models karena models sekarang
+   * sengaja berisi string ID.
+   */
 
-      const capabilities =
-        info?.capabilities ||
-        model?.capabilities ||
-        {};
+  if (
+    Array.isArray(
+      modelInfo
+    )
+  ) {
+    modelInfo.forEach(
+      model => {
+        const info =
+          model?.info ||
+          model?.config ||
+          model ||
+          {};
 
-      const directDurations =
-        info?.durations ||
-        model?.durations ||
-        capabilities?.durations ||
-        [];
+        const capabilities =
+          info?.capabilities ||
+          model?.capabilities ||
+          {};
 
-      const directAspects =
-        info?.aspects ||
-        model?.aspects ||
-        capabilities?.aspects ||
-        [];
+        const directDurations =
+          info?.durations ||
+          model?.durations ||
+          capabilities?.durations ||
+          [];
 
-      const directResolutions =
-        info?.resolutions ||
-        model?.resolutions ||
-        capabilities?.resolutions ||
-        [];
+        const directAspects =
+          info?.aspects ||
+          model?.aspects ||
+          capabilities?.aspects ||
+          [];
 
-      if (
-        Array.isArray(
-          directDurations
-        )
-      ) {
-        directDurations.forEach(
-          value => {
-            const number =
-              Number(
-                value
-              );
+        const directResolutions =
+          info?.resolutions ||
+          model?.resolutions ||
+          capabilities?.resolutions ||
+          [];
 
-            if (
-              Number.isFinite(
-                number
-              )
-            ) {
-              durations.add(
-                number
-              );
+        if (
+          Array.isArray(
+            directDurations
+          )
+        ) {
+          directDurations.forEach(
+            value => {
+              const number =
+                Number(
+                  value
+                );
+
+              if (
+                Number.isFinite(
+                  number
+                )
+              ) {
+                durations.add(
+                  number
+                );
+              }
             }
-          }
-        );
-      }
+          );
+        }
 
-      if (
-        Array.isArray(
-          directAspects
-        )
-      ) {
-        directAspects.forEach(
-          value => {
-            const aspect =
-              String(
-                value ||
-                ""
-              ).trim();
+        if (
+          Array.isArray(
+            directAspects
+          )
+        ) {
+          directAspects.forEach(
+            value => {
+              const aspect =
+                String(
+                  value ||
+                  ""
+                ).trim();
 
-            if (
-              aspect
-            ) {
-              aspects.add(
+              if (
                 aspect
-              );
+              ) {
+                aspects.add(
+                  aspect
+                );
+              }
             }
-          }
-        );
-      }
+          );
+        }
 
-      if (
-        Array.isArray(
-          directResolutions
-        )
-      ) {
-        directResolutions.forEach(
-          value => {
-            const resolution =
-              String(
-                value ||
-                ""
-              ).trim();
+        if (
+          Array.isArray(
+            directResolutions
+          )
+        ) {
+          directResolutions.forEach(
+            value => {
+              const resolution =
+                String(
+                  value ||
+                  ""
+                ).trim();
 
-            if (
-              resolution
-            ) {
-              resolutions.add(
+              if (
                 resolution
-              );
+              ) {
+                resolutions.add(
+                  resolution
+                );
+              }
             }
-          }
-        );
+          );
+        }
       }
-    }
-  );
+    );
+  }
 
   return {
+    /*
+     * PENTING:
+     * models harus berupa string ID.
+     */
     models,
 
     durations:
@@ -642,13 +695,67 @@ function getModelEndpoint(
     ).trim();
 
   /*
-   * ChinaAPI mendukung dua kontrak video:
-   *
-   * /v1/videos
-   * /v1/video/generations
-   *
-   * Agnes Video 2.5 Flash menggunakan kontrak
-   * OpenAI Videos-compatible melalui /videos.
+   * Gunakan konfigurasi API dari model registry
+   * jika tersedia.
+   */
+
+  const model =
+    resolveModel(
+      id
+    );
+
+  const api =
+    model?.api ||
+    model?.config?.api ||
+    model?.info?.api ||
+    {};
+
+  const configuredGenerate =
+    String(
+      api?.endpoint ||
+      api?.generate ||
+      api?.generateEndpoint ||
+      ""
+    ).trim();
+
+  const configuredStatus =
+    String(
+      api?.statusEndpoint ||
+      api?.status ||
+      api?.status_endpoint ||
+      ""
+    ).trim();
+
+  if (
+    configuredGenerate
+  ) {
+    return {
+      generate:
+        configuredGenerate.startsWith(
+          "/"
+        )
+          ? configuredGenerate
+          : `/${configuredGenerate}`,
+
+      status:
+        configuredStatus
+          ? (
+              configuredStatus.startsWith(
+                "/"
+              )
+                ? configuredStatus
+                : `/${configuredStatus}`
+            )
+          : configuredGenerate.startsWith(
+              "/"
+            )
+              ? configuredGenerate
+              : `/${configuredGenerate}`
+    };
+  }
+
+  /*
+   * Fallback kompatibilitas untuk model lama.
    */
 
   if (
@@ -1096,6 +1203,11 @@ export function info() {
     capabilities:
       CAPABILITIES,
 
+    /*
+     * Tetap kembalikan metadata lengkap di sini.
+     * Yang dipakai frontend untuk dropdown adalah
+     * capabilities.models yang sudah berupa ID string.
+     */
     models:
       getModelsInfo()
   };
@@ -1340,7 +1452,8 @@ export async function generate(
   }
 
   /*
-   * Pastikan field model selalu ada.
+   * Pastikan field model selalu menggunakan
+   * Provider Model ID.
    */
 
   payload.model =
