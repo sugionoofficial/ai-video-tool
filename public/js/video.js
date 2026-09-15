@@ -78,6 +78,10 @@
   }
 
 
+  /* =====================================================
+     INLINE STATUS
+  ===================================================== */
+
   function setStatus(
     message,
     type
@@ -94,8 +98,12 @@
     }
 
 
-    status.textContent =
+    const cleanMessage =
       text(message);
+
+
+    status.textContent =
+      cleanMessage;
 
 
     if (type) {
@@ -106,6 +114,93 @@
     } else {
 
       delete status.dataset.type;
+
+    }
+
+
+    /*
+     * Status HARUS tampil inline.
+     *
+     * Sebelumnya generatorStatus menggunakan
+     * visibility:hidden sehingga pesan error
+     * bisa tidak terlihat atau terlihat seperti
+     * mekanisme popup dari bagian lain UI.
+     *
+     * Sekarang status selalu ditampilkan ketika
+     * memiliki pesan.
+     */
+
+    if (cleanMessage) {
+
+      status.style.visibility =
+        "visible";
+
+      status.style.display =
+        "block";
+
+    } else {
+
+      status.style.visibility =
+        "hidden";
+
+    }
+
+
+    /*
+     * Error ditampilkan langsung di bawah
+     * tombol Generate Video.
+     */
+
+    if (type === "error") {
+
+      status.style.background =
+        "rgba(220,53,69,.08)";
+
+      status.style.border =
+        "1px solid rgba(220,53,69,.25)";
+
+      status.style.color =
+        "#dc3545";
+
+      status.style.textAlign =
+        "left";
+
+      status.style.fontWeight =
+        "500";
+
+    } else if (type === "success") {
+
+      status.style.background =
+        "rgba(25,135,84,.08)";
+
+      status.style.border =
+        "1px solid rgba(25,135,84,.20)";
+
+      status.style.color =
+        "#198754";
+
+      status.style.textAlign =
+        "center";
+
+      status.style.fontWeight =
+        "500";
+
+    } else {
+
+      status.style.background =
+        "rgba(13,110,253,.08)";
+
+      status.style.border =
+        "1px solid rgba(13,110,253,.18)";
+
+      status.style.color =
+        "#495057";
+
+      status.style.textAlign =
+        "center";
+
+      status.style.fontWeight =
+        "400";
 
     }
 
@@ -318,7 +413,7 @@
 
 
   /* =====================================================
-     ERROR
+     ERROR EXTRACTION
   ===================================================== */
 
   function extractError(
@@ -326,24 +421,203 @@
     fallback
   ) {
 
+    const defaultMessage =
+      fallback ||
+      "Generation gagal.";
+
+
     if (!data) {
 
-      return (
-        fallback ||
-        "Generation gagal."
+      return defaultMessage;
+
+    }
+
+
+    /*
+     * Prioritas error.
+     *
+     * Error provider asli diprioritaskan
+     * sebelum pesan generic dari wrapper backend.
+     */
+
+    const candidates = [
+
+      /* Provider / adapter error */
+
+      data.providerError,
+      data.provider_error,
+
+      data.originalError,
+      data.original_error,
+
+      data.rawError,
+      data.raw_error,
+
+      data.cause?.message,
+      data.cause?.error,
+
+      data.details?.providerError,
+      data.details?.provider_error,
+
+      data.details?.originalError,
+      data.details?.original_error,
+
+      data.details?.rawError,
+      data.details?.raw_error,
+
+      data.details?.cause?.message,
+      data.details?.cause?.error,
+
+
+      /* ChinaAPI / provider response */
+
+      data.providerResponse?.error,
+      data.providerResponse?.message,
+      data.providerResponse?.fail_reason,
+      data.providerResponse?.failReason,
+
+      data.provider_response?.error,
+      data.provider_response?.message,
+      data.provider_response?.fail_reason,
+      data.provider_response?.failReason,
+
+
+      data.data?.providerError,
+      data.data?.provider_error,
+
+      data.data?.originalError,
+      data.data?.original_error,
+
+      data.data?.rawError,
+      data.data?.raw_error,
+
+      data.data?.providerResponse?.error,
+      data.data?.providerResponse?.message,
+      data.data?.providerResponse?.fail_reason,
+
+      data.data?.provider_response?.error,
+      data.data?.provider_response?.message,
+      data.data?.provider_response?.fail_reason,
+
+
+      /* Standard API error */
+
+      data.error?.message,
+      data.error?.error,
+      data.error?.details,
+
+      data.message,
+
+      data.details?.message,
+
+      data.details?.error,
+
+      data.data?.error?.message,
+      data.data?.error?.error,
+
+      data.data?.message,
+
+      data.data?.details?.message,
+
+      data.data?.details?.error,
+
+      /* Plain error */
+
+      data.error
+
+    ];
+
+
+    for (
+      const candidate of candidates
+    ) {
+
+      const value =
+        text(candidate);
+
+
+      if (
+        value &&
+        value !==
+          defaultMessage
+      ) {
+
+        return value;
+
+      }
+
+    }
+
+
+    /*
+     * Jika backend hanya mengirim error
+     * generic, gunakan pesan tersebut
+     * daripada membuat pesan palsu.
+     */
+
+    if (
+      text(data.error)
+    ) {
+
+      return text(data.error);
+
+    }
+
+
+    if (
+      text(data.message)
+    ) {
+
+      return text(data.message);
+
+    }
+
+
+    return defaultMessage;
+
+  }
+
+
+  /* =====================================================
+     ERROR MESSAGE NORMALIZER
+  ===================================================== */
+
+  function getErrorMessage(
+    error
+  ) {
+
+    if (!error) {
+
+      return "Generation gagal.";
+
+    }
+
+
+    if (
+      typeof error ===
+        "string"
+    ) {
+
+      return text(error) ||
+        "Generation gagal.";
+
+    }
+
+
+    if (
+      error instanceof Error &&
+      text(error.message)
+    ) {
+
+      return text(
+        error.message
       );
 
     }
 
 
-    return (
-      data.error ||
-      data.message ||
-      data.details?.message ||
-      data.data?.error ||
-      data.data?.message ||
-      data.data?.details?.message ||
-      fallback ||
+    return extractError(
+      error,
       "Generation gagal."
     );
 
@@ -1973,11 +2247,30 @@
 
       if (!response.ok) {
 
-        throw new Error(
+        const actualError =
           extractError(
             data,
             "Generation gagal."
-          )
+          );
+
+
+        console.error(
+          "[GEN-Z.AI] Backend error:",
+          {
+            status:
+              response.status,
+
+            response:
+              data,
+
+            actualError:
+              actualError
+          }
+        );
+
+
+        throw new Error(
+          actualError
         );
 
       }
@@ -1988,11 +2281,27 @@
         data.success === false
       ) {
 
-        throw new Error(
+        const actualError =
           extractError(
             data,
             "Generation gagal."
-          )
+          );
+
+
+        console.error(
+          "[GEN-Z.AI] Backend returned success=false:",
+          {
+            response:
+              data,
+
+            actualError:
+              actualError
+          }
+        );
+
+
+        throw new Error(
+          actualError
         );
 
       }
@@ -2192,26 +2501,53 @@
       GENZ.video.stopPolling();
 
 
+      /*
+       * ERROR SEKARANG HANYA DITAMPILKAN
+       * PADA STATUS INLINE.
+       *
+       * Tidak ada alert().
+       * Tidak ada popup browser.
+       */
+
+      const errorMessage =
+        getErrorMessage(
+          error
+        );
+
+
       setStatus(
-        error?.message ||
-        "Generation gagal.",
+        errorMessage,
         "error"
       );
 
 
       /*
-       * Hindari alert jika browser
-       * sudah tidak tersedia.
+       * Pastikan elemen error tetap
+       * terlihat di bawah tombol Generate.
        */
 
-      try {
+      const status =
+        $("status") ||
+        $("generatorStatus");
 
-        alert(
-          error?.message ||
-          "Generation gagal."
-        );
 
-      } catch (_) {}
+      if (status) {
+
+        status.style.visibility =
+          "visible";
+
+        status.style.display =
+          "block";
+
+        status.scrollIntoView({
+          behavior:
+            "smooth",
+
+          block:
+            "nearest"
+        });
+
+      }
 
     } finally {
 
