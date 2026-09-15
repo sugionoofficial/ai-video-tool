@@ -207,7 +207,7 @@ export async function handleStatus(
 
   /* ==========================================================
      ADAPTER DARI JOB
-     ==========================================================
+  ==========================================================
 
      PENTING:
 
@@ -999,15 +999,15 @@ export async function handleStatus(
       adapter:
         adapterId,
 
-      status:
-        "processing",
-
       providerStatus:
         normalizedProviderStatus,
 
       ...result,
 
       status:
+        normalizeStatus(
+          result.status
+        ) ||
         "processing"
     },
     200,
