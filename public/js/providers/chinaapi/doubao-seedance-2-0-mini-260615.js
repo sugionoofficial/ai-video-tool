@@ -50,9 +50,6 @@ const MODEL_CONFIG = {
 
     mode: {
 
-      text:
-        2,
-
       reference:
         2
 
@@ -75,9 +72,10 @@ const MODEL_CONFIG = {
   // MODE
   // ==========================================================
 
-  modes: [
+  // Seedance 2.0 Mini menggunakan reference input.
+  // Text-only generation tidak diaktifkan di konfigurasi ini.
 
-    "text",
+  modes: [
 
     "reference"
 
@@ -165,7 +163,7 @@ const MODEL_CONFIG = {
   features: {
 
     textToVideo:
-      true,
+      false,
 
     imageToVideo:
       true,
@@ -203,69 +201,8 @@ const MODEL_CONFIG = {
 
   constraints: {
 
-    textToVideo: {
-
-      4: [
-        "480P",
-        "720P"
-      ],
-
-      5: [
-        "480P",
-        "720P"
-      ],
-
-      6: [
-        "480P",
-        "720P"
-      ],
-
-      7: [
-        "480P",
-        "720P"
-      ],
-
-      8: [
-        "480P",
-        "720P"
-      ],
-
-      9: [
-        "480P",
-        "720P"
-      ],
-
-      10: [
-        "480P",
-        "720P"
-      ],
-
-      11: [
-        "480P",
-        "720P"
-      ],
-
-      12: [
-        "480P",
-        "720P"
-      ],
-
-      13: [
-        "480P",
-        "720P"
-      ],
-
-      14: [
-        "480P",
-        "720P"
-      ],
-
-      15: [
-        "480P",
-        "720P"
-      ]
-
-    },
+    // Text-only generation sengaja tidak diaktifkan.
+    textToVideo: {},
 
 
     referenceToVideo: {
@@ -369,7 +306,10 @@ const MODEL_CONFIG = {
       5,
 
     aspectRatio:
-      "16:9"
+      "16:9",
+
+    mode:
+      "reference"
 
   }
 
@@ -398,7 +338,7 @@ function calculateCredits(
   const mode =
     String(
       options.mode ||
-      "text"
+      "reference"
     ).trim();
 
 
@@ -426,53 +366,33 @@ function calculateCredits(
     );
 
 
+  const validCredits = [
+
+    durationCredit,
+    resolutionCredit,
+    modeCredit
+
+  ].filter(
+    value =>
+      Number.isFinite(value) &&
+      value > 0
+  );
+
+
   if (
-    Number.isFinite(
-      resolutionCredit
-    ) &&
-    resolutionCredit > 0
+    validCredits.length === 0
   ) {
 
-    return Math.max(
-      MODEL_CONFIG.credits.default,
-      resolutionCredit
+    return Number(
+      MODEL_CONFIG.credits.default
     );
 
   }
 
 
-  if (
-    Number.isFinite(
-      durationCredit
-    ) &&
-    durationCredit > 0
-  ) {
-
-    return Math.max(
-      MODEL_CONFIG.credits.default,
-      durationCredit
-    );
-
-  }
-
-
-  if (
-    Number.isFinite(
-      modeCredit
-    ) &&
-    modeCredit > 0
-  ) {
-
-    return Math.max(
-      MODEL_CONFIG.credits.default,
-      modeCredit
-    );
-
-  }
-
-
-  return Number(
-    MODEL_CONFIG.credits.default
+  return Math.max(
+    MODEL_CONFIG.credits.default,
+    ...validCredits
   );
 
 }
@@ -489,6 +409,10 @@ function validate(
   const errors = [];
 
 
+  // ==========================================================
+  // BASIC OPTIONS
+  // ==========================================================
+
   const duration =
     Number(
       options.duration
@@ -499,6 +423,7 @@ function validate(
     String(
       options.aspectRatio ||
       options.aspect ||
+      options.ratio ||
       ""
     ).trim();
 
@@ -513,9 +438,46 @@ function validate(
   const mode =
     String(
       options.mode ||
-      "text"
+      "reference"
     ).trim();
 
+
+  // ==========================================================
+  // REFERENCES
+  // ==========================================================
+
+  const referenceImages =
+    Array.isArray(
+      options.referenceImages
+    )
+      ? options.referenceImages.filter(
+          value =>
+            typeof value === "string" &&
+            value.trim()
+        )
+      : [];
+
+
+  const referenceVideos =
+    Array.isArray(
+      options.referenceVideos
+    )
+      ? options.referenceVideos.filter(
+          value =>
+            typeof value === "string" &&
+            value.trim()
+        )
+      : [];
+
+
+  const hasReference =
+    referenceImages.length > 0 ||
+    referenceVideos.length > 0;
+
+
+  // ==========================================================
+  // DURATION
+  // ==========================================================
 
   if (
     !MODEL_CONFIG.durations.includes(
@@ -530,6 +492,10 @@ function validate(
   }
 
 
+  // ==========================================================
+  // ASPECT
+  // ==========================================================
+
   if (
     !MODEL_CONFIG.aspects.includes(
       aspect
@@ -542,6 +508,10 @@ function validate(
 
   }
 
+
+  // ==========================================================
+  // RESOLUTION
+  // ==========================================================
 
   if (
     !MODEL_CONFIG.resolutions.includes(
@@ -556,6 +526,10 @@ function validate(
   }
 
 
+  // ==========================================================
+  // MODE
+  // ==========================================================
+
   if (
     !MODEL_CONFIG.modes.includes(
       mode
@@ -568,6 +542,89 @@ function validate(
 
   }
 
+
+  // ==========================================================
+  // REFERENCE REQUIRED
+  // ==========================================================
+
+  if (
+    !hasReference
+  ) {
+
+    errors.push(
+      `${MODEL_CONFIG.name} membutuhkan minimal satu gambar atau video reference.`
+    );
+
+  }
+
+
+  // ==========================================================
+  // IMAGE REFERENCE LIMIT
+  // ==========================================================
+
+  if (
+    referenceImages.length >
+    MODEL_CONFIG.reference.maxImages
+  ) {
+
+    errors.push(
+      `Maksimal ${MODEL_CONFIG.reference.maxImages} gambar reference.`
+    );
+
+  }
+
+
+  // ==========================================================
+  // VIDEO REFERENCE LIMIT
+  // ==========================================================
+
+  if (
+    referenceVideos.length >
+    MODEL_CONFIG.reference.maxVideos
+  ) {
+
+    errors.push(
+      `Maksimal ${MODEL_CONFIG.reference.maxVideos} video reference.`
+    );
+
+  }
+
+
+  // ==========================================================
+  // VIDEO REFERENCE SUPPORT
+  // ==========================================================
+
+  if (
+    referenceVideos.length > 0 &&
+    !MODEL_CONFIG.reference.videoSupported
+  ) {
+
+    errors.push(
+      `${MODEL_CONFIG.name} tidak mendukung video reference.`
+    );
+
+  }
+
+
+  // ==========================================================
+  // IMAGE REFERENCE SUPPORT
+  // ==========================================================
+
+  if (
+    referenceImages.length > 0 &&
+    !MODEL_CONFIG.reference.imageSupported
+  ) {
+
+    errors.push(
+      `${MODEL_CONFIG.name} tidak mendukung image reference.`
+    );
+
+  }
+
+
+  // ==========================================================
+  // RESULT
+  // ==========================================================
 
   return {
 
@@ -626,9 +683,16 @@ function buildPayload(
     Array.isArray(
       options.referenceImages
     )
-      ? options.referenceImages.filter(
-          Boolean
-        )
+      ? options.referenceImages
+          .filter(
+            value =>
+              typeof value === "string" &&
+              value.trim()
+          )
+          .map(
+            value =>
+              value.trim()
+          )
       : [];
 
 
@@ -636,9 +700,16 @@ function buildPayload(
     Array.isArray(
       options.referenceVideos
     )
-      ? options.referenceVideos.filter(
-          Boolean
-        )
+      ? options.referenceVideos
+          .filter(
+            value =>
+              typeof value === "string" &&
+              value.trim()
+          )
+          .map(
+            value =>
+              value.trim()
+          )
       : [];
 
 
@@ -676,19 +747,7 @@ function buildPayload(
 
 
   // ==========================================================
-  // IMPORTANT
-  //
-  // Seedance 2.0 Mini reference mode harus memakai
-  // metadata.content dengan role yang jelas.
-  //
-  // Tanpa role:
-  // - image dapat dianggap sebagai first frame
-  // - aspect ratio dapat mengikuti gambar
-  // - ratio yang dipilih user dapat tidak dihormati
-  //
-  // Dengan role reference_image/reference_video:
-  // - input diperlakukan sebagai reference
-  // - metadata.ratio tetap menjadi output ratio
+  // REFERENCE CONTENT
   // ==========================================================
 
   if (
@@ -698,6 +757,10 @@ function buildPayload(
     const content = [];
 
 
+    // ========================================================
+    // IMAGE REFERENCES
+    // ========================================================
+
     referenceImages
       .slice(
         0,
@@ -705,15 +768,6 @@ function buildPayload(
       )
       .forEach(
         image => {
-
-          if (
-            typeof image !==
-              "string" ||
-            !image.trim()
-          ) {
-            return;
-          }
-
 
           content.push({
 
@@ -723,7 +777,7 @@ function buildPayload(
             image_url: {
 
               url:
-                image.trim()
+                image
 
             },
 
@@ -736,6 +790,10 @@ function buildPayload(
       );
 
 
+    // ========================================================
+    // VIDEO REFERENCES
+    // ========================================================
+
     referenceVideos
       .slice(
         0,
@@ -743,15 +801,6 @@ function buildPayload(
       )
       .forEach(
         video => {
-
-          if (
-            typeof video !==
-              "string" ||
-            !video.trim()
-          ) {
-            return;
-          }
-
 
           content.push({
 
@@ -761,7 +810,7 @@ function buildPayload(
             video_url: {
 
               url:
-                video.trim()
+                video
 
             },
 
@@ -773,6 +822,10 @@ function buildPayload(
         }
       );
 
+
+    // ========================================================
+    // CONTENT
+    // ========================================================
 
     if (
       content.length > 0
@@ -787,11 +840,7 @@ function buildPayload(
 
 
   // ==========================================================
-  // FALLBACK FOR IMAGE REFERENCES
-  //
-  // Jika tidak ada video reference, tetap kirim images.
-  // Ini menjaga kompatibilitas gateway ChinaAPI yang
-  // menerima images sebagai shortcut reference input.
+  // IMAGE FALLBACK
   // ==========================================================
 
   if (
@@ -808,7 +857,7 @@ function buildPayload(
 
 
   // ==========================================================
-  // FALLBACK FOR VIDEO REFERENCES
+  // VIDEO FALLBACK
   // ==========================================================
 
   if (
@@ -825,20 +874,32 @@ function buildPayload(
 
 
   // ==========================================================
-  // HARD FORCE
-  //
-  // Jangan biarkan ratio kembali menjadi adaptive/default.
+  // HARD FORCE MODEL
+  // ==========================================================
+
+  payload.model =
+    MODEL_ID;
+
+
+  // ==========================================================
+  // HARD FORCE METADATA
   // ==========================================================
 
   payload.metadata =
     payload.metadata || {};
 
+
   payload.metadata.ratio =
     aspectRatio;
+
 
   payload.metadata.resolution =
     resolution;
 
+
+  // ==========================================================
+  // RETURN
+  // ==========================================================
 
   return payload;
 
@@ -875,6 +936,10 @@ const DoubaoSeedance20Mini = {
 
   buildPayload,
 
+
+  // ==========================================================
+  // MODEL INFO
+  // ==========================================================
 
   info() {
 
@@ -928,10 +993,10 @@ const DoubaoSeedance20Mini = {
             MODEL_CONFIG.modes,
 
           textToVideo:
-            MODEL_CONFIG.constraints.textToVideo,
+            MODEL_CONFIG.features.textToVideo,
 
           referenceToVideo:
-            MODEL_CONFIG.constraints.referenceToVideo
+            MODEL_CONFIG.features.referenceToVideo
 
         }
 
