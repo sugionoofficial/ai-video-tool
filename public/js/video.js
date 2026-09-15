@@ -57,6 +57,65 @@
 
 
   /* =====================================================
+     IMAGE REQUEST LIMITS
+  =====================================================
+
+     Base64/Data URL dapat membuat JSON request
+     menjadi sangat besar.
+
+     Gambar reference akan diproses di browser
+     sebelum dikirim ke Worker.
+
+  ===================================================== */
+
+  const MAX_IMAGE_DIMENSION =
+    1280;
+
+
+  const INITIAL_IMAGE_QUALITY =
+    0.82;
+
+
+  const MIN_IMAGE_QUALITY =
+    0.55;
+
+
+  /*
+   * Target maksimum Base64 untuk satu gambar.
+   *
+   * Ini sengaja dibuat jauh di bawah batas request
+   * Worker 10 MB agar masih tersedia ruang untuk
+   * prompt + metadata + beberapa reference image.
+   */
+
+  const MAX_SINGLE_IMAGE_BYTES =
+    2 * 1024 * 1024;
+
+
+  /*
+   * Batas aman total imageData.
+   *
+   * Jika ada beberapa reference image, totalnya
+   * tidak boleh membengkak menjadi request raksasa.
+   */
+
+  const MAX_TOTAL_IMAGE_BYTES =
+    6 * 1024 * 1024;
+
+
+  /*
+   * Perkiraan maksimum JSON request.
+   *
+   * Worker saat ini menggunakan batas 10 MB.
+   * Kita gunakan batas client sedikit lebih rendah
+   * agar tidak mentok tepat di server.
+   */
+
+  const MAX_GENERATE_BODY_BYTES =
+    8 * 1024 * 1024;
+
+
+  /* =====================================================
      HELPER
   ===================================================== */
 
@@ -117,18 +176,6 @@
 
     }
 
-
-    /*
-     * Status HARUS tampil inline.
-     *
-     * Sebelumnya generatorStatus menggunakan
-     * visibility:hidden sehingga pesan error
-     * bisa tidak terlihat atau terlihat seperti
-     * mekanisme popup dari bagian lain UI.
-     *
-     * Sekarang status selalu ditampilkan ketika
-     * memiliki pesan.
-     */
 
     if (cleanMessage) {
 
@@ -278,6 +325,693 @@
 
 
   /* =====================================================
+     IMAGE HELPERS
+  ===================================================== */
+
+  function isDataImage(
+    value
+  ) {
+
+    return (
+      typeof value ===
+        "string" &&
+      /^data:image\//i.test(
+        value.trim()
+      )
+    );
+
+  }
+
+
+  function getBase64ByteSize(
+    dataUrl
+  ) {
+
+    const value =
+      text(dataUrl);
+
+
+    if (
+      !isDataImage(value)
+    ) {
+
+      return 0;
+
+    }
+
+
+    const comma =
+      value.indexOf(",");
+
+
+    if (
+      comma < 0
+    ) {
+
+      return 0;
+
+    }
+
+
+    const base64 =
+      value
+        .slice(comma + 1)
+        .replace(
+          /\s/g,
+          ""
+        );
+
+
+    if (!base64) {
+
+      return 0;
+
+    }
+
+
+    /*
+     * Base64 byte-size approximation.
+     */
+
+    let padding = 0;
+
+
+    if (
+      base64.endsWith("=")
+    ) {
+
+      padding++;
+
+    }
+
+
+    if (
+      base64.endsWith("==")
+    ) {
+
+      padding++;
+
+    }
+
+
+    return Math.max(
+      0,
+      Math.floor(
+        (base64.length * 3) / 4
+      ) - padding
+    );
+
+  }
+
+
+  function dataUrlToImage(
+    dataUrl
+  ) {
+
+    return new Promise(
+      function (
+        resolve,
+        reject
+      ) {
+
+        const image =
+          new Image();
+
+
+        image.onload =
+          function () {
+
+            resolve(image);
+
+          };
+
+
+        image.onerror =
+          function () {
+
+            reject(
+              new Error(
+                "Reference image tidak dapat dibaca oleh browser."
+              )
+            );
+
+          };
+
+
+        image.src =
+          dataUrl;
+
+      }
+    );
+
+  }
+
+
+  function canvasToDataUrl(
+    canvas,
+    quality
+  ) {
+
+    /*
+     * JPEG dipakai untuk mengecilkan payload.
+     *
+     * Jika browser gagal menggunakan JPEG,
+     * fallback ke kualitas asli canvas.
+     */
+
+    try {
+
+      return canvas.toDataURL(
+        "image/jpeg",
+        quality
+      );
+
+    } catch (_) {
+
+      return canvas.toDataURL();
+
+    }
+
+  }
+
+
+  async function compressDataImage(
+    dataUrl,
+    index
+  ) {
+
+    const original =
+      text(dataUrl);
+
+
+    if (
+      !isDataImage(original)
+    ) {
+
+      return original;
+
+    }
+
+
+    const originalBytes =
+      getBase64ByteSize(
+        original
+      );
+
+
+    /*
+     * Jika sudah cukup kecil, tidak perlu
+     * memproses ulang. Ini menjaga kualitas.
+     */
+
+    if (
+      originalBytes > 0 &&
+      originalBytes <=
+        MAX_SINGLE_IMAGE_BYTES
+    ) {
+
+      console.log(
+        "[GEN-Z.AI] Reference image already small:",
+        {
+          index:
+            index,
+
+          bytes:
+            originalBytes
+        }
+      );
+
+
+      return original;
+
+    }
+
+
+    const image =
+      await dataUrlToImage(
+        original
+      );
+
+
+    const originalWidth =
+      Number(
+        image.naturalWidth ||
+        image.width ||
+        0
+      );
+
+
+    const originalHeight =
+      Number(
+        image.naturalHeight ||
+        image.height ||
+        0
+      );
+
+
+    if (
+      !originalWidth ||
+      !originalHeight
+    ) {
+
+      throw new Error(
+        "Ukuran reference image tidak dapat dibaca."
+      );
+
+    }
+
+
+    /*
+     * Resize dengan mempertahankan aspect ratio.
+     */
+
+    const scale =
+      Math.min(
+        1,
+        MAX_IMAGE_DIMENSION /
+          Math.max(
+            originalWidth,
+            originalHeight
+          )
+      );
+
+
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          originalWidth *
+            scale
+        )
+      );
+
+
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          originalHeight *
+            scale
+        )
+      );
+
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      width;
+
+
+    canvas.height =
+      height;
+
+
+    const context =
+      canvas.getContext(
+        "2d",
+        {
+          alpha:
+            false
+        }
+      );
+
+
+    if (!context) {
+
+      throw new Error(
+        "Browser tidak mendukung pemrosesan reference image."
+      );
+
+    }
+
+
+    /*
+     * Kualitas rendering tetap tinggi.
+     */
+
+    try {
+
+      context.imageSmoothingEnabled =
+        true;
+
+      context.imageSmoothingQuality =
+        "high";
+
+    } catch (_) {}
+
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height
+    );
+
+
+    /*
+     * Coba beberapa tingkat kualitas.
+     *
+     * Kita tidak langsung menghancurkan kualitas
+     * gambar hanya karena ukuran awal besar.
+     */
+
+    const qualities = [
+
+      INITIAL_IMAGE_QUALITY,
+      0.75,
+      0.68,
+      0.60,
+      MIN_IMAGE_QUALITY
+
+    ];
+
+
+    let bestResult =
+      null;
+
+
+    let bestBytes =
+      Number.MAX_SAFE_INTEGER;
+
+
+    for (
+      const quality of qualities
+    ) {
+
+      const result =
+        canvasToDataUrl(
+          canvas,
+          quality
+        );
+
+
+      const bytes =
+        getBase64ByteSize(
+          result
+        );
+
+
+      if (
+        bytes < bestBytes
+      ) {
+
+        bestResult =
+          result;
+
+        bestBytes =
+          bytes;
+
+      }
+
+
+      if (
+        bytes <=
+          MAX_SINGLE_IMAGE_BYTES
+      ) {
+
+        bestResult =
+          result;
+
+        bestBytes =
+          bytes;
+
+        break;
+
+      }
+
+    }
+
+
+    if (!bestResult) {
+
+      throw new Error(
+        "Reference image gagal dikompresi."
+      );
+
+    }
+
+
+    console.log(
+      "[GEN-Z.AI] Reference image compressed:",
+      {
+        index:
+          index,
+
+        originalWidth:
+          originalWidth,
+
+        originalHeight:
+          originalHeight,
+
+        outputWidth:
+          width,
+
+        outputHeight:
+          height,
+
+        originalBytes:
+          originalBytes,
+
+        outputBytes:
+          bestBytes,
+
+        reduction:
+          originalBytes > 0
+            ? Math.round(
+                (
+                  1 -
+                  bestBytes /
+                    originalBytes
+                ) * 100
+              ) + "%"
+            : "unknown"
+      }
+    );
+
+
+    return bestResult;
+
+  }
+
+
+  async function prepareImageData(
+    imageData
+  ) {
+
+    if (!imageData) {
+
+      return null;
+
+    }
+
+
+    /*
+     * Format string:
+     * imageData: "data:image/..."
+     */
+
+    if (
+      typeof imageData ===
+        "string"
+    ) {
+
+      if (
+        !isDataImage(imageData)
+      ) {
+
+        return imageData;
+
+      }
+
+
+      return compressDataImage(
+        imageData,
+        1
+      );
+
+    }
+
+
+    /*
+     * Format array:
+     * imageData: [
+     *   "data:image/...",
+     *   "data:image/..."
+     * ]
+     */
+
+    if (
+      Array.isArray(
+        imageData
+      )
+    ) {
+
+      const prepared = [];
+
+
+      for (
+        let i = 0;
+        i < imageData.length;
+        i++
+      ) {
+
+        const item =
+          imageData[i];
+
+
+        if (
+          typeof item ===
+            "string" &&
+          isDataImage(item)
+        ) {
+
+          prepared.push(
+            await compressDataImage(
+              item,
+              i + 1
+            )
+          );
+
+        } else {
+
+          prepared.push(
+            item
+          );
+
+        }
+
+      }
+
+
+      return prepared;
+
+    }
+
+
+    /*
+     * Jika bentuk data bukan string/array,
+     * jangan rusak struktur data yang sudah
+     * digunakan sistem sebelumnya.
+     */
+
+    return imageData;
+
+  }
+
+
+  function estimateJsonBytes(
+    value
+  ) {
+
+    try {
+
+      const json =
+        JSON.stringify(
+          value
+        );
+
+
+      /*
+       * TextEncoder tersedia pada browser
+       * modern. Fallback menggunakan string
+       * length jika tidak tersedia.
+       */
+
+      if (
+        window.TextEncoder
+      ) {
+
+        return new TextEncoder()
+          .encode(json)
+          .length;
+
+      }
+
+
+      return json.length;
+
+    } catch (_) {
+
+      return 0;
+
+    }
+
+  }
+
+
+  function getImagePayloadBytes(
+    imageData
+  ) {
+
+    if (!imageData) {
+
+      return 0;
+
+    }
+
+
+    if (
+      typeof imageData ===
+        "string"
+    ) {
+
+      return isDataImage(imageData)
+        ? getBase64ByteSize(
+            imageData
+          )
+        : 0;
+
+    }
+
+
+    if (
+      Array.isArray(
+        imageData
+      )
+    ) {
+
+      return imageData.reduce(
+        function (
+          total,
+          item
+        ) {
+
+          if (
+            typeof item ===
+              "string" &&
+            isDataImage(item)
+          ) {
+
+            return (
+              total +
+              getBase64ByteSize(
+                item
+              )
+            );
+
+          }
+
+
+          return total;
+
+        },
+        0
+      );
+
+    }
+
+
+    return 0;
+
+  }
+
+
+  /* =====================================================
      PROVIDER ID RESOLVER
   ===================================================== */
 
@@ -306,18 +1040,6 @@
     /*
      * Provider ID HANYA diambil dari
      * metadata provider.
-     *
-     * Tidak menggunakan:
-     *
-     * option.textContent
-     *
-     * sebagai ID.
-     *
-     * Tidak menggunakan:
-     *
-     * select.value
-     *
-     * sebagai fallback.
      */
 
     const providerId =
@@ -433,16 +1155,7 @@
     }
 
 
-    /*
-     * Prioritas error.
-     *
-     * Error provider asli diprioritaskan
-     * sebelum pesan generic dari wrapper backend.
-     */
-
     const candidates = [
-
-      /* Provider / adapter error */
 
       data.providerError,
       data.provider_error,
@@ -468,9 +1181,6 @@
       data.details?.cause?.message,
       data.details?.cause?.error,
 
-
-      /* ChinaAPI / provider response */
-
       data.providerResponse?.error,
       data.providerResponse?.message,
       data.providerResponse?.fail_reason,
@@ -480,7 +1190,6 @@
       data.provider_response?.message,
       data.provider_response?.fail_reason,
       data.provider_response?.failReason,
-
 
       data.data?.providerError,
       data.data?.provider_error,
@@ -498,9 +1207,6 @@
       data.data?.provider_response?.error,
       data.data?.provider_response?.message,
       data.data?.provider_response?.fail_reason,
-
-
-      /* Standard API error */
 
       data.error?.message,
       data.error?.error,
@@ -520,8 +1226,6 @@
       data.data?.details?.message,
 
       data.data?.details?.error,
-
-      /* Plain error */
 
       data.error
 
@@ -548,12 +1252,6 @@
 
     }
 
-
-    /*
-     * Jika backend hanya mengirim error
-     * generic, gunakan pesan tersebut
-     * daripada membuat pesan palsu.
-     */
 
     if (
       text(data.error)
@@ -1175,12 +1873,6 @@
       }
 
 
-      /*
-       * Jika sebelumnya menggunakan
-       * object URL yang berbeda,
-       * bersihkan terlebih dahulu.
-       */
-
       const previousObjectUrl =
         this.objectUrl;
 
@@ -1433,12 +2125,6 @@
       );
 
 
-      /*
-       * show() menyimpan object URL.
-       * Jangan revoke objectUrl yang
-       * baru dibuat.
-       */
-
       if (
         previousObjectUrl &&
         previousObjectUrl !==
@@ -1465,7 +2151,7 @@
      BUILD GENERATE REQUEST
   ===================================================== */
 
-  function buildGenerateBody() {
+  async function buildGenerateBody() {
 
     const providerSelect =
       $("provider");
@@ -1636,14 +2322,64 @@
        IMAGE INPUT
     =================================================== */
 
-    const imageData =
+    const rawImageData =
       getImageData();
 
 
-    if (imageData) {
+    if (rawImageData) {
+
+      setStatus(
+        "Menyiapkan reference image...",
+        "loading"
+      );
+
+
+      const preparedImageData =
+        await prepareImageData(
+          rawImageData
+        );
+
 
       body.imageData =
-        imageData;
+        preparedImageData;
+
+
+      const imageBytes =
+        getImagePayloadBytes(
+          preparedImageData
+        );
+
+
+      console.log(
+        "[GEN-Z.AI] Image payload:",
+        {
+          bytes:
+            imageBytes,
+
+          megabytes:
+            (
+              imageBytes /
+              1024 /
+              1024
+            ).toFixed(2) + " MB"
+        }
+      );
+
+
+      /*
+       * Reference image terlalu besar.
+       */
+
+      if (
+        imageBytes >
+        MAX_TOTAL_IMAGE_BYTES
+      ) {
+
+        throw new Error(
+          "Reference image masih terlalu besar setelah dikompresi. Gunakan gambar yang lebih ringan atau kurangi jumlah reference image."
+        );
+
+      }
 
     }
 
@@ -1700,6 +2436,44 @@
 
       throw new Error(
         "Provider ID tidak valid. Provider Name tidak boleh digunakan sebagai ID."
+      );
+
+    }
+
+
+    /* ===================================================
+       REQUEST SIZE CHECK
+    =================================================== */
+
+    const bodyBytes =
+      estimateJsonBytes(
+        body
+      );
+
+
+    console.log(
+      "[GEN-Z.AI] Estimated request size:",
+      {
+        bytes:
+          bodyBytes,
+
+        megabytes:
+          (
+            bodyBytes /
+            1024 /
+            1024
+          ).toFixed(2) + " MB"
+      }
+    );
+
+
+    if (
+      bodyBytes >
+      MAX_GENERATE_BODY_BYTES
+    ) {
+
+      throw new Error(
+        "Request generation masih terlalu besar setelah optimasi gambar. Kurangi jumlah reference image atau gunakan gambar yang lebih ringan."
       );
 
     }
@@ -1859,11 +2633,6 @@
     const maxAttempts =
       180;
 
-
-    /*
-     * Polling SELALU menggunakan
-     * Provider ID dari request awal.
-     */
 
     provider =
       text(provider)
@@ -2144,10 +2913,6 @@
          BUILD REQUEST
       ================================================= */
 
-      body =
-        buildGenerateBody();
-
-
       generateRunning =
         true;
 
@@ -2158,6 +2923,16 @@
 
 
       GENZ.video.clear();
+
+
+      setStatus(
+        "Menyiapkan request...",
+        "loading"
+      );
+
+
+      body =
+        await buildGenerateBody();
 
 
       setStatus(
@@ -2315,17 +3090,7 @@
 
       /* =================================================
          PROVIDER ID
-      =================================================
-
-         PENTING:
-
-         Provider ID dari request awal
-         adalah sumber kebenaran.
-
-         Provider Name dari response
-         TIDAK pernah digunakan untuk
-         polling.
-      */
+      ================================================= */
 
       const provider =
         body.provider;
@@ -2501,14 +3266,6 @@
       GENZ.video.stopPolling();
 
 
-      /*
-       * ERROR SEKARANG HANYA DITAMPILKAN
-       * PADA STATUS INLINE.
-       *
-       * Tidak ada alert().
-       * Tidak ada popup browser.
-       */
-
       const errorMessage =
         getErrorMessage(
           error
@@ -2520,11 +3277,6 @@
         "error"
       );
 
-
-      /*
-       * Pastikan elemen error tetap
-       * terlihat di bawah tombol Generate.
-       */
 
       const status =
         $("status") ||
@@ -2538,6 +3290,7 @@
 
         status.style.display =
           "block";
+
 
         status.scrollIntoView({
           behavior:
