@@ -132,6 +132,7 @@ function isSupportedAdapter(
     return false;
 
   }
+
 }
 
 
@@ -159,6 +160,7 @@ function extractErrorCode(
       0,
       100
     );
+
 }
 
 
@@ -205,6 +207,27 @@ function getRawErrorMessage(
         );
 
     }
+
+  }
+
+
+  /*
+   * Beberapa provider dapat mengembalikan
+   * error langsung sebagai string.
+   */
+
+  if (
+    typeof error ===
+    "string" &&
+    error.trim()
+  ) {
+
+    return error
+      .trim()
+      .slice(
+        0,
+        2000
+      );
 
   }
 
@@ -1135,13 +1158,67 @@ export async function router(
 
 
     // --------------------------------------------------------
+    // GENERATE ROUTE
+    // --------------------------------------------------------
+
+    const isGenerateRoute =
+      url.pathname ===
+        "/api/generate";
+
+
+    // --------------------------------------------------------
     // USER MESSAGE
     // --------------------------------------------------------
 
     let userMessage;
 
 
+    /*
+     * PENTING:
+     *
+     * /api/generate sekarang mengirim
+     * ERROR ASLI dari backend/provider.
+     *
+     * Sebelumnya error generation masuk
+     * ke getFriendlyErrorMessage(), sehingga
+     * error asli dapat berubah menjadi:
+     *
+     * "Generation gagal diproses.
+     *  Silakan coba lagi."
+     *
+     * Sekarang frontend dapat menerima
+     * penyebab sebenarnya.
+     */
+
     if (
+      isGenerateRoute &&
+      safeStatus >= 400
+    ) {
+
+      userMessage =
+        rawMessage;
+
+
+      /*
+       * Jika rawMessage tidak tersedia,
+       * gunakan fallback friendly message.
+       */
+
+      if (
+        !userMessage ||
+        userMessage ===
+          "unknown"
+      ) {
+
+        userMessage =
+          getFriendlyErrorMessage(
+            err,
+            safeStatus
+          );
+
+      }
+
+    } else if (
       isAdminRoute &&
       safeStatus >= 400 &&
       safeStatus < 500
@@ -1157,6 +1234,22 @@ export async function router(
           err,
           safeStatus
         );
+
+    }
+
+
+    // --------------------------------------------------------
+    // FINAL ERROR SAFETY
+    // --------------------------------------------------------
+
+    if (
+      !userMessage ||
+      userMessage ===
+        "unknown"
+    ) {
+
+      userMessage =
+        "Generation gagal.";
 
     }
 
