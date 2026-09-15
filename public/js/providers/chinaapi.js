@@ -1,4 +1,3 @@
-```javascript
 // ============================================================
 // GEN-Z.AI - CHINAAPI PROVIDER ADAPTER
 // ============================================================
@@ -17,7 +16,6 @@ import {
   sbStorageUpload
 } from "../../lib/supabase.js";
 
-
 const CHINAAPI_BASE_URL =
   "https://api.chinaapi.ai/v1";
 
@@ -30,13 +28,11 @@ const NAME =
 const REFERENCE_BUCKET =
   "reference-media";
 
-
 // ============================================================
 // CAPABILITIES
 // ============================================================
 
 function buildCapabilities() {
-
   const models =
     getModelsInfo();
 
@@ -49,10 +45,8 @@ function buildCapabilities() {
   const resolutions =
     new Set();
 
-
   models.forEach(
     model => {
-
       const info =
         model?.info ||
         model?.config ||
@@ -82,16 +76,13 @@ function buildCapabilities() {
         capabilities?.resolutions ||
         [];
 
-
       if (
         Array.isArray(
           directDurations
         )
       ) {
-
         directDurations.forEach(
           value => {
-
             const number =
               Number(
                 value
@@ -102,28 +93,21 @@ function buildCapabilities() {
                 number
               )
             ) {
-
               durations.add(
                 number
               );
-
             }
-
           }
         );
-
       }
-
 
       if (
         Array.isArray(
           directAspects
         )
       ) {
-
         directAspects.forEach(
           value => {
-
             const aspect =
               String(
                 value ||
@@ -133,28 +117,21 @@ function buildCapabilities() {
             if (
               aspect
             ) {
-
               aspects.add(
                 aspect
               );
-
             }
-
           }
         );
-
       }
-
 
       if (
         Array.isArray(
           directResolutions
         )
       ) {
-
         directResolutions.forEach(
           value => {
-
             const resolution =
               String(
                 value ||
@@ -164,24 +141,17 @@ function buildCapabilities() {
             if (
               resolution
             ) {
-
               resolutions.add(
                 resolution
               );
-
             }
-
           }
         );
-
       }
-
     }
   );
 
-
   return {
-
     models,
 
     durations:
@@ -208,15 +178,11 @@ function buildCapabilities() {
 
     constraints:
       getCapabilities()
-
   };
-
 }
-
 
 const CAPABILITIES =
   buildCapabilities();
-
 
 // ============================================================
 // ERROR
@@ -227,7 +193,6 @@ function providerError(
   status = 400,
   code = ""
 ) {
-
   const error =
     new Error(
       String(
@@ -236,37 +201,28 @@ function providerError(
       )
     );
 
-
   error.status =
     Number(
       status
     ) || 400;
 
-
   error.provider =
     ID;
-
 
   error.adapter =
     ID;
 
-
   if (
     code
   ) {
-
     error.code =
       String(
         code
       );
-
   }
 
-
   return error;
-
 }
-
 
 // ============================================================
 // API KEY
@@ -276,7 +232,6 @@ function getApiKey(
   provider = {},
   env = {}
 ) {
-
   const key =
     String(
       provider?.api_key ||
@@ -285,24 +240,18 @@ function getApiKey(
       ""
     ).trim();
 
-
   if (
     !key
   ) {
-
     throw providerError(
       "API key ChinaAPI belum dikonfigurasi.",
       400,
       "missing_api_key"
     );
-
   }
 
-
   return key;
-
 }
-
 
 // ============================================================
 // JSON
@@ -311,39 +260,26 @@ function getApiKey(
 async function safeJson(
   response
 ) {
-
   const responseText =
     await response.text();
-
 
   if (
     !responseText
   ) {
-
     return {};
-
   }
 
-
   try {
-
     return JSON.parse(
       responseText
     );
-
   } catch {
-
     return {
-
       raw:
         responseText
-
     };
-
   }
-
 }
-
 
 // ============================================================
 // ERROR MESSAGE
@@ -353,9 +289,7 @@ function getErrorMessage(
   data,
   fallback
 ) {
-
   const candidates = [
-
     data?.error,
     data?.message,
     data?.fail_reason,
@@ -369,80 +303,59 @@ function getErrorMessage(
 
     data?.metadata?.error,
     data?.metadata?.message
-
   ];
-
 
   for (
     const value of candidates
   ) {
-
     if (
       typeof value ===
         "string" &&
       value.trim()
     ) {
-
       return value.trim();
-
     }
-
   }
-
 
   if (
     data?.error &&
     typeof data.error.message ===
       "string"
   ) {
-
     return data.error.message.trim();
-
   }
-
 
   if (
     data?.data?.error &&
     typeof data.data.error.message ===
       "string"
   ) {
-
     return data.data.error.message.trim();
-
   }
-
 
   if (
     data?.details &&
     typeof data.details.message ===
       "string"
   ) {
-
     return data.details.message.trim();
-
   }
-
 
   if (
     typeof data?.raw ===
       "string"
   ) {
-
     return data.raw.slice(
       0,
       1000
     );
-
   }
-
 
   return (
     fallback ||
     "ChinaAPI provider error."
   );
-
 }
-
 
 // ============================================================
 // STATUS NORMALIZER
@@ -451,7 +364,6 @@ function getErrorMessage(
 function normalizeStatus(
   value
 ) {
-
   return String(
     value || ""
   )
@@ -461,16 +373,12 @@ function normalizeStatus(
       /[\s-]+/g,
       "_"
     );
-
 }
-
 
 function isCompletedStatus(
   value
 ) {
-
   return [
-
     "completed",
     "complete",
     "succeeded",
@@ -478,44 +386,34 @@ function isCompletedStatus(
     "successful",
     "finished",
     "done"
-
   ].includes(
     normalizeStatus(
       value
     )
   );
-
 }
-
 
 function isFailedStatus(
   value
 ) {
-
   return [
-
     "failed",
     "failure",
     "error",
     "cancelled",
     "canceled",
     "rejected"
-
   ].includes(
     normalizeStatus(
       value
     )
   );
-
 }
-
 
 function isProcessingStatus(
   value
 ) {
-
   return [
-
     "processing",
     "in_progress",
     "queued",
@@ -527,15 +425,12 @@ function isProcessingStatus(
     "submitted",
     "starting",
     "running"
-
   ].includes(
     normalizeStatus(
       value
     )
   );
-
 }
-
 
 // ============================================================
 // PROGRESS
@@ -544,7 +439,6 @@ function isProcessingStatus(
 function normalizeProgress(
   value
 ) {
-
   if (
     typeof value ===
       "number" &&
@@ -552,7 +446,6 @@ function normalizeProgress(
       value
     )
   ) {
-
     return Math.max(
       0,
       Math.min(
@@ -560,9 +453,7 @@ function normalizeProgress(
         value
       )
     );
-
   }
-
 
   const text =
     String(
@@ -570,15 +461,11 @@ function normalizeProgress(
       ""
     ).trim();
 
-
   if (
     !text
   ) {
-
     return 0;
-
   }
-
 
   const number =
     Number(
@@ -588,17 +475,13 @@ function normalizeProgress(
       )
     );
 
-
   if (
     !Number.isFinite(
       number
     )
   ) {
-
     return 0;
-
   }
-
 
   return Math.max(
     0,
@@ -607,9 +490,7 @@ function normalizeProgress(
       number
     )
   );
-
 }
-
 
 // ============================================================
 // VIDEO URL
@@ -618,9 +499,7 @@ function normalizeProgress(
 function getVideoUrl(
   data
 ) {
-
   const candidates = [
-
     data?.result_url,
     data?.video_url,
     data?.url,
@@ -652,31 +531,22 @@ function getVideoUrl(
     data?.data?.output?.result_url,
     data?.data?.output?.video_url,
     data?.data?.output?.url
-
   ];
-
 
   for (
     const value of candidates
   ) {
-
     if (
       typeof value ===
         "string" &&
       value.trim()
     ) {
-
       return value.trim();
-
     }
-
   }
 
-
   return "";
-
 }
-
 
 // ============================================================
 // TASK ID
@@ -685,9 +555,7 @@ function getVideoUrl(
 function getExternalId(
   data
 ) {
-
   const candidates = [
-
     data?.video_id,
     data?.videoId,
 
@@ -703,14 +571,11 @@ function getExternalId(
     data?.data?.taskId,
 
     data?.data?.id
-
   ];
-
 
   for (
     const value of candidates
   ) {
-
     if (
       value !== undefined &&
       value !== null &&
@@ -718,20 +583,14 @@ function getExternalId(
         value
       ).trim()
     ) {
-
       return String(
         value
       ).trim();
-
     }
-
   }
 
-
   return "";
-
 }
-
 
 // ============================================================
 // MODEL RESOLUTION
@@ -740,20 +599,16 @@ function getExternalId(
 function resolveModel(
   modelId
 ) {
-
   const id =
     String(
       modelId || ""
     ).trim();
 
-
   if (
     !id
   ) {
-
     const models =
       listModels();
-
 
     if (
       Array.isArray(
@@ -761,25 +616,18 @@ function resolveModel(
       ) &&
       models.length
     ) {
-
       return getModel(
         models[0]
       );
-
     }
 
-
     return null;
-
   }
-
 
   return getModel(
     id
   );
-
 }
-
 
 // ============================================================
 // MODEL ENDPOINT
@@ -788,12 +636,10 @@ function resolveModel(
 function getModelEndpoint(
   modelId
 ) {
-
   const id =
     String(
       modelId || ""
     ).trim();
-
 
   /*
    * ChinaAPI mendukung dua kontrak video:
@@ -809,50 +655,36 @@ function getModelEndpoint(
     id ===
     "agnes-video-2.5-flash"
   ) {
-
     return {
-
       generate:
         "/videos",
 
       status:
         "/videos"
-
     };
-
   }
-
 
   if (
     id ===
     "doubao-seedance-2-0-mini-260615"
   ) {
-
     return {
-
       generate:
         "/video/generations",
 
       status:
         "/video/generations"
-
     };
-
   }
 
-
   return {
-
     generate:
       "/video/generations",
 
     status:
       "/video/generations"
-
   };
-
 }
-
 
 // ============================================================
 // REFERENCE IMAGES
@@ -861,93 +693,70 @@ function getModelEndpoint(
 function getReferenceImages(
   body = {}
 ) {
-
   const images = [];
-
 
   if (
     Array.isArray(
       body?.images
     )
   ) {
-
     body.images.forEach(
       image => {
-
         if (
           typeof image ===
             "string" &&
           image.trim()
         ) {
-
           images.push(
             image.trim()
           );
-
         }
-
       }
     );
-
   }
-
 
   if (
     typeof body?.imageData ===
       "string" &&
     body.imageData.trim()
   ) {
-
     const imageData =
       body.imageData.trim();
-
 
     if (
       !images.includes(
         imageData
       )
     ) {
-
       images.unshift(
         imageData
       );
-
     }
-
   }
-
 
   if (
     typeof body?.imageUrl ===
       "string" &&
     body.imageUrl.trim()
   ) {
-
     const imageUrl =
       body.imageUrl.trim();
-
 
     if (
       !images.includes(
         imageUrl
       )
     ) {
-
       images.unshift(
         imageUrl
       );
-
     }
-
   }
-
 
   return images.filter(
     Boolean
   );
-
 }
-
 
 // ============================================================
 // REFERENCE VIDEOS
@@ -956,46 +765,35 @@ function getReferenceImages(
 function getReferenceVideos(
   body = {}
 ) {
-
   const videos = [];
-
 
   if (
     Array.isArray(
       body?.videos
     )
   ) {
-
     body.videos.forEach(
       video => {
-
         if (
           typeof video ===
             "string" &&
           video.trim()
         ) {
-
           videos.push(
             video.trim()
           );
-
         }
-
       }
     );
-
   }
-
 
   if (
     Array.isArray(
       body?.videoUrls
     )
   ) {
-
     body.videoUrls.forEach(
       video => {
-
         if (
           typeof video ===
             "string" &&
@@ -1004,18 +802,13 @@ function getReferenceVideos(
             video.trim()
           )
         ) {
-
           videos.push(
             video.trim()
           );
-
         }
-
       }
     );
-
   }
-
 
   if (
     typeof body?.videoUrl ===
@@ -1025,20 +818,15 @@ function getReferenceVideos(
       body.videoUrl.trim()
     )
   ) {
-
     videos.push(
       body.videoUrl.trim()
     );
-
   }
-
 
   return videos.filter(
     Boolean
   );
-
 }
-
 
 // ============================================================
 // DATA URL -> BINARY
@@ -1047,27 +835,21 @@ function getReferenceVideos(
 function parseDataUrl(
   value
 ) {
-
   const dataUrl =
     String(
       value || ""
     ).trim();
-
 
   const match =
     dataUrl.match(
       /^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.+)$/i
     );
 
-
   if (
     !match
   ) {
-
     return null;
-
   }
-
 
   const mimeType =
     String(
@@ -1075,74 +857,54 @@ function parseDataUrl(
       "application/octet-stream"
     ).toLowerCase();
 
-
   const base64 =
     String(
       match[2] ||
       ""
     ).trim();
 
-
   if (
     !base64
   ) {
-
     return null;
-
   }
-
 
   let binary;
 
-
   try {
-
     binary =
       atob(
         base64
       );
-
   } catch {
-
     throw providerError(
       "Reference image Base64 tidak valid.",
       400,
       "invalid_reference_image"
     );
-
   }
-
 
   const bytes =
     new Uint8Array(
       binary.length
     );
 
-
   for (
     let index = 0;
     index < binary.length;
     index += 1
   ) {
-
     bytes[index] =
       binary.charCodeAt(
         index
       );
-
   }
 
-
   return {
-
     mimeType,
-
     bytes
-
   };
-
 }
-
 
 // ============================================================
 // FILE EXTENSION
@@ -1151,15 +913,12 @@ function parseDataUrl(
 function getImageExtension(
   mimeType
 ) {
-
   const mime =
     String(
       mimeType || ""
     ).toLowerCase();
 
-
   const map = {
-
     "image/jpeg":
       "jpg",
 
@@ -1180,17 +939,13 @@ function getImageExtension(
 
     "image/avif":
       "avif"
-
   };
-
 
   return (
     map[mime] ||
     "bin"
   );
-
 }
-
 
 // ============================================================
 // REFERENCE IMAGE UPLOAD
@@ -1200,7 +955,6 @@ async function prepareAgnesReferenceImages(
   images,
   env
 ) {
-
   const normalizedImages =
     Array.isArray(
       images
@@ -1213,24 +967,18 @@ async function prepareAgnesReferenceImages(
         )
       : [];
 
-
   if (
     !normalizedImages.length
   ) {
-
     return [];
-
   }
-
 
   await sbStorageEnsurePublicBucket(
     REFERENCE_BUCKET,
     env
   );
 
-
   const result = [];
-
 
   for (
     let index = 0;
@@ -1238,77 +986,61 @@ async function prepareAgnesReferenceImages(
       normalizedImages.length;
     index += 1
   ) {
-
     const image =
       normalizedImages[
         index
       ].trim();
-
 
     if (
       /^https:\/\//i.test(
         image
       )
     ) {
-
       result.push(
         image
       );
 
       continue;
-
     }
-
 
     if (
       !/^data:/i.test(
         image
       )
     ) {
-
       throw providerError(
         "Reference image Agnes harus berupa URL HTTPS atau Data URL.",
         400,
         "invalid_reference_image"
       );
-
     }
-
 
     const parsed =
       parseDataUrl(
         image
       );
 
-
     if (
       !parsed
     ) {
-
       throw providerError(
         "Reference image Agnes tidak dapat diproses.",
         400,
         "invalid_reference_image"
       );
-
     }
-
 
     const extension =
       getImageExtension(
         parsed.mimeType
       );
 
-
     const objectPath =
       `agnes/${crypto.randomUUID()}-${index}.${extension}`;
 
-
     let uploaded;
 
-
     try {
-
       uploaded =
         await sbStorageUpload(
           REFERENCE_BUCKET,
@@ -1317,54 +1049,41 @@ async function prepareAgnesReferenceImages(
           parsed.mimeType,
           env
         );
-
     } catch (
       error
     ) {
-
       throw providerError(
         error?.message ||
         "Gagal mengupload reference image ke storage.",
         502,
         "reference_upload_error"
       );
-
     }
-
 
     if (
       !uploaded?.publicUrl
     ) {
-
       throw providerError(
         "Supabase tidak mengembalikan URL reference image.",
         502,
         "reference_upload_error"
       );
-
     }
-
 
     result.push(
       uploaded.publicUrl
     );
-
   }
 
-
   return result;
-
 }
-
 
 // ============================================================
 // INFO
 // ============================================================
 
 export function info() {
-
   return {
-
     id:
       ID,
 
@@ -1379,11 +1098,8 @@ export function info() {
 
     models:
       getModelsInfo()
-
   };
-
 }
-
 
 // ============================================================
 // GENERATE
@@ -1394,57 +1110,46 @@ export async function generate(
   provider = {},
   env = {}
 ) {
-
   const apiKey =
     getApiKey(
       provider,
       env
     );
 
-
   const prompt =
     String(
       body?.prompt || ""
     ).trim();
 
-
   if (
     !prompt
   ) {
-
     throw providerError(
       "Prompt ChinaAPI kosong.",
       400,
       "invalid_prompt"
     );
-
   }
-
 
   const modelId =
     String(
       body?.model || ""
     ).trim();
 
-
   const model =
     resolveModel(
       modelId
     );
 
-
   if (
     !model
   ) {
-
     throw providerError(
       "Model ChinaAPI tidak valid.",
       400,
       "invalid_model"
     );
-
   }
-
 
   const selectedModelId =
     String(
@@ -1454,26 +1159,21 @@ export async function generate(
       modelId
     ).trim();
 
-
   if (
     !selectedModelId
   ) {
-
     throw providerError(
       "Model ChinaAPI tidak memiliki ID yang valid.",
       400,
       "invalid_model"
     );
-
   }
-
 
   const duration =
     Number(
       body?.duration ??
       5
     );
-
 
   const aspectRatio =
     String(
@@ -1483,40 +1183,33 @@ export async function generate(
       "16:9"
     ).trim();
 
-
   const resolution =
     String(
       body?.resolution ||
       "720P"
     ).trim();
 
-
   let referenceImages =
     getReferenceImages(
       body
     );
-
 
   const referenceVideos =
     getReferenceVideos(
       body
     );
 
-
   if (
     selectedModelId ===
-    "agnes-video-2.5-flash" &&
+      "agnes-video-2.5-flash" &&
     referenceImages.length > 0
   ) {
-
     referenceImages =
       await prepareAgnesReferenceImages(
         referenceImages,
         env
       );
-
   }
-
 
   const validation =
     validateModel(
@@ -1546,23 +1239,18 @@ export async function generate(
 
         referenceVideos:
           referenceVideos
-
       }
     );
-
 
   if (
     validation === false
   ) {
-
     throw providerError(
       "Parameter video ChinaAPI tidak sesuai dengan kemampuan model.",
       400,
       "invalid_model_parameters"
     );
-
   }
-
 
   if (
     validation &&
@@ -1571,7 +1259,6 @@ export async function generate(
     validation.valid ===
       false
   ) {
-
     const validationMessage =
       Array.isArray(
         validation.errors
@@ -1585,22 +1272,17 @@ export async function generate(
             "Parameter video ChinaAPI tidak valid."
           );
 
-
     throw providerError(
       validationMessage,
       400,
       validation.code ||
-      "invalid_model_parameters"
+        "invalid_model_parameters"
     );
-
   }
-
 
   let payload;
 
-
   try {
-
     payload =
       buildPayload(
         selectedModelId,
@@ -1629,23 +1311,18 @@ export async function generate(
 
           referenceVideos:
             referenceVideos
-
         }
       );
-
   } catch (
     error
   ) {
-
     throw providerError(
       error?.message ||
       "Gagal membentuk payload ChinaAPI.",
       400,
       "payload_error"
     );
-
   }
-
 
   if (
     !payload ||
@@ -1655,15 +1332,12 @@ export async function generate(
       payload
     )
   ) {
-
     throw providerError(
       "Payload ChinaAPI tidak valid.",
       400,
       "invalid_payload"
     );
-
   }
-
 
   /*
    * Pastikan field model selalu ada.
@@ -1671,7 +1345,6 @@ export async function generate(
 
   payload.model =
     selectedModelId;
-
 
   /*
    * Pastikan prompt selalu ada.
@@ -1681,34 +1354,26 @@ export async function generate(
     payload.prompt ===
       undefined
   ) {
-
     payload.prompt =
       prompt;
-
   }
-
 
   const endpoint =
     getModelEndpoint(
       selectedModelId
     );
 
-
   let response;
 
-
   try {
-
     response =
       await fetch(
         `${CHINAAPI_BASE_URL}${endpoint.generate}`,
         {
-
           method:
             "POST",
 
           headers: {
-
             Authorization:
               `Bearer ${apiKey}`,
 
@@ -1717,41 +1382,33 @@ export async function generate(
 
             Accept:
               "application/json"
-
           },
 
           body:
             JSON.stringify(
               payload
             )
-
         }
       );
-
   } catch (
     error
   ) {
-
     throw providerError(
       error?.message ||
       "Tidak dapat terhubung ke server ChinaAPI.",
       502,
       "connection_error"
     );
-
   }
-
 
   const data =
     await safeJson(
       response
     );
 
-
   if (
     !response.ok
   ) {
-
     throw providerError(
       getErrorMessage(
         data,
@@ -1759,32 +1416,26 @@ export async function generate(
       ),
       response.status,
       data?.error?.code ||
-      data?.data?.error?.code ||
-      data?.code ||
-      "provider_error"
+        data?.data?.error?.code ||
+        data?.code ||
+        "provider_error"
     );
-
   }
-
 
   const externalId =
     getExternalId(
       data
     );
 
-
   if (
     !externalId
   ) {
-
     throw providerError(
       "ChinaAPI tidak mengembalikan task ID/video ID.",
       502,
       "missing_task_id"
     );
-
   }
-
 
   const initialStatus =
     normalizeStatus(
@@ -1794,12 +1445,10 @@ export async function generate(
       data?.data?.state
     );
 
-
   const initialVideoUrl =
     getVideoUrl(
       data
     );
-
 
   if (
     isCompletedStatus(
@@ -1807,9 +1456,7 @@ export async function generate(
     ) &&
     initialVideoUrl
   ) {
-
     return {
-
       externalId,
 
       provider:
@@ -1841,18 +1488,14 @@ export async function generate(
 
       referenceVideoCount:
         referenceVideos.length
-
     };
-
   }
-
 
   if (
     isFailedStatus(
       initialStatus
     )
   ) {
-
     throw providerError(
       getErrorMessage(
         data,
@@ -1861,12 +1504,9 @@ export async function generate(
       502,
       "provider_failed"
     );
-
   }
 
-
   return {
-
     externalId,
 
     provider:
@@ -1895,11 +1535,8 @@ export async function generate(
 
     referenceVideoCount:
       referenceVideos.length
-
   };
-
 }
-
 
 // ============================================================
 // STATUS REQUEST
@@ -1909,63 +1546,46 @@ async function requestStatus(
   url,
   apiKey
 ) {
-
   let response;
 
-
   try {
-
     response =
       await fetch(
         url,
         {
-
           method:
             "GET",
 
           headers: {
-
             Authorization:
               `Bearer ${apiKey}`,
 
             Accept:
               "application/json"
-
           }
-
         }
       );
-
   } catch (
     error
   ) {
-
     throw providerError(
       error?.message ||
       "Tidak dapat terhubung ke server ChinaAPI.",
       502,
       "connection_error"
     );
-
   }
-
 
   const data =
     await safeJson(
       response
     );
 
-
   return {
-
     response,
-
     data
-
   };
-
 }
-
 
 // ============================================================
 // STATUS
@@ -1976,32 +1596,26 @@ export async function status(
   provider = {},
   env = {}
 ) {
-
   const apiKey =
     getApiKey(
       provider,
       env
     );
 
-
   const taskId =
     String(
       externalId || ""
     ).trim();
 
-
   if (
     !taskId
   ) {
-
     throw providerError(
       "Task ID ChinaAPI tidak valid.",
       400,
       "invalid_task_id"
     );
-
   }
-
 
   /*
    * Coba endpoint OpenAI Videos terlebih dahulu.
@@ -2015,14 +1629,11 @@ export async function status(
       apiKey
     );
 
-
   let response =
     result.response;
 
-
   let data =
     result.data;
-
 
   /*
    * Fallback ke endpoint ChinaAPI legacy.
@@ -2037,7 +1648,6 @@ export async function status(
         405
     )
   ) {
-
     result =
       await requestStatus(
         `${CHINAAPI_BASE_URL}/video/generations/${encodeURIComponent(
@@ -2046,21 +1656,16 @@ export async function status(
         apiKey
       );
 
-
     response =
       result.response;
 
-
     data =
       result.data;
-
   }
-
 
   if (
     !response.ok
   ) {
-
     throw providerError(
       getErrorMessage(
         data,
@@ -2068,13 +1673,11 @@ export async function status(
       ),
       response.status,
       data?.error?.code ||
-      data?.data?.error?.code ||
-      data?.code ||
-      "status_error"
+        data?.data?.error?.code ||
+        data?.code ||
+        "status_error"
     );
-
   }
-
 
   const currentStatus =
     normalizeStatus(
@@ -2084,15 +1687,12 @@ export async function status(
       data?.data?.state
     );
 
-
   if (
     isFailedStatus(
       currentStatus
     )
   ) {
-
     return {
-
       success:
         true,
 
@@ -2109,39 +1709,32 @@ export async function status(
         getErrorMessage(
           data,
           data?.fail_reason ||
-          data?.data?.fail_reason ||
-          "ChinaAPI video generation gagal."
+            data?.data?.fail_reason ||
+            "ChinaAPI video generation gagal."
         ),
 
       errorCode:
         data?.error?.code ||
-        data?.data?.error?.code ||
-        data?.code ||
-        "provider_failed"
-
+          data?.data?.error?.code ||
+          data?.code ||
+          "provider_failed"
     };
-
   }
-
 
   if (
     isCompletedStatus(
       currentStatus
     )
   ) {
-
     const videoUrl =
       getVideoUrl(
         data
       );
 
-
     if (
       !videoUrl
     ) {
-
       return {
-
         success:
           true,
 
@@ -2159,14 +1752,10 @@ export async function status(
 
         errorCode:
           "missing_video_url"
-
       };
-
     }
 
-
     return {
-
       success:
         true,
 
@@ -2191,23 +1780,18 @@ export async function status(
       progress:
         normalizeProgress(
           data?.progress ??
-          data?.data?.progress ??
-          100
+            data?.data?.progress ??
+            100
         )
-
     };
-
   }
-
 
   if (
     isProcessingStatus(
       currentStatus
     )
   ) {
-
     return {
-
       success:
         true,
 
@@ -2223,20 +1807,16 @@ export async function status(
       progress:
         normalizeProgress(
           data?.progress ??
-          data?.data?.progress ??
-          0
+            data?.data?.progress ??
+            0
         ),
 
       providerStatus:
         currentStatus
-
     };
-
   }
 
-
   return {
-
     success:
       true,
 
@@ -2252,18 +1832,15 @@ export async function status(
     progress:
       normalizeProgress(
         data?.progress ??
-        data?.data?.progress ??
-        0
+          data?.data?.progress ??
+          0
       ),
 
     providerStatus:
       currentStatus ||
       "unknown"
-
   };
-
 }
-
 
 // ============================================================
 // FETCH VIDEO
@@ -2275,40 +1852,32 @@ export async function fetchVideo(
   env = {},
   options = {}
 ) {
-
   const videoUrl =
     String(
       target || ""
     ).trim();
 
-
   if (
     !videoUrl
   ) {
-
     throw providerError(
       "URL video ChinaAPI tidak valid.",
       400,
       "invalid_video_url"
     );
-
   }
-
 
   if (
     !/^https:\/\//i.test(
       videoUrl
     )
   ) {
-
     throw providerError(
       "URL video ChinaAPI harus menggunakan HTTPS.",
       400,
       "invalid_video_url"
     );
-
   }
-
 
   const range =
     String(
@@ -2316,60 +1885,46 @@ export async function fetchVideo(
       ""
     ).trim();
 
-
   if (
     range &&
     !/^bytes=\d*-\d*$/.test(
       range
     )
   ) {
-
     throw providerError(
       "Range video ChinaAPI tidak valid.",
       400,
       "invalid_video_range"
     );
-
   }
-
 
   if (
     range ===
-    "bytes=-"
+      "bytes=-"
   ) {
-
     throw providerError(
       "Range video ChinaAPI tidak valid.",
       400,
       "invalid_video_range"
     );
-
   }
 
-
   const requestHeaders = {};
-
 
   if (
     range
   ) {
-
     requestHeaders.Range =
       range;
-
   }
-
 
   let response;
 
-
   try {
-
     response =
       await fetch(
         videoUrl,
         {
-
           method:
             "GET",
 
@@ -2378,41 +1933,31 @@ export async function fetchVideo(
 
           headers:
             requestHeaders
-
         }
       );
-
   } catch (
     error
   ) {
-
     throw providerError(
       error?.message ||
       "Gagal mengambil file video dari ChinaAPI.",
       502,
       "video_fetch_error"
     );
-
   }
-
 
   if (
     !response.ok
   ) {
-
     throw providerError(
       `Gagal mengambil video ChinaAPI. HTTP ${response.status}.`,
       502,
       "video_fetch_error"
     );
-
   }
 
-
   return response;
-
 }
-
 
 // ============================================================
 // CREATE VIDEO
@@ -2422,7 +1967,6 @@ export async function createVideo(
   options = {},
   env = {}
 ) {
-
   return generate(
     options,
     {
@@ -2432,9 +1976,7 @@ export async function createVideo(
     },
     env
   );
-
 }
-
 
 // ============================================================
 // GET VIDEO STATUS
@@ -2444,7 +1986,6 @@ export async function getVideoStatus(
   taskId,
   env = {}
 ) {
-
   return status(
     taskId,
     {
@@ -2454,9 +1995,7 @@ export async function getVideoStatus(
     },
     env
   );
-
 }
-
 
 // ============================================================
 // WAIT FOR VIDEO
@@ -2467,49 +2006,41 @@ export async function waitForVideo(
   env = {},
   options = {}
 ) {
-
   const pollInterval =
     Math.max(
       1000,
       Number(
         options?.pollInterval ||
-        5000
+          5000
       )
     );
-
 
   const timeout =
     Math.max(
       pollInterval,
       Number(
         options?.timeout ||
-        30 * 60 * 1000
+          30 * 60 * 1000
       )
     );
-
 
   const startedAt =
     Date.now();
 
-
   while (
     true
   ) {
-
     if (
       Date.now() -
-      startedAt >=
+        startedAt >=
       timeout
     ) {
-
       throw providerError(
         "ChinaAPI video generation timed out.",
         504,
         "timeout"
       );
-
     }
-
 
     const result =
       await getVideoStatus(
@@ -2517,32 +2048,25 @@ export async function waitForVideo(
         env
       );
 
-
     if (
       result?.status ===
       "completed"
     ) {
-
       return result;
-
     }
-
 
     if (
       result?.status ===
       "failed"
     ) {
-
       throw providerError(
         result?.error ||
-        "ChinaAPI video generation failed.",
+          "ChinaAPI video generation failed.",
         502,
         result?.errorCode ||
-        "provider_failed"
+          "provider_failed"
       );
-
     }
-
 
     await new Promise(
       resolve =>
@@ -2551,29 +2075,22 @@ export async function waitForVideo(
           pollInterval
         )
     );
-
   }
-
 }
-
 
 // ============================================================
 // MODELS
 // ============================================================
 
 export function getModels() {
-
   return getModelsInfo();
-
 }
-
 
 // ============================================================
 // PROVIDER
 // ============================================================
 
 export const provider = {
-
   id:
     ID,
 
@@ -2604,9 +2121,6 @@ export const provider = {
   waitForVideo,
 
   getModels
-
 };
 
-
 export default provider;
-```
