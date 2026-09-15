@@ -1,3 +1,4 @@
+```javascript
 // ============================================================
 // GEN-Z.AI - CHINAAPI PROVIDER ADAPTER
 // ============================================================
@@ -37,7 +38,7 @@ const REFERENCE_BUCKET =
 function buildCapabilities() {
 
   const models =
-    listModels();
+    getModelsInfo();
 
   const durations =
     new Set();
@@ -63,21 +64,50 @@ function buildCapabilities() {
         model?.capabilities ||
         {};
 
+      const directDurations =
+        info?.durations ||
+        model?.durations ||
+        capabilities?.durations ||
+        [];
+
+      const directAspects =
+        info?.aspects ||
+        model?.aspects ||
+        capabilities?.aspects ||
+        [];
+
+      const directResolutions =
+        info?.resolutions ||
+        model?.resolutions ||
+        capabilities?.resolutions ||
+        [];
+
 
       if (
         Array.isArray(
-          capabilities.durations
+          directDurations
         )
       ) {
 
-        capabilities.durations.forEach(
+        directDurations.forEach(
           value => {
 
-            durations.add(
+            const number =
               Number(
                 value
+              );
+
+            if (
+              Number.isFinite(
+                number
               )
-            );
+            ) {
+
+              durations.add(
+                number
+              );
+
+            }
 
           }
         );
@@ -87,18 +117,28 @@ function buildCapabilities() {
 
       if (
         Array.isArray(
-          capabilities.aspects
+          directAspects
         )
       ) {
 
-        capabilities.aspects.forEach(
+        directAspects.forEach(
           value => {
 
-            aspects.add(
+            const aspect =
               String(
-                value
-              )
-            );
+                value ||
+                ""
+              ).trim();
+
+            if (
+              aspect
+            ) {
+
+              aspects.add(
+                aspect
+              );
+
+            }
 
           }
         );
@@ -108,18 +148,28 @@ function buildCapabilities() {
 
       if (
         Array.isArray(
-          capabilities.resolutions
+          directResolutions
         )
       ) {
 
-        capabilities.resolutions.forEach(
+        directResolutions.forEach(
           value => {
 
-            resolutions.add(
+            const resolution =
               String(
-                value
-              )
-            );
+                value ||
+                ""
+              ).trim();
+
+            if (
+              resolution
+            ) {
+
+              resolutions.add(
+                resolution
+              );
+
+            }
 
           }
         );
@@ -230,6 +280,7 @@ function getApiKey(
   const key =
     String(
       provider?.api_key ||
+      provider?.apiKey ||
       env?.CHINAAPI_KEY ||
       ""
     ).trim();
@@ -283,8 +334,10 @@ async function safeJson(
   } catch {
 
     return {
+
       raw:
         responseText
+
     };
 
   }
@@ -304,18 +357,18 @@ function getErrorMessage(
   const candidates = [
 
     data?.error,
-
     data?.message,
-
     data?.fail_reason,
+    data?.code,
 
     data?.data?.error,
-
     data?.data?.message,
-
     data?.data?.fail_reason,
 
-    data?.details?.message
+    data?.details?.message,
+
+    data?.metadata?.error,
+    data?.metadata?.message
 
   ];
 
@@ -343,7 +396,7 @@ function getErrorMessage(
       "string"
   ) {
 
-    return data.error.message;
+    return data.error.message.trim();
 
   }
 
@@ -354,7 +407,18 @@ function getErrorMessage(
       "string"
   ) {
 
-    return data.data.error.message;
+    return data.data.error.message.trim();
+
+  }
+
+
+  if (
+    data?.details &&
+    typeof data.details.message ===
+      "string"
+  ) {
+
+    return data.details.message.trim();
 
   }
 
@@ -392,7 +456,11 @@ function normalizeStatus(
     value || ""
   )
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(
+      /[\s-]+/g,
+      "_"
+    );
 
 }
 
@@ -407,6 +475,7 @@ function isCompletedStatus(
     "complete",
     "succeeded",
     "success",
+    "successful",
     "finished",
     "done"
 
@@ -449,13 +518,11 @@ function isProcessingStatus(
 
     "processing",
     "in_progress",
-    "in-progress",
     "queued",
     "queue",
     "pending",
     "not_start",
-    "not-start",
-    "not started",
+    "not_started",
     "created",
     "submitted",
     "starting",
@@ -464,6 +531,80 @@ function isProcessingStatus(
   ].includes(
     normalizeStatus(
       value
+    )
+  );
+
+}
+
+
+// ============================================================
+// PROGRESS
+// ============================================================
+
+function normalizeProgress(
+  value
+) {
+
+  if (
+    typeof value ===
+      "number" &&
+    Number.isFinite(
+      value
+    )
+  ) {
+
+    return Math.max(
+      0,
+      Math.min(
+        100,
+        value
+      )
+    );
+
+  }
+
+
+  const text =
+    String(
+      value ??
+      ""
+    ).trim();
+
+
+  if (
+    !text
+  ) {
+
+    return 0;
+
+  }
+
+
+  const number =
+    Number(
+      text.replace(
+        "%",
+        ""
+      )
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return 0;
+
+  }
+
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      number
     )
   );
 
@@ -484,6 +625,10 @@ function getVideoUrl(
     data?.video_url,
     data?.url,
 
+    data?.metadata?.url,
+    data?.metadata?.video_url,
+    data?.metadata?.result_url,
+
     data?.result?.result_url,
     data?.result?.video_url,
     data?.result?.url,
@@ -492,13 +637,13 @@ function getVideoUrl(
     data?.output?.video_url,
     data?.output?.url,
 
-    data?.metadata?.result_url,
-    data?.metadata?.video_url,
-    data?.metadata?.url,
-
     data?.data?.result_url,
     data?.data?.video_url,
     data?.data?.url,
+
+    data?.data?.metadata?.url,
+    data?.data?.metadata?.video_url,
+    data?.data?.metadata?.result_url,
 
     data?.data?.result?.result_url,
     data?.data?.result?.video_url,
@@ -506,11 +651,7 @@ function getVideoUrl(
 
     data?.data?.output?.result_url,
     data?.data?.output?.video_url,
-    data?.data?.output?.url,
-
-    data?.data?.metadata?.result_url,
-    data?.data?.metadata?.video_url,
-    data?.data?.metadata?.url
+    data?.data?.output?.url
 
   ];
 
@@ -547,19 +688,21 @@ function getExternalId(
 
   const candidates = [
 
-    data?.task_id,
-    data?.taskId,
     data?.video_id,
     data?.videoId,
 
-    data?.data?.task_id,
-    data?.data?.taskId,
+    data?.task_id,
+    data?.taskId,
+
+    data?.id,
+
     data?.data?.video_id,
     data?.data?.videoId,
 
-    data?.data?.id,
+    data?.data?.task_id,
+    data?.data?.taskId,
 
-    data?.id
+    data?.data?.id
 
   ];
 
@@ -619,14 +762,8 @@ function resolveModel(
       models.length
     ) {
 
-      const first =
-        models[0];
-
-
       return getModel(
-        first?.id ||
-        first?.model ||
-        first
+        models[0]
       );
 
     }
@@ -658,6 +795,34 @@ function getModelEndpoint(
     ).trim();
 
 
+  /*
+   * ChinaAPI mendukung dua kontrak video:
+   *
+   * /v1/videos
+   * /v1/video/generations
+   *
+   * Agnes Video 2.5 Flash menggunakan kontrak
+   * OpenAI Videos-compatible melalui /videos.
+   */
+
+  if (
+    id ===
+    "agnes-video-2.5-flash"
+  ) {
+
+    return {
+
+      generate:
+        "/videos",
+
+      status:
+        "/videos"
+
+    };
+
+  }
+
+
   if (
     id ===
     "doubao-seedance-2-0-mini-260615"
@@ -679,10 +844,10 @@ function getModelEndpoint(
   return {
 
     generate:
-      "/videos",
+      "/video/generations",
 
     status:
-      "/videos"
+      "/video/generations"
 
   };
 
@@ -745,6 +910,31 @@ function getReferenceImages(
 
       images.unshift(
         imageData
+      );
+
+    }
+
+  }
+
+
+  if (
+    typeof body?.imageUrl ===
+      "string" &&
+    body.imageUrl.trim()
+  ) {
+
+    const imageUrl =
+      body.imageUrl.trim();
+
+
+    if (
+      !images.includes(
+        imageUrl
+      )
+    ) {
+
+      images.unshift(
+        imageUrl
       );
 
     }
@@ -822,6 +1012,22 @@ function getReferenceVideos(
         }
 
       }
+    );
+
+  }
+
+
+  if (
+    typeof body?.videoUrl ===
+      "string" &&
+    body.videoUrl.trim() &&
+    !videos.includes(
+      body.videoUrl.trim()
+    )
+  ) {
+
+    videos.push(
+      body.videoUrl.trim()
     );
 
   }
@@ -1039,12 +1245,8 @@ async function prepareAgnesReferenceImages(
       ].trim();
 
 
-    /*
-     * Sudah berupa URL publik.
-     * Jangan upload ulang.
-     */
     if (
-      /^https?:\/\//i.test(
+      /^https:\/\//i.test(
         image
       )
     ) {
@@ -1058,11 +1260,6 @@ async function prepareAgnesReferenceImages(
     }
 
 
-    /*
-     * Agnes membutuhkan URL.
-     * Data URL harus diubah menjadi
-     * object Supabase Storage terlebih dahulu.
-     */
     if (
       !/^data:/i.test(
         image
@@ -1070,7 +1267,7 @@ async function prepareAgnesReferenceImages(
     ) {
 
       throw providerError(
-        "Reference image Agnes harus berupa URL atau Data URL.",
+        "Reference image Agnes harus berupa URL HTTPS atau Data URL.",
         400,
         "invalid_reference_image"
       );
@@ -1181,7 +1378,7 @@ export function info() {
       CAPABILITIES,
 
     models:
-      getModels()
+      getModelsInfo()
 
   };
 
@@ -1306,10 +1503,6 @@ export async function generate(
     );
 
 
-  // ==========================================================
-  // AGNES REFERENCE IMAGE
-  // ==========================================================
-
   if (
     selectedModelId ===
     "agnes-video-2.5-flash" &&
@@ -1346,6 +1539,12 @@ export async function generate(
           referenceImages,
 
         videos:
+          referenceVideos,
+
+        referenceImages:
+          referenceImages,
+
+        referenceVideos:
           referenceVideos
 
       }
@@ -1373,10 +1572,22 @@ export async function generate(
       false
   ) {
 
+    const validationMessage =
+      Array.isArray(
+        validation.errors
+      )
+        ? validation.errors.join(
+            " "
+          )
+        : (
+            validation.message ||
+            validation.error ||
+            "Parameter video ChinaAPI tidak valid."
+          );
+
+
     throw providerError(
-      validation.message ||
-      validation.error ||
-      "Parameter video ChinaAPI tidak valid.",
+      validationMessage,
       400,
       validation.code ||
       "invalid_model_parameters"
@@ -1411,6 +1622,12 @@ export async function generate(
             referenceImages,
 
           videos:
+            referenceVideos,
+
+          referenceImages:
+            referenceImages,
+
+          referenceVideos:
             referenceVideos
 
         }
@@ -1433,7 +1650,10 @@ export async function generate(
   if (
     !payload ||
     typeof payload !==
-      "object"
+      "object" ||
+    Array.isArray(
+      payload
+    )
   ) {
 
     throw providerError(
@@ -1441,6 +1661,29 @@ export async function generate(
       400,
       "invalid_payload"
     );
+
+  }
+
+
+  /*
+   * Pastikan field model selalu ada.
+   */
+
+  payload.model =
+    selectedModelId;
+
+
+  /*
+   * Pastikan prompt selalu ada.
+   */
+
+  if (
+    payload.prompt ===
+      undefined
+  ) {
+
+    payload.prompt =
+      prompt;
 
   }
 
@@ -1485,9 +1728,12 @@ export async function generate(
         }
       );
 
-  } catch {
+  } catch (
+    error
+  ) {
 
     throw providerError(
+      error?.message ||
       "Tidak dapat terhubung ke server ChinaAPI.",
       502,
       "connection_error"
@@ -1509,11 +1755,12 @@ export async function generate(
     throw providerError(
       getErrorMessage(
         data,
-        "ChinaAPI gagal membuat video."
+        `ChinaAPI gagal membuat video. HTTP ${response.status}.`
       ),
       response.status,
       data?.error?.code ||
       data?.data?.error?.code ||
+      data?.code ||
       "provider_error"
     );
 
@@ -1531,7 +1778,7 @@ export async function generate(
   ) {
 
     throw providerError(
-      "ChinaAPI tidak mengembalikan task ID video.",
+      "ChinaAPI tidak mengembalikan task ID/video ID.",
       502,
       "missing_task_id"
     );
@@ -1609,8 +1856,6 @@ export async function generate(
     throw providerError(
       getErrorMessage(
         data,
-        data?.fail_reason ||
-        data?.data?.fail_reason ||
         "ChinaAPI gagal membuat video."
       ),
       502,
@@ -1665,9 +1910,12 @@ async function requestStatus(
   apiKey
 ) {
 
+  let response;
+
+
   try {
 
-    const response =
+    response =
       await fetch(
         url,
         {
@@ -1688,30 +1936,33 @@ async function requestStatus(
         }
       );
 
-
-    const data =
-      await safeJson(
-        response
-      );
-
-
-    return {
-
-      response,
-
-      data
-
-    };
-
-  } catch {
+  } catch (
+    error
+  ) {
 
     throw providerError(
+      error?.message ||
       "Tidak dapat terhubung ke server ChinaAPI.",
       502,
       "connection_error"
     );
 
   }
+
+
+  const data =
+    await safeJson(
+      response
+    );
+
+
+  return {
+
+    response,
+
+    data
+
+  };
 
 }
 
@@ -1752,6 +2003,10 @@ export async function status(
   }
 
 
+  /*
+   * Coba endpoint OpenAI Videos terlebih dahulu.
+   */
+
   let result =
     await requestStatus(
       `${CHINAAPI_BASE_URL}/videos/${encodeURIComponent(
@@ -1768,6 +2023,10 @@ export async function status(
   let data =
     result.data;
 
+
+  /*
+   * Fallback ke endpoint ChinaAPI legacy.
+   */
 
   if (
     !response.ok &&
@@ -1805,11 +2064,12 @@ export async function status(
     throw providerError(
       getErrorMessage(
         data,
-        "ChinaAPI gagal mengambil status video."
+        `ChinaAPI gagal mengambil status video. HTTP ${response.status}.`
       ),
       response.status,
       data?.error?.code ||
       data?.data?.error?.code ||
+      data?.code ||
       "status_error"
     );
 
@@ -1856,6 +2116,7 @@ export async function status(
       errorCode:
         data?.error?.code ||
         data?.data?.error?.code ||
+        data?.code ||
         "provider_failed"
 
     };
@@ -1928,9 +2189,11 @@ export async function status(
         "",
 
       progress:
-        data?.progress ??
-        data?.data?.progress ??
-        100
+        normalizeProgress(
+          data?.progress ??
+          data?.data?.progress ??
+          100
+        )
 
     };
 
@@ -1958,9 +2221,11 @@ export async function status(
         ID,
 
       progress:
-        data?.progress ??
-        data?.data?.progress ??
-        0,
+        normalizeProgress(
+          data?.progress ??
+          data?.data?.progress ??
+          0
+        ),
 
       providerStatus:
         currentStatus
@@ -1985,9 +2250,11 @@ export async function status(
       ID,
 
     progress:
-      data?.progress ??
-      data?.data?.progress ??
-      0,
+      normalizeProgress(
+        data?.progress ??
+        data?.data?.progress ??
+        0
+      ),
 
     providerStatus:
       currentStatus ||
@@ -2000,32 +2267,6 @@ export async function status(
 
 // ============================================================
 // FETCH VIDEO
-// ============================================================
-//
-// ChinaAPI mengembalikan signed HTTPS URL untuk file video.
-//
-// Mendukung:
-// - full video request
-// - HTTP Range request
-// - browser seeking
-// - buffering
-// - resume playback
-//
-// Router akan memanggil:
-//
-// adapter.fetchVideo(
-//   target,
-//   provider,
-//   env,
-//   {
-//     range,
-//     request
-//   }
-// );
-//
-// Untuk ChinaAPI:
-// target = signed HTTPS video URL.
-//
 // ============================================================
 
 export async function fetchVideo(
@@ -2041,10 +2282,6 @@ export async function fetchVideo(
     ).trim();
 
 
-  // ==========================================================
-  // VALIDATE URL
-  // ==========================================================
-
   if (
     !videoUrl
   ) {
@@ -2057,15 +2294,6 @@ export async function fetchVideo(
 
   }
 
-
-  /*
-   * ChinaAPI harus mengembalikan signed HTTPS URL.
-   *
-   * HTTP biasa tidak diperbolehkan.
-   *
-   * Endpoint internal GEN-Z.AI juga tidak boleh masuk
-   * sebagai target upstream.
-   */
 
   if (
     !/^https:\/\//i.test(
@@ -2082,36 +2310,12 @@ export async function fetchVideo(
   }
 
 
-  // ==========================================================
-  // RANGE
-  // ==========================================================
-
   const range =
     String(
       options?.range ||
       ""
     ).trim();
 
-
-  /*
-   * Validasi kedua di adapter.
-   *
-   * Router sudah melakukan validasi Range.
-   * Namun adapter tetap memvalidasi agar aman ketika
-   * fetchVideo() dipanggil langsung oleh kode lain.
-   *
-   * Format yang diperbolehkan:
-   *
-   * bytes=0-
-   * bytes=0-1024
-   * bytes=1024-2048
-   * bytes=-1024
-   *
-   * Router GEN-Z.AI saat ini hanya meneruskan format:
-   * bytes=\d*-\d*
-   *
-   * Jadi bytes=-1024 juga akan ditolak oleh router.
-   */
 
   if (
     range &&
@@ -2129,14 +2333,6 @@ export async function fetchVideo(
   }
 
 
-  /*
-   * Jangan pernah mengirim:
-   *
-   * Range: bytes=-
-   *
-   * karena itu bukan range yang bermakna.
-   */
-
   if (
     range ===
     "bytes=-"
@@ -2151,19 +2347,8 @@ export async function fetchVideo(
   }
 
 
-  // ==========================================================
-  // REQUEST HEADERS
-  // ==========================================================
-
   const requestHeaders = {};
 
-
-  /*
-   * Hanya kirim Range jika browser meminta Range.
-   *
-   * Jika tidak ada Range, biarkan upstream menentukan
-   * response full video secara normal.
-   */
 
   if (
     range
@@ -2174,10 +2359,6 @@ export async function fetchVideo(
 
   }
 
-
-  // ==========================================================
-  // FETCH SIGNED VIDEO
-  // ==========================================================
 
   let response;
 
@@ -2201,9 +2382,12 @@ export async function fetchVideo(
         }
       );
 
-  } catch {
+  } catch (
+    error
+  ) {
 
     throw providerError(
+      error?.message ||
       "Gagal mengambil file video dari ChinaAPI.",
       502,
       "video_fetch_error"
@@ -2211,19 +2395,6 @@ export async function fetchVideo(
 
   }
 
-
-  // ==========================================================
-  // RESPONSE
-  // ==========================================================
-
-  /*
-   * Response yang valid:
-   *
-   * 200 = full video
-   * 206 = Partial Content / Range
-   *
-   * response.ok bernilai true untuk keduanya.
-   */
 
   if (
     !response.ok
@@ -2237,24 +2408,6 @@ export async function fetchVideo(
 
   }
 
-
-  /*
-   * PENTING:
-   *
-   * Jangan:
-   *
-   * await response.arrayBuffer()
-   * await response.text()
-   *
-   * di sini.
-   *
-   * Body harus tetap berupa ReadableStream supaya
-   * router/video.js dapat meneruskannya langsung
-   * ke browser.
-   *
-   * Dengan cara ini video besar tidak perlu dimuat
-   * seluruhnya ke memory Worker.
-   */
 
   return response;
 
@@ -2316,16 +2469,22 @@ export async function waitForVideo(
 ) {
 
   const pollInterval =
-    Number(
-      options?.pollInterval ||
-      5000
+    Math.max(
+      1000,
+      Number(
+        options?.pollInterval ||
+        5000
+      )
     );
 
 
   const timeout =
-    Number(
-      options?.timeout ||
-      30 * 60 * 1000
+    Math.max(
+      pollInterval,
+      Number(
+        options?.timeout ||
+        30 * 60 * 1000
+      )
     );
 
 
@@ -2450,3 +2609,4 @@ export const provider = {
 
 
 export default provider;
+```
